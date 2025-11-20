@@ -12,6 +12,8 @@ export interface GameState {
   lastSaved: string;
 }
 
+const LS_KEY = "game_State";
+
 const getWAData = () => {
   try {
     return window.Telegram.WebApp.initDataUnsafe;
@@ -46,14 +48,14 @@ const getDefaultGameState = (): GameState => {
 // Получение текущего состояния
 export const getGameState = (): GameState => {
   try {
-    const stored = localStorage.getItem("gameState2");
+    const stored = localStorage.getItem(LS_KEY);
     if (stored) {
       return JSON.parse(stored);
     }
 
     // Если нет сохраненного состояния, создаем новое
     const defaultState = getDefaultGameState();
-    localStorage.setItem("gameState2", JSON.stringify(defaultState));
+    localStorage.setItem(LS_KEY, JSON.stringify(defaultState));
     createLeaderbord();
 
     return defaultState;
@@ -70,7 +72,7 @@ export const saveGameState = (state: GameState): void => {
       ...state,
       lastSaved: new Date().toISOString(),
     };
-    localStorage.setItem("gameState2", JSON.stringify(stateToSave));
+    localStorage.setItem(LS_KEY, JSON.stringify(stateToSave));
     const event = new CustomEvent("gameStateUpdated", {
       detail: {
         timestamp: Date.now(),

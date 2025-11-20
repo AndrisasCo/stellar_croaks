@@ -8,8 +8,6 @@ import { ArrowRightButtonCompact } from "./shared/ArrowRight";
 import ToadCanvas from "./ToadCanvas";
 import ToadListModal from "./modals/ToadListModal";
 import SceneInfoModal from "./modals/SceneInfoModal";
-import { useFlyingNumbers } from "../hooks/use-flying-numbers";
-import FlyingNumber from "./shared/FlyingNumbers";
 import { triggerNotification } from "../hooks/use-notification";
 
 export default function ToadScene() {
@@ -26,8 +24,6 @@ export default function ToadScene() {
   } = useToads();
 
   const buttonRef = useRef<HTMLButtonElement>(null);
-  const { flyingNumbers, addFlyingNumber, removeFlyingNumber } =
-    useFlyingNumbers();
 
   const isFoodAvailable = (account?.storage?.food || 0) >= toads.length;
 
@@ -35,6 +31,7 @@ export default function ToadScene() {
   const [isListOpen, setIsListOpen] = useState(false);
   const [isSceneInfoOpen, setIsSceneInfoOpen] = useState(false);
   const [isFoodActive, setIsFoodActive] = useState(false);
+  const [showFoodTooltip, setShowFoodTooltip] = useState(false);
 
   const onToadSelect = (toadId: number) => {
     selectToad(toadId);
@@ -58,28 +55,27 @@ export default function ToadScene() {
     setIsSceneInfoOpen(true);
   };
 
-  const handleSetFood = () => {
-    if (isFoodActive) {
-      return;
-    }
+  const handleShowFoodTooltip = () => {
     if (!isFoodAvailable) {
-      // Показываем временное уведомление
-
       triggerNotification("Недостаточно корма на складе!");
       return;
     }
-    if (buttonRef.current) {
-      const rect = buttonRef.current.getBoundingClientRect();
-      const position = {
-        x: rect.left + rect.width / 2,
-        y: 0,
-      };
+    setShowFoodTooltip(true);
+  };
 
-      addFlyingNumber(`-${toads.length}`, "red", position);
+  const handleConfirmFeed = () => {
+    if (isFoodActive) {
+      return;
     }
+
     setIsFoodActive(true);
+    setShowFoodTooltip(false);
     handleFeedToads(toads.map((t) => t.id));
     console.log("🍽️ Покормить жаб на сцене:", currentScene?.name);
+  };
+
+  const handleCancelFeed = () => {
+    setShowFoodTooltip(false);
   };
 
   const handleViewToads = () => {
@@ -138,35 +134,80 @@ export default function ToadScene() {
           )}
 
           {/* Кнопка кормления жаб - ИКОНКА ЕДЫ */}
+          <div className="relative">
+            <button
+              ref={buttonRef}
+              onClick={handleShowFoodTooltip}
+              disabled={isFoodActive}
+              className="
+                flex items-center justify-center 
+                w-10 h-10 rounded-lg 
+                transition-all duration-300 transform
+                border-2 backdrop-blur-sm
+                bg-yellow-900/30 text-yellow-400 border-yellow-600/50 
+                hover:border-yellow-400 hover:bg-yellow-800/50 
+                hover:scale-105 active:scale-95
+                disabled:opacity-60
+              "
+              title="Покормить жаб"
+            >
+              🍎
+            </button>
 
-          <button
-            ref={buttonRef}
-            onClick={handleSetFood}
-            // disabled={isFoodActive}
-            className="
-              flex items-center justify-center 
-              w-10 h-10 rounded-lg 
-              transition-all duration-300 transform
-              border-2 backdrop-blur-sm
-              bg-yellow-900/30 text-yellow-400 border-yellow-600/50 
-              hover:border-yellow-400 hover:bg-yellow-800/50 
-              hover:scale-105 active:scale-95
-              disabled:opacity-60
-            "
-            title="Покормить жаб"
-          >
-            🍎
-          </button>
-          {flyingNumbers.map(({ id, value, color, position }) => (
-            <FlyingNumber
-              key={id}
-              value={value}
-              color={color}
-              position={position}
-              onComplete={() => removeFlyingNumber(id)}
-              duration={2000}
-            />
-          ))}
+            {/* Тултип подтверждения */}
+            {showFoodTooltip && (
+              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 z-50">
+                <div
+                  className="
+                  bg-gray-800 border border-gray-600 rounded-lg p-3 
+                  shadow-lg min-w-[200px] backdrop-blur-sm
+                "
+                >
+                  <div className="text-white text-sm text-center mb-2">
+                    Вы потратите{" "}
+                    <span className="text-yellow-400 font-bold">
+                      {toads.length}
+                    </span>{" "}
+                    корма
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleCancelFeed}
+                      className="
+                        flex-1 py-2 px-3 rounded text-sm
+                        bg-gray-600 hover:bg-gray-500 text-white
+                        transition-colors duration-200
+                      "
+                    >
+                      Отмена
+                    </button>
+                    <button
+                      onClick={handleConfirmFeed}
+                      className="
+                        flex-1 py-2 px-3 rounded text-sm
+                        bg-yellow-600 hover:bg-yellow-500 text-white
+                        transition-colors duration-200
+                        flex items-center justify-center gap-1
+                      "
+                    >
+                      <span>🍎</span>
+                      Покормить
+                    </button>
+                  </div>
+                </div>
+
+                {/* Стрелка тултипа */}
+                <div
+                  className="
+                  absolute top-full left-1/2 transform -translate-x-1/2
+                  w-0 h-0 border-l-4 border-r-4 border-t-4
+                  border-l-transparent border-r-transparent border-t-gray-800
+                "
+                ></div>
+              </div>
+            )}
+          </div>
+
           {/* Кнопка информации о сцене - ИКОНКА ГРАФИКА */}
           <button
             onClick={handleSceneInfo}
@@ -180,7 +221,7 @@ export default function ToadScene() {
               hover:scale-105 active:scale-95
               hover:text-blue-300
             "
-            title="Статистика сцены"
+            title="Статистика сцене"
           >
             <svg
               className="w-5 h-5"

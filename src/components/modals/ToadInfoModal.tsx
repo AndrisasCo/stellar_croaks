@@ -154,7 +154,7 @@ export default function ToadInfo({ onClose }: ToadInfoProps) {
       <div className="flex gap-1">
         <button
           onClick={handlePrevToad}
-          className="text-gray-400  hover:text-white transition-colors p-3 touch-manipulation active:scale-95"
+          className="text-gray-400  hover:text-white transition-colors p-1 touch-manipulation active:scale-95"
           title="Предыдущая жаба"
         >
           <svg
@@ -381,7 +381,7 @@ export default function ToadInfo({ onClose }: ToadInfoProps) {
         </div>
         <button
           onClick={handleNextToad}
-          className="text-gray-400 hover:text-white transition-colors p-3 touch-manipulation active:scale-95"
+          className="text-gray-400 hover:text-white transition-colors p-1 touch-manipulation active:scale-95"
           title="Следующая жаба"
         >
           <svg

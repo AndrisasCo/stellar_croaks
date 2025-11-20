@@ -7,7 +7,7 @@ bot.start((ctx) => {
   const keyboard = Markup.keyboard([
     Markup.button.webApp(
       "🎮 Открыть  Stellar Croak",
-      "https://berniece-techiest-gary.ngrok-free.dev"
+      "https://stellar-croak.netlify.app"
     ),
   ]).resize();
 
