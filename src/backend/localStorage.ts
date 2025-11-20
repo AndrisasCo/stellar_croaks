@@ -12,7 +12,7 @@ export interface GameState {
   lastSaved: string;
 }
 
-const LS_KEY = "game_State";
+const LS_KEY = "Game_State2";
 
 const getWAData = () => {
   try {
