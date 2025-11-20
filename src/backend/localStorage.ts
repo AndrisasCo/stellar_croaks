@@ -46,14 +46,14 @@ const getDefaultGameState = (): GameState => {
 // Получение текущего состояния
 export const getGameState = (): GameState => {
   try {
-    const stored = localStorage.getItem("gameState");
+    const stored = localStorage.getItem("gameState2");
     if (stored) {
       return JSON.parse(stored);
     }
 
     // Если нет сохраненного состояния, создаем новое
     const defaultState = getDefaultGameState();
-    localStorage.setItem("gameState", JSON.stringify(defaultState));
+    localStorage.setItem("gameState2", JSON.stringify(defaultState));
     createLeaderbord();
 
     return defaultState;
@@ -70,7 +70,7 @@ export const saveGameState = (state: GameState): void => {
       ...state,
       lastSaved: new Date().toISOString(),
     };
-    localStorage.setItem("gameState", JSON.stringify(stateToSave));
+    localStorage.setItem("gameState2", JSON.stringify(stateToSave));
     const event = new CustomEvent("gameStateUpdated", {
       detail: {
         timestamp: Date.now(),
