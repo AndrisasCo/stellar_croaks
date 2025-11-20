@@ -14,6 +14,7 @@ import { processHunger } from "../utils/state-manager";
 import { updateLeaderbord } from "../backend/db";
 import LeaderboardModal from "./modals/LeaderboardModal";
 import TutorialModal from "./modals/TutorialModal";
+import { useTelegram } from "../hooks/use-tg";
 
 export default function ToadGame() {
   const { toads, account, allToads } = useToads();
@@ -24,8 +25,9 @@ export default function ToadGame() {
   const [leaderboardOpen, setLeaderboardOpen] = useState(false);
   const [isTutorialOpen, setIsTutorialOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const { isLoading: isLoadingTg } = useTelegram();
 
-  const showLoadingScreen = isLoading || !account || !allToads;
+  const showLoadingScreen = isLoading || !account || !allToads || isLoadingTg;
 
   useEffect(() => {
     if (!allToads) {
