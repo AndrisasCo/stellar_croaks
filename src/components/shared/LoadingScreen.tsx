@@ -1,0 +1,214 @@
+import { useEffect, useState } from "react";
+
+const LoadingScreen = () => {
+  const [progress, setProgress] = useState(0);
+  const [dots, setDots] = useState("");
+
+  useEffect(() => {
+    // Анимация прогресса загрузки
+    const progressInterval = setInterval(() => {
+      setProgress((prev) => {
+        if (prev >= 100) {
+          clearInterval(progressInterval);
+          return 100;
+        }
+        return prev + Math.random() * 15;
+      });
+    }, 200);
+
+    // Анимация точек
+    const dotsInterval = setInterval(() => {
+      setDots((prev) => {
+        if (prev.length >= 3) return "";
+        return prev + ".";
+      });
+    }, 500);
+
+    return () => {
+      clearInterval(progressInterval);
+      clearInterval(dotsInterval);
+    };
+  }, []);
+
+  return (
+    <div className="fixed inset-0 bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center z-50">
+      {/* Анимированный фон */}
+      <div className="absolute inset-0 overflow-hidden">
+        {/* Плавающие элементы */}
+        <div
+          className="absolute w-4 h-4 bg-green-400/20 rounded-full animate-float-1"
+          style={{ top: "20%", left: "10%" }}
+        />
+        <div
+          className="absolute w-6 h-6 bg-purple-400/15 rounded-full animate-float-2"
+          style={{ top: "60%", left: "85%" }}
+        />
+        <div
+          className="absolute w-3 h-3 bg-emerald-400/25 rounded-full animate-float-3"
+          style={{ top: "80%", left: "20%" }}
+        />
+        <div
+          className="absolute w-5 h-5 bg-blue-400/20 rounded-full animate-float-4"
+          style={{ top: "30%", left: "70%" }}
+        />
+
+        {/* Волны */}
+        <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-green-500/10 to-transparent animate-wave" />
+      </div>
+
+      {/* Основной контент */}
+      <div className="text-center z-10">
+        {/* Логотип и заголовок */}
+        <div className="mb-8">
+          <div className="flex items-center justify-center gap-4 mb-4">
+            <div className="relative">
+              {/* Анимированная жаба */}
+              <div
+                style={{ backgroundImage: "url(/assets/logo-2.png)" }}
+                className="w-24 h-24 bg-contain bg-no-repeat"
+              >
+                {/* Глаза */}
+                <div className="absolute top-[32px] left-[32px] w-[10px] h-[10px] bg-white rounded-full animate-blink" />
+                <div
+                  className="absolute top-[32px] w-[10px] left-[54px] h-[10px] bg-white rounded-full animate-blink"
+                  style={{ animationDelay: "0.2s" }}
+                />
+                {/* Рот */}
+              </div>
+
+              {/* Свечение */}
+              <div className="absolute inset-0 w-24 h-24 bg-green-400 rounded-full animate-ping opacity-20" />
+            </div>
+
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-green-400 via-emerald-400 to-purple-500 bg-clip-text text-transparent">
+              Stellar Croak
+            </h1>
+          </div>
+
+          <p className="text-gray-400 text-lg">Генетическая лаборатория жаб</p>
+        </div>
+
+        {/* Прогресс бар */}
+        <div className="max-w-md mx-auto mb-6">
+          <div className="bg-gray-700/50 rounded-full h-3 overflow-hidden border border-gray-600/50 mb-2">
+            <div
+              className="h-full bg-gradient-to-r from-green-400 to-purple-500 rounded-full transition-all duration-300 ease-out shadow-lg shadow-green-500/30"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+          <div className="flex justify-between text-sm text-gray-400">
+            <span>Загрузка...</span>
+            <span>{Math.min(100, Math.round(progress))}%</span>
+          </div>
+        </div>
+
+        {/* Сообщение о загрузке */}
+        <div className="text-gray-300 text-sm">
+          <p>Инициализация генетического коллайдера{dots}</p>
+        </div>
+
+        {/* Дополнительная информация */}
+        <div className="mt-8 text-xs text-gray-500 space-y-1">
+          <p>🐸 Создаем идеальную среду для ваших жаб</p>
+          <p>⚡ Подготавливаем системы смешивания ДНК</p>
+        </div>
+      </div>
+
+      {/* CSS анимации */}
+      <style>{`
+        @keyframes float-1 {
+          0%,
+          100% {
+            transform: translateY(0px) translateX(0px) rotate(0deg);
+          }
+          50% {
+            transform: translateY(-20px) translateX(10px) rotate(180deg);
+          }
+        }
+        @keyframes float-2 {
+          0%,
+          100% {
+            transform: translateY(0px) translateX(0px) scale(1);
+          }
+          50% {
+            transform: translateY(15px) translateX(-5px) scale(1.1);
+          }
+        }
+        @keyframes float-3 {
+          0%,
+          100% {
+            transform: translateY(0px) translateX(0px);
+          }
+          50% {
+            transform: translateY(-10px) translateX(8px);
+          }
+        }
+        @keyframes float-4 {
+          0%,
+          100% {
+            transform: translateY(0px) translateX(0px);
+          }
+          50% {
+            transform: translateY(25px) translateX(-8px);
+          }
+        }
+        @keyframes wave {
+          0% {
+            transform: translateX(0);
+          }
+          50% {
+            transform: translateX(-10px);
+          }
+          100% {
+            transform: translateX(0);
+          }
+        }
+        @keyframes blink {
+          0%,
+          90%,
+          100% {
+            opacity: 1;
+            transform: scaleY(1);
+          }
+          95% {
+            opacity: 0.3;
+            transform: scaleY(0.1);
+          }
+        }
+        @keyframes pulse-glow {
+          0%,
+          100% {
+            box-shadow: 0 0 20px rgba(34, 197, 94, 0.3);
+          }
+          50% {
+            box-shadow: 0 0 40px rgba(34, 197, 94, 0.6),
+              0 0 60px rgba(34, 197, 94, 0.3);
+          }
+        }
+        .animate-float-1 {
+          animation: float-1 6s ease-in-out infinite;
+        }
+        .animate-float-2 {
+          animation: float-2 8s ease-in-out infinite 1s;
+        }
+        .animate-float-3 {
+          animation: float-3 5s ease-in-out infinite 2s;
+        }
+        .animate-float-4 {
+          animation: float-4 7s ease-in-out infinite 3s;
+        }
+        .animate-wave {
+          animation: wave 4s ease-in-out infinite;
+        }
+        .animate-blink {
+          animation: blink 3s ease-in-out infinite;
+        }
+        .animate-pulse-glow {
+          animation: pulse-glow 2s ease-in-out infinite;
+        }
+      `}</style>
+    </div>
+  );
+};
+
+export default LoadingScreen;

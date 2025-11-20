@@ -1,0 +1,768 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #111827;
+  --foreground: #f8f8f8;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes color-shift {
+  0% {
+    filter: hue-rotate(0deg);
+  }
+  50% {
+    filter: hue-rotate(180deg);
+  }
+  100% {
+    filter: hue-rotate(360deg);
+  }
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-bubble {
+  animation: bubble 2s ease-in-out infinite;
+}
+
+.animate-spin-slow {
+  animation: spin-slow 3s linear infinite;
+}
+
+.animate-color-shift {
+  animation: color-shift 2s ease-in-out infinite;
+}
+
+/* Свечение */
+@keyframes glow {
+  0%,
+  100% {
+    box-shadow: 0 0 20px rgba(34, 211, 238, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(34, 211, 238, 0.8),
+      0 0 60px rgba(192, 132, 252, 0.4);
+  }
+}
+
+.animate-glow {
+  animation: glow 2s ease-in-out infinite;
+}
+
+.overlay {
+  display: flex;
+  position: fixed;
+  inset: 0;
+  background: #0a0a0ac7;
+  justify-content: center;
+  align-items: center;
+  z-index: 50;
+  padding: 16px;
+}
+
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes spin-slow-reverse {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(-360deg);
+  }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 3s linear infinite;
+  transform-origin: center;
+}
+
+.animate-spin-slow-reverse {
+  animation: spin-slow-reverse 3s linear infinite;
+  transform-origin: center;
+}
+/* 🎨 Toad Pond Design System 🐸 */
+
+:root {
+  /* ===== ЦВЕТОВАЯ ПАЛИТРА ===== */
+
+  /* Основные акцентные цвета */
+  --color-green-400: #34d399;
+  --color-green-500: #10b981;
+  --color-green-600: #059669;
+  --color-purple-500: #a855f7;
+  --color-emerald-400: #34d399;
+  --color-teal-500: #14b8a6;
+  --color-blue-500: #3b82f6;
+  --color-pink-500: #ec4899;
+
+  /* Фоновые цвета */
+  --color-gray-800: #1f2937;
+  --color-gray-700: #374151;
+  --color-gray-600: #4b5563;
+  --color-gray-500: #6b7280;
+  --color-gray-400: #9ca3af;
+  --color-gray-300: #d1d5db;
+
+  /* Полупрозрачные варианты */
+  --color-gray-800-80: rgba(31, 41, 55, 0.8);
+  --color-gray-800-90: rgba(31, 41, 55, 0.9);
+  --color-gray-700-50: rgba(55, 65, 81, 0.5);
+  --color-green-500-30: rgba(16, 185, 129, 0.3);
+  --color-green-500-50: rgba(16, 185, 129, 0.5);
+  --color-white-20: rgba(255, 255, 255, 0.2);
+
+  /* ===== ГРАДИЕНТЫ ===== */
+
+  /* Основные градиенты */
+  --gradient-primary: linear-gradient(
+    135deg,
+    var(--color-green-400),
+    var(--color-purple-500)
+  );
+  --gradient-button: linear-gradient(
+    135deg,
+    var(--color-green-600),
+    var(--color-purple-600)
+  );
+  --gradient-success: linear-gradient(
+    135deg,
+    var(--color-green-500),
+    var(--color-emerald-500)
+  );
+  --gradient-bg: linear-gradient(
+    135deg,
+    var(--color-gray-900),
+    var(--color-gray-800)
+  );
+  --gradient-active: linear-gradient(
+    135deg,
+    rgba(6, 78, 59, 0.4),
+    rgba(6, 95, 70, 0.4)
+  );
+
+  /* ===== ОТСТУПЫ ===== */
+
+  /* Малые отступы */
+  --space-1: 0.25rem; /* 4px */
+  --space-2: 0.5rem; /* 8px */
+  --space-3: 0.75rem; /* 12px */
+
+  /* Средние отступы */
+  --space-4: 1rem; /* 16px */
+  --space-5: 1.25rem; /* 20px */
+  --space-6: 1.5rem; /* 24px */
+
+  /* Большие отступы */
+  --space-8: 2rem; /* 32px */
+  --space-10: 2.5rem; /* 40px */
+
+  /* ===== РАЗМЕРЫ ЭЛЕМЕНТОВ ===== */
+
+  /* Высоты */
+  --height-6: 1.5rem; /* 24px - иконки */
+  --height-8: 2rem; /* 32px - малые кнопки */
+  --height-12: 3rem; /* 48px - средние кнопки */
+  --height-16: 4rem; /* 64px - большие элементы */
+  --height-20: 5rem; /* 80px - прогресс-бары */
+
+  /* Ширины */
+  --width-6: 1.5rem;
+  --width-8: 2rem;
+  --width-12: 3rem;
+  --width-16: 4rem;
+  --width-20: 5rem;
+
+  /* ===== ОКРУГЛЕНИЯ ===== */
+  --radius-lg: 0.5rem; /* 8px */
+  --radius-xl: 0.75rem; /* 12px */
+  --radius-2xl: 1rem; /* 16px */
+  --radius-full: 9999px;
+
+  /* ===== ТЕНИ ===== */
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1),
+    0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+
+  /* ===== ГРАНИЦЫ ===== */
+  --border-width-2: 2px;
+  --border-width-1: 1px;
+
+  /* ===== ТИПОГРАФИКА ===== */
+
+  /* Размеры шрифтов */
+  --text-xs: 0.75rem; /* 12px */
+  --text-sm: 0.875rem; /* 14px */
+  --text-base: 1rem; /* 16px */
+  --text-lg: 1.125rem; /* 18px */
+  --text-xl: 1.25rem; /* 20px */
+  --text-2xl: 1.5rem; /* 24px */
+
+  /* Насыщенность шрифтов */
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --font-weight-black: 900;
+
+  /* Межстрочный интервал */
+  --leading-tight: 1.25;
+  --leading-relaxed: 1.625;
+
+  /* ===== АНИМАЦИИ ===== */
+
+  /* Длительности */
+  --duration-300: 300ms;
+  --duration-500: 500ms;
+  --duration-700: 700ms;
+  --duration-1000: 1000ms;
+
+  /* Тайминги */
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+
+  /* ===== БРЕЙКПОИНТЫ ===== */
+  --breakpoint-sm: 640px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+}
+
+/* ===== CSS КЛАССЫ ДЛЯ ТЕЙЛВИНД ===== */
+
+/* 🎨 ЦВЕТА ТЕКСТА */
+.text-green-400 {
+  color: var(--color-green-400);
+}
+.text-green-500 {
+  color: var(--color-green-500);
+}
+.text-purple-500 {
+  color: var(--color-purple-500);
+}
+.text-white {
+  color: #ffffff;
+}
+.text-gray-300 {
+  color: var(--color-gray-300);
+}
+.text-gray-400 {
+  color: var(--color-gray-400);
+}
+.text-gray-500 {
+  color: var(--color-gray-500);
+}
+
+/* 🎨 ФОНЫ */
+.bg-gray-800 {
+  background-color: var(--color-gray-800);
+}
+.bg-gray-800\/80 {
+  background-color: var(--color-gray-800-80);
+}
+.bg-gray-800\/90 {
+  background-color: var(--color-gray-800-90);
+}
+.bg-gray-700 {
+  background-color: var(--color-gray-700);
+}
+.bg-gray-700\/50 {
+  background-color: var(--color-gray-700-50);
+}
+.bg-green-900\/50 {
+  background-color: rgba(6, 78, 59, 0.5);
+}
+.bg-purple-900\/50 {
+  background-color: rgba(76, 29, 149, 0.5);
+}
+
+/* 🌈 ГРАДИЕНТЫ */
+.bg-gradient-to-r {
+  background-image: linear-gradient(to right, var(--tw-gradient-stops));
+}
+.from-green-400 {
+  --tw-gradient-from: var(--color-green-400);
+}
+.to-purple-500 {
+  --tw-gradient-to: var(--color-purple-500);
+}
+.from-green-600 {
+  --tw-gradient-from: var(--color-green-600);
+}
+.to-purple-600 {
+  --tw-gradient-to: rgba(126, 34, 206, 1);
+}
+.from-green-500 {
+  --tw-gradient-from: var(--color-green-500);
+}
+.to-emerald-500 {
+  --tw-gradient-to: var(--color-emerald-400);
+}
+
+/* 📐 ОТСТУПЫ */
+.p-1 {
+  padding: var(--space-1);
+}
+.p-2 {
+  padding: var(--space-2);
+}
+.p-3 {
+  padding: var(--space-3);
+}
+.p-4 {
+  padding: var(--space-4);
+}
+.p-5 {
+  padding: var(--space-5);
+}
+.p-6 {
+  padding: var(--space-6);
+}
+.px-4 {
+  padding-left: var(--space-4);
+  padding-right: var(--space-4);
+}
+.px-6 {
+  padding-left: var(--space-6);
+  padding-right: var(--space-6);
+}
+.py-2 {
+  padding-top: var(--space-2);
+  padding-bottom: var(--space-2);
+}
+.py-3 {
+  padding-top: var(--space-3);
+  padding-bottom: var(--space-3);
+}
+.py-4 {
+  padding-top: var(--space-4);
+  padding-bottom: var(--space-4);
+}
+.mb-2 {
+  margin-bottom: var(--space-2);
+}
+.mb-3 {
+  margin-bottom: var(--space-3);
+}
+.mb-4 {
+  margin-bottom: var(--space-4);
+}
+.mb-6 {
+  margin-bottom: var(--space-6);
+}
+.gap-2 {
+  gap: var(--space-2);
+}
+.gap-3 {
+  gap: var(--space-3);
+}
+.gap-4 {
+  gap: var(--space-4);
+}
+
+/* 📏 РАЗМЕРЫ */
+.w-6 {
+  width: var(--width-6);
+}
+.w-8 {
+  width: var(--width-8);
+}
+.h-6 {
+  height: var(--height-6);
+}
+.h-8 {
+  height: var(--height-8);
+}
+.h-12 {
+  height: var(--height-12);
+}
+.h-16 {
+  height: var(--height-16);
+}
+.h-20 {
+  height: var(--height-20);
+}
+.w-full {
+  width: 100%;
+}
+.max-w-md {
+  max-width: 28rem;
+}
+.max-w-lg {
+  max-width: 32rem;
+}
+
+/* 🔲 ОКРУГЛЕНИЯ */
+.rounded-lg {
+  border-radius: var(--radius-lg);
+}
+.rounded-xl {
+  border-radius: var(--radius-xl);
+}
+.rounded-2xl {
+  border-radius: var(--radius-2xl);
+}
+.rounded-full {
+  border-radius: var(--radius-full);
+}
+
+/* 🛣️ ТЕНИ */
+.shadow-lg {
+  box-shadow: var(--shadow-lg);
+}
+.shadow-xl {
+  box-shadow: var(--shadow-xl);
+}
+.shadow-2xl {
+  box-shadow: var(--shadow-2xl);
+}
+
+/* 🎯 ГРАНИЦЫ */
+.border-2 {
+  border-width: var(--border-width-2);
+}
+.border-green-500\/30 {
+  border-color: var(--color-green-500-30);
+}
+.border-green-500\/50 {
+  border-color: var(--color-green-500-50);
+}
+.border-gray-600 {
+  border-color: var(--color-gray-600);
+}
+.border-white\/20 {
+  border-color: var(--color-white-20);
+}
+
+/* 🔤 ТИПОГРАФИКА */
+.text-xs {
+  font-size: var(--text-xs);
+}
+.text-sm {
+  font-size: var(--text-sm);
+}
+.text-base {
+  font-size: var(--text-base);
+}
+.text-lg {
+  font-size: var(--text-lg);
+}
+.text-xl {
+  font-size: var(--text-xl);
+}
+.text-2xl {
+  font-size: var(--text-2xl);
+}
+.font-medium {
+  font-weight: var(--font-weight-medium);
+}
+.font-semibold {
+  font-weight: var(--font-weight-semibold);
+}
+.font-bold {
+  font-weight: var(--font-weight-bold);
+}
+.font-black {
+  font-weight: var(--font-weight-black);
+}
+.leading-tight {
+  line-height: var(--leading-tight);
+}
+
+/* ⚡ АНИМАЦИИ И ТРАНЗИШНЫ */
+.transition-all {
+  transition-property: all;
+}
+.transition-colors {
+  transition-property: color, background-color, border-color;
+}
+.duration-300 {
+  transition-duration: var(--duration-300);
+}
+.duration-500 {
+  transition-duration: var(--duration-500);
+}
+.duration-700 {
+  transition-duration: var(--duration-700);
+}
+.transform {
+  transform: translateX(var(--tw-translate-x)) translateY(var(--tw-translate-y))
+    rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y))
+    scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
+}
+.hover\\:scale-105:hover {
+  --tw-scale-x: 1.05;
+  --tw-scale-y: 1.05;
+}
+.active\\:scale-95:active {
+  --tw-scale-x: 0.95;
+  --tw-scale-y: 0.95;
+}
+
+/* 🎭 СПЕЦИАЛЬНЫЕ ЭФФЕКТЫ */
+.backdrop-blur-sm {
+  backdrop-filter: blur(4px);
+}
+.bg-clip-text {
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+.text-transparent {
+  color: transparent;
+}
+.opacity-80 {
+  opacity: 0.8;
+}
+.opacity-90 {
+  opacity: 0.9;
+}
+
+/* 📱 АДАПТИВНОСТЬ */
+@media (min-width: 640px) {
+  .sm\\:p-6 {
+    padding: var(--space-6);
+  }
+  .sm\\:text-lg {
+    font-size: var(--text-lg);
+  }
+  .sm\\:text-xl {
+    font-size: var(--text-xl);
+  }
+}
+
+/* ===== КОМПОНЕНТЫ ===== */
+
+/* 🎯 КНОПКИ */
+.btn-primary {
+  background: var(--gradient-button);
+  color: white;
+  font-weight: var(--font-weight-bold);
+  padding: var(--space-3) var(--space-6);
+  border-radius: var(--radius-xl);
+  border: 2px solid var(--color-white-20);
+  transition: all var(--duration-300) var(--ease-in-out);
+  transform: scale(1);
+}
+
+.btn-primary:hover {
+  background: linear-gradient(
+    135deg,
+    var(--color-green-500),
+    var(--color-purple-500)
+  );
+  transform: scale(1.05);
+  box-shadow: var(--shadow-xl);
+}
+
+.btn-primary:active {
+  transform: scale(0.95);
+}
+
+/* 🗂️ КАРТОЧКИ */
+.card {
+  background-color: var(--color-gray-800-80);
+  border-radius: var(--radius-2xl);
+  padding: var(--space-4);
+  border: 2px solid var(--color-green-500-30);
+  box-shadow: var(--shadow-lg);
+}
+
+.card:hover {
+  box-shadow: var(--shadow-xl);
+}
+
+/* 📊 ПРОГРЕСС-БАРЫ */
+.progress-bar {
+  background-color: var(--color-gray-700);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  border: 1px solid var(--color-gray-600);
+}
+
+.progress-fill {
+  background: linear-gradient(
+    135deg,
+    var(--color-green-400),
+    var(--color-purple-500)
+  );
+  height: 100%;
+  transition: width var(--duration-500) var(--ease-out);
+}
+
+/* 🎪 АНИМАЦИИ CSS */
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes spin-slow-reverse {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(-360deg);
+  }
+}
+
+@keyframes pulse-glow {
+  0%,
+  100% {
+    opacity: 0.8;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 3s linear infinite;
+  transform-origin: center;
+}
+
+.animate-spin-slow-reverse {
+  animation: spin-slow-reverse 3s linear infinite;
+  transform-origin: center;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* 🎯 УТИЛИТЫ */
+.gradient-text {
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.glass-effect {
+  background: var(--color-gray-800-80);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--color-white-20);
+}
+
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ===== SVG ИКОНКИ ===== */
+
+/* Рекомендуемые размеры для иконок */
+.icon-sm {
+  width: 1rem;
+  height: 1rem;
+}
+.icon-md {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+.icon-lg {
+  width: 2rem;
+  height: 2rem;
+}
+
+/* Цвета иконок */
+.icon-green {
+  stroke: var(--color-green-400);
+}
+.icon-purple {
+  stroke: var(--color-purple-500);
+}
+.icon-white {
+  stroke: #ffffff;
+}
+
+/* Глобальные скроллбары для всего приложения */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(34, 197, 94, 0.5) rgba(55, 65, 81, 0.3);
+}
+
+*::-webkit-scrollbar {
+  width: 6px;
+  border-radius: 3px;
+}
+
+*::-webkit-scrollbar-track {
+  background: rgba(55, 65, 81, 0.3);
+  border-radius: 3px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: rgba(34, 197, 94, 0.5);
+  border-radius: 3px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(34, 197, 94, 0.7);
+  border-radius: 3px;
+}
+
+@keyframes gradient {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.animate-gradient {
+  background-size: 200% 200%;
+  animation: gradient 5s ease infinite;
+}
