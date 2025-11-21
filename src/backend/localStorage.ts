@@ -36,7 +36,7 @@ const getDefaultGameState = (): GameState => {
       tokens: 50,
       astro_quax: 0,
       storage: {
-        food: 10,
+        food: 100,
       },
     },
     scenes: [DEFAULT_SCENE],

@@ -60,12 +60,12 @@ export const calculateBreedingTime = (
   rarity: number,
   speedMultiplier: number = 1
 ): number => {
-  // Базовое время: 6 часов для средней редкости (50)
-  const baseTime = 6 * 60 * 60 * 1000; // 6 часов в миллисекундах
+  // Базовое время: 2 часов для средней редкости (50)
+  const baseTime = 60 * 60 * 1000; // 1 часов в миллисекундах
   const rarityFactor = rarity / 50; // Чем выше редкость, тем дольше
   const time = baseTime * rarityFactor;
 
-  return time / speedMultiplier; // Временный буст для разработки
+  return time / speedMultiplier;
 };
 
 const getSex = (isCollider: boolean) => {

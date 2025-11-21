@@ -4,6 +4,7 @@ import { useSoundEffects } from "../../../hooks/use-sound-effects";
 import { Toad } from "../../../models/toad";
 import { useToads } from "../../ToadContext";
 import { CURRENCY_CONFIG, TYPE_ICONS } from "../../../utils/constants";
+import { ToadGender } from "../../shared/ToadGender";
 
 const EliteTab: React.FC = () => {
   const { allToads: activeToads, account } = useToads();
@@ -86,7 +87,7 @@ const EliteTab: React.FC = () => {
       {availableOrders.map((order) => (
         <div
           key={order.id}
-          className={`rounded-2xl p-4 border ${
+          className={`rounded-2xl py-4 px-2 border ${
             order.canComplete
               ? "bg-purple-900/20 border-purple-500/50"
               : "bg-gray-800/50 border-gray-600/50"
@@ -224,7 +225,7 @@ const EliteOrderTooltip: React.FC<EliteOrderTooltipProps> = ({
             >
               <div className="flex items-center gap-3">
                 <div
-                  className="w-12 h-12 rounded-full border-2 border-white/80 flex-shrink-0"
+                  className="w-10 h-10 rounded-full border-2 border-white/80 flex-shrink-0"
                   style={{ backgroundColor: toad.genes.colors[0] }}
                 />
                 <div className="flex-1 min-w-0">
@@ -232,9 +233,7 @@ const EliteOrderTooltip: React.FC<EliteOrderTooltipProps> = ({
                     <span className="text-white font-medium text-sm truncate">
                       {toad.name}
                     </span>
-                    <span className="text-sm text-gray-400 flex-shrink-0">
-                      {TYPE_ICONS[toad.sex as keyof typeof TYPE_ICONS]}
-                    </span>
+                    <ToadGender gender={toad.sex} />
                   </div>
                   <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-gray-400">
                     <span>Разм: {toad.genes.weight.toFixed(1)}</span>

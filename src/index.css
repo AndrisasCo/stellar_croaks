@@ -87,7 +87,7 @@ body {
   justify-content: center;
   align-items: center;
   z-index: 50;
-  padding: 16px;
+  padding: 8px;
 }
 
 @keyframes spin-slow {
@@ -726,7 +726,7 @@ body {
 
 /* Глобальные скроллбары для всего приложения */
 * {
-  scrollbar-width: thin;
+  scrollbar-width: none;
   scrollbar-color: rgba(34, 197, 94, 0.5) rgba(55, 65, 81, 0.3);
 }
 

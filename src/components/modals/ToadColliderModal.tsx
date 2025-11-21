@@ -13,6 +13,7 @@ import { BreedingResult } from "../../models/types";
 import { ColliderIcons } from "../../assets/icons";
 import Modal from "../shared/Modal";
 import { updateToadsByIds } from "../../backend";
+import { ToadGender } from "../shared/ToadGender";
 
 interface ToadColliderProps {
   isOpen: boolean;
@@ -309,7 +310,7 @@ export default function ToadCollider({
                         style={{ backgroundColor: toad.genes.colors[0] }}
                       />
                       <span className="truncate w-full mb-1">
-                        {TYPE_ICONS[toad.sex]} {toad.name}
+                        <ToadGender gender={toad.sex} /> {toad.name}
                       </span>
                       {/* Информация о редкости */}
                       <div

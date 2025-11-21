@@ -52,7 +52,7 @@ export default function ShopMenu({ isOpen, onClose }: ShopMenuProps) {
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Космический рынок">
-      <div className="bg-gray-800 p-4 border-b border-gray-700">
+      <div className="bg-gray-800 py-4 px-2 border-b border-gray-700">
         {/* Валюта */}
         <div className="flex gap-4 mt-3 text-sm">
           <div className="flex items-center gap-1">

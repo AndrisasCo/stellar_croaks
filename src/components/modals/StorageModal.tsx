@@ -5,7 +5,9 @@ import Modal from "../shared/Modal";
 import { useToads } from "../ToadContext";
 import { useSoundEffects } from "../../hooks/use-sound-effects";
 import { updateToadById } from "../../backend";
-import { triggerNotification } from "../../hooks/use-notification";
+import { ToadGender } from "../shared/ToadGender";
+import { PregnancyIcon } from "../../assets/icons";
+import { useNotifications } from "../../hooks/use-notification";
 
 interface StorageModalProps {
   isOpen: boolean;
@@ -27,7 +29,7 @@ interface StorageItem {
 
 const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
   const [activeTab, setActiveTab] = useState<StorageTabType>("items");
-
+  const { addNotification } = useNotifications();
   const { allToads = [], account, currentScene, toads } = useToads();
   const { playClick } = useSoundEffects();
 
@@ -172,7 +174,7 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
   const handleMoveToadToScene = (toad: Toad) => {
     playClick();
     if (currentScene.capacity < toads.length + 1) {
-      triggerNotification("Данный вольер переполнен!");
+      addNotification({ type: "warn", content: "Данный вольер переполнен!" });
       return;
     }
     updateToadById(toad.id, { scene_id: currentScene.id });
@@ -331,7 +333,7 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
                     <div className="flex items-center gap-3">
                       <div className="relative">
                         <div
-                          className="w-12 h-12 rounded-full border-2"
+                          className="w-10 h-10 rounded-full border-2"
                           style={{
                             backgroundColor: toad.genes.colors[0],
                             borderColor: rarityConfig.borderColor
@@ -340,11 +342,11 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
                           }}
                         />
                         <span className="absolute -top-1 -right-1 text-xs bg-gray-800 rounded-full p-1">
-                          {TYPE_ICONS[toad.sex as keyof typeof TYPE_ICONS]}
+                          <ToadGender gender={toad.sex} />
                         </span>
                         {toad.pregnancy?.isPregnant && (
                           <span className="absolute -bottom-1 -left-1 text-xs text-pink-400 bg-gray-800 rounded-full p-1">
-                            🤰
+                            <PregnancyIcon />
                           </span>
                         )}
                       </div>
@@ -402,7 +404,7 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
       </div>
 
       {/* Статистика в подвале */}
-      <div className="border-t border-gray-700/50 p-4 bg-gray-900/50">
+      <div className="border-t border-gray-700/50 py-4 px-2 bg-gray-900/50">
         <div className="grid grid-cols-3 gap-4 text-center text-xs">
           <div>
             <div className="text-blue-400 font-bold">

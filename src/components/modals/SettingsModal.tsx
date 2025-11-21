@@ -62,7 +62,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
     <Modal isOpen={isOpen} onClose={onClose} icon={icon} title="Настройки">
       <div className="space-y-4">
         {/* Настройки музыки */}
-        <div className="bg-gray-700/50 rounded-xl p-4 border border-gray-600/50">
+        <div className="bg-gray-700/50 rounded-xl py-4 px-2 border border-gray-600/50">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <svg
@@ -124,7 +124,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
         </div>
 
         {/* Настройки звуковых эффектов */}
-        <div className="bg-gray-700/50 rounded-xl p-4 border border-gray-600/50">
+        <div className="bg-gray-700/50 rounded-xl py-4 px-2 border border-gray-600/50">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <svg
@@ -186,7 +186,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
         </div>
 
         {/* Информация о игре */}
-        <div className="bg-gray-700/50 rounded-xl p-4 border border-gray-600/50">
+        <div className="bg-gray-700/50 rounded-xl py-4 px-2 border border-gray-600/50">
           <div className="flex items-center gap-2 mb-3">
             <svg
               className="w-5 h-5 text-purple-400"

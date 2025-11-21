@@ -65,7 +65,7 @@ export const BurgerMenu = ({
   ];
 
   const handleMenuClick = (menuId: string) => {
-    console.log(`Открыть: ${menuId}`);
+    setIsMenuClose();
     if (menuId === "settings") {
       setIsSettingsOpen();
     }
@@ -75,7 +75,6 @@ export const BurgerMenu = ({
     if (menuId === "collection") {
       setIsTutorialOpen();
     }
-    setIsMenuClose();
   };
 
   return (
@@ -86,7 +85,7 @@ export const BurgerMenu = ({
           <button
             key={item.id}
             onClick={() => handleMenuClick(item.id)}
-            className={`w-full ${item.color} rounded-xl p-4 shadow-lg border-2 hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02] active:scale-95 group`}
+            className={`w-full ${item.color} rounded-xl py-4 px-2 shadow-lg border-2 hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02] active:scale-95 group`}
             style={{
               animationDelay: `${index * 100}ms`,
               animation: "slideInUp 0.5s ease-out forwards",

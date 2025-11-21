@@ -8,7 +8,7 @@ import { ArrowRightButtonCompact } from "./shared/ArrowRight";
 import ToadCanvas from "./ToadCanvas";
 import ToadListModal from "./modals/ToadListModal";
 import SceneInfoModal from "./modals/SceneInfoModal";
-import { triggerNotification } from "../hooks/use-notification";
+import { useNotifications } from "../hooks/use-notification";
 
 export default function ToadScene() {
   const {
@@ -22,7 +22,7 @@ export default function ToadScene() {
     handleFeedToads,
     account,
   } = useToads();
-
+  const { addNotification } = useNotifications();
   const buttonRef = useRef<HTMLButtonElement>(null);
 
   const isFoodAvailable = (account?.storage?.food || 0) >= toads.length;
@@ -57,7 +57,7 @@ export default function ToadScene() {
 
   const handleShowFoodTooltip = () => {
     if (!isFoodAvailable) {
-      triggerNotification("Недостаточно корма на складе!");
+      addNotification({ content: "Недостаточно корма на складе!" });
       return;
     }
     setShowFoodTooltip(true);

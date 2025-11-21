@@ -49,9 +49,9 @@ export default function ToadInfo({ onClose }: ToadInfoProps) {
     const now = Date.now();
     const elapsed = now - start;
     const progress = (elapsed / duration) * 100;
-    const hoursLeft = Math.ceil((duration - elapsed) / (60 * 60 * 1000)); // часов
+    const timeLeft = Math.max(Math.ceil((duration - elapsed) / (60 * 1000)), 0); // минут
 
-    return { progress: Math.min(progress, 100), daysLeft: hoursLeft };
+    return { progress: Math.min(progress, 100), timeLeft };
   };
 
   const pregnancyInfo = calculatePregnancyProgress();
@@ -151,7 +151,7 @@ export default function ToadInfo({ onClose }: ToadInfoProps) {
         </p>
       </div>
 
-      <div className="flex gap-1">
+      <div className="flex">
         <button
           onClick={handlePrevToad}
           className="text-gray-400  hover:text-white transition-colors p-1 touch-manipulation active:scale-95"
@@ -172,10 +172,10 @@ export default function ToadInfo({ onClose }: ToadInfoProps) {
           </svg>
         </button>
 
-        <div className="flex flex-col w-full">
+        <div className="flex flex-col w-full overflow-y-auto h-[calc(80vh-100px)]">
           {/* Основные характеристики */}
-          <div className="grid grid-cols-2 gap-3 mb-4">
-            <div className="bg-gray-700/50 rounded-xl p-3 border border-gray-600/50">
+          <div className="grid grid-cols-2 gap-2 mb-4">
+            <div className="bg-gray-700/50 rounded-xl p-2 border border-gray-600/50">
               <div className="flex items-center gap-2 mb-1">
                 {InfoIcons.speed}
                 <p className="text-gray-400 text-xs font-medium">СКОРОСТЬ</p>
@@ -185,7 +185,7 @@ export default function ToadInfo({ onClose }: ToadInfoProps) {
               </p>
             </div>
 
-            <div className="bg-gray-700/50 rounded-xl p-3 border border-gray-600/50">
+            <div className="bg-gray-700/50 rounded-xl p-2 border border-gray-600/50">
               <div className="flex items-center gap-2 mb-1">
                 {InfoIcons.weight}
                 <p className="text-gray-400 text-xs font-medium">РАЗМЕР</p>
@@ -195,7 +195,7 @@ export default function ToadInfo({ onClose }: ToadInfoProps) {
               </p>
             </div>
 
-            <div className="bg-gray-700/50 rounded-xl p-3 border border-gray-600/50">
+            <div className="bg-gray-700/50 rounded-xl p-2 border border-gray-600/50">
               <div className="flex items-center gap-2 mb-1">
                 {InfoIcons.rarity}
                 <p className="text-gray-400 text-xs font-medium">РЕДКОСТЬ</p>
@@ -205,7 +205,7 @@ export default function ToadInfo({ onClose }: ToadInfoProps) {
               </p>
             </div>
 
-            <div className="bg-gray-700/50 rounded-xl p-3 border border-gray-600/50">
+            <div className="bg-gray-700/50 rounded-xl p-2 border border-gray-600/50">
               <div className="flex items-center gap-2 mb-1">
                 {InfoIcons.fertility}
                 <p className="text-gray-400 text-xs font-medium">
@@ -225,7 +225,7 @@ export default function ToadInfo({ onClose }: ToadInfoProps) {
                 personalityData &&
                 setShowPersonalityTooltip(!showPersonalityTooltip)
               }
-              className={`bg-gray-700/50 rounded-xl p-3 mb-3 border border-gray-600/50 transition-colors ${
+              className={`bg-gray-700/50 rounded-xl p-2 mb-3 border border-gray-600/50 transition-colors ${
                 personalityData ? "cursor-pointer hover:bg-gray-600/50" : ""
               }`}
             >
@@ -305,7 +305,7 @@ export default function ToadInfo({ onClose }: ToadInfoProps) {
           </div>
 
           {/* Сытость */}
-          <div className="bg-gray-700/50 rounded-xl p-3 mb-3 border border-gray-600/50">
+          <div className="bg-gray-700/50 rounded-xl p-2 mb-3 border border-gray-600/50">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
                 {InfoIcons.hunger}
@@ -331,7 +331,7 @@ export default function ToadInfo({ onClose }: ToadInfoProps) {
 
           {/* Беременность */}
           {toad.pregnancy?.isPregnant && pregnancyInfo && (
-            <div className="bg-pink-900/20 rounded-xl p-3 mb-3 border border-pink-500/50">
+            <div className="bg-pink-900/20 rounded-xl p-2 mb-3 border border-pink-500/50">
               <div className="flex items-center gap-2 mb-2">
                 <p className="text-pink-400 text-xs font-medium">
                   БЕРЕМЕННОСТЬ
@@ -339,7 +339,7 @@ export default function ToadInfo({ onClose }: ToadInfoProps) {
               </div>
               <div className="space-y-2">
                 <p className="text-pink-300 text-sm">
-                  Осталось: {pregnancyInfo.daysLeft} часов
+                  Осталось: {pregnancyInfo.timeLeft} минут
                 </p>
                 <div className="w-full bg-pink-900/30 rounded-full h-2 overflow-hidden">
                   <div
@@ -352,7 +352,7 @@ export default function ToadInfo({ onClose }: ToadInfoProps) {
           )}
 
           {/* Описание */}
-          <div className="bg-gray-700/50 rounded-xl p-3 border border-gray-600/50">
+          <div className="bg-gray-700/50 rounded-xl p-2 border border-gray-600/50">
             <div className="flex items-center gap-2 mb-2">
               {InfoIcons.description}
               <p className="text-gray-400 text-xs font-medium">ОПИСАНИЕ</p>

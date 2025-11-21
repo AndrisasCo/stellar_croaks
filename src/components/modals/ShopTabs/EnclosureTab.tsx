@@ -27,7 +27,7 @@ const EnclosureTab: React.FC = () => {
   return (
     <div className="space-y-3">
       <h3 className="text-white font-semibold mb-3">Вольеры</h3>
-      <div className="bg-gray-800 rounded-xl p-4 border border-gray-700">
+      <div className="bg-gray-800 rounded-xl py-4 px-2 border border-gray-700">
         <div className="flex items-center justify-between mb-3">
           <div>
             <h4 className="text-white font-semibold">Новый вольер</h4>

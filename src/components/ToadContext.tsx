@@ -17,7 +17,7 @@ import {
 } from "../backend";
 import { useGameState } from "../hooks/use-game-state";
 import { User } from "../models/user";
-import { triggerNotification } from "../hooks/use-notification";
+import { addNotification, useNotifications } from "../hooks/use-notification";
 
 interface ColliderSlot {
   id: string;
@@ -100,7 +100,7 @@ const initialColliderState: ColliderState = {
 
 export const ToadProvider: React.FC<ToadProviderProps> = ({ children }) => {
   const [currentSceneIndex, setCurrentSceneIndex] = useState(0);
-
+  const { addNotification } = useNotifications();
   const {
     user: account,
     scenes: ownedScenes,
@@ -118,7 +118,8 @@ export const ToadProvider: React.FC<ToadProviderProps> = ({ children }) => {
           .filter((t) => t.scene_id === currentScene.id)
       : [];
 
-  const [selectedToad, setSelectedToad] = useState<Toad | null>(null);
+  const [selectedToadId, setSelectedToadId] = useState<number | null>(null);
+  const selectedToad = toads.find((t) => t.id === selectedToadId) || null;
 
   // В провайдере добавляем состояние коллайдера с загрузкой из localStorage
   const [colliderState, setColliderState] = useState<ColliderState>(() => {
@@ -153,20 +154,19 @@ export const ToadProvider: React.FC<ToadProviderProps> = ({ children }) => {
   };
 
   const selectToad = (toadId: number) => {
-    const toad = toads.find((t) => t.id === toadId) || null;
-    setSelectedToad(toad);
+    setSelectedToadId(toadId);
   };
 
   const updateToad = async (id: number, updates: Partial<Toad>) => {
     updateToadById(id, updates);
 
-    if (selectedToad?.id === id) {
-      setSelectedToad((prev) => (prev ? { ...prev, ...updates } : null));
+    if (selectedToadId?.id === id) {
+      setSelectedToadId((prev) => (prev ? { ...prev, ...updates } : null));
     }
   };
 
   const clearSelection = () => {
-    setSelectedToad(null);
+    setSelectedToadId(null);
   };
 
   const collectChild = (slotId: number) => {
@@ -178,9 +178,10 @@ export const ToadProvider: React.FC<ToadProviderProps> = ({ children }) => {
 
         if (currentScene.capacity < allToadsOnScene) {
           slot.child.scene_id = null;
-          triggerNotification(
-            "Превышена вместимость вольера, гибрид помещен на склад."
-          );
+          addNotification({
+            type: "warn",
+            content: "Превышена вместимость вольера, гибрид помещен на склад.",
+          });
         }
 
         createToad(slot.child);
@@ -222,9 +223,17 @@ export const ToadProvider: React.FC<ToadProviderProps> = ({ children }) => {
   };
 
   const handleFeedToads = async (toadsId: number[]) => {
+    const newFood = (account.storage?.food || 0) - toadsId.length;
+    if (newFood < 0) {
+      addNotification({
+        type: "warn",
+        content: "Недостаточно корма на складе!",
+      });
+      return;
+    }
     updateToadsByIds(toadsId, { state: { hunger: 100 } });
     updateUser({
-      storage: { food: (account.storage?.food || 0) - toadsId.length },
+      storage: { food: newFood },
     });
   };
 
@@ -236,7 +245,6 @@ export const ToadProvider: React.FC<ToadProviderProps> = ({ children }) => {
     allToads,
     setSlotReady,
     startBreeding,
-
     collectChild,
     selectedToad,
     selectToad,

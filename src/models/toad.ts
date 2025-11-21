@@ -460,7 +460,7 @@ export const RARITY_CONFIG = {
   },
 };
 
-export const getPregnancyDuration = () => 3 + Math.floor(Math.random() * 4); // 3-6 часов реальных
+export const getPregnancyDuration = () => Math.floor(Math.random() * 5); // 0 - 0.5 часов реальных
 
 export const HOURS_TO_GROW_UP = 2;
 

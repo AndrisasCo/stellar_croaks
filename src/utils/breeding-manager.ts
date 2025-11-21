@@ -8,7 +8,7 @@ import {
 import { generateChildToad } from "./calculate-genetics";
 import { getHoursFromNow } from "./date";
 import { getGameState, updateGameState } from "../backend/localStorage";
-import { triggerNotification } from "../hooks/use-notification";
+import { useNotifications } from "../hooks/use-notification";
 
 export class TimeManager {
   lastPlayTime: string | number;
@@ -29,7 +29,11 @@ export class TimeManager {
   }
 }
 
-export const processBreeding = (daysPassed: number, toads: Toad[]) => {
+export const processBreeding = (
+  daysPassed: number,
+  toads: Toad[],
+  addNotification: any
+) => {
   console.log("processBreeding started");
 
   // Группируем жаб по сценам
@@ -37,7 +41,7 @@ export const processBreeding = (daysPassed: number, toads: Toad[]) => {
 
   // Обрабатываем каждую сцену отдельно
   Object.entries(toadsByScene).forEach(([sceneId, sceneToads]) => {
-    processSceneBreeding(sceneId, sceneToads, daysPassed);
+    processSceneBreeding(sceneId, sceneToads, daysPassed, addNotification);
   });
 };
 
@@ -54,12 +58,13 @@ const groupToadsByScene = (toads: Toad[]): Record<string, Toad[]> => {
     }, {} as Record<string, Toad[]>);
 };
 
-const MIN_HUNGER_TO_BREED = 50;
+const MIN_HUNGER_TO_BREED = 30;
 
 const processSceneBreeding = async (
   sceneId: string,
   sceneToads: Toad[],
-  daysPassed: number
+  hoursPassed: number,
+  addNotification
 ) => {
   const pregnant = sceneToads.filter((t) => t.pregnancy);
 
@@ -70,7 +75,7 @@ const processSceneBreeding = async (
       getHoursFromNow(toad.pregnancy.pregnancyStart) >= // часы
         toad.pregnancy.pregnancyDuration
     ) {
-      endPregnancy(toad);
+      endPregnancy(toad, addNotification);
     }
   });
 
@@ -90,11 +95,16 @@ const processSceneBreeding = async (
     `Scene ${sceneId}: ${females.length} females, ${males.length} males`
   );
 
+  let pregnantCounter = 0;
   // ограничение по количеству самцов 1 на 5, это его предел
   // Обрабатываем каждую самку
   females.slice(0, males.length * 5).forEach((female) => {
     // Вычисляем общий шанс беременности для этой самки
-    const pregnancyChance = calculatePregnancyChance(female, males, daysPassed);
+    const pregnancyChance = calculatePregnancyChance(
+      female,
+      males,
+      hoursPassed
+    );
 
     console.log(`Female ${female.id} pregnancy chance: ${pregnancyChance}`);
 
@@ -105,8 +115,15 @@ const processSceneBreeding = async (
       console.log(
         `Pregnancy started for female ${female.id} with father ${father.id}`
       );
+      pregnantCounter += 1;
     }
   });
+
+  pregnantCounter > 0 &&
+    addNotification({
+      content: `Ваши жабы забаременели: ${pregnantCounter} `,
+      type: "success",
+    });
 
   // смотрим нужно ли жабе вырасти
   const toadpoles = sceneToads
@@ -176,7 +193,7 @@ export const startPregnancy = async (toad: Toad, fatherId: number) => {
   toad.pregnancy = {
     isPregnant: true,
     pregnancyStart: Date.now(),
-    pregnancyDuration: getPregnancyDuration(),
+    pregnancyDuration: Math.min(getPregnancyDuration() * toad.genes.rarity, 12),
     fatherId,
     offspringCount: calculateOffspringCount(toad),
   };
@@ -188,10 +205,10 @@ const calculateOffspringCount = (female: Toad): number => {
   // Базовое количество + влияние fertility
   const baseCount = 1;
   const bonusCount = Math.floor(female.genes.fertility * 3);
-  return baseCount + bonusCount;
+  return Math.min(baseCount + bonusCount, 10);
 };
 
-export const endPregnancy = async (toad: Toad) => {
+export const endPregnancy = async (toad: Toad, addNotification: any) => {
   console.log("Female end pregnancy: ", toad.name);
 
   if (!toad.pregnancy) {
@@ -223,9 +240,16 @@ export const endPregnancy = async (toad: Toad) => {
     children.slice(0, allToadsOnScene - currentScene.capacity).forEach((c) => {
       c.scene_id = null;
     });
-    triggerNotification(
-      "Ваши жабы родили, но не все дети поместились в вольер! Часть была перемещена на склад."
-    );
+    addNotification({
+      type: "warn",
+      content:
+        "Ваши жабы родили, но не все дети поместились в вольер! Часть была перемещена на склад.",
+    });
+  } else {
+    addNotification({
+      content: `Ваши жабы родили головастиков: ${children.length} `,
+      type: "success",
+    });
   }
 
   createToads(children);

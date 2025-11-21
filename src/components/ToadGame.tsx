@@ -15,6 +15,7 @@ import { updateLeaderbord } from "../backend/db";
 import LeaderboardModal from "./modals/LeaderboardModal";
 import TutorialModal from "./modals/TutorialModal";
 import { useTelegram } from "../hooks/use-tg";
+import { useNotifications } from "../hooks/use-notification";
 
 export default function ToadGame() {
   const { toads, account, allToads } = useToads();
@@ -26,6 +27,7 @@ export default function ToadGame() {
   const [isTutorialOpen, setIsTutorialOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const { isLoading: isLoadingTg } = useTelegram();
+  const { addNotification } = useNotifications();
 
   const showLoadingScreen = isLoading || !account || !allToads || isLoadingTg;
 
@@ -34,29 +36,25 @@ export default function ToadGame() {
       return;
     }
     const timeManager = new TimeManager();
-    const offlineDays = timeManager.getTimePassed();
+    const offlineHours = timeManager.getTimePassed();
 
-    console.log("Hours offline: ", offlineDays);
+    console.log("Hours offline: ", offlineHours);
 
     const gameLoop = setInterval(() => {
-      // toadSystem.updateToads(0.1); // 0.1 дня прошло
-
       // Быстрое размножение при активной игре
-      processBreeding(0.5, allToads);
+      processBreeding(0.25, allToads, addNotification);
 
       // медленнее голод
       processHunger(0.1, allToads);
-    }, 10 * 60 * 1000); // Каждые 10 минут
+    }, 5 * 60 * 1000); // Каждые 5 минут
 
-    if (offlineDays > 0) {
-      //   // Применяем все изменения за время отсутствия
-      processBreeding(offlineDays, allToads);
-      processHunger(offlineDays, allToads);
-      //   const events = eventSystem.generateOfflineEvents(offlineDays);
+    //   // Применяем все изменения за время отсутствия
+    processBreeding(offlineHours, allToads, addNotification);
+    processHunger(offlineHours, allToads);
+    //   const events = eventSystem.generateOfflineEvents(offlineDays);
 
-      //   // Показываем игроку что произошло
-      //   // this.showOfflineReport(offlineDays, events);
-    }
+    //   // Показываем игроку что произошло
+    //   // this.showOfflineReport(offlineDays, events);
 
     updateLeaderbord();
 
@@ -66,10 +64,9 @@ export default function ToadGame() {
   }, []);
 
   useEffect(() => {
-    // todo
-    // setTimeout(() => {
-    setIsLoading(false);
-    // }, 2000);
+    setTimeout(() => {
+      setIsLoading(false);
+    }, 2000);
   }, []);
 
   const handleShopClick = () => {
@@ -180,7 +177,7 @@ export default function ToadGame() {
       <div className="fixed bottom-5 left-0 w-full flex justify-center  z-[100]">
         <div
           id="notification"
-          className="bg-yellow-500 z-140 text-white px-4 py-3 rounded-lg shadow-lg transform transition-all duration-300 opacity-0 scale-95 flex items-center gap-2"
+          className="z-140 text-white px-4 py-3 rounded-lg shadow-lg transform transition-all duration-300 opacity-0 scale-95 flex items-center gap-2"
         >
           Notification
         </div>

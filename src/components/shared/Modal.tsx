@@ -1,4 +1,4 @@
-import React, { ReactNode } from "react";
+import React, { ReactNode, useEffect, useState } from "react";
 
 interface ToadListModalProps {
   icon?: ReactNode;
@@ -15,13 +15,29 @@ const Modal: React.FC<ToadListModalProps> = ({
   icon,
   title,
 }) => {
+  const [modalIsOpen, setModalIsOpen] = useState(isOpen);
+
+  useEffect(() => {
+    setModalIsOpen(isOpen);
+  }, [isOpen, setModalIsOpen]);
+
+  useEffect(() => {
+    // Блокируем скролл
+    document.body.style.overflow = !modalIsOpen ? "auto" : "hidden";
+
+    // Функция cleanup - восстанавливаем скролл при размонтировании
+    return () => {
+      document.body.style.overflow = "auto";
+    };
+  }, [modalIsOpen]);
+
   if (!isOpen) return null;
 
   return (
     <div onClick={onClose} className="overlay">
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-gray-800/90 text-white p-4 rounded-2xl w-full max-w-md max-h-[80vh] overflow-hidden border-2 border-green-500/50 shadow-2xl backdrop-blur-sm"
+        className="bg-gray-800/90 text-white py-4 px-1 rounded-2xl w-full max-w-md max-h-[80vh] overflow-hidden border-2 border-green-500/50 shadow-2xl backdrop-blur-sm"
       >
         {/* Заголовок */}
         <div className="flex w-full justify-center items-center pb-4">

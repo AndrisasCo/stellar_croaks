@@ -1,10 +1,12 @@
-import React from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { RARITY_CONFIG, RARITY_GROUPS_TRESHOLD, Toad } from "../../models/toad";
 import { TYPE_ICONS } from "../../utils/constants";
 import Modal from "../shared/Modal";
 import { PregnancyIcon } from "../../assets/icons";
 import { updateToadById } from "../../backend";
 import { useSoundEffects } from "../../hooks/use-sound-effects";
+import { ToadGender } from "../shared/ToadGender";
+import { useToads } from "../ToadContext";
 
 interface ToadListModalProps {
   isOpen: boolean;
@@ -20,6 +22,21 @@ const ToadListModal: React.FC<ToadListModalProps> = ({
   onToadSelect,
 }) => {
   const { playClick } = useSoundEffects();
+  const [activeActionMenu, setActiveActionMenu] = useState<number | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const { handleFeedToads, account } = useToads();
+
+  // Закрытие меню при клике вне его
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setActiveActionMenu(null);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const handleToadClick = (toad: Toad) => {
     onToadSelect(toad.id);
@@ -28,16 +45,26 @@ const ToadListModal: React.FC<ToadListModalProps> = ({
 
   // Функция для перемещения жабы на склад
   const toStorage = async (toadId: number, event: React.MouseEvent) => {
-    event.stopPropagation(); // Предотвращаем срабатывание клика по карточке
+    event.stopPropagation();
     playClick();
+    setActiveActionMenu(null);
 
-    try {
-      await updateToadById(toadId, { scene_id: null });
-      // Можно добавить уведомление об успехе или обновить состояние
-      console.log(`Жаба ${toadId} перемещена на склад`);
-    } catch (error) {
-      console.error("Ошибка при перемещении жабы на склад:", error);
-    }
+    updateToadById(toadId, { scene_id: null });
+  };
+
+  // Функция для кормления жабы
+  const feedToad = async (toadId: number, event: React.MouseEvent) => {
+    event.stopPropagation();
+    playClick();
+    setActiveActionMenu(null);
+
+    handleFeedToads([toadId]);
+  };
+
+  const toggleActionMenu = (toadId: number, event: React.MouseEvent) => {
+    event.stopPropagation();
+    playClick();
+    setActiveActionMenu(activeActionMenu === toadId ? null : toadId);
   };
 
   if (!isOpen) return null;
@@ -126,6 +153,30 @@ const ToadListModal: React.FC<ToadListModalProps> = ({
     </svg>
   );
 
+  // Компонент меню действий
+  const ActionMenu = ({ toad }: { toad: Toad }) => (
+    <div
+      ref={menuRef}
+      className="absolute top-[-8px] right-2 bg-gray-800 border border-gray-600 rounded-xl shadow-lg py-2 min-w-[140px] z-[100]"
+    >
+      <button
+        onClick={(e) => feedToad(toad.id, e)}
+        className="w-full px-3 py-1 text-left text-sm text-white hover:bg-gray-700 flex items-center gap-1 transition-colors"
+      >
+        <span className="text-green-400">🍎</span>
+        <span>Покормить ({account.storage.food})</span>
+      </button>
+
+      <button
+        onClick={(e) => toStorage(toad.id, e)}
+        className="w-full px-3 py-2 text-left text-sm text-white hover:bg-gray-700 flex items-center gap-2 transition-colors"
+      >
+        <span className="text-blue-400">📦</span>
+        <span>На склад</span>
+      </button>
+    </div>
+  );
+
   const ToadItem = ({
     groupedToads,
     rarity,
@@ -133,8 +184,8 @@ const ToadListModal: React.FC<ToadListModalProps> = ({
     groupedToads: Toad[];
     rarity: keyof typeof RARITY_CONFIG;
   }) => (
-    <div className="mb-6">
-      <div className="flex items-center gap-2 mb-3">
+    <div className="mb-4">
+      <div className="flex items-center gap-2 mb-2 px-1">
         <span className={`${RARITY_CONFIG[rarity].color} text-lg`}>
           {RARITY_CONFIG[rarity].icon}
         </span>
@@ -151,14 +202,14 @@ const ToadListModal: React.FC<ToadListModalProps> = ({
             <div
               key={toad.id}
               onClick={() => handleToadClick(toad)}
-              className={`bg-gradient-to-r ${RARITY_CONFIG[rarity].bgColor} rounded-xl p-4 border transition-colors cursor-pointer opacity-90 relative group`}
+              className={`bg-gradient-to-r ${RARITY_CONFIG[rarity].bgColor} rounded-xl py-3 px-2 border transition-colors cursor-pointer opacity-90 relative group mx-1`}
             >
+              {/* Кнопка действий */}
               <button
-                onClick={(e) => toStorage(toad.id, e)}
-                className="absolute flex justify-center gap-3 items-center top-3 right-3 bg-gray-700 hover:bg-gray-600 text-white p-2 rounded-lg"
-                title="Поместить на склад"
+                onClick={(e) => toggleActionMenu(toad.id, e)}
+                className="absolute flex justify-center items-center top-2 right-2 text-sm bg-gray-700 hover:bg-gray-600 text-white p-2 rounded-lg transition-colors"
+                title="Действия"
               >
-                На склад
                 <svg
                   className="w-4 h-4"
                   fill="none"
@@ -169,19 +220,20 @@ const ToadListModal: React.FC<ToadListModalProps> = ({
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth={2}
-                    d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+                    d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"
                   />
                 </svg>
+                {/* Меню действий */}
+                {activeActionMenu === toad.id && <ActionMenu toad={toad} />}
               </button>
-              <div className="flex items-center gap-3 pr-8">
-                {" "}
-                {/* Добавляем отступ справа для кнопки */}
+
+              <div className="flex items-center gap-3 pr-10">
                 <div className="relative">
                   <div
                     className={`rounded-full border-2 ${
                       RARITY_CONFIG[rarity].borderColor
                     } shadow-lg ${
-                      toad.stage === "toadpole" ? "w-10 h-10" : "w-12 h-12"
+                      toad.stage === "toadpole" ? "w-7 h-7" : "w-10 h-10"
                     }`}
                     style={{ backgroundColor: toad.genes.colors[0] }}
                   />
@@ -198,30 +250,11 @@ const ToadListModal: React.FC<ToadListModalProps> = ({
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-white font-bold text-sm truncate">
+                    <span className="text-white font-bold text-sm truncate max-w-[120px]">
                       {toad.name}
                     </span>
                     <div className="flex items-center gap-1">
-                      {/* Отображение пола с цветом */}
-                      <span
-                        className={`text-xs ${
-                          toad.sex === "male"
-                            ? "text-blue-400"
-                            : toad.sex === "female"
-                            ? "text-pink-400"
-                            : "text-gray-400"
-                        }`}
-                        title={
-                          toad.sex === "male"
-                            ? "Самец"
-                            : toad.sex === "female"
-                            ? "Самка"
-                            : "Бесполый"
-                        }
-                      >
-                        {TYPE_ICONS[toad.sex as keyof typeof TYPE_ICONS]}
-                      </span>
-                      {toad.pregnancy?.isPregnant && <PregnancyIcon />}
+                      <ToadGender gender={toad.sex} />
                     </div>
                   </div>
                   <div className="flex items-center gap-2 text-xs mb-1">
@@ -239,10 +272,10 @@ const ToadListModal: React.FC<ToadListModalProps> = ({
                     )}
                   </div>
                   {/* Индикатор голода */}
-                  <div className="flex text-xs items-center justify-between gap-4">
+                  <div className="flex text-xs items-center justify-between gap-3">
                     <HungerIcon level={toad.state.hunger} />
                     {/* Прогресс-бар голода */}
-                    <div className="w-full h-1.5 bg-gray-600 rounded-full overflow-hidden">
+                    <div className="flex-1 h-1.5 bg-gray-600 rounded-full overflow-hidden">
                       <div
                         className={`h-full rounded-full ${
                           toad.state.hunger >= 80
@@ -279,7 +312,7 @@ const ToadListModal: React.FC<ToadListModalProps> = ({
   return (
     <Modal onClose={onClose} isOpen={isOpen} icon={icon} title={"Все жабы"}>
       {/* Контент с прокруткой */}
-      <div className="overflow-y-auto h-[calc(80vh-60px)]">
+      <div className="overflow-y-auto h-[calc(80vh-160px)] px-1">
         {/* Легендарные жабы */}
         {groupedToads.legendary.length > 0 && (
           <ToadItem groupedToads={groupedToads.legendary} rarity="legendary" />
@@ -307,8 +340,8 @@ const ToadListModal: React.FC<ToadListModalProps> = ({
       </div>
 
       {/* Подвал с статистикой */}
-      <div className="border-t border-gray-700/50 p-4 bg-gray-900/50">
-        <div className="grid grid-cols-5 gap-2 text-center text-xs mb-3">
+      <div className="border-t border-gray-700/50 py-3 px-2 bg-gray-900/50 mx-1">
+        <div className="grid grid-cols-5 gap-1 text-center text-xs mb-2">
           <div>
             <div className="text-green-400 font-bold">
               {groupedToads.common.length}
@@ -342,7 +375,7 @@ const ToadListModal: React.FC<ToadListModalProps> = ({
         </div>
 
         {/* Статистика голода */}
-        <div className="grid grid-cols-4 gap-2 text-center text-xs">
+        <div className="grid grid-cols-4 gap-1 text-center text-xs">
           <div>
             <div className="text-green-400 font-bold">
               {hungerStats.wellFed}
