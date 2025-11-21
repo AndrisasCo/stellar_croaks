@@ -380,7 +380,7 @@ const BuyTab: React.FC = () => {
                   : "bg-gray-600 text-gray-400 cursor-not-allowed"
               }`}
             >
-              Обновить магазин
+              Обновить рынок
             </button>
 
             <button

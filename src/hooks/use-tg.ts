@@ -6,21 +6,14 @@ export const useTelegram = () => {
 
   useEffect(() => {
     const initTelegram = () => {
-      console.log("🟡 Инициализация Telegram Web App...");
-      console.log("window.Telegram:", window.Telegram);
-      console.log("window.Telegram?.WebApp:", window.Telegram?.WebApp);
-
       if (window.Telegram?.WebApp) {
         const telegramApp = window.Telegram.WebApp;
-        console.log("✅ Telegram Web App найден!");
 
         // Инициализация
         telegramApp.expand();
         telegramApp.enableClosingConfirmation();
         telegramApp.ready();
         telegramApp.disableVerticalSwipes();
-
-        console.log("👤 Пользователь:", telegramApp.initDataUnsafe?.user);
       } else {
         console.log("❌ Telegram Web App не найден");
       }
@@ -37,7 +30,6 @@ export const useTelegram = () => {
     const checkTelegram = setInterval(() => {
       attempts++;
       if (window.Telegram?.WebApp) {
-        console.log(`✅ Telegram Web App обнаружен на ${attempts} попытке`);
         initTelegram();
         clearInterval(checkTelegram);
       } else if (attempts >= maxAttempts) {

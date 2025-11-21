@@ -128,7 +128,8 @@ export const personalities = {
     weightMultiplier: 1.1,
     speedMultiplier: 0.7,
     label: "Соня",
-    description: "Спит больше, чем бодрствует. Икринки видит только во сне.",
+    description:
+      "Спит так много, что иногда его принимают за декоративный камень. С экономической точки зрения - идеальный питомец.",
   },
   glutton: {
     hungerRate: 1.9,
@@ -168,7 +169,8 @@ export const personalities = {
     weightMultiplier: 1.0,
     speedMultiplier: 1.2,
     label: "Тусовщик",
-    description: "Знает всех жаб в округе... в прямом смысле слова.",
+    description:
+      "Устраивает вечеринки до рассвета, а на утро не помнит, откуда взялись эти 20 головастиков.",
   },
   picky: {
     hungerRate: 0.8,
@@ -184,7 +186,8 @@ export const personalities = {
     weightMultiplier: 1.1,
     speedMultiplier: 1.1,
     label: "Страстный",
-    description: "Любовь - это когда ты производишь 50 икринок за раз.",
+    description:
+      "Любит так сильно, что иногда забывает спросить согласия. Родословная растет как на дрожжах.",
   },
   calm: {
     hungerRate: 0.9,
@@ -193,7 +196,7 @@ export const personalities = {
     speedMultiplier: 1.0,
     label: "Спокойный",
     description:
-      "Ничего не происходит, и это прекрасно. До следующего кормления.",
+      "Единственная жаба, которая не паникует при виде повара с ножом. Возможно, слишком спокойная...",
   },
   hyperactive: {
     hungerRate: 1.7,
@@ -234,7 +237,8 @@ export const personalities = {
     weightMultiplier: 1.0,
     speedMultiplier: 1.2,
     label: "Жаб-плэйбой",
-    description: "В каждом новом вольере оставляет по потомку. На память.",
+    description:
+      "У него в каждом городе есть... ну, ты понял. Алиментов хватит на три поколения вперед.",
   },
   ascetic: {
     hungerRate: 0.5,
@@ -242,7 +246,8 @@ export const personalities = {
     weightMultiplier: 0.7,
     speedMultiplier: 1.0,
     label: "Аскет",
-    description: "Доволен малым. Очень малым. Почти голодной смертью.",
+    description:
+      "Доволен жизнью, даже когда все вокруг жалуются. Раздражает своим позитивом.",
   },
   socialite: {
     hungerRate: 1.1,
@@ -266,7 +271,8 @@ export const personalities = {
     weightMultiplier: 0.9,
     speedMultiplier: 0.8,
     label: "Мечтатель",
-    description: "Верит, что однажды научится летать. Бедняга.",
+    description:
+      "Все еще верит, что однажды превратится в принца. Пока желающих целовать не находится...",
   },
   athlete: {
     hungerRate: 1.8,
@@ -275,7 +281,7 @@ export const personalities = {
     speedMultiplier: 1.4,
     label: "Атлет",
     description:
-      "Мог бы прыгнуть выше крыши, если бы понимал, что такое крыша.",
+      "Прыгает так высоко, что иногда приходится искать его на деревьях. Неудобно, но впечатляюще.",
   },
   philosopher: {
     hungerRate: 0.9,
@@ -283,7 +289,7 @@ export const personalities = {
     weightMultiplier: 1.0,
     speedMultiplier: 0.9,
     label: "Философ",
-    description: 'Часто спрашивает: "Быть или не быть?" перед каждой мухой.',
+    description: 'Пришёл к выводу, что "я квакаю - значит, существую".',
   },
   adventurer: {
     hungerRate: 1.4,
@@ -291,7 +297,8 @@ export const personalities = {
     weightMultiplier: 1.0,
     speedMultiplier: 1.3,
     label: "Искатель приключений",
-    description: "Уже исследовал под камнем. Теперь мечтает о другом камне.",
+    description:
+      "Уже трижды терялся, дважды попадал в соседний вольер и один раз чуть не стал обедом для цапли.",
   },
   homebody: {
     hungerRate: 0.8,
@@ -308,7 +315,7 @@ export const personalities = {
     speedMultiplier: 1.1,
     label: "Обаятельный",
     description:
-      "Может убедить кого угодно в чём угодно. Кроме голодного хищника.",
+      "Может убедить кого угодно в чем угодно. Особенно в необходимости продолжения рода.",
   },
   minimalist: {
     hungerRate: 0.6,
@@ -316,7 +323,8 @@ export const personalities = {
     weightMultiplier: 0.8,
     speedMultiplier: 1.0,
     label: "Минималист",
-    description: "Живёт по принципу: чем меньше, тем лучше. Кроме икринок.",
+    description:
+      "Считает, что счастье - в отсутствии лишнего. Включая лишних детей и лишней еды.",
   },
   epicurean: {
     hungerRate: 1.7,
@@ -324,7 +332,7 @@ export const personalities = {
     weightMultiplier: 1.3,
     speedMultiplier: 0.9,
     label: "Эпикуреец",
-    description: "Наслаждается каждым моментом. Особенно моментом поедания.",
+    description: "Наслаждается каждым моментом. Особенно моментом ужина.",
   },
   leader: {
     hungerRate: 1.3,
@@ -332,7 +340,8 @@ export const personalities = {
     weightMultiplier: 1.2,
     speedMultiplier: 1.1,
     label: "Лидер",
-    description: "Всегда первый у кормушки. И последний уходит.",
+    description:
+      "Уверен, что родился для великих дел. Пока великие дела сводятся к организации очереди к кормушке.",
   },
   follower: {
     hungerRate: 1.0,
@@ -340,7 +349,8 @@ export const personalities = {
     weightMultiplier: 0.9,
     speedMultiplier: 1.0,
     label: "Последователь",
-    description: "Делает то, что делают все. Даже если все прыгают в кипяток.",
+    description:
+      "Готов следовать за кем угодно. Даже за тем, кто ведет его прямиком в суп.",
   },
   innovator: {
     hungerRate: 1.2,
@@ -348,7 +358,7 @@ export const personalities = {
     weightMultiplier: 1.0,
     speedMultiplier: 1.2,
     label: "Новатор",
-    description: "Пытается изобрести новый способ квакания. Пока безуспешно.",
+    description: "Всегда ищет новые способы быть несчастным. Пока нашел 15.",
   },
   traditionalist: {
     hungerRate: 0.9,
@@ -356,7 +366,8 @@ export const personalities = {
     weightMultiplier: 1.1,
     speedMultiplier: 0.9,
     label: "Традиционалист",
-    description: "Квакает так, как квакали его предки. Очень скучно.",
+    description:
+      "Придерживается дедовских методов: размножаться по расписанию, болеть по традиции, и умирать как все - от скуки.",
   },
   freeSpirit: {
     hungerRate: 1.1,
@@ -424,7 +435,7 @@ export const RARITY_CONFIG = {
       "from-blue-500/10 to-cyan-500/10 border border-blue-500/30 hover:border-blue-400/50",
     borderColor: "border-blue-500/50",
     priceMultiplier: 2.0,
-    icon: "🔷",
+    icon: "🦋",
     treshold: RARITY_GROUPS_TRESHOLD.uncommon,
   },
   rare: {
@@ -445,7 +456,7 @@ export const RARITY_CONFIG = {
       "from-orange-500/10 to-red-500/10 border border-orange-500/30 hover:border-orange-400/50",
     borderColor: "border-orange-500/50",
     priceMultiplier: 15.0,
-    icon: "⚡",
+    icon: "☄️",
     treshold: RARITY_GROUPS_TRESHOLD.epic,
   },
   legendary: {

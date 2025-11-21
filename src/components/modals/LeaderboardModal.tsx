@@ -229,13 +229,12 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
             {/* Компактные характеристики */}
             <div className="flex items-center gap-3 text-[10px] text-gray-400">
               <div className="flex items-center gap-1">
-                <span className="text-purple-400">⭐</span>
+                <span className="text-purple-400">
+                  {getRarityConfig(player.rarest_toad.genes.rarity).icon}
+                </span>
                 <span>{player.rarest_toad.genes.rarity.toFixed(1)}</span>
               </div>
-              <div className="flex items-center gap-1">
-                <span className="text-blue-400">⚖️</span>
-                <span>{player.rarest_toad.genes.weight.toFixed(0)}</span>
-              </div>
+
               {player.rarest_toad.stage === "toadpole" && (
                 <span className="text-blue-300 text-[9px] bg-blue-500/20 px-1 rounded">
                   Головастик

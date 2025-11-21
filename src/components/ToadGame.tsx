@@ -42,19 +42,19 @@ export default function ToadGame() {
 
     const gameLoop = setInterval(() => {
       // Быстрое размножение при активной игре
-      processBreeding(0.25, allToads, addNotification);
+      processBreeding(0.25, addNotification);
 
       // медленнее голод
-      processHunger(0.1, allToads);
+      processHunger(0.1);
     }, 5 * 60 * 1000); // Каждые 5 минут
 
-    //   // Применяем все изменения за время отсутствия
-    processBreeding(offlineHours, allToads, addNotification);
-    processHunger(offlineHours, allToads);
-    //   const events = eventSystem.generateOfflineEvents(offlineDays);
+    const delayNotification = (props: any) =>
+      setTimeout(() => addNotification(props), 2000);
+    processBreeding(offlineHours, delayNotification);
 
-    //   // Показываем игроку что произошло
-    //   // this.showOfflineReport(offlineDays, events);
+    if (offlineHours > 0.09) {
+      processHunger(offlineHours);
+    }
 
     updateLeaderbord();
 
@@ -136,7 +136,7 @@ export default function ToadGame() {
         />
 
         {/* Основной контент */}
-        <ToadScene />
+        {!showLoadingScreen && <ToadScene />}
 
         {/* Модальное окно дополнительного меню */}
         {isMenuOpen && (

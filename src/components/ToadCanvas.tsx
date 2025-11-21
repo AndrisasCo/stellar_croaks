@@ -16,6 +16,7 @@ import { getWindowDimensions, getSceneSettings } from "../utils/ui";
 import { useSoundEffects } from "../hooks/use-sound-effects";
 import { useToads } from "./ToadContext";
 import { GRADIENTS } from "../models/scene";
+import { useGameState } from "../hooks/use-game-state";
 
 type ContainerChildCustom = ContainerChild & { userData?: any };
 
@@ -71,6 +72,8 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
     useSoundEffects();
   const { width, height } = getWindowDimensions();
   const [isReady, setIsReady] = useState(false);
+
+  const { lastSaved } = useGameState();
 
   // Состояние для управления кормом
   const foodTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -846,7 +849,8 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
       }
     }
   }, [
-    toads.map((t) => t.name).join(","),
+    currentScene.id,
+    lastSaved,
     initializedRef.current,
     appRef.current,
     texturesRef.current,

@@ -9,6 +9,7 @@ import { generateChildToad } from "./calculate-genetics";
 import { getHoursFromNow } from "./date";
 import { getGameState, updateGameState } from "../backend/localStorage";
 import { useNotifications } from "../hooks/use-notification";
+import { getHunger } from "./state-manager";
 
 export class TimeManager {
   lastPlayTime: string | number;
@@ -29,12 +30,8 @@ export class TimeManager {
   }
 }
 
-export const processBreeding = (
-  daysPassed: number,
-  toads: Toad[],
-  addNotification: any
-) => {
-  console.log("processBreeding started");
+export const processBreeding = (daysPassed: number, addNotification: any) => {
+  const toads = getGameState().toads.filter((t) => t.scene_id !== null);
 
   // Группируем жаб по сценам
   const toadsByScene = groupToadsByScene(toads);
@@ -64,7 +61,7 @@ const processSceneBreeding = async (
   sceneId: string,
   sceneToads: Toad[],
   hoursPassed: number,
-  addNotification
+  addNotification: any
 ) => {
   const pregnant = sceneToads.filter((t) => t.pregnancy);
 
@@ -95,46 +92,59 @@ const processSceneBreeding = async (
     `Scene ${sceneId}: ${females.length} females, ${males.length} males`
   );
 
-  let pregnantCounter = 0;
-  // ограничение по количеству самцов 1 на 5, это его предел
-  // Обрабатываем каждую самку
-  females.slice(0, males.length * 5).forEach((female) => {
-    // Вычисляем общий шанс беременности для этой самки
-    const pregnancyChance = calculatePregnancyChance(
-      female,
-      males,
-      hoursPassed
-    );
-
-    console.log(`Female ${female.id} pregnancy chance: ${pregnancyChance}`);
-
-    if (Math.random() < pregnancyChance) {
-      // Выбираем отца на основе вероятностей
-      const father = selectFather(males);
-      startPregnancy(female, father.id);
-      console.log(
-        `Pregnancy started for female ${female.id} with father ${father.id}`
+  if (hoursPassed > 0.09) {
+    let pregnantCounter = 0;
+    // ограничение по количеству самцов 1 на 5, это его предел
+    // Обрабатываем каждую самку
+    females.slice(0, males.length * 5).forEach((female) => {
+      // Вычисляем общий шанс беременности для этой самки
+      const pregnancyChance = calculatePregnancyChance(
+        female,
+        males,
+        hoursPassed
       );
-      pregnantCounter += 1;
-    }
-  });
 
-  pregnantCounter > 0 &&
-    addNotification({
-      content: `Ваши жабы забаременели: ${pregnantCounter} `,
-      type: "success",
+      console.log(`Female ${female.id} pregnancy chance: ${pregnancyChance}`);
+
+      if (Math.random() < pregnancyChance) {
+        // Выбираем отца на основе вероятностей
+        const father = selectFather(males);
+        startPregnancy(female, father.id);
+        console.log(
+          `Pregnancy started for female ${female.id} with father ${father.id}`
+        );
+        pregnantCounter += 1;
+      }
     });
 
+    pregnantCounter > 0 &&
+      addNotification({
+        content: `Ваши жабы беременны: ${pregnantCounter} `,
+        type: "success",
+      });
+  }
+
   // смотрим нужно ли жабе вырасти
-  const toadpoles = sceneToads
-    .filter((t) => t.stage === "toadpole")
-    .filter((t) => t.state.hunger > MIN_HUNGER_TO_BREED);
+  const toadpoles = sceneToads.filter((t) => t.stage === "toadpole");
 
   const grownToadpoles: number[] = [];
   toadpoles.forEach((t) => {
     if (getHoursFromNow(t.created_at) >= HOURS_TO_GROW_UP) {
-      console.log(`Toad ${t.name} has grown up!`);
-      grownToadpoles.push(t.id);
+      const hunger = getHunger(
+        t.state.hunger,
+        t.genes.hungerRate,
+        HOURS_TO_GROW_UP
+      );
+
+      if (t.state.hunger - hunger < 0) {
+        addNotification({
+          content: `Toad ${t.name} was too hungry to grow!`,
+          type: "warn",
+        });
+      } else {
+        console.log(`Toad ${t.name} has grown up!`);
+        grownToadpoles.push(t.id);
+      }
     }
   });
 
@@ -254,6 +264,5 @@ export const endPregnancy = async (toad: Toad, addNotification: any) => {
 
   createToads(children);
   // обновляем мать
-  toad.pregnancy = null;
-  updateToadById(toad.id, toad);
+  updateToadById(toad.id, { ...toad, pregnancy: null });
 };

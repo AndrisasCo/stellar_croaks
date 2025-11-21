@@ -46,6 +46,9 @@ export const createLeaderbord = async () => {
 
 export const updateLeaderbord = async () => {
   const { user, toads } = getGameState();
+  if (!user.tg_id) {
+    return;
+  }
 
   const leaderbordData = {
     username: user.username,

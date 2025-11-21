@@ -17,7 +17,7 @@ import {
 } from "../backend";
 import { useGameState } from "../hooks/use-game-state";
 import { User } from "../models/user";
-import { addNotification, useNotifications } from "../hooks/use-notification";
+import { useNotifications } from "../hooks/use-notification";
 
 interface ColliderSlot {
   id: string;
