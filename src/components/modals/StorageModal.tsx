@@ -234,7 +234,7 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
         {activeTab === "items" && (
           <div className="flex flex-col h-[calc(80vh-210px)] gap-5">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-white font-semibold">Инвентарь</h3>
+              <h3 className="text-white px-2 font-semibold">Инвентарь</h3>
               <div className="text-gray-400 text-sm">
                 Всего предметов:{" "}
                 {storageItems.reduce((sum, item) => sum + item.quantity, 0)}
@@ -306,7 +306,7 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
         {activeTab === "toads" && (
           <div className="space-y-3 h-[calc(80vh-156px)]">
             <div className="flex justify-between items-center mb-3">
-              <h3 className="text-white font-semibold">Жабы на складе</h3>
+              <h3 className="text-white px-2 font-semibold">Жабы на складе</h3>
               <div className="text-gray-400 text-sm">
                 {storedToads.length} из ∞
               </div>

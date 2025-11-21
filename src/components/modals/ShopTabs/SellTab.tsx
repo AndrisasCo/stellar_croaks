@@ -67,7 +67,7 @@ const SellTab: React.FC = () => {
             </div>
           </button>
         ) : (
-          <h3 className="text-white h-12 flex items-center font-semibold text-lg">
+          <h3 className="text-white h-12 px-2 flex items-center font-semibold text-lg">
             Ваши жабы ({activeToads.length})
           </h3>
         )}

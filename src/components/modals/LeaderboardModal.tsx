@@ -398,7 +398,7 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
       <div className="py-3 px-1 overflow-y-auto h-[calc(80vh-180px)]">
         {/* Заголовок и описание вкладки */}
         <div className="text-center mb-4">
-          <h3 className="text-white font-semibold text-sm mb-1">
+          <h3 className="text-white px-2 font-semibold text-sm mb-1">
             {getTabTitle()}
           </h3>
           <p className="text-gray-400 text-xs">{getTabDescription()}</p>

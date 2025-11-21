@@ -201,7 +201,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                 d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
               />
             </svg>
-            <h3 className="text-white font-semibold text-sm">Об игре</h3>
+            <h3 className="text-white font-semibold px-2 text-sm">Об игре</h3>
           </div>
           <div className="text-gray-300 text-sm space-y-2">
             <div className="flex justify-between">

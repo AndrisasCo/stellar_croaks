@@ -190,7 +190,7 @@ export default function ColliderButton() {
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <div className="text-green-400">{ColliderIcons.dna}</div>
-              <h3 className="text-white font-bold text-lg">Инкубатор</h3>
+              <h3 className="text-white font-bold px-2 text-lg">Инкубатор</h3>
             </div>
             <div className="text-right">
               <div className="flex items-center gap-1 text-green-300 text-sm">

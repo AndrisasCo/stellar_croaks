@@ -83,7 +83,9 @@ const EliteTab: React.FC = () => {
 
   return (
     <div className="space-y-4  pb-4">
-      <h3 className="text-white font-semibold mb-3 text-lg">Элитные заказы</h3>
+      <h3 className="text-white font-semibold mb-3 px-2 text-lg">
+        Элитные заказы
+      </h3>
       {availableOrders.map((order) => (
         <div
           key={order.id}
@@ -180,7 +182,7 @@ const EliteOrderTooltip: React.FC<EliteOrderTooltipProps> = ({
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-gray-800 rounded-2xl p-6 w-full max-w-sm border border-purple-500/30">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-white font-bold text-lg">Выбор жабы</h3>
+          <h3 className="text-white font-bold px-2 text-lg">Выбор жабы</h3>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-white transition-colors p-1"

@@ -400,7 +400,7 @@ const BuyTab: React.FC = () => {
 
       {/* Корм */}
       <div>
-        <h3 className="text-white font-semibold mb-3 text-lg">Корм</h3>
+        <h3 className="text-white font-semibold mb-3 px-2 text-lg">Корм</h3>
         <div className="bg-gray-800 rounded-2xl py-4 px-2 border border-gray-700">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -429,7 +429,7 @@ const BuyTab: React.FC = () => {
 
       {/* Доступные жабы */}
       <div>
-        <h3 className="text-white font-semibold mb-3 text-lg">
+        <h3 className="text-white px-2 font-semibold mb-3 text-lg">
           Доступные жабы
         </h3>
 

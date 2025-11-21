@@ -137,7 +137,7 @@ const TutorialModal: React.FC<TutorialModalProps> = ({ isOpen, onClose }) => {
         {/* Вступление */}
         <div className="text-center mb-8">
           <div className="text-4xl mb-4">🐸✨</div>
-          <h3 className="text-white font-semibold text-lg mb-2">
+          <h3 className="text-white font-semibold px-2 text-lg mb-2">
             Добро пожаловать в мир космических жаб!
           </h3>
           <p className="text-gray-400 text-sm">
