@@ -24,7 +24,8 @@ export class TimeManager {
 
   getTimePassed() {
     const realTimeDiff = this.currentTime - +this.lastPlayTime;
-    const gameDaysPassed = Math.floor(realTimeDiff / (60 * 60 * 1000)); // 1 час = 1 игровой день
+    const gameDaysPassed =
+      Math.floor((realTimeDiff / (60 * 60 * 1000)) * 100) / 100; // 1 час
 
     return Math.min(gameDaysPassed, 90); // максимум 90 "дней" оффлайн
   }
