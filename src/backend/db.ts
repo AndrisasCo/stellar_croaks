@@ -24,6 +24,9 @@ export type LeaderboardItemType = {
 
 export const createLeaderbord = async () => {
   const { user, toads } = getGameState();
+  if (!user.tg_id) {
+    return;
+  }
   const leaderbordData = {
     username: user.username,
     tg_id: user.tg_id,

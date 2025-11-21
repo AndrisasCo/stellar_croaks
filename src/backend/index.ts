@@ -1,7 +1,6 @@
 import { Scene } from "../models/scene";
 import { Toad } from "../models/toad";
 import { User } from "../models/user";
-import { createLeaderbord } from "./db";
 import { getGameState, updateGameState, webAppData } from "./localStorage";
 
 export const createScene = (sceneData: Partial<Scene>): Scene[] => {
@@ -116,36 +115,4 @@ export const updateToadsByIds = (
   const updatedToadsList = updatedToads.filter((t) => toadIds.includes(t.id));
 
   return updatedToadsList;
-};
-
-export const getAccount = () => {
-  const gameState = getGameState();
-
-  // Если пользователь уже существует
-  if (gameState.user && gameState.user.id) {
-    return gameState.user;
-  }
-
-  // Создаем нового пользователя
-  const tg_id = webAppData?.user?.id || 0;
-  const username = tg_id
-    ? `${webAppData.user?.first_name} ${webAppData.user?.last_name}`
-    : `user_${Date.now()}`;
-
-  // Создаем пользователя
-  const userData = {
-    id: `user_${Date.now()}`,
-    tg_id,
-    username,
-    tokens: 50,
-    astro_quax: 0,
-    storage: { food: 10 },
-  };
-
-  // Обновляем состояние
-  updateUser(userData);
-
-  createLeaderbord();
-
-  return userData;
 };
