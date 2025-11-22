@@ -11,6 +11,11 @@ import { CURRENCY_CONFIG, TYPE_ICONS } from "../../../utils/constants";
 import { useToads } from "../../ToadContext";
 import { PregnancyIcon } from "../../../assets/icons";
 import { ToadItem } from "./ToadItem";
+import {
+  getShopState,
+  saveShopState,
+  ShopState,
+} from "../../../backend/shop-state";
 
 const SellTab: React.FC = () => {
   const { allToads: activeToads, account } = useToads();
@@ -29,6 +34,18 @@ const SellTab: React.FC = () => {
 
     updateUser({ tokens: tokens + totalSellPrice });
     setSelectedToads([]);
+
+    const shopState = getShopState();
+
+    const newShopState: ShopState = {
+      ...shopState,
+      availableToads: [
+        ...shopState.availableToads,
+        ...activeToads.filter((t) => selectedToads.includes(t.id)),
+      ],
+    };
+
+    saveShopState(newShopState);
   };
 
   const handleSellSingleToad = async (toadId: number) => {
@@ -40,6 +57,15 @@ const SellTab: React.FC = () => {
 
       updateUser({ tokens: tokens + price });
       setSelectedToads(selectedToads.filter((id) => id !== toadId));
+
+      const shopState = getShopState();
+
+      const newShopState: ShopState = {
+        ...shopState,
+        availableToads: [...shopState.availableToads, toad],
+      };
+
+      saveShopState(newShopState);
     }
   };
 
