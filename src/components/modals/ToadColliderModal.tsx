@@ -10,7 +10,7 @@ import { MIXING_DURATION, TYPE_ICONS } from "../../utils/constants";
 import { getRarityConfig, getRarityGroup, Toad } from "../../models/toad";
 import { useSoundEffects } from "../../hooks/use-sound-effects";
 import { BreedingResult } from "../../models/types";
-import { ColliderIcons } from "../../assets/icons";
+import { ColliderIcons, PregnancyIcon } from "../../assets/icons";
 import Modal from "../shared/Modal";
 import { deleteToadsByIds, updateToadsByIds } from "../../backend";
 import { ToadGender } from "../shared/ToadGender";
@@ -287,7 +287,7 @@ export default function ToadCollider({
                       <button
                         key={toad.id}
                         onClick={() => handleSelectToad(toad)}
-                        className={`p-1 sm:p-2 rounded-lg text-xs text-center transition-all flex flex-col items-center min-w-[70px] sm:min-w-[80px] border ${
+                        className={`p-1 relative sm:p-2 rounded-lg text-xs text-center transition-all flex flex-col items-center min-w-[70px] sm:min-w-[80px] border ${
                           currentToads.find((t) => t.id === toad.id)
                             ? "bg-purple-600/50 text-white cursor-not-allowed border-purple-500/50"
                             : `text-gray-300  cursor-pointer ${getRarityBackground(
@@ -299,6 +299,11 @@ export default function ToadCollider({
                           className="w-4 h-4 sm:w-6 sm:h-6 rounded-full mb-1 border border-white/80"
                           style={{ backgroundColor: toad.genes.colors[0] }}
                         />
+                        {toad.pregnancy && (
+                          <span className="absolute right-1">
+                            <PregnancyIcon />
+                          </span>
+                        )}
                         <span className="truncate w-full h-6 gap-1 flex items-center">
                           <ToadGender gender={toad.sex} /> {toad.name}
                         </span>

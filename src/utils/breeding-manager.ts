@@ -163,10 +163,13 @@ const calculatePregnancyChance = (
 ): number => {
   let baseChance = (female.genes?.fertility || 1) * 0.8;
 
+  const rarityFactor = 1 / female.genes.rarity;
+  baseChance *= Math.max(rarityFactor, 0.1);
+
   const timeFactor = Math.min(hoursPassed / 2, 1);
   baseChance *= 0.6 + timeFactor * 0.4;
 
-  const maleFactor = Math.min(males.length / 2, 1); // Было 3 самца
+  const maleFactor = Math.min(males.length / 2, 1);
   baseChance *= 0.7 + maleFactor * 0.3;
 
   // Штраф за голод (новая механика)
@@ -217,8 +220,10 @@ export const startPregnancy = async (toad: Toad, father: Toad) => {
 
 const calculateOffspringCount = (female: Toad): number => {
   // Базовое количество + влияние fertility
-  const baseCount = 1;
-  const bonusCount = Math.floor(female.genes.fertility * 3);
+  const baseCount = Math.ceil(female.genes.fertility / female.genes.rarity);
+  const bonusCount = Math.floor(
+    Math.random() * 2 + female.genes.fertility / 10
+  );
   return Math.min(baseCount + bonusCount, 10);
 };
 

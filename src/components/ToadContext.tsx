@@ -227,7 +227,9 @@ export const ToadProvider: React.FC<ToadProviderProps> = ({ children }) => {
     if (newFood < 0) {
       addNotification({
         type: "warn",
-        content: "Недостаточно корма на складе!",
+        content: `Недостаточно корма на складе! Не хватает: ${Math.abs(
+          newFood
+        )}`,
       });
       return;
     }

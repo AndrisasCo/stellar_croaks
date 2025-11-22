@@ -213,14 +213,14 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1 mb-1 flex-wrap">
               <span
-                className={`text-xs font-medium truncate max-w-[180px] ${
+                className={`text-sm font-medium truncate max-w-[180px] ${
                   isUser ? "text-blue-200" : "text-white"
                 }`}
               >
                 {player.rarest_toad.name}
               </span>
               <span
-                className={`text-[10px] px-1.5 py-0.5 rounded-full border ${
+                className={`text-xs px-1.5 py-0.5 rounded-full border ${
                   rarityConfig?.color || "text-gray-400"
                 } ${rarityConfig?.borderColor || "border-gray-500"}`}
               >
@@ -229,7 +229,7 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
             </div>
 
             {/* Компактные характеристики */}
-            <div className="flex items-center gap-3 text-[10px] text-gray-400">
+            <div className="flex items-center gap-3 text-sm text-gray-400">
               <div className="flex items-center gap-1">
                 <span className="text-purple-400">
                   {getRarityConfig(player.rarest_toad.genes.rarity).icon}
@@ -238,7 +238,7 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
               </div>
 
               {player.rarest_toad.stage === "toadpole" && (
-                <span className="text-blue-300 text-[9px] bg-blue-500/20 px-1 rounded">
+                <span className="text-blue-300 text-sm bg-blue-500/20 px-1 rounded">
                   Головастик
                 </span>
               )}
@@ -270,7 +270,7 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                     if (e.key === "Enter") handleSaveUsername();
                     if (e.key === "Escape") handleCancelEdit();
                   }}
-                  className="bg-gray-700 outline-none border border-blue-400 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 w-28"
+                  className="bg-gray-700 outline-none border border-blue-400 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 w-28"
                   placeholder="Введите ник"
                   autoFocus
                   maxLength={15}
@@ -297,7 +297,7 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
               </div>
             ) : (
               <div className="flex items-center gap-1">
-                <span className="text-blue-300 font-semibold text-xs">
+                <span className="text-blue-300 font-semibold text-sm">
                   {account?.username || "Без имени"}
                 </span>
                 <button
@@ -328,7 +328,7 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
         </div>
 
         {/* Статистика текущего пользователя */}
-        <div className="flex justify-between text-[10px]">
+        <div className="flex justify-between text-sm">
           <div className="flex items-center gap-1">
             <span className="text-purple-400">⭐</span>
             <span className="text-gray-300">
@@ -359,7 +359,7 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
             playClick();
             setActiveTab("rarest_toad");
           }}
-          className={`flex-1 py-2 text-xs font-medium transition-colors ${
+          className={`flex-1 py-3 text-sm font-medium transition-colors  ${
             activeTab === "rarest_toad"
               ? "text-purple-400 border-b-2 border-purple-400"
               : "text-gray-400 hover:text-gray-300"
@@ -372,7 +372,7 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
             playClick();
             setActiveTab("tokens");
           }}
-          className={`flex-1 py-2 text-xs font-medium transition-colors ${
+          className={`fflex-1 py-3 text-sm font-medium transition-colors ${
             activeTab === "tokens"
               ? "text-yellow-400 border-b-2 border-yellow-400"
               : "text-gray-400 hover:text-gray-300"
@@ -385,7 +385,7 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
             playClick();
             setActiveTab("total_toads");
           }}
-          className={`flex-1 py-2 text-xs font-medium transition-colors ${
+          className={`flex-1 py-3 text-sm font-medium transition-colors  ${
             activeTab === "total_toads"
               ? "text-green-400 border-b-2 border-green-400"
               : "text-gray-400 hover:text-gray-300"
@@ -402,7 +402,7 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
           <h3 className="text-white px-2 font-semibold text-sm mb-1">
             {getTabTitle()}
           </h3>
-          <p className="text-gray-400 text-xs">{getTabDescription()}</p>
+          <p className="text-gray-400 text-sm">{getTabDescription()}</p>
         </div>
 
         {/* Список лидеров */}
@@ -461,14 +461,14 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                       <div className="flex items-center gap-1 mb-1">
                         <p
                           className={`
-                            font-semibold text-xs truncate max-w-[180px]
+                            font-semibold text-sm truncate max-w-[180px]
                             ${isUser ? "text-blue-300" : "text-white"}
                           `}
                         >
                           {player.username}
                         </p>
                         {isUser && (
-                          <span className="bg-blue-500/20 text-blue-300 px-1.5 py-0.5 rounded-full text-[10px] font-medium">
+                          <span className="bg-blue-500/20 text-blue-300 px-1.5 py-0.5 rounded-full text-sm font-medium">
                             ВЫ
                           </span>
                         )}
@@ -508,7 +508,7 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                             {player.total_toads}
                           </span>
                           <span
-                            className={`text-xs ${
+                            className={`text-sm ${
                               isUser ? "text-green-200" : "text-gray-400"
                             }`}
                           >
@@ -521,7 +521,7 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
 
                   {/* Дополнительная информация - только для неактивных вкладок */}
                   <div
-                    className={`text-right text-[10px] space-y-0.5 flex-shrink-0 ${
+                    className={`text-right text-sm space-y-0.5 flex-shrink-0 ${
                       isUser ? "text-blue-200" : "text-gray-400"
                     }`}
                   >

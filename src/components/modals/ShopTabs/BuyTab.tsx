@@ -129,7 +129,7 @@ const BuyTab: React.FC = () => {
     if (tokens < INSTANT_REFRESH_COST) {
       addNotification({
         type: "warn",
-        content: `Недостаточно астрокваксов! Нужно ${INSTANT_REFRESH_COST}`,
+        content: `Недостаточно кваксов! Нужно ${INSTANT_REFRESH_COST}`,
       });
       return;
     }
