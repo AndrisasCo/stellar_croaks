@@ -40,22 +40,24 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
     {
       dedupingInterval: 30000,
       keepPreviousData: true,
-      fallbackData: [
-        {
-          username: account.username,
-          tg_id: account.tg_id,
-          user_id: account.id,
-          rarest_toad: allToads.sort(
-            (a, b) => b.genes.rarity - a.genes.rarity
-          )[0],
-          biggest_toad: allToads.sort(
-            (a, b) => b.genes.weight - a.genes.weight
-          )[0],
-          tokens: account.tokens,
-          astro_quax: account.astro_quax,
-          total_toads: allToads.length,
-        },
-      ],
+      fallbackData: account.tg_id
+        ? [
+            {
+              username: account.username,
+              tg_id: account.tg_id,
+              user_id: account.id,
+              rarest_toad: allToads.sort(
+                (a, b) => b.genes.rarity - a.genes.rarity
+              )[0],
+              biggest_toad: allToads.sort(
+                (a, b) => b.genes.weight - a.genes.weight
+              )[0],
+              tokens: account.tokens,
+              astro_quax: account.astro_quax,
+              total_toads: allToads.length,
+            },
+          ]
+        : [],
     }
   );
 

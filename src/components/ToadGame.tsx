@@ -59,12 +59,6 @@ export default function ToadGame() {
     }
 
     updateLeaderbord();
-
-    // костыль! почему-то при первом рендере не ловит событие
-    setTimeout(() => {
-      window.dispatchEvent(new Event("gameStateUpdated"));
-    }, 3000);
-
     return () => {
       clearInterval(gameLoop);
     };

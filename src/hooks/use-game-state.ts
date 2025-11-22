@@ -5,12 +5,12 @@ import { getGameState } from "../backend/localStorage";
 export const useGameState = () => {
   const [gameState, setGameState] = useState(getGameState());
 
+  const handleStorageChange = () => {
+    setGameState(getGameState());
+  };
+
   // Слушаем изменения в localStorage
   useEffect(() => {
-    const handleStorageChange = () => {
-      setGameState(getGameState());
-    };
-
     window.addEventListener("gameStateUpdated", handleStorageChange);
 
     // Или слушаем изменения localStorage (менее надежно)
