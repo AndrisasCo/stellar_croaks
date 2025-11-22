@@ -2,7 +2,7 @@ import { Toad } from "./toad";
 
 export interface BreedingResult {
   success: boolean;
-  child?: Partial<Toad>;
+  child: Toad;
   message: string;
 }
 

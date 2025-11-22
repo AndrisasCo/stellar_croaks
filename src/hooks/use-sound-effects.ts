@@ -12,6 +12,7 @@ import crunch from "../assets/crunch.mp3";
 import exited from "../assets/exited-scream.mp3";
 import { useSettings } from "../components/SettingsContext";
 import clickSound from "../assets/click.mp3";
+import crunchShort from "../assets/crunch-short.mp3";
 // import successSound from "../assets/sounds/success.mp3";
 
 export const useSoundEffects = () => {
@@ -107,6 +108,9 @@ export const useSoundEffects = () => {
   const playClick = () => {
     playAudio(clickSound);
   };
+  const playCrunchShort = () => {
+    playAudio(crunchShort);
+  };
 
   return {
     playClick,
@@ -119,5 +123,6 @@ export const useSoundEffects = () => {
     playCroakSmall,
     playCell,
     playBuy,
+    playCrunchShort,
   };
 };

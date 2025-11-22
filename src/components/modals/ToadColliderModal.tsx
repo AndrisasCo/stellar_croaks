@@ -99,7 +99,7 @@ export default function ToadCollider({
     }
     setIsMixing(true);
 
-    const child = generateChildToad(currentToads, true);
+    const child = generateChildToad(currentToads, true) as Toad;
 
     await new Promise<void>((resolve) =>
       setTimeout(resolve, MIXING_DURATION + 500)
@@ -347,9 +347,9 @@ export default function ToadCollider({
               ✨ Новый гибрид создан!
             </div>
 
-            <div className="bg-gray-700/50 rounded-xl p-3 sm:p-4 mb-4 border border-gray-600/50">
+            <div className="bg-gray-700/50 rounded-xl p-3 mb-4 border border-gray-600/50">
               <div
-                className="w-16 h-16 sm:w-20 sm:h-20 rounded-full mx-auto mb-3 border-2 border-white/80 shadow-lg"
+                className="w-16 h-16 mx-auto rounded-full mb-3 border-2 border-white/80 shadow-lg"
                 style={{
                   backgroundColor: breedingResult.child!.genes.colors[0],
                 }}
@@ -361,7 +361,6 @@ export default function ToadCollider({
                 placeholder="Введите имя для жабы..."
                 className="bg-gray-600/50 border border-gray-500 text-white rounded-xl px-3 py-2 text-center w-full mb-3 text-sm sm:text-lg placeholder-gray-400 focus:outline-none focus:border-green-500/50"
               />
-
               <div className="grid grid-cols-3 gap-2 text-xs sm:text-sm mb-3">
                 {/* Редкость */}
                 <div
@@ -377,7 +376,7 @@ export default function ToadCollider({
                     >
                       {getRarityBadge(breedingResult.child!.genes.rarity)}
                     </div>
-                    <div className="text-white text-base sm:text-xl font-black mb-1">
+                    <div className="text-white text-base  font-black mb-1">
                       {breedingResult.child!.genes.rarity.toFixed(1)}
                     </div>
                     <div className="text-gray-400 text-[8px] sm:text-[10px] font-bold uppercase">
@@ -387,15 +386,15 @@ export default function ToadCollider({
                 </div>
 
                 {/* Размер */}
-                <div className="bg-gray-600/50 rounded-xl p-2 sm:p-3 border border-gray-500/50">
+                <div className="bg-gray-600/50 rounded-xl p-2  border border-gray-500/50">
                   <div className="text-center">
                     <div className="text-blue-400 mb-1">
                       {ColliderIcons.weight}
                     </div>
-                    <div className="text-white text-base sm:text-xl font-black mb-1">
+                    <div className="text-white text-base  font-black mb-1">
                       {breedingResult.child!.genes.weight.toFixed(1)}
                     </div>
-                    <div className="text-gray-400 text-[8px] sm:text-[10px] font-bold uppercase">
+                    <div className="text-gray-400 text-sm  font-bold uppercase">
                       Размер
                     </div>
                   </div>
@@ -407,16 +406,17 @@ export default function ToadCollider({
                     <div className="text-purple-400 mb-1">
                       {ColliderIcons.speed}
                     </div>
-                    <div className="text-white text-base sm:text-xl font-black mb-1">
+                    <div className="text-white text-base font-black mb-1">
                       {breedingResult.child!.genes.speed.toFixed(1)}
                     </div>
-                    <div className="text-gray-400 text-[8px] sm:text-[10px] font-bold uppercase">
+                    <div className="text-gray-400 text-sm font-bold uppercase">
                       Скорость
                     </div>
                   </div>
                 </div>
               </div>
-
+              <ToadGender gender={breedingResult.child.sex} />
+              {breedingResult.child.sex === "neuter" && " Бесполый"}
               <p className="text-gray-400 text-xs mt-2">
                 Поколение: {breedingResult.child!.generation}
               </p>

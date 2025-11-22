@@ -1,7 +1,7 @@
 export const TYPE_ICONS = {
   male: "♂",
   female: "♀",
-  neuter: "",
+  neuter: "○",
   golden: "⭐",
 };
 

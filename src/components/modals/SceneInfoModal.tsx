@@ -31,9 +31,11 @@ const SceneInfoModal: React.FC<SceneInfoModalProps> = ({ isOpen, onClose }) => {
   // Статистика по жабам на сцене
   const toadStats = {
     total: toads.length,
-    male: toads.filter((t) => t.sex === "male").length,
-    female: toads.filter((t) => t.sex === "female").length,
-    neuter: toads.filter((t) => t.sex === "neuter").length,
+    male: toads.filter((t) => t.stage === "adult" && t.sex === "male").length,
+    female: toads.filter((t) => t.stage === "adult" && t.sex === "female")
+      .length,
+    neuter: toads.filter((t) => t.stage === "adult" && t.sex === "neuter")
+      .length,
 
     toadpole: toads.filter((t) => t.stage === "toadpole").length,
     pregnant: toads.filter((t) => t.pregnancy?.isPregnant).length,

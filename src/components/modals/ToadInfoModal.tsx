@@ -13,16 +13,24 @@ import { InfoIcons } from "../../assets/icons";
 import Modal from "../shared/Modal";
 import { useState } from "react";
 import { Tooltip } from "../shared/Tooltip";
+import { useSoundEffects } from "../../hooks/use-sound-effects";
 
 interface ToadInfoProps {
   onClose: () => void;
 }
 
 export default function ToadInfo({ onClose }: ToadInfoProps) {
-  const { selectedToad: toad, updateToad, toads, selectToad } = useToads();
+  const {
+    selectedToad: toad,
+    updateToad,
+    toads,
+    selectToad,
+    handleFeedToads,
+  } = useToads();
   const [isEditingName, setIsEditingName] = useState(false);
   const [editedName, setEditedName] = useState(toad?.name || "");
   const [showPersonalityTooltip, setShowPersonalityTooltip] = useState(false);
+  const { playCrunchShort } = useSoundEffects();
 
   if (!toad) {
     return null;
@@ -122,6 +130,11 @@ export default function ToadInfo({ onClose }: ToadInfoProps) {
     </div>
   );
 
+  const feedToad = async (toadId: number) => {
+    playCrunchShort();
+    handleFeedToads([toadId]);
+  };
+
   return (
     <Modal
       isOpen
@@ -163,7 +176,7 @@ export default function ToadInfo({ onClose }: ToadInfoProps) {
       }
       onClose={onClose}
     >
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex justify-between items-center mb-4 px-10">
         <p className="text-gray-400 text-xs">Поколение {toad.generation}</p>
         <p className="text-gray-400 text-xs">
           {toad.stage === "adult" ? "Взрослый" : "Детеныш"}: {calculateAge()}{" "}
@@ -325,16 +338,26 @@ export default function ToadInfo({ onClose }: ToadInfoProps) {
           </div>
 
           {/* Сытость */}
-          <div className="bg-gray-700/50 rounded-xl p-2 mb-3 border border-gray-600/50">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                {InfoIcons.hunger}
-                <p className="text-gray-400 text-xs font-medium">СЫТОСТЬ</p>
+          <div className="bg-gray-700/50 rounded-xl p-2 mb-3 border flex-col border-gray-600/50 items-center flex gap-2">
+            <div className="flex w-full justify-between items-center">
+              <div className="flex items-center gap-4 justify-between">
+                <div className="flex items-center gap-2">
+                  {InfoIcons.hunger}
+                  <p className="text-gray-400 text-xs font-medium">СЫТОСТЬ</p>
+                </div>
+                <p className="text-gray-400 text-xs">
+                  {toad.state?.hunger || 0}/100
+                </p>
               </div>
-              <p className="text-gray-400 text-xs">
-                {toad.state?.hunger || 0}/100
-              </p>
+              <button
+                onClick={() => feedToad(toad.id)}
+                className="rounded-xl text-xs  right-2 bottom-2 justify-between whitespace-nowrap  flex gap-1 py-2 px-2 bg-red-400 bg-opacity-30 bg-blur-sm"
+              >
+                <span>Дать</span>
+                <span className="text-green-400">🍎</span>
+              </button>
             </div>
+
             <div className="w-full bg-gray-600 rounded-full h-2">
               <div
                 className={`h-2 rounded-full ${
