@@ -32,7 +32,9 @@ export class TimeManager {
 }
 
 export const processBreeding = (daysPassed: number, addNotification: any) => {
-  const toads = getGameState().toads.filter((t) => t.scene_id !== null);
+  const toads = getGameState()
+    .toads.filter((t) => t.scene_id !== null)
+    .filter((t) => !t.is_off);
 
   // Группируем жаб по сценам
   const toadsByScene = groupToadsByScene(toads);

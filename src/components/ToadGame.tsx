@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import ToadScene from "./ToadScene";
 import { useToads } from "./ToadContext";
 import { MenuIcons } from "../assets/icons";
@@ -31,7 +31,7 @@ export default function ToadGame() {
 
   const showLoadingScreen = isLoading || !account || !allToads || isLoadingTg;
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!allToads) {
       return;
     }

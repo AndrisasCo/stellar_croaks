@@ -14,7 +14,9 @@ export const getHunger = (
 };
 
 export const processHunger = (hoursPassed: number) => {
-  const toads = getGameState().toads.filter((t) => t.scene_id !== null);
+  const toads = getGameState()
+    .toads.filter((t) => t.scene_id !== null)
+    .filter((t) => !t.is_off);
 
   toads.forEach((t) => {
     const hunger = getHunger(t.state.hunger, t.genes.hungerRate, hoursPassed);

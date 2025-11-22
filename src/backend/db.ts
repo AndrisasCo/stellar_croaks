@@ -73,6 +73,7 @@ export const updateLeaderbord = async () => {
 };
 
 export const getAllLeaderboards = async () => {
+  await updateLeaderbord();
   const { data } = await supabase.from("leaderboard").select();
 
   return data;
