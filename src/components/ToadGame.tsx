@@ -17,6 +17,8 @@ import TutorialModal from "./modals/TutorialModal";
 import { useTelegram } from "../hooks/use-tg";
 import { useNotifications } from "../hooks/use-notification";
 import { CURRENCY_CONFIG } from "../utils/constants";
+import { createToad } from "../backend";
+import { DEFAULT_TOADS } from "../models/toad";
 
 export default function ToadGame() {
   const { toads, account, allToads } = useToads();
@@ -59,6 +61,12 @@ export default function ToadGame() {
     }
 
     updateLeaderbord();
+
+    // костыль! почему-то при первом рендере не ловит событие
+    setTimeout(() => {
+      window.dispatchEvent(new Event("gameStateUpdated"));
+    }, 2000);
+
     return () => {
       clearInterval(gameLoop);
     };
