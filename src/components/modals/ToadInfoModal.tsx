@@ -6,6 +6,7 @@ import {
   getRarityConfig,
   personalities,
   Toad,
+  HOURS_TO_GROW_UP,
 } from "../../models/toad";
 import { useToads } from "../ToadContext";
 import { InfoIcons } from "../../assets/icons";
@@ -42,7 +43,9 @@ export default function ToadInfo({ onClose }: ToadInfoProps) {
   };
 
   const calculatePregnancyProgress = () => {
-    if (!toad.pregnancy?.isPregnant) return null;
+    if (!toad.pregnancy?.isPregnant) {
+      return null;
+    }
 
     const start = toad.pregnancy.pregnancyStart;
     const duration = toad.pregnancy.pregnancyDuration * 60 * 60 * 1000; // дни в мс
@@ -55,6 +58,23 @@ export default function ToadInfo({ onClose }: ToadInfoProps) {
   };
 
   const pregnancyInfo = calculatePregnancyProgress();
+
+  const calculateGrowProgress = () => {
+    if (toad.stage !== "toadpole") {
+      return null;
+    }
+
+    const start = new Date(toad.created_at).getTime();
+    const duration = HOURS_TO_GROW_UP * 60 * 60 * 1000;
+    const now = Date.now();
+    const elapsed = now - start;
+    const progress = (elapsed / duration) * 100;
+    const timeLeft = Math.max(Math.ceil((duration - elapsed) / (60 * 1000)), 0); // минут
+
+    return { progress: Math.min(progress, 100), timeLeft };
+  };
+
+  const growInfo = calculateGrowProgress();
 
   // Функции для листания жаб
   const handleNextToad = () => {
@@ -328,6 +348,26 @@ export default function ToadInfo({ onClose }: ToadInfoProps) {
               />
             </div>
           </div>
+
+          {/* Рост */}
+          {growInfo && (
+            <div className="bg-purple-900/20 rounded-xl p-2 mb-3 border border-purple-500/50">
+              <div className="flex items-center gap-2 mb-2">
+                <p className="text-purple-400 text-xs font-medium">РОСТ</p>
+              </div>
+              <div className="space-y-2">
+                <p className="text-purple-300 text-sm">
+                  Осталось: {growInfo.timeLeft} минут
+                </p>
+                <div className="w-full bg-purple-900/30 rounded-full h-2 overflow-hidden">
+                  <div
+                    className="h-2 rounded-full bg-purple-500"
+                    style={{ width: `${growInfo.progress}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Беременность */}
           {toad.pregnancy?.isPregnant && pregnancyInfo && (

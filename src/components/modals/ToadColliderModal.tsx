@@ -220,36 +220,26 @@ export default function ToadCollider({
                   {selectedToads[slot] ? (
                     <>
                       <div
-                        className="w-8 h-8 sm:w-10 sm:h-10 rounded-full mb-1 sm:mb-2 border-2 border-white/80 shadow-sm"
+                        className="w-8 h-8 sm:w-10 sm:h-10 rounded-full mb-1  border-2 border-white/80 shadow-sm"
                         style={{
                           backgroundColor: selectedToads[slot]!.genes.colors[0],
                         }}
                       />
-                      <p className="text-white text-[10px] sm:text-xs text-center px-1 truncate w-full">
+                      <p className="text-white text-[10px]  text-center px-1 truncate w-full">
                         {selectedToads[slot]!.name}
                       </p>
-                      {/* Индикатор редкости в слоте */}
-                      <div
-                        className={`text-[8px] sm:text-[9px] ${getRarityColor(
-                          selectedToads[slot]!.genes.rarity
-                        )} font-bold`}
-                      >
-                        {getRarityBadge(selectedToads[slot]!.genes.rarity)}{" "}
-                        {selectedToads[slot]!.genes.rarity.toFixed(1)}
-                      </div>
+
                       {!isMixing && (
                         <button
                           onClick={() => handleRemoveToad(slot)}
-                          className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-400 text-white rounded-full w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center transition-colors"
+                          className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-400 text-white rounded-full w-4 h-4 flex items-center justify-center transition-colors"
                         >
                           {ColliderIcons.close}
                         </button>
                       )}
                     </>
                   ) : (
-                    <div className="text-green-400/70 text-xl sm:text-2xl">
-                      +
-                    </div>
+                    <div className="text-green-400/70 text-xl ">+</div>
                   )}
                 </div>
               ))}
@@ -272,7 +262,7 @@ export default function ToadCollider({
                 <button
                   onClick={handleBreed}
                   disabled={isDisabled}
-                  className={`px-4 sm:px-6 md:px-8 py-2 sm:py-3 rounded-xl text-sm sm:text-base font-bold transition-all duration-300 ${
+                  className={`px-4 py-2  rounded-xl text-sm sm:text-base font-bold transition-all duration-300 ${
                     currentToads.length > 1
                       ? "bg-gradient-to-r from-green-600 to-purple-600 hover:from-green-500 hover:to-purple-500 text-white shadow-lg hover:shadow-xl transform hover:scale-105 border-2 border-white/20"
                       : "bg-gray-700 text-gray-400 cursor-not-allowed border-2 border-transparent"
@@ -299,7 +289,7 @@ export default function ToadCollider({
                       <button
                         key={toad.id}
                         onClick={() => handleSelectToad(toad)}
-                        className={`p-1 sm:p-2 rounded-lg text-[10px] sm:text-xs text-center transition-all flex flex-col items-center min-w-[70px] sm:min-w-[80px] border ${
+                        className={`p-1 sm:p-2 rounded-lg text-xs text-center transition-all flex flex-col items-center min-w-[70px] sm:min-w-[80px] border ${
                           currentToads.find((t) => t.id === toad.id)
                             ? "bg-purple-600/50 text-white cursor-not-allowed border-purple-500/50"
                             : `text-gray-300  cursor-pointer ${getRarityBackground(
@@ -316,7 +306,7 @@ export default function ToadCollider({
                         </span>
                         {/* Информация о редкости */}
                         <div
-                          className={`text-[9px] sm:text-[10px] font-bold ${getRarityColor(
+                          className={`text-sm font-bold ${getRarityColor(
                             toad.genes.rarity
                           )} flex items-center gap-1`}
                         >
@@ -324,7 +314,7 @@ export default function ToadCollider({
                           <span>{toad.genes.rarity.toFixed(1)}</span>
                         </div>
                         {/* Дополнительная информация */}
-                        <div className="text-[8px] text-gray-400 mt-1">
+                        <div className="text-xs text-gray-400 mt-1">
                           Разм: {toad.genes.weight.toFixed(1)} | Скр:{" "}
                           {toad.genes.speed.toFixed(1)}
                         </div>
