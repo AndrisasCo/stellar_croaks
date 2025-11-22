@@ -138,7 +138,7 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
       case "rarest_toad":
         return "Игроки с самыми редкими жабами";
       case "tokens":
-        return "Игроки с наибольшим количеством токенов";
+        return `Игроки с наибольшим количеством ${CURRENCY_CONFIG.tokens.icon}`;
       case "total_toads":
         return "Игроки с самой большой коллекцией жаб";
       default:

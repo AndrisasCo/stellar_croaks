@@ -19,31 +19,12 @@ import { useToads } from "../../ToadContext";
 import { ToadItem } from "./ToadItem";
 import { useState, useEffect } from "react";
 
-const refreshShop = (currentState: ShopState): ShopState => {
+const refreshShop = (): ShopState => {
   const now = Date.now();
-
-  const availableToadsPool = ALL_TOADS.filter(
-    (toad) => !currentState.purchasedToads.includes(toad.name!)
-  );
-
-  if (availableToadsPool.length === 0) {
-    const newState = initializeShop();
-    newState.lastRefresh = now;
-    newState.nextRefresh = now + REFRESH_COOLDOWN;
-    return newState;
-  }
-
-  const shuffled = [...availableToadsPool].sort(() => Math.random() - 0.5);
-  const availableToads = shuffled
-    .slice(0, Math.min(3, shuffled.length))
-    .map((toad) => randomizeToadCharacteristics(toad, 0.1)); // Добавляем рандомизацию
-
-  return {
-    ...currentState,
-    availableToads,
-    lastRefresh: now,
-    nextRefresh: now + REFRESH_COOLDOWN,
-  };
+  const newState = initializeShop();
+  newState.lastRefresh = now;
+  newState.nextRefresh = now + REFRESH_COOLDOWN;
+  return newState;
 };
 
 const BuyTab: React.FC = () => {
@@ -110,10 +91,7 @@ const BuyTab: React.FC = () => {
     // Помечаем жабу как купленную
     const newShopState: ShopState = {
       ...shopState,
-      purchasedToads: [...shopState.purchasedToads, toad.name],
-      availableToads: shopState.availableToads.filter(
-        (t) => t.name !== toad.name
-      ),
+      availableToads: shopState.availableToads.filter((t) => t.id !== toad.id),
     };
 
     setShopState(newShopState);
@@ -141,7 +119,7 @@ const BuyTab: React.FC = () => {
       return;
     }
 
-    const newShopState = refreshShop(shopState);
+    const newShopState = refreshShop();
     setShopState(newShopState);
     saveShopState(newShopState);
     addNotification({ content: "Рынок обновлен!", type: "success" });
@@ -157,7 +135,7 @@ const BuyTab: React.FC = () => {
     }
 
     updateUser({ tokens: tokens - INSTANT_REFRESH_COST });
-    const newShopState = refreshShop(shopState);
+    const newShopState = refreshShop();
     setShopState(newShopState);
     saveShopState(newShopState);
     addNotification({
@@ -224,10 +202,9 @@ const BuyTab: React.FC = () => {
             <button
               onClick={handleBuyItem}
               disabled={tokens < FOOD_PRICE}
-              className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors min-w-[90px]  text-white ${
-                tokens >= FOOD_PRICE
-                  ? "bg-green-600 hover:bg-green-500 text-white"
-                  : "bg-gray-600 text-gray-400 cursor-not-allowed"
+              className={`px-3 min-w-[64px] py-1.5 rounded-lg bg-gray-600 text-sm font-medium text-white  whitespace-nowrap transition-colors  ${
+                tokens >= FOOD_PRICE &&
+                " bg-gradient-to-r from-green-600  to-emerald-800  text-white"
               }`}
             >
               {FOOD_PRICE} {CURRENCY_CONFIG.tokens.icon}
@@ -253,8 +230,6 @@ const BuyTab: React.FC = () => {
         ) : (
           <div className="space-y-3">
             {shopState.availableToads.map((toad, index) => {
-              const isPurchased = shopState.purchasedToads.includes(toad.name!);
-
               return (
                 <ToadItem
                   toad={toad as Toad}
@@ -262,22 +237,25 @@ const BuyTab: React.FC = () => {
                   button={
                     <button
                       onClick={() => handleBuyToad(toad as Toad)}
-                      disabled={
-                        tokens < calculateBuyPrice(toad as Toad) || isPurchased
-                      }
-                      className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors min-w-[90px] ${
+                      disabled={tokens < calculateBuyPrice(toad as Toad)}
+                      className={`px-3 min-w-[64px] py-1.5 rounded-lg bg-gray-600 text-sm font-medium text-white  whitespace-nowrap transition-colors  ${
                         tokens >= calculateBuyPrice(toad as Toad) &&
-                        !isPurchased
-                          ? "bg-green-600 hover:bg-green-500 text-white"
-                          : "bg-gray-600 text-gray-400 cursor-not-allowed"
+                        " bg-gradient-to-r from-green-600  to-emerald-800  text-white"
                       }`}
                     >
-                      {isPurchased
-                        ? "Куплено"
-                        : `${calculateBuyPrice(toad as Toad)} ${
-                            CURRENCY_CONFIG.tokens.icon
-                          }`}
+                      {calculateBuyPrice(toad as Toad)}{" "}
+                      {CURRENCY_CONFIG.tokens.icon}
                     </button>
+
+                    //                     <button
+                    //   onClick={(e) => {
+                    //     e.stopPropagation();
+                    //     handleSellSingleToad(toad.id);
+                    //   }}
+                    //   className="px-3 min-w-[64px] py-1.5 bg-gradient-to-r from-yellow-600 to-amber-600  text-white rounded-lg text-md font-medium transition-all shadow-sm border border-yellow-500/30 ml-2"
+                    // >
+                    //   {price} {CURRENCY_CONFIG.tokens.icon}
+                    // </button>
                   }
                 />
               );

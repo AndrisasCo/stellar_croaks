@@ -13,7 +13,7 @@ import exited from "../assets/exited-scream.mp3";
 import { useSettings } from "../components/SettingsContext";
 import clickSound from "../assets/click.mp3";
 import crunchShort from "../assets/crunch-short.mp3";
-// import successSound from "../assets/sounds/success.mp3";
+import bubble2 from "../assets/bubble2.mp3";
 
 export const useSoundEffects = () => {
   const { settings } = useSettings();
@@ -93,6 +93,7 @@ export const useSoundEffects = () => {
   const playBuy = () => {
     playAudio(moneyBuy);
   };
+
   const playCrunch = () => {
     playAudio(crunch);
     setTimeout(() => {
@@ -102,6 +103,7 @@ export const useSoundEffects = () => {
       playAudio(crunch);
     }, 1000);
   };
+
   const playExited = () => {
     playAudio2(exited);
   };
@@ -110,6 +112,9 @@ export const useSoundEffects = () => {
   };
   const playCrunchShort = () => {
     playAudio(crunchShort);
+  };
+  const playBubble2 = () => {
+    playAudio(bubble2);
   };
 
   return {
@@ -124,5 +129,6 @@ export const useSoundEffects = () => {
     playCell,
     playBuy,
     playCrunchShort,
+    playBubble2,
   };
 };

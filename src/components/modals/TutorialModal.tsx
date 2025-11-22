@@ -55,12 +55,11 @@ const TutorialModal: React.FC<TutorialModalProps> = ({ isOpen, onClose }) => {
     {
       icon: "💰",
       title: "Экономика игры",
-      description:
-        "Зарабатывайте токены продажей жаб и выполнением заказов. Используйте их для покупки корма и улучшений.",
+      description: `Зарабатывайте ${CURRENCY_CONFIG.tokens.icon} продажей жаб и выполнением заказов. Используйте их для покупки корма и улучшений.`,
       color: "yellow",
       tips: [
-        `💸 Продавайте жаб на рынке за ${CURRENCY_CONFIG.tokens.icon} токены`,
-        `⭐ Выполняйте элитные заказы за ${CURRENCY_CONFIG.astro_quax.icon} астро-квакси`,
+        `💸 Продавайте жаб на рынке за ${CURRENCY_CONFIG.tokens.icon} ${CURRENCY_CONFIG.tokens.name}ы`,
+        `⭐ Выполняйте элитные заказы за ${CURRENCY_CONFIG.astro_quax.icon} ${CURRENCY_CONFIG.astro_quax.name}ы`,
         "🛒 Покупайте корм, жаб, вольеры и предметы в магазине",
       ],
     },

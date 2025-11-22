@@ -52,7 +52,7 @@ export default function ToadCollider({
   const [isMixing, setIsMixing] = useState(false);
 
   const { startBreeding } = useToads();
-  const { playCroak } = useSoundEffects();
+  const { playBubble2 } = useSoundEffects();
   const [breedingResult, setBreedingResult] = useState<BreedingResult | null>(
     null
   );
@@ -71,7 +71,7 @@ export default function ToadCollider({
       const newSlots = [...selectedToads];
       newSlots[currentToadIndex] = null;
       setSelectedToads(newSlots);
-      playCroak();
+      playBubble2();
       return;
     }
 
@@ -81,7 +81,7 @@ export default function ToadCollider({
         const newSlots = [...selectedToads];
         newSlots[emptySlotIndex] = toad;
         setSelectedToads(newSlots);
-        playCroak();
+        playBubble2();
       }
     }
   };
@@ -90,7 +90,7 @@ export default function ToadCollider({
     const newToads = [...selectedToads];
     newToads[index] = null;
     setSelectedToads(newToads);
-    playCroak();
+    playBubble2();
   };
 
   const handleBreed = async () => {

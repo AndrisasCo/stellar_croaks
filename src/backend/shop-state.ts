@@ -1,9 +1,9 @@
 import { Toad } from "../models/toad";
+import { randomizeToadCharacteristics } from "../utils/randomize-toad-characteristics";
 
 // Интерфейс для состояния магазина
 export interface ShopState {
   availableToads: Partial<Toad>[];
-  purchasedToads: string[]; // ID или названия купленных жаб
   lastRefresh: number; // timestamp последнего обновления
   nextRefresh: number; // timestamp следующего обновления
 }
@@ -190,11 +190,13 @@ export const saveShopState = (state: ShopState) => {
 export const initializeShop = (): ShopState => {
   const now = Date.now();
   const shuffled = [...ALL_TOADS].sort(() => Math.random() - 0.5);
-  const availableToads = shuffled.slice(0, 3); // 3 случайные жабы
+  const availableToads = shuffled.slice(0, 3).map((toad) => ({
+    ...randomizeToadCharacteristics(toad, 0.1),
+    id: Math.round(Math.random() * Date.now()),
+  }));
 
   return {
     availableToads,
-    purchasedToads: [],
     lastRefresh: now - REFRESH_COOLDOWN,
     nextRefresh: now,
   };

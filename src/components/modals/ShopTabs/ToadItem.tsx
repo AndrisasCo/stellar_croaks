@@ -20,8 +20,8 @@ export const ToadItem = ({
       onClick={onClick}
       className={`bg-gray-800 rounded-2xl py-4 px-2 border ${
         isSelected
-          ? "border border-yellow-400 bg-yellow-900/20"
-          : "border-gray-700"
+          ? "border-yellow-400 bg-yellow-500/10 shadow-sm shadow-yellow-500/20"
+          : "border-gray-600/30 hover:border-gray-500/50"
       } `}
     >
       <div className="flex flex-col gap-3">
@@ -54,7 +54,7 @@ export const ToadItem = ({
         </div>
 
         {/* Характеристики */}
-        <div className="grid grid-cols-2 gap-2 text-xs">
+        <div className="grid grid-cols-2 gap-2 text-sm">
           <div className="text-gray-400">
             <span className="text-gray-500">Размер:</span>{" "}
             {toad.genes?.weight.toFixed(1)}
