@@ -50,6 +50,7 @@ export default function ToadGame() {
 
     const delayNotification = (props: any) =>
       setTimeout(() => addNotification(props), 2000);
+
     processBreeding(offlineHours, delayNotification);
 
     if (offlineHours > 0.09) {
@@ -57,6 +58,11 @@ export default function ToadGame() {
     }
 
     updateLeaderbord();
+
+    // костыль! почему-то при первом рендере не ловит событие
+    setTimeout(() => {
+      window.dispatchEvent(new Event("gameStateUpdated"));
+    }, 1000);
 
     return () => {
       clearInterval(gameLoop);
