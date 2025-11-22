@@ -14,7 +14,6 @@ import { useNotifications } from "../../../hooks/use-notification";
 import { useSoundEffects } from "../../../hooks/use-sound-effects";
 import { calculateSellPrice, Toad } from "../../../models/toad";
 import { CURRENCY_CONFIG, TYPE_ICONS } from "../../../utils/constants";
-import { randomizeToadCharacteristics } from "../../../utils/randomize-toad-characteristics";
 import { useToads } from "../../ToadContext";
 import { ToadItem } from "./ToadItem";
 import { useState, useEffect } from "react";
@@ -246,16 +245,6 @@ const BuyTab: React.FC = () => {
                       {calculateBuyPrice(toad as Toad)}{" "}
                       {CURRENCY_CONFIG.tokens.icon}
                     </button>
-
-                    //                     <button
-                    //   onClick={(e) => {
-                    //     e.stopPropagation();
-                    //     handleSellSingleToad(toad.id);
-                    //   }}
-                    //   className="px-3 min-w-[64px] py-1.5 bg-gradient-to-r from-yellow-600 to-amber-600  text-white rounded-lg text-md font-medium transition-all shadow-sm border border-yellow-500/30 ml-2"
-                    // >
-                    //   {price} {CURRENCY_CONFIG.tokens.icon}
-                    // </button>
                   }
                 />
               );
