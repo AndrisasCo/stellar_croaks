@@ -112,7 +112,7 @@ const processSceneBreeding = async (
       if (Math.random() < pregnancyChance) {
         // Выбираем отца на основе вероятностей
         const father = selectFather(males);
-        startPregnancy(female, father.id);
+        startPregnancy(female, father);
         console.log(
           `Pregnancy started for female ${female.id} with father ${father.id}`
         );
@@ -202,12 +202,13 @@ const selectFather = (males: Toad[]): Toad => {
   return topMales[0].male;
 };
 
-export const startPregnancy = async (toad: Toad, fatherId: number) => {
+export const startPregnancy = async (toad: Toad, father: Toad) => {
   toad.pregnancy = {
     isPregnant: true,
     pregnancyStart: Date.now(),
     pregnancyDuration: Math.min(getPregnancyDuration() * toad.genes.rarity, 12),
-    fatherId,
+    fatherId: father.id,
+    father,
     offspringCount: calculateOffspringCount(toad),
   };
 
@@ -229,7 +230,7 @@ export const endPregnancy = async (toad: Toad, addNotification: any) => {
   }
   const { offspringCount, fatherId } = toad.pregnancy;
 
-  const father = getToadById(fatherId);
+  const father = toad.pregnancy.father || getToadById(fatherId);
 
   const children = new Array(offspringCount)
     .fill(1)

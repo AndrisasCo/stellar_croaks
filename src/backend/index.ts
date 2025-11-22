@@ -116,3 +116,12 @@ export const updateToadsByIds = (
 
   return updatedToadsList;
 };
+
+export const deleteToadsByIds = (toadIds: number[]): Toad[] => {
+  const state = getGameState();
+  const updatedToads = state.toads.filter((toad) => !toadIds.includes(toad.id));
+
+  updateGameState({ toads: updatedToads });
+
+  return updatedToads;
+};

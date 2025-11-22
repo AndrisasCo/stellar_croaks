@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { updateToadsByIds, updateUser, updateToadById } from "../../../backend";
+import { updateUser, deleteToadsByIds } from "../../../backend";
 import { useSoundEffects } from "../../../hooks/use-sound-effects";
 import {
   Toad,
@@ -25,7 +25,8 @@ const SellTab: React.FC = () => {
 
   const handleSellToads = async () => {
     playCell();
-    updateToadsByIds(selectedToads, { is_off: true });
+    deleteToadsByIds(selectedToads);
+
     updateUser({ tokens: tokens + totalSellPrice });
     setSelectedToads([]);
   };
@@ -35,7 +36,8 @@ const SellTab: React.FC = () => {
     const toad = activeToads.find((t) => t.id === toadId);
     if (toad) {
       const price = calculateSellPrice(toad);
-      updateToadById(toadId, { is_off: true });
+      deleteToadsByIds([toadId]);
+
       updateUser({ tokens: tokens + price });
       setSelectedToads(selectedToads.filter((id) => id !== toadId));
     }

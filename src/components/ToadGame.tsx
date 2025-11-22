@@ -62,7 +62,7 @@ export default function ToadGame() {
     // костыль! почему-то при первом рендере не ловит событие
     setTimeout(() => {
       window.dispatchEvent(new Event("gameStateUpdated"));
-    }, 1000);
+    }, 3000);
 
     return () => {
       clearInterval(gameLoop);

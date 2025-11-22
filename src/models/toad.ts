@@ -4,7 +4,7 @@ export interface Toad {
   created_at: string;
   description: string | null;
   generation: number;
-  is_off: boolean | null; // продан или уничтожен
+  is_off: boolean | null; // продан или уничтожен *deprecated*
   name: string | null;
   owner: number;
   parents: number[] | null;
@@ -20,6 +20,7 @@ export interface Toad {
     pregnancyStart: number;
     pregnancyDuration: number;
     fatherId: number;
+    father: Toad;
     offspringCount: number;
   };
   genes: {

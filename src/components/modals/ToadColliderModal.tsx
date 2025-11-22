@@ -12,7 +12,7 @@ import { useSoundEffects } from "../../hooks/use-sound-effects";
 import { BreedingResult } from "../../models/types";
 import { ColliderIcons } from "../../assets/icons";
 import Modal from "../shared/Modal";
-import { updateToadsByIds } from "../../backend";
+import { deleteToadsByIds, updateToadsByIds } from "../../backend";
 import { ToadGender } from "../shared/ToadGender";
 
 interface ToadColliderProps {
@@ -125,10 +125,8 @@ export default function ToadCollider({
       child.name = customName.trim();
     }
     startBreeding(child as Toad);
-    updateToadsByIds(
-      currentToads.map((t) => t.id),
-      { is_off: true }
-    );
+    deleteToadsByIds(currentToads.map((t) => t.id));
+
     setSelectedToads([null, null, null, null, null]);
     setBreedingResult(null);
     setCustomName("");

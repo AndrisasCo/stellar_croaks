@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { updateToadById, updateUser } from "../../../backend";
+import { deleteToadsByIds, updateToadById, updateUser } from "../../../backend";
 import { useSoundEffects } from "../../../hooks/use-sound-effects";
 import { Toad } from "../../../models/toad";
 import { useToads } from "../../ToadContext";
@@ -63,7 +63,8 @@ const EliteTab: React.FC = () => {
 
   const handleSubmitEliteOrder = async (toad: Toad) => {
     playBuy();
-    updateToadById(toad.id, { is_off: true });
+    deleteToadsByIds([toad.id]);
+
     updateUser({ astro_quax: astro_quax + selectedOrder.reward });
     setSelectedOrder(null);
   };
