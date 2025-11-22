@@ -179,7 +179,7 @@ const ALL_TOADS: Partial<Toad>[] = [
 // Ключ для localStorage
 const SHOP_STATE_KEY = "toad_shop_state";
 const REFRESH_COOLDOWN = 3 * 60 * 60 * 1000; // 3 часа в миллисекундах
-const INSTANT_REFRESH_COST = 50; // Стоимость мгновенного обновления
+const INSTANT_REFRESH_COST = 20; // Стоимость мгновенного обновления
 
 // Функции для работы с localStorage
 const getShopState = (): ShopState => {
@@ -205,8 +205,8 @@ const initializeShop = (): ShopState => {
   return {
     availableToads,
     purchasedToads: [],
-    lastRefresh: now,
-    nextRefresh: now + REFRESH_COOLDOWN,
+    lastRefresh: now - REFRESH_COOLDOWN,
+    nextRefresh: now,
   };
 };
 
