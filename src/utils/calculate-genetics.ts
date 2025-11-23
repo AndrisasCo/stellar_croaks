@@ -39,21 +39,24 @@ export const inheritTrait = (parents: number[]): number => {
   return average * (1 + mutation);
 };
 
+// макс редкость 1 + 0.9 + 0.5 = 2.4
+// макс редкость если есть мутация 12.4
+// мин редкость 1 +  -0.5 = 0.5
+// мин редкость если есть мутация  10.5
 export const calculateRarity = (parents: number[]): number => {
   let baseRarity = getSum(parents) / parents.length;
-  baseRarity *= 1.3; // Было только calculateRarityBonus
-  baseRarity += (baseRarity * calculateRarityBonus(parents.length)) / 50;
+  baseRarity += 1;
+  baseRarity += (3 * calculateRarityBonus(parents.length)) / 100;
 
   // Мутация - шанс на повышенную редкость
   const mutationChance = Math.random();
-  if (mutationChance < 0.12) {
-    // Чаще мутации
-    return baseRarity * (2 + Math.random()); // Сильнее мутации
+  if (mutationChance < 0.1) {
+    return baseRarity + 10 * Math.random(); // Сильнее мутации + 0-10 ед
   }
 
   // Небольшие вариации
-  const variation = (Math.random() - 0.5) / 8;
-  return Math.max(1, baseRarity * 1.08 + variation); // +8% за поколение
+  const variation = Math.random() - 0.5; // -0.5 / + 0.5
+  return Math.max(0, baseRarity + variation);
 };
 
 export const calculateBreedingTime = (
@@ -108,7 +111,8 @@ export const generateChildToad = (
   const generation = Math.max(...parents.map((p) => p.generation)) + 1;
   const childRarity = isCollider
     ? calculateRarity(parents.map((p) => p.genes.rarity))
-    : ((parents[0].genes.rarity + parents[1].genes.rarity) / 2) * 1.08;
+    : (parents[0].genes.rarity + parents[1].genes.rarity) / 2 +
+      Math.ceil(Math.random() * 3) / 10;
 
   const personality = assignRandomPersonality();
   const personalityTrait =

@@ -9,20 +9,24 @@ const EnclosureTab: React.FC = () => {
   const { allToads: activeToads, account, ownedScenes } = useToads();
   const { playBuy } = useSoundEffects();
   const { tokens = 0 } = account || {};
+  const scenePrice = ownedScenes.length * 100;
 
   const handleBuyEnclosure = () => {
+    if (tokens - scenePrice < 0) {
+      return;
+    }
     playBuy();
     const newScene = {
       ...DEFAULT_SCENE,
       id: Date.now(),
       name: ` Вольер #${ownedScenes.length + 1}`,
-      description: `Стандартный вольер для развеления жаб`,
+      description: `Стандартный вольер для разведения жаб`,
     };
-    updateGameState({ scenes: [...getGameState().scenes, newScene] });
-    console.log("Buy enclosure clicked");
+    updateGameState({
+      scenes: [...getGameState().scenes, newScene],
+      user: { ...account, tokens: tokens - scenePrice },
+    });
   };
-
-  const scenePrice = ownedScenes.length * 100;
 
   return (
     <div className="space-y-3">
