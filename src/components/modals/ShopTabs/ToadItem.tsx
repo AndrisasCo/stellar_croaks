@@ -1,5 +1,5 @@
 import { ReactElement } from "react";
-import { Toad } from "../../../models/toad";
+import { getRarityConfig, RARITY_CONFIG, Toad } from "../../../models/toad";
 import { CURRENCY_CONFIG, TYPE_ICONS } from "../../../utils/constants";
 import { ToadGender } from "../../shared/ToadGender";
 import { PregnancyIcon } from "../../../assets/icons";
@@ -52,7 +52,11 @@ export const ToadItem = ({
 
           {button}
         </div>
-
+        <div className={`${getRarityConfig(toad.genes?.rarity).color}`}>
+          <span className="text-gray-500">Редкость:</span>{" "}
+          {getRarityConfig(toad.genes?.rarity).icon}{" "}
+          {toad.genes?.rarity.toFixed(1)}
+        </div>
         {/* Характеристики */}
         <div className="grid grid-cols-2 gap-2 text-sm">
           <div className="text-gray-400">
@@ -63,13 +67,14 @@ export const ToadItem = ({
             <span className="text-gray-500">Скорость:</span>{" "}
             {toad.genes?.speed.toFixed(1)}
           </div>
-          <div className="text-green-400">
-            <span className="text-gray-500">Редкость:</span>{" "}
-            {toad.genes?.rarity.toFixed(1)}
+
+          <div className="text-gray-400">
+            <span className="text-gray-500">Аппетит:</span>{" "}
+            {toad.genes.hungerRate.toFixed(1)}
           </div>
           <div className="text-gray-400">
-            <span className="text-gray-500">Сытость:</span> {toad.state?.hunger}
-            /100
+            <span className="text-gray-500">Плодовитость:</span>{" "}
+            {toad.genes.fertility.toFixed(1)}
           </div>
         </div>
       </div>

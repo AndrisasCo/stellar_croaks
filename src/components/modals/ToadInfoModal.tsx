@@ -246,7 +246,7 @@ export default function ToadInfo({ onClose }: ToadInfoProps) {
             <div className="bg-gray-700/50 rounded-xl p-2 border border-gray-600/50">
               <div className="flex items-center gap-2 mb-1">
                 {InfoIcons.hunger}
-                <p className="text-gray-400 text-xs font-medium">HUNGER RATE</p>
+                <p className="text-gray-400 text-xs font-medium">АППЕТИТ</p>
               </div>
               <p
                 className={`

@@ -12,8 +12,8 @@ import ShopMenu from "./modals/ShopMenuModal";
 import StorageModal from "./modals/StorageModal";
 import { processHunger } from "../utils/state-manager";
 import {
+  syncGameState,
   updateGameStateDB,
-  updateGameStateInitial,
   updateLeaderbord,
 } from "../backend/db";
 import LeaderboardModal from "./modals/LeaderboardModal";
@@ -66,8 +66,6 @@ export default function ToadGame() {
       processHunger(offlineHours);
     }
 
-    updateLeaderbord();
-
     // костыль! почему-то при первом рендере не ловит событие
     setTimeout(() => {
       window.dispatchEvent(new Event("gameStateUpdated"));
@@ -96,7 +94,7 @@ export default function ToadGame() {
   }, []);
 
   useEffect(() => {
-    updateGameStateInitial();
+    syncGameState();
 
     const interval = setInterval(() => {
       updateGameStateDB();

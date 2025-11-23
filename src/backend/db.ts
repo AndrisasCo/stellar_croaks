@@ -118,23 +118,6 @@ export const updateGameStateDB = async () => {
   return { data, error };
 };
 
-export const updateGameStateInitial = async () => {
-  const { user } = getGameState();
-
-  if (!user.tg_id) {
-    return;
-  }
-
-  const gs = await getGameStateDB();
-
-  if (!gs?.data) {
-    await createGameStateDB();
-    return;
-  }
-
-  return updateGameStateDB();
-};
-
 export const getGameStateDB = async () => {
   const { user } = getGameState();
 
@@ -158,6 +141,7 @@ export const syncGameState = async () => {
   const { user } = currentGS;
 
   if (!user.tg_id) {
+    await createGameStateDB();
     return;
   }
 
@@ -167,7 +151,7 @@ export const syncGameState = async () => {
     return;
   }
 
-  const gameStateStored = data.data[0];
+  const gameStateStored = data.data;
 
   const accountCreated = currentGS.createdAt
     ? new Date(currentGS.createdAt).getTime()
@@ -175,7 +159,13 @@ export const syncGameState = async () => {
 
   // аккаунт создался в лс, но он уже есть в бд
   if (new Date(gameStateStored.created_at).getTime() < accountCreated) {
-    updateGameState(gameStateStored.content);
+    // перезаписываем игру через дб
+    updateGameState({
+      ...gameStateStored.content,
+      createdAt: gameStateStored.created_at,
+    });
     console.log("sync GameState");
+  } else {
+    await updateGameStateDB();
   }
 };

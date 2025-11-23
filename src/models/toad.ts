@@ -491,8 +491,7 @@ export const getRarityConfig = (rarity: number) => {
 };
 
 export const calculateSellPrice = (toad: Toad): number => {
-  const rarityConfig = getRarityConfig(toad.genes.rarity);
-  let basePrice = 10 * rarityConfig.priceMultiplier;
+  let basePrice = toad.genes.rarity;
 
   if (toad.stage !== "adult") {
     basePrice /= 1.5;
@@ -502,9 +501,9 @@ export const calculateSellPrice = (toad: Toad): number => {
     basePrice /= 3;
   }
 
-  basePrice *= toad.genes?.fertility || 1;
-  basePrice *= 1 - toad.state?.hunger / 200;
-  basePrice *= 1 - (toad.genes?.hungerRate - 1) * 0.2;
+  basePrice += toad.genes?.fertility || 1;
+  basePrice += toad.state?.hunger / 100;
+  basePrice -= toad.genes?.hungerRate;
 
-  return Math.max(1, Math.round(basePrice));
+  return Math.max(0, Math.round(basePrice));
 };
