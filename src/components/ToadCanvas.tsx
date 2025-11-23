@@ -859,7 +859,7 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
   return (
     <div className="relative">
       <div
-        className="bg-green-800 rounded-2xl duration-200"
+        className="rounded-2xl duration-200"
         style={{ width, height, opacity: isReady ? 1 : 0 }}
         ref={canvasRef}
       />

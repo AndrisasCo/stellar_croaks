@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { Toad } from "../models/toad";
-import { getGameState } from "./localStorage";
+import { getGameState, updateGameState } from "./localStorage";
 
 const REACT_APP_SUPABASE_URL = "https://fltghltrbknxqvdngnda.supabase.co";
 const REACT_APP_SUPABASE_ANON_KEY =
@@ -77,4 +77,105 @@ export const getAllLeaderboards = async () => {
   const { data } = await supabase.from("leaderboard").select();
 
   return data;
+};
+
+export const createGameStateDB = async () => {
+  const { user } = getGameState();
+
+  if (!user.tg_id) {
+    return;
+  }
+
+  const gameData = {
+    tg_id: user.tg_id,
+    content: getGameState(),
+  };
+
+  const { data, error } = await supabase
+    .from("game_state")
+    .insert([gameData])
+    .select();
+
+  console.log("Created game state!");
+
+  return { data, error };
+};
+
+export const updateGameStateDB = async () => {
+  const { user } = getGameState();
+
+  if (!user.tg_id) {
+    return;
+  }
+
+  const { data, error } = await supabase
+    .from("game_state")
+    .update({ content: getGameState() })
+    .eq("tg_id", user.tg_id)
+    .select();
+  console.log("updated GameState");
+
+  return { data, error };
+};
+
+export const updateGameStateInitial = async () => {
+  const { user } = getGameState();
+
+  if (!user.tg_id) {
+    return;
+  }
+
+  const gs = await getGameStateDB();
+
+  if (!gs?.data) {
+    await createGameStateDB();
+    return;
+  }
+
+  return updateGameStateDB();
+};
+
+export const getGameStateDB = async () => {
+  const { user } = getGameState();
+
+  if (!user.tg_id) {
+    return;
+  }
+
+  const { data, error } = await supabase
+    .from("game_state")
+    .select()
+    .eq("tg_id", user.tg_id)
+    .maybeSingle();
+
+  console.log("get GameState");
+
+  return { data, error };
+};
+
+export const syncGameState = async () => {
+  const currentGS = getGameState();
+  const { user } = currentGS;
+
+  if (!user.tg_id) {
+    return;
+  }
+
+  const data = await getGameStateDB();
+
+  if (!data?.data) {
+    return;
+  }
+
+  const gameStateStored = data.data[0];
+
+  const accountCreated = currentGS.createdAt
+    ? new Date(currentGS.createdAt).getTime()
+    : Date.now();
+
+  // аккаунт создался в лс, но он уже есть в бд
+  if (new Date(gameStateStored.created_at).getTime() < accountCreated) {
+    updateGameState(gameStateStored.content);
+    console.log("sync GameState");
+  }
 };

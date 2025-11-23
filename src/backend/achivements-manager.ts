@@ -257,7 +257,7 @@ export const completeAchivement = (id: DynamicAchievementId) => {
   if (currentState.includes(id)) {
     return;
   }
-  updateGameState({ completed: [...currentState, id] });
+  updateAchivementsState({ completed: [...currentState, id] });
 
   const achivement = achievementGroups
     .flatMap((a) => a.achievements)
@@ -276,10 +276,10 @@ export const completeAchivement = (id: DynamicAchievementId) => {
 
 export const claimReward = (id: DynamicGroupId) => {
   const currentState = getAchievementState();
-  updateGameState({ rewards: [...currentState.rewards, id] });
+  updateAchivementsState({ rewards: [...currentState.rewards, id] });
 };
 
-export const updateGameState = (
+export const updateAchivementsState = (
   updates: Partial<AchivementsState>
 ): AchivementsState => {
   const currentState = getAchievementState();

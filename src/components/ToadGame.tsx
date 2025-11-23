@@ -11,7 +11,11 @@ import { processBreeding, TimeManager } from "../utils/breeding-manager";
 import ShopMenu from "./modals/ShopMenuModal";
 import StorageModal from "./modals/StorageModal";
 import { processHunger } from "../utils/state-manager";
-import { updateLeaderbord } from "../backend/db";
+import {
+  updateGameStateDB,
+  updateGameStateInitial,
+  updateLeaderbord,
+} from "../backend/db";
 import LeaderboardModal from "./modals/LeaderboardModal";
 import TutorialModal from "./modals/TutorialModal";
 import { useTelegram } from "../hooks/use-tg";
@@ -89,6 +93,16 @@ export default function ToadGame() {
     setTimeout(() => {
       setIsLoading(false);
     }, 2000);
+  }, []);
+
+  useEffect(() => {
+    updateGameStateInitial();
+
+    const interval = setInterval(() => {
+      updateGameStateDB();
+    }, 1000 * 60 * 2); // 2m
+
+    return () => clearInterval(interval);
   }, []);
 
   const handleShopClick = () => {

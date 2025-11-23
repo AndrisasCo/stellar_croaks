@@ -10,6 +10,7 @@ export interface GameState {
   scenes: Scene[];
   toads: Toad[];
   lastSaved: string;
+  createdAt: string;
 }
 
 const LS_KEY = "Game_State5";
@@ -42,6 +43,7 @@ const getDefaultGameState = (): GameState => {
     scenes: [DEFAULT_SCENE],
     toads: DEFAULT_TOADS,
     lastSaved: new Date().toISOString(),
+    createdAt: new Date().toISOString(),
   };
 };
 
