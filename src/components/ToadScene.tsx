@@ -9,6 +9,7 @@ import ToadCanvas from "./ToadCanvas";
 import ToadListModal from "./modals/ToadListModal";
 import SceneInfoModal from "./modals/SceneInfoModal";
 import { useNotifications } from "../hooks/use-notification";
+import { completeAchivement } from "../backend/achivements-manager";
 
 export default function ToadScene() {
   const {
@@ -67,11 +68,10 @@ export default function ToadScene() {
     if (isFoodActive) {
       return;
     }
-
+    completeAchivement("feed-all");
     setIsFoodActive(true);
     setShowFoodTooltip(false);
     handleFeedToads(toads.map((t) => t.id));
-    console.log("🍽️ Покормить жаб на сцене:", currentScene?.name);
   };
 
   const handleCancelFeed = () => {

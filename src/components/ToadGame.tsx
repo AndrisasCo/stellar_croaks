@@ -19,6 +19,7 @@ import { useNotifications } from "../hooks/use-notification";
 import { CURRENCY_CONFIG } from "../utils/constants";
 import { createToad } from "../backend";
 import { DEFAULT_TOADS } from "../models/toad";
+import AchivementsModal from "./modals/AchivementsModal";
 
 export default function ToadGame() {
   const { toads, account, allToads } = useToads();
@@ -28,6 +29,7 @@ export default function ToadGame() {
   const [storageOpen, setStorageOpen] = useState(false);
   const [leaderboardOpen, setLeaderboardOpen] = useState(false);
   const [isTutorialOpen, setIsTutorialOpen] = useState(false);
+  const [achivementsOpen, setAchivementsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const { isLoading: isLoadingTg } = useTelegram();
   const { addNotification } = useNotifications();
@@ -70,6 +72,17 @@ export default function ToadGame() {
     return () => {
       clearInterval(gameLoop);
     };
+  }, []);
+
+  useEffect(() => {
+    window.addEventListener("AchivementCompleted", (e) => {
+      addNotification({
+        type: "success",
+        content: `Новое достижение! ${e.detail.name}`,
+      });
+    });
+
+    return () => window.removeEventListener("AchivementCompleted");
   }, []);
 
   useEffect(() => {
@@ -157,6 +170,7 @@ export default function ToadGame() {
             setIsMenuClose={() => setIsMenuOpen(false)}
             setLeaderboardOpen={() => setLeaderboardOpen(true)}
             setIsTutorialOpen={() => setIsTutorialOpen(true)}
+            setIsAchivementsOpen={() => setAchivementsOpen(true)}
           />
         )}
 
@@ -174,6 +188,11 @@ export default function ToadGame() {
           onClose={() => setLeaderboardOpen(false)}
         />
 
+        <AchivementsModal
+          isOpen={achivementsOpen}
+          onClose={() => setAchivementsOpen(false)}
+        />
+
         <ColliderButton />
 
         {/* Статистика в футере */}
@@ -185,7 +204,7 @@ export default function ToadGame() {
         </footer>
         <footer className="fixed bottom-0 left-0 right-0 bg-gray-900/80 backdrop-blur-sm border-t border-purple-500/20 py-2 z-20">
           <div className="max-w-md mx-auto px-4">
-            <div className="flex justify-between items-center text-xs">
+            <div className="flex justify-between items-center text-xs px-3">
               <div className="text-pink-300/80">
                 {" "}
                 🍎 {account.storage.food}{" "}

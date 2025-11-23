@@ -7,9 +7,9 @@ import {
 } from "../backend";
 import { generateChildToad } from "./calculate-genetics";
 import { getHoursFromNow } from "./date";
-import { getGameState, updateGameState } from "../backend/localStorage";
-import { useNotifications } from "../hooks/use-notification";
+import { getGameState } from "../backend/localStorage";
 import { getHunger } from "./state-manager";
+import { completeAchivement } from "../backend/achivements-manager";
 
 export class TimeManager {
   lastPlayTime: string | number;
@@ -272,6 +272,7 @@ export const endPregnancy = async (toad: Toad, addNotification: any) => {
   }
 
   createToads(children);
+  completeAchivement("first-offspring");
   // обновляем мать
   updateToadById(toad.id, { ...toad, pregnancy: null });
 };

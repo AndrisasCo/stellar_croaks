@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useEffect } from "react";
 import Modal from "../shared/Modal";
 import { useSoundEffects } from "../../hooks/use-sound-effects";
 import { CURRENCY_CONFIG, TYPE_ICONS } from "../../utils/constants";
+import { completeAchivement } from "../../backend/achivements-manager";
 
 interface TutorialModalProps {
   isOpen: boolean;
@@ -129,8 +130,13 @@ const TutorialModal: React.FC<TutorialModalProps> = ({ isOpen, onClose }) => {
     return colors[color as keyof typeof colors] || colors.blue;
   };
 
+  const handleClose = () => {
+    completeAchivement("read-tutorial");
+    onClose();
+  };
+
   return (
-    <Modal isOpen={isOpen} onClose={onClose} icon={icon} title="Обучение">
+    <Modal isOpen={isOpen} onClose={handleClose} icon={icon} title="Обучение">
       {/* Контент */}
       <div className="p-4 overflow-y-auto  h-[calc(80vh-60px)] ">
         {/* Вступление */}
@@ -208,7 +214,7 @@ const TutorialModal: React.FC<TutorialModalProps> = ({ isOpen, onClose }) => {
         <button
           onClick={() => {
             playClick();
-            onClose();
+            handleClose();
           }}
           className="w-full mt-5 bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl font-semibold transition-colors duration-200 transform hover:scale-105 active:scale-95"
         >

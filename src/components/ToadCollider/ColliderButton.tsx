@@ -3,6 +3,7 @@ import { useToads } from "../ToadContext";
 import ToadCollider from "../modals/ToadColliderModal";
 import { useSoundEffects } from "../../hooks/use-sound-effects";
 import { BreedingSlot } from "../../models/types";
+import { completeAchivement } from "../../backend/achivements-manager";
 
 let interval;
 
@@ -15,6 +16,7 @@ export default function ColliderButton() {
     if (!activeSlot?.id) {
       return;
     }
+    completeAchivement("collider-hybrid");
     collectChild(activeSlot.id);
     setSlotProgress(0);
   };

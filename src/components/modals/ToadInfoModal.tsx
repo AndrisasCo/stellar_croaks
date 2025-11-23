@@ -15,6 +15,7 @@ import { useState } from "react";
 import { Tooltip } from "../shared/Tooltip";
 import { useSoundEffects } from "../../hooks/use-sound-effects";
 import { updateToadById } from "../../backend";
+import { completeAchivement } from "../../backend/achivements-manager";
 
 interface ToadInfoProps {
   onClose: () => void;
@@ -132,6 +133,7 @@ export default function ToadInfo({ onClose }: ToadInfoProps) {
   const feedToad = async (toadId: number) => {
     playCrunchShort();
     handleFeedToads([toadId]);
+    completeAchivement("feed-one");
   };
 
   const handleMoveToScene = (scene_id: number | null) => () => {

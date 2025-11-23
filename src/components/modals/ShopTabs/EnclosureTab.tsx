@@ -4,6 +4,7 @@ import { CURRENCY_CONFIG } from "../../../utils/constants";
 import { useToads } from "../../ToadContext";
 import { getGameState, updateGameState } from "../../../backend/localStorage";
 import { DEFAULT_SCENE } from "../../../models/scene";
+import { completeAchivement } from "../../../backend/achivements-manager";
 
 const EnclosureTab: React.FC = () => {
   const { allToads: activeToads, account, ownedScenes } = useToads();
@@ -26,6 +27,7 @@ const EnclosureTab: React.FC = () => {
       scenes: [...getGameState().scenes, newScene],
       user: { ...account, tokens: tokens - scenePrice },
     });
+    completeAchivement("buy-enclosure");
   };
 
   return (

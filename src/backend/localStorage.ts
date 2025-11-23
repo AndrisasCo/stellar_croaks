@@ -73,6 +73,7 @@ export const saveGameState = (state: GameState): void => {
       lastSaved: new Date().toISOString(),
     };
     localStorage.setItem(LS_KEY, JSON.stringify(stateToSave));
+
     const event = new CustomEvent("gameStateUpdated", {
       detail: {
         timestamp: Date.now(),

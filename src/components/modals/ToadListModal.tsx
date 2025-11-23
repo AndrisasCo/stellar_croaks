@@ -7,6 +7,7 @@ import { updateToadById } from "../../backend";
 import { useSoundEffects } from "../../hooks/use-sound-effects";
 import { ToadGender } from "../shared/ToadGender";
 import { useToads } from "../ToadContext";
+import { completeAchivement } from "../../backend/achivements-manager";
 
 interface ToadListModalProps {
   isOpen: boolean;
@@ -59,12 +60,7 @@ const ToadListModal: React.FC<ToadListModalProps> = ({
     setActiveActionMenu(null);
 
     handleFeedToads([toadId]);
-  };
-
-  const toggleActionMenu = (toadId: number, event: React.MouseEvent) => {
-    event.stopPropagation();
-    playClick();
-    setActiveActionMenu(activeActionMenu === toadId ? null : toadId);
+    completeAchivement("feed-one");
   };
 
   if (!isOpen) return null;

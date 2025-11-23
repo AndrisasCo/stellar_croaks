@@ -6,21 +6,23 @@ interface BurgerMenuProps {
   setIsMenuClose: () => void;
   setLeaderboardOpen: () => void;
   setIsTutorialOpen: () => void;
+  setIsAchivementsOpen: () => void;
 }
 export const BurgerMenu = ({
   setIsSettingsOpen,
   setIsMenuClose,
   setLeaderboardOpen,
   setIsTutorialOpen,
+  setIsAchivementsOpen,
 }: BurgerMenuProps) => {
   const menuItems = [
-    // {
-    //   id: "stats",
-    //   icon: MenuIcons.stats,
-    //   label: "Статистика",
-    //   desc: "Ваши достижения и прогресс",
-    //   color: "bg-green-900/50 border-green-500/50",
-    // },
+    {
+      id: "stats",
+      icon: MenuIcons.stats,
+      label: "Достижения",
+      desc: "Ваши достижения и прогресс",
+      color: "bg-yellow-900/50 border-yellow-500/50",
+    },
     {
       id: "leaderboard",
       icon: MenuIcons.leaderboard,
@@ -74,6 +76,9 @@ export const BurgerMenu = ({
     }
     if (menuId === "collection") {
       setIsTutorialOpen();
+    }
+    if (menuId === "stats") {
+      setIsAchivementsOpen();
     }
   };
 

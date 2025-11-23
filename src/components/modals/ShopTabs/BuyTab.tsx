@@ -1,4 +1,5 @@
 import { createToad, updateUser } from "../../../backend";
+import { completeAchivement } from "../../../backend/achivements-manager";
 import { getGameState } from "../../../backend/localStorage";
 import {
   ShopState,
@@ -68,6 +69,7 @@ const BuyTab: React.FC = () => {
 
   const handleBuyToad = async (toad: Toad) => {
     playBuy();
+    completeAchivement("buy-toad");
 
     const allToadsOnScene =
       getGameState().toads.filter(
@@ -103,6 +105,7 @@ const BuyTab: React.FC = () => {
       tokens: tokens - FOOD_PRICE,
       storage: { food: (storage?.food || 0) + 10 },
     });
+    completeAchivement("buy-food");
   };
 
   const calculateBuyPrice = (toad: Toad) =>

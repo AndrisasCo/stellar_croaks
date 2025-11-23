@@ -16,6 +16,7 @@ import {
   ShopState,
 } from "../../../backend/shop-state";
 import { ToadItem } from "./ToadItem";
+import { completeAchivement } from "../../../backend/achivements-manager";
 
 // Иконка стрелки для сортировки
 const SortArrowIcon = ({ direction }: { direction: "asc" | "desc" | null }) => (
@@ -112,6 +113,7 @@ const SellTab: React.FC = () => {
 
   const handleSellToads = async () => {
     if (selectedFilteredToads.length === 0) return;
+    completeAchivement("sell-toad");
 
     playCell();
     deleteToadsByIds(selectedFilteredToads);
@@ -132,6 +134,7 @@ const SellTab: React.FC = () => {
   };
 
   const handleSellSingleToad = async (toadId: number) => {
+    completeAchivement("sell-toad");
     playCell();
     const toad = activeToads.find((t) => t.id === toadId);
     if (toad) {
