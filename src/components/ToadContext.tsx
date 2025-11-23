@@ -42,17 +42,17 @@ interface ToadContextType {
   selectedToad: Toad | null;
   colliderState: ColliderState | ExtendedColliderState;
   selectToad: (toadId: number) => void;
-  updateToad: (id: number, updates: Partial<Toad>) => void;
   clearSelection: () => void;
+  updateBreeding: (child: Toad) => void;
   startBreeding: (child: Toad) => void;
   collectChild: (slotId: number) => void;
-  setSlotReady: (slotId: number) => void; // Исправлен тип на string
+  setSlotReady: (slotId: number) => void;
   setCurrentSceneId: (id: number) => void;
   currentScene: Scene;
   ownedScenes: Scene[];
   currentSceneIndex: number;
   account: User;
-  handleFeedToads: (toadsId: number[]) => void; // Добавлен отсутствующий метод
+  handleFeedToads: (toadsId: number[]) => void;
 }
 
 const ToadContext = createContext<ToadContextType | undefined>(undefined);
@@ -153,16 +153,25 @@ export const ToadProvider: React.FC<ToadProviderProps> = ({ children }) => {
     }));
   };
 
-  const selectToad = (toadId: number) => {
-    setSelectedToadId(toadId);
+  const updateBreeding = (child: Toad) => {
+    const slots = [...colliderState.slots];
+
+    const currentSlotIndex = slots.findIndex((s) => s.child?.id === child.id);
+
+    if (currentSlotIndex === -1) {
+      return;
+    }
+
+    slots[currentSlotIndex] = { ...slots[currentSlotIndex], child };
+
+    setColliderState((prev) => ({
+      ...prev,
+      slots,
+    }));
   };
 
-  const updateToad = async (id: number, updates: Partial<Toad>) => {
-    updateToadById(id, updates);
-
-    if (selectedToadId?.id === id) {
-      setSelectedToadId((prev) => (prev ? { ...prev, ...updates } : null));
-    }
+  const selectToad = (toadId: number) => {
+    setSelectedToadId(toadId);
   };
 
   const clearSelection = () => {
@@ -240,6 +249,7 @@ export const ToadProvider: React.FC<ToadProviderProps> = ({ children }) => {
   };
 
   const value: ToadContextType = {
+    updateBreeding,
     handleFeedToads,
     setCurrentSceneId: setCurrentSceneIndex,
     currentScene,
@@ -250,7 +260,6 @@ export const ToadProvider: React.FC<ToadProviderProps> = ({ children }) => {
     collectChild,
     selectedToad,
     selectToad,
-    updateToad,
     clearSelection,
     colliderState,
     ownedScenes,

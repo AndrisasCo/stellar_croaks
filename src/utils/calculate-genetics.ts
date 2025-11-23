@@ -43,14 +43,16 @@ export const inheritTrait = (parents: number[]): number => {
 // макс редкость если есть мутация 12.4
 // мин редкость 1 +  -0.5 = 0.5
 // мин редкость если есть мутация  10.5
-export const calculateRarity = (parents: number[]): number => {
+export const calculateRarity = (
+  parents: number[],
+  mutationChance: boolean
+): number => {
   let baseRarity = getSum(parents) / parents.length;
   baseRarity += 1;
   baseRarity += (3 * calculateRarityBonus(parents.length)) / 100;
 
   // Мутация - шанс на повышенную редкость
-  const mutationChance = Math.random();
-  if (mutationChance < 0.1) {
+  if (mutationChance) {
     return baseRarity + 10 * Math.random(); // Сильнее мутации + 0-10 ед
   }
 
@@ -71,8 +73,8 @@ export const calculateBreedingTime = (
   return time / speedMultiplier;
 };
 
-const getSex = (isCollider: boolean) => {
-  if (isCollider && Math.random() < 0.3) {
+const getSex = (isCollider: boolean, genesBreakChance: boolean) => {
+  if (isCollider && genesBreakChance) {
     // 30% вероятности бесполой жабы
     return "neuter";
   }
@@ -97,7 +99,8 @@ export const assignRandomPersonality = (): string | null => {
 
 export const generateChildToad = (
   parents: Toad[],
-  isCollider: boolean
+  isCollider: boolean,
+  chances?: { mutationChance: boolean; genesBreakChance: boolean }
 ): Partial<Toad> => {
   const childColor = mixColors(parents.map((p) => p.genes.colors[0]));
   const childColor2 = mixColors(
@@ -110,7 +113,10 @@ export const generateChildToad = (
 
   const generation = Math.max(...parents.map((p) => p.generation)) + 1;
   const childRarity = isCollider
-    ? calculateRarity(parents.map((p) => p.genes.rarity))
+    ? calculateRarity(
+        parents.map((p) => p.genes.rarity),
+        chances?.mutationChance || false
+      )
     : (parents[0].genes.rarity + parents[1].genes.rarity) / 2 +
       Math.ceil(Math.random() * 3) / 10;
 
@@ -140,7 +146,7 @@ export const generateChildToad = (
       : "Родился путем скрещивания",
     generation,
     parents: parents.map((p) => p.id),
-    sex: getSex(isCollider),
+    sex: getSex(isCollider, chances?.genesBreakChance || false),
     stage: "toadpole",
     scene_id: parents[0].scene_id,
     state: {

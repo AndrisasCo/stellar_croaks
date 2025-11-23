@@ -51,7 +51,7 @@ export default function ToadCollider({
 
   const [isMixing, setIsMixing] = useState(false);
 
-  const { startBreeding } = useToads();
+  const { startBreeding, updateBreeding } = useToads();
   const { playBubble2 } = useSoundEffects();
   const [breedingResult, setBreedingResult] = useState<BreedingResult | null>(
     null
@@ -99,38 +99,54 @@ export default function ToadCollider({
     }
     setIsMixing(true);
 
-    const child = generateChildToad(currentToads, true) as Toad;
+    // Мутация - шанс на повышенную редкость
+    const mutationChance = Math.random() < 0.1;
+    const genesBreakChance = Math.random() < 0.3;
+
+    const child = generateChildToad(currentToads, true, {
+      mutationChance,
+      genesBreakChance,
+    }) as Toad;
 
     await new Promise<void>((resolve) =>
       setTimeout(resolve, MIXING_DURATION + 500)
     );
 
+    let message = `Успешное смешивание генов!`;
+
+    if (genesBreakChance) {
+      message = "Неудачное смешивание генов: жаба будет бесполой.";
+    }
+
+    if (mutationChance) {
+      message += " 💥 Жаба мутировала! Ее редкость повышена";
+    }
+
     setBreedingResult({
       success: true,
       child,
-      message: "Успешное смешивание генов!",
+      message: message,
     });
 
     setIsMixing(false);
+
+    startBreeding(child as Toad);
+    deleteToadsByIds(currentToads.map((t) => t.id));
+    setSelectedToads([null, null, null, null, null]);
   };
 
   const handleConfirm = () => {
-    if (!breedingResult?.child) {
+    if (!breedingResult) {
       return;
     }
-
-    const child = breedingResult.child;
-
+    const { child } = breedingResult;
     if (customName.trim()) {
       child.name = customName.trim();
+      updateBreeding(child);
     }
-    startBreeding(child as Toad);
-    deleteToadsByIds(currentToads.map((t) => t.id));
 
-    setSelectedToads([null, null, null, null, null]);
-    setBreedingResult(null);
     setCustomName("");
-
+    setBreedingResult(null);
     onClose();
   };
 
