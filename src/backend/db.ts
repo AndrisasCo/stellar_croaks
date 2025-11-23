@@ -1,6 +1,10 @@
 import { createClient } from "@supabase/supabase-js";
 import { Toad } from "../models/toad";
 import { getGameState, updateGameState } from "./localStorage";
+import {
+  getAchievementState,
+  updateAchivementsState,
+} from "./achivements-manager";
 
 const REACT_APP_SUPABASE_URL = "https://fltghltrbknxqvdngnda.supabase.co";
 const REACT_APP_SUPABASE_ANON_KEY =
@@ -25,6 +29,10 @@ export type LeaderboardItemType = {
 export const createLeaderbord = async () => {
   const { user, toads } = getGameState();
   if (!user.tg_id) {
+    return;
+  }
+  const { data: ldData } = await getLeaderboardByTg();
+  if (ldData) {
     return;
   }
   const leaderbordData = {
@@ -79,6 +87,21 @@ export const getAllLeaderboards = async () => {
   return data;
 };
 
+export const getLeaderboardByTg = async () => {
+  const { user } = getGameState();
+
+  if (!user.tg_id) {
+    return;
+  }
+  const { data, error } = await supabase
+    .from("leaderboard")
+    .select()
+    .eq("tg_id", user.tg_id)
+    .maybeSingle();
+
+  return data;
+};
+
 export const createGameStateDB = async () => {
   const { user } = getGameState();
 
@@ -89,6 +112,7 @@ export const createGameStateDB = async () => {
   const gameData = {
     tg_id: user.tg_id,
     content: getGameState(),
+    achievements: getAchievementState(),
   };
 
   const { data, error } = await supabase
@@ -104,17 +128,21 @@ export const createGameStateDB = async () => {
 export const updateGameStateDB = async () => {
   const { user } = getGameState();
 
+  const allState = {
+    ...getGameState(),
+  };
+
   if (!user.tg_id) {
     return;
   }
 
   const { data, error } = await supabase
     .from("game_state")
-    .update({ content: getGameState() })
+    .update({ content: allState, achievements: getAchievementState() })
     .eq("tg_id", user.tg_id)
     .select();
-  console.log("updated GameState");
 
+  console.log("updated GameState");
   return { data, error };
 };
 
@@ -164,6 +192,9 @@ export const syncGameState = async () => {
       ...gameStateStored.content,
       createdAt: gameStateStored.created_at,
     });
+
+    updateAchivementsState(gameStateStored.achievements);
+    // updateAchivementsState()
     console.log("sync GameState");
     return;
   }
@@ -184,4 +215,5 @@ export const syncGameState = async () => {
   updateGameState({
     ...gameStateStored.content,
   });
+  updateAchivementsState(gameStateStored.achievements);
 };

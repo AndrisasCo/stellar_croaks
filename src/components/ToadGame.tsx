@@ -52,6 +52,7 @@ export default function ToadGame() {
       const offlineHours = timeManager.getTimePassed();
 
       console.log("Hours offline: ", offlineHours);
+
       const delayNotification = (props: any) =>
         setTimeout(() => addNotification(props), 2000);
 
