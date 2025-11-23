@@ -3,6 +3,7 @@ import { Toad } from "../models/toad";
 import { getGameState, updateGameState } from "./localStorage";
 import {
   getAchievementState,
+  saveAchievementState,
   updateAchivementsState,
 } from "./achivements-manager";
 import { loadColliderState, saveColliderState } from "./collider-manager";
@@ -199,7 +200,7 @@ export const syncGameState = async () => {
       createdAt: gameStateStored.created_at,
     });
     if (Object.keys(gameStateStored.achievements).length) {
-      updateAchivementsState(gameStateStored.achievements);
+      saveAchievementState(gameStateStored.achievements);
     }
     if (Object.keys(gameStateStored.collider).length) {
       saveColliderState(gameStateStored.collider);
@@ -228,8 +229,9 @@ export const syncGameState = async () => {
   updateGameState({
     ...gameStateStored.content,
   });
+
   if (Object.keys(gameStateStored.achievements).length) {
-    updateAchivementsState(gameStateStored.achievements);
+    saveAchievementState(gameStateStored.achievements);
   }
   if (Object.keys(gameStateStored.collider).length) {
     saveColliderState(gameStateStored.collider);
