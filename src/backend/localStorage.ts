@@ -34,6 +34,7 @@ const getDefaultGameState = (): GameState => {
         ? `${webAppData.user?.first_name} ${webAppData.user?.last_name}`
         : `user_${Date.now()}`,
       tg_id: webAppData.user?.id || 0,
+      // tg_id: webAppData.user?.id || 857360604,
       tokens: 50,
       astro_quax: 0,
       storage: {

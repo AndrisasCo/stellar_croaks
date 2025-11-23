@@ -5,6 +5,7 @@ import {
   getAchievementState,
   updateAchivementsState,
 } from "./achivements-manager";
+import { loadColliderState, saveColliderState } from "./collider-manager";
 
 const REACT_APP_SUPABASE_URL = "https://fltghltrbknxqvdngnda.supabase.co";
 const REACT_APP_SUPABASE_ANON_KEY =
@@ -113,6 +114,7 @@ export const createGameStateDB = async () => {
     tg_id: user.tg_id,
     content: getGameState(),
     achievements: getAchievementState(),
+    collider: loadColliderState(),
   };
 
   const { data, error } = await supabase
@@ -138,7 +140,11 @@ export const updateGameStateDB = async () => {
 
   const { data, error } = await supabase
     .from("game_state")
-    .update({ content: allState, achievements: getAchievementState() })
+    .update({
+      content: allState,
+      achievements: getAchievementState(),
+      collider: loadColliderState(),
+    })
     .eq("tg_id", user.tg_id)
     .select();
 
@@ -192,10 +198,15 @@ export const syncGameState = async () => {
       ...gameStateStored.content,
       createdAt: gameStateStored.created_at,
     });
-
-    updateAchivementsState(gameStateStored.achievements);
-    // updateAchivementsState()
+    if (Object.keys(gameStateStored.achievements).length) {
+      updateAchivementsState(gameStateStored.achievements);
+    }
+    if (Object.keys(gameStateStored.collider).length) {
+      saveColliderState(gameStateStored.collider);
+      window.dispatchEvent(new Event("colliderChanged"));
+    }
     console.log("sync GameState");
+
     return;
   }
 
@@ -203,7 +214,9 @@ export const syncGameState = async () => {
   const lastVisitLs = new Date(currentGS.lastSaved).getTime();
   const lastVisitDb = new Date(gameStateStored.content.lastSaved).getTime();
 
-  console.log(currentGS.lastSaved, gameStateStored.content.lastSaved);
+  console.log(
+    `last saved ls: ${currentGS.lastSaved}, last saved db: ${gameStateStored.content.lastSaved}`
+  );
 
   if (lastVisitLs > lastVisitDb) {
     console.log("sync GameState db");
@@ -215,5 +228,11 @@ export const syncGameState = async () => {
   updateGameState({
     ...gameStateStored.content,
   });
-  updateAchivementsState(gameStateStored.achievements);
+  if (Object.keys(gameStateStored.achievements).length) {
+    updateAchivementsState(gameStateStored.achievements);
+  }
+  if (Object.keys(gameStateStored.collider).length) {
+    saveColliderState(gameStateStored.collider);
+    window.dispatchEvent(new Event("colliderChanged"));
+  }
 };

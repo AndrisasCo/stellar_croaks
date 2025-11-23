@@ -9,32 +9,15 @@ import { Toad } from "../models/toad";
 import { calculateBreedingTime } from "../utils/calculate-genetics";
 import { ColliderState } from "../models/types";
 import { Scene } from "../models/scene";
-import {
-  createToad,
-  updateToadById,
-  updateToadsByIds,
-  updateUser,
-} from "../backend";
+import { createToad, updateToadsByIds, updateUser } from "../backend";
 import { useGameState } from "../hooks/use-game-state";
 import { User } from "../models/user";
 import { useNotifications } from "../hooks/use-notification";
-
-interface ColliderSlot {
-  id: string;
-  parent1?: Toad | null;
-  parent2?: Toad | null;
-  child: Toad | null;
-  startTime: number | null;
-  duration: number;
-  isReady: boolean;
-}
-
-// Расширяем существующий ColliderState если нужно
-interface ExtendedColliderState {
-  slots: ColliderSlot[];
-  maxSlots: number;
-  speedMultiplier: number;
-}
+import {
+  ExtendedColliderState,
+  loadColliderState,
+  saveColliderState,
+} from "../backend/collider-manager";
 
 interface ToadContextType {
   toads: Toad[];
@@ -61,43 +44,6 @@ interface ToadProviderProps {
   children: ReactNode;
 }
 
-// Ключи для localStorage
-const COLLIDER_STATE_KEY = "toadColliderState";
-
-// Функции для работы с localStorage
-const saveColliderState = (state: ColliderState) => {
-  try {
-    localStorage.setItem(COLLIDER_STATE_KEY, JSON.stringify(state));
-  } catch (error) {
-    console.error("Error saving collider state to localStorage:", error);
-  }
-};
-
-const loadColliderState = (): ColliderState | null => {
-  try {
-    const saved = localStorage.getItem(COLLIDER_STATE_KEY);
-    return saved ? JSON.parse(saved) : null;
-  } catch (error) {
-    console.error("Error loading collider state from localStorage:", error);
-    return null;
-  }
-};
-
-// Начальное состояние коллайдера
-const initialColliderState: ColliderState = {
-  slots: [
-    {
-      id: 1,
-      child: null,
-      startTime: null,
-      duration: 0,
-      isReady: false,
-    },
-  ],
-  maxSlots: 1,
-  speedMultiplier: 1,
-};
-
 export const ToadProvider: React.FC<ToadProviderProps> = ({ children }) => {
   const [currentSceneIndex, setCurrentSceneIndex] = useState(0);
   const { addNotification } = useNotifications();
@@ -122,14 +68,23 @@ export const ToadProvider: React.FC<ToadProviderProps> = ({ children }) => {
   const selectedToad = toads.find((t) => t.id === selectedToadId) || null;
 
   // В провайдере добавляем состояние коллайдера с загрузкой из localStorage
-  const [colliderState, setColliderState] = useState<ColliderState>(() => {
-    const savedState = loadColliderState();
-    return savedState || initialColliderState;
-  });
+  const [colliderState, setColliderState] = useState<ColliderState>(
+    loadColliderState()
+  );
 
   // Сохраняем состояние коллайдера в localStorage при изменении
   useEffect(() => {
+    console.log("colliderChanged");
+
+    const updateCollider = () => setColliderState(loadColliderState());
+
+    window.addEventListener("colliderChanged", updateCollider);
+
     saveColliderState(colliderState);
+
+    return () => {
+      window.removeEventListener("colliderChanged", updateCollider);
+    };
   }, [colliderState]);
 
   const startBreeding = (child: Toad) => {

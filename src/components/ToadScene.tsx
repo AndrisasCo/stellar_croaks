@@ -58,7 +58,12 @@ export default function ToadScene() {
 
   const handleShowFoodTooltip = () => {
     if (!isFoodAvailable) {
-      addNotification({ content: "Недостаточно корма на складе!" });
+      addNotification({
+        content: `Недостаточно корма на складе! Не хватает: ${Math.abs(
+          (account?.storage?.food || 0) - toads.length
+        )}`,
+        type: "warn",
+      });
       return;
     }
     setShowFoodTooltip(true);
