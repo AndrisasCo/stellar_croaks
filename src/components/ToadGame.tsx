@@ -44,10 +44,30 @@ export default function ToadGame() {
     if (!allToads) {
       return;
     }
-    const timeManager = new TimeManager();
-    const offlineHours = timeManager.getTimePassed();
 
-    console.log("Hours offline: ", offlineHours);
+    const initGame = async () => {
+      await syncGameState();
+
+      const timeManager = new TimeManager();
+      const offlineHours = timeManager.getTimePassed();
+
+      console.log("Hours offline: ", offlineHours);
+      const delayNotification = (props: any) =>
+        setTimeout(() => addNotification(props), 2000);
+
+      processBreeding(offlineHours, delayNotification);
+
+      if (offlineHours > 0.09) {
+        processHunger(offlineHours);
+      }
+
+      // костыль! почему-то при первом рендере не ловит событие
+      setTimeout(() => {
+        window.dispatchEvent(new Event("gameStateUpdated"));
+      }, 2000);
+    };
+
+    initGame();
 
     const gameLoop = setInterval(() => {
       // Быстрое размножение при активной игре
@@ -56,20 +76,6 @@ export default function ToadGame() {
       // медленнее голод
       processHunger(0.1);
     }, 5 * 60 * 1000); // Каждые 5 минут
-
-    const delayNotification = (props: any) =>
-      setTimeout(() => addNotification(props), 2000);
-
-    processBreeding(offlineHours, delayNotification);
-
-    if (offlineHours > 0.09) {
-      processHunger(offlineHours);
-    }
-
-    // костыль! почему-то при первом рендере не ловит событие
-    setTimeout(() => {
-      window.dispatchEvent(new Event("gameStateUpdated"));
-    }, 2000);
 
     return () => {
       clearInterval(gameLoop);
@@ -94,8 +100,6 @@ export default function ToadGame() {
   }, []);
 
   useEffect(() => {
-    syncGameState();
-
     const interval = setInterval(() => {
       updateGameStateDB();
     }, 1000 * 60 * 2); // 2m

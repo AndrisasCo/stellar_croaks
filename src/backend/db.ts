@@ -165,7 +165,23 @@ export const syncGameState = async () => {
       createdAt: gameStateStored.created_at,
     });
     console.log("sync GameState");
-  } else {
-    await updateGameStateDB();
+    return;
   }
+
+  // смотрим какое сохранение более свежее
+  const lastVisitLs = new Date(currentGS.lastSaved).getTime();
+  const lastVisitDb = new Date(gameStateStored.content.lastSaved).getTime();
+
+  console.log(currentGS.lastSaved, gameStateStored.content.lastSaved);
+
+  if (lastVisitLs > lastVisitDb) {
+    console.log("sync GameState db");
+    await updateGameStateDB();
+    return;
+  }
+
+  console.log("sync GameState ls");
+  updateGameState({
+    ...gameStateStored.content,
+  });
 };

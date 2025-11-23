@@ -233,9 +233,14 @@ export const endPregnancy = async (toad: Toad, addNotification: any) => {
   if (!toad.pregnancy) {
     return;
   }
-  const { offspringCount, fatherId } = toad.pregnancy;
+  const { offspringCount } = toad.pregnancy;
 
-  const father = toad.pregnancy.father || getToadById(fatherId);
+  const father = toad.pregnancy.father;
+
+  if (!father) {
+    updateToadById(toad.id, { ...toad, pregnancy: null });
+    return;
+  }
 
   const children = new Array(offspringCount)
     .fill(1)
