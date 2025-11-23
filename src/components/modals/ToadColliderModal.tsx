@@ -112,10 +112,10 @@ export default function ToadCollider({
       setTimeout(resolve, MIXING_DURATION + 500)
     );
 
-    let message = `Успешное смешивание генов!`;
+    let message = `✨ Новый гибрид создан!`;
 
     if (genesBreakChance) {
-      message = "Неудачное смешивание генов: жаба будет бесполой.";
+      message = " Неудачное смешивание генов: жаба будет бесполой.";
     }
 
     if (mutationChance) {
@@ -365,7 +365,7 @@ export default function ToadCollider({
           /* Результат скрещивания */
           <div className="text-center">
             <div className="text-green-400 text-base sm:text-lg mb-3 font-semibold">
-              ✨ Новый гибрид создан!
+              {breedingResult.message}
             </div>
 
             <div className="bg-gray-700/50 rounded-xl p-3 mb-4 border border-gray-600/50">
