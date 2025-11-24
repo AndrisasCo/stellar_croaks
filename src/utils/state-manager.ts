@@ -8,7 +8,11 @@ export const getHunger = (
 ) => {
   return (
     Math.round(
-      Math.max(0, (currentHunger - (hoursPassed / 24) * 100 * hungerRate) * 10)
+      Math.max(
+        0,
+        (currentHunger - (hoursPassed / 24) * 100 * Math.max(0, hungerRate)) *
+          10
+      )
     ) / 10
   );
 };
