@@ -1,6 +1,8 @@
-import React from "react";
+import React, { useState } from "react";
 import { useToads } from "../ToadContext";
 import Modal from "../shared/Modal";
+import { getGameState, updateGameState } from "../../backend/localStorage";
+import { InfoIcons } from "../../assets/icons";
 
 interface SceneInfoModalProps {
   isOpen: boolean;
@@ -9,8 +11,53 @@ interface SceneInfoModalProps {
 
 const SceneInfoModal: React.FC<SceneInfoModalProps> = ({ isOpen, onClose }) => {
   const { currentScene, toads } = useToads();
+  const [isEditing, setIsEditing] = useState(false);
+  const [sceneName, setSceneName] = useState(currentScene?.name || "");
+  const [isLoading, setIsLoading] = useState(false);
 
-  if (!isOpen || !currentScene) return null;
+  if (!isOpen) return null;
+
+  // Обработчик сохранения названия
+  const handleSaveName = () => {
+    if (!sceneName.trim() || sceneName === currentScene.name) {
+      setIsEditing(false);
+      setSceneName(currentScene.name || "");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const allScenes = getGameState().scenes;
+      const foundScene = allScenes.find((s) => s.id === currentScene.id);
+      if (!foundScene) {
+        return;
+      }
+      foundScene.name = sceneName.trim();
+      updateGameState({ scenes: allScenes });
+
+      setIsEditing(false);
+    } catch (error) {
+      console.error("Ошибка при обновлении названия:", error);
+      setSceneName(currentScene.name || ""); // Возвращаем старое название при ошибке
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Обработчик отмены редактирования
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setSceneName(currentScene.name || "");
+  };
+
+  // Обработчик нажатия Enter
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      handleSaveName();
+    } else if (e.key === "Escape") {
+      handleCancelEdit();
+    }
+  };
 
   const icon = (
     <svg
@@ -92,12 +139,10 @@ const SceneInfoModal: React.FC<SceneInfoModalProps> = ({ isOpen, onClose }) => {
     >
       {/* Основная информация о сцене */}
       <div className="space-y-3 mb-6">
-        <StatItem
-          label="Название вольера"
-          value={currentScene.name}
-          icon={
+        <div className="flex justify-between items-center p-3 bg-gray-700/50 rounded-lg border border-gray-600/50">
+          <div className="flex items-center gap-2 flex-1">
             <svg
-              className="w-4 h-4"
+              className="w-4 h-4 text-gray-400 flex-shrink-0"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -109,50 +154,78 @@ const SceneInfoModal: React.FC<SceneInfoModalProps> = ({ isOpen, onClose }) => {
                 d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
               />
             </svg>
-          }
-        />
-
-        {/* <StatItem
-          label="Статус"
-          value="Активна"
-          color="text-green-400"
-          icon={
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M5 13l4 4L19 7"
-              />
-            </svg>
-          }
-        /> */}
-
-        {/* <StatItem
-          label="Редкость сцены"
-          value="Обычная"
-          color="text-purple-400"
-          icon={
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"
-              />
-            </svg>
-          }
-        /> */}
+            {isEditing ? (
+              <div className="flex items-center gap-2 flex-1">
+                <input
+                  type="text"
+                  value={sceneName}
+                  onChange={(e) => setSceneName(e.target.value)}
+                  onKeyDown={handleKeyPress}
+                  className="flex-1 bg-gray-600/50 border border-blue-500/50 rounded px-2 py-1 text-white text-sm focus:outline-none focus:border-blue-400"
+                  placeholder="Введите название вольера"
+                  autoFocus
+                  disabled={isLoading}
+                />
+                <div className="flex gap-1">
+                  <button
+                    onClick={handleSaveName}
+                    disabled={isLoading}
+                    className="p-1 text-green-400 hover:text-green-300 disabled:opacity-50"
+                    title="Сохранить"
+                  >
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={handleCancelEdit}
+                    disabled={isLoading}
+                    className="p-1 text-red-400 hover:text-red-300 disabled:opacity-50"
+                    title="Отмена"
+                  >
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <span className="text-gray-300 text-sm">Название</span>
+                <span className="text-white font-medium text-sm ml-2 flex-1 truncate">
+                  {currentScene.name}
+                </span>
+                <button
+                  onClick={() => setIsEditing(true)}
+                  className="p-1 text-gray-400 hover:text-blue-400 transition-colors flex-shrink-0"
+                  title="Редактировать название"
+                >
+                  {InfoIcons.pencil}
+                </button>
+              </>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Статистика по жабам */}
@@ -250,13 +323,6 @@ const SceneInfoModal: React.FC<SceneInfoModalProps> = ({ isOpen, onClose }) => {
             </div>
             <div className="text-gray-400 text-[10px] mt-1">Скорость</div>
           </div>
-        </div>
-      </div>
-
-      {/* Подвал с общей информацией */}
-      <div className="border-t border-gray-700/50 mt-6 pt-4">
-        <div className="text-center text-gray-400 text-xs">
-          Обновлено: {new Date().toLocaleTimeString()}
         </div>
       </div>
     </Modal>

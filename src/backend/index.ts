@@ -26,7 +26,7 @@ export const getScenes = (): Scene[] => {
 export const createToad = (toadData: Partial<Toad>): Toad[] => {
   const state = getGameState();
   const newToad: Toad = {
-    id: Date.now(),
+    id: Math.round(Date.now() * Math.random()),
     created_at: new Date().toISOString(),
     owner: state.user.id,
     ...toadData,
@@ -38,7 +38,10 @@ export const createToad = (toadData: Partial<Toad>): Toad[] => {
   return [newToad];
 };
 
-export const createToads = (toadsData: Partial<Toad>[]): Toad[] => {
+export const createToads = (
+  toadsData: Partial<Toad>[],
+  syntetic?: boolean
+): Toad[] => {
   const state = getGameState();
   const newToads: Toad[] = toadsData.map(
     (toadData) =>
@@ -51,7 +54,7 @@ export const createToads = (toadsData: Partial<Toad>[]): Toad[] => {
   );
 
   const allToads = [...state.toads, ...newToads];
-  updateGameState({ toads: allToads });
+  updateGameState({ toads: allToads }, syntetic);
 
   return newToads;
 };
@@ -83,14 +86,15 @@ export const updateUser = (userData: Partial<User>): User => {
 // Toad update operations
 export const updateToadById = (
   toadId: number,
-  toadData: Partial<Toad>
+  toadData: Partial<Toad>,
+  syntetic?: boolean
 ): Toad[] => {
   const state = getGameState();
   const updatedToads = state.toads.map((toad) =>
     toad.id === toadId ? { ...toad, ...toadData } : toad
   );
 
-  updateGameState({ toads: updatedToads });
+  updateGameState({ toads: updatedToads }, syntetic);
   const updatedToad = updatedToads.find((t) => t.id === toadId);
 
   return updatedToad ? [updatedToad] : [];
@@ -98,14 +102,15 @@ export const updateToadById = (
 
 export const updateToadsByIds = (
   toadIds: number[],
-  toadData: Partial<Toad>
+  toadData: Partial<Toad>,
+  syntetic?: boolean
 ): Toad[] => {
   const state = getGameState();
   const updatedToads = state.toads.map((toad) =>
     toadIds.includes(toad.id) ? { ...toad, ...toadData } : toad
   );
 
-  updateGameState({ toads: updatedToads });
+  updateGameState({ toads: updatedToads }, syntetic);
   const updatedToadsList = updatedToads.filter((t) => toadIds.includes(t.id));
 
   return updatedToadsList;

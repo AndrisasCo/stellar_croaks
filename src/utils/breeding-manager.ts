@@ -1,10 +1,5 @@
 import { getPregnancyDuration, HOURS_TO_GROW_UP, Toad } from "../models/toad";
-import {
-  createToads,
-  getToadById,
-  updateToadById,
-  updateToadsByIds,
-} from "../backend";
+import { createToads, updateToadById, updateToadsByIds } from "../backend";
 import { generateChildToad } from "./calculate-genetics";
 import { getHoursFromNow } from "./date";
 import { getGameState } from "../backend/localStorage";
@@ -150,7 +145,7 @@ const processSceneBreeding = async (
   });
 
   if (grownToadpoles.length > 0) {
-    updateToadsByIds(grownToadpoles, { stage: "adult" });
+    updateToadsByIds(grownToadpoles, { stage: "adult" }, true);
   }
 };
 
@@ -213,7 +208,7 @@ export const startPregnancy = async (toad: Toad, father: Toad) => {
     offspringCount: calculateOffspringCount(toad),
   };
 
-  await updateToadById(toad.id, toad);
+  updateToadById(toad.id, toad, true);
 };
 
 const calculateOffspringCount = (female: Toad): number => {
@@ -236,7 +231,7 @@ export const endPregnancy = async (toad: Toad, addNotification: any) => {
   const father = toad.pregnancy.father;
 
   if (!father) {
-    updateToadById(toad.id, { ...toad, pregnancy: null });
+    updateToadById(toad.id, { ...toad, pregnancy: null }, true);
     return;
   }
 
@@ -273,8 +268,8 @@ export const endPregnancy = async (toad: Toad, addNotification: any) => {
     });
   }
 
-  createToads(children);
+  createToads(children, true);
   completeAchivement("first-offspring");
   // обновляем мать
-  updateToadById(toad.id, { ...toad, pregnancy: null });
+  updateToadById(toad.id, { ...toad, pregnancy: null }, true);
 };

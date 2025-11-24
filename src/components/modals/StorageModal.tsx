@@ -31,7 +31,7 @@ interface StorageItem {
 }
 
 const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
-  const [activeTab, setActiveTab] = useState<StorageTabType>("items");
+  const [activeTab, setActiveTab] = useState<StorageTabType>("toads");
   const { addNotification } = useNotifications();
   const { allToads = [], account, currentScene, toads } = useToads();
   const { playClick } = useSoundEffects();
@@ -46,7 +46,7 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
     setSortDirection,
     filterBy,
     setFilterBy,
-  } = useFilters(toads);
+  } = useFilters(storedToads);
 
   // Предметы на складе
   const storageItems: StorageItem[] = [
@@ -215,19 +215,6 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
         <button
           onClick={() => {
             playClick();
-            setActiveTab("items");
-          }}
-          className={`flex-1 py-3 text-sm font-medium transition-colors ${
-            activeTab === "items"
-              ? "text-blue-400 border-b-2 border-blue-400"
-              : "text-gray-400 hover:text-gray-300"
-          }`}
-        >
-          Предметы
-        </button>
-        <button
-          onClick={() => {
-            playClick();
             setActiveTab("toads");
           }}
           className={`flex-1 py-3 text-sm font-medium transition-colors ${
@@ -237,6 +224,19 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
           }`}
         >
           Жабы ({storedToads.length})
+        </button>
+        <button
+          onClick={() => {
+            playClick();
+            setActiveTab("items");
+          }}
+          className={`flex-1 py-3 text-sm font-medium transition-colors ${
+            activeTab === "items"
+              ? "text-blue-400 border-b-2 border-blue-400"
+              : "text-gray-400 hover:text-gray-300"
+          }`}
+        >
+          Предметы
         </button>
       </div>
 
@@ -334,12 +334,12 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
               sortDirection={sortDirection}
             />
 
-            {storedToads.length === 0 ? (
+            {filteredAndSortedToads.length === 0 ? (
               <div className="text-center py-8">
                 <div className="text-gray-400 text-4xl mb-3">🐸</div>
-                <p className="text-gray-400 text-sm">На складе нет жаб</p>
+                <p className="text-gray-400 text-sm">Жаб не обнаружено</p>
                 <p className="text-gray-500 text-xs mt-1">
-                  Жабы появятся здесь после продажи или снятия со сцены
+                  Попробуйте поменять фильтры
                 </p>
               </div>
             ) : (

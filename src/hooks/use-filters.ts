@@ -65,6 +65,10 @@ export const useFilters = (toads: Toad[]) => {
         return toads.filter((t) => t.sex === "female");
       case "toadpoles":
         return toads.filter((t) => t.stage === "toadpole");
+      case "enclosure":
+        return toads.filter((t) => t.scene_id != null);
+      case "storage":
+        return toads.filter((t) => t.scene_id === null);
       case "all":
       default:
         return toads;

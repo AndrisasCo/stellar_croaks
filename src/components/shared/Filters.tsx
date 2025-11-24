@@ -2,6 +2,7 @@ import { useState } from "react";
 import { SortArrowIcon } from "./SortArrowIcon";
 import React from "react";
 import { Toad } from "../../models/toad";
+import { useToads } from "../ToadContext";
 
 export type SortDirection = "asc" | "desc";
 
@@ -65,10 +66,13 @@ export const Filters = ({
     }
   };
 
+  const { currentScene, toads: currentToads } = useToads();
+
   // Статистика для фильтров
   const malesCount = toads.filter((t) => t.sex === "male").length;
   const femalesCount = toads.filter((t) => t.sex === "female").length;
   const toadPolesCount = toads.filter((t) => t.stage === "toadpole").length;
+  const storageToads = toads.filter((t) => t.scene_id === null).length;
 
   return (
     <>
@@ -136,70 +140,129 @@ export const Filters = ({
           </div>
 
           {/* Селектор фильтрации */}
-          <div className="flex items-center gap-2">
-            <span className="text-purple-300 text-xs font-medium min-w-[20px]">
-              <svg
-                className="w-4 h-4"
-                viewBox="0 0 16 16"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M14 2H2L6 8V14L10 12V8L14 2Z"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
+          {!addPrice && (
+            <div className="flex items-center gap-2">
+              <span className="text-purple-300 text-xs font-medium min-w-[20px]">
+                <svg
+                  className="w-4 h-4"
+                  viewBox="0 0 16 16"
                   fill="none"
-                />
-              </svg>
-            </span>
-            <div className="flex bg-gray-700/50 rounded-lg p-1 border text-nowrap border-purple-500/10 overflow-x-auto">
-              <button
-                onClick={() => setFilterBy("all")}
-                className={`px-2 py-1 text-nowrap rounded text-xs font-medium transition-all ${
-                  filterBy === "all"
-                    ? "bg-purple-600 text-white shadow-sm shadow-purple-500/30"
-                    : "text-gray-300 hover:text-purple-300"
-                }`}
-              >
-                Все ({toads.length})
-              </button>
-              <div className="w-px bg-purple-500/20 my-1"></div>
-              <button
-                onClick={() => setFilterBy("females")}
-                className={`px-2 py-1 rounded text-xs font-medium transition-all ${
-                  filterBy === "females"
-                    ? "bg-purple-600 text-white shadow-sm shadow-purple-500/30"
-                    : "text-gray-300 hover:text-purple-300"
-                }`}
-              >
-                Самки ({femalesCount})
-              </button>
-              <div className="w-px bg-purple-500/20 my-1"></div>
-              <button
-                onClick={() => setFilterBy("males")}
-                className={`px-2 py-1 rounded text-xs font-medium transition-all ${
-                  filterBy === "males"
-                    ? "bg-purple-600 text-white shadow-sm shadow-purple-500/30"
-                    : "text-gray-300 hover:text-purple-300"
-                }`}
-              >
-                Самцы ({malesCount})
-              </button>
-              <div className="w-px bg-purple-500/20 my-1"></div>
-              <button
-                onClick={() => setFilterBy("toadpoles")}
-                className={`px-2 py-1 rounded text-xs font-medium transition-all ${
-                  filterBy === "toadpoles"
-                    ? "bg-purple-600 text-white shadow-sm shadow-purple-500/30"
-                    : "text-gray-300 hover:text-purple-300"
-                }`}
-              >
-                Головастики ({toadPolesCount})
-              </button>
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M14 2H2L6 8V14L10 12V8L14 2Z"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    fill="none"
+                  />
+                </svg>
+              </span>
+              <div className="flex bg-gray-700/50 rounded-lg p-1 border text-nowrap border-purple-500/10 overflow-x-auto">
+                <button
+                  onClick={() => setFilterBy("all")}
+                  className={`px-2 py-1 text-nowrap rounded text-xs font-medium transition-all ${
+                    filterBy === "all"
+                      ? "bg-purple-600 text-white shadow-sm shadow-purple-500/30"
+                      : "text-gray-300 hover:text-purple-300"
+                  }`}
+                >
+                  Все ({toads.length})
+                </button>
+                <div className="w-px bg-purple-500/20 my-1"></div>
+                <button
+                  onClick={() => setFilterBy("females")}
+                  className={`px-2 py-1 rounded text-xs font-medium transition-all ${
+                    filterBy === "females"
+                      ? "bg-purple-600 text-white shadow-sm shadow-purple-500/30"
+                      : "text-gray-300 hover:text-purple-300"
+                  }`}
+                >
+                  Самки ({femalesCount})
+                </button>
+                <div className="w-px bg-purple-500/20 my-1"></div>
+                <button
+                  onClick={() => setFilterBy("males")}
+                  className={`px-2 py-1 rounded text-xs font-medium transition-all ${
+                    filterBy === "males"
+                      ? "bg-purple-600 text-white shadow-sm shadow-purple-500/30"
+                      : "text-gray-300 hover:text-purple-300"
+                  }`}
+                >
+                  Самцы ({malesCount})
+                </button>
+                <div className="w-px bg-purple-500/20 my-1"></div>
+                <button
+                  onClick={() => setFilterBy("toadpoles")}
+                  className={`px-2 py-1 rounded text-xs font-medium transition-all ${
+                    filterBy === "toadpoles"
+                      ? "bg-purple-600 text-white shadow-sm shadow-purple-500/30"
+                      : "text-gray-300 hover:text-purple-300"
+                  }`}
+                >
+                  Головастики ({toadPolesCount})
+                </button>
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* Селектор фильтрации */}
+          {addPrice && (
+            <div className="flex items-center gap-2">
+              <span className="text-purple-300 text-xs font-medium min-w-[20px]">
+                <svg
+                  className="w-4 h-4"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M14 2H2L6 8V14L10 12V8L14 2Z"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    fill="none"
+                  />
+                </svg>
+              </span>
+              <div className="flex bg-gray-700/50 rounded-lg p-1 border text-nowrap border-purple-500/10 overflow-x-auto">
+                <button
+                  onClick={() => setFilterBy("all")}
+                  className={`px-2 py-1 text-nowrap rounded text-xs font-medium transition-all ${
+                    filterBy === "all"
+                      ? "bg-purple-600 text-white shadow-sm shadow-purple-500/30"
+                      : "text-gray-300 hover:text-purple-300"
+                  }`}
+                >
+                  Все ({toads.length})
+                </button>
+                <div className="w-px bg-purple-500/20 my-1"></div>
+                <button
+                  onClick={() => setFilterBy("enclosure")}
+                  className={`px-2 py-1 truncate rounded text-xs font-medium transition-all ${
+                    filterBy === "enclosure"
+                      ? "bg-purple-600 text-white shadow-sm shadow-purple-500/30"
+                      : "text-gray-300 hover:text-purple-300"
+                  }`}
+                >
+                  {currentScene.name} ({currentToads.length})
+                </button>
+                <div className="w-px bg-purple-500/20 my-1"></div>
+                <button
+                  onClick={() => setFilterBy("storage")}
+                  className={`px-2 py-1 rounded text-xs font-medium transition-all ${
+                    filterBy === "storage"
+                      ? "bg-purple-600 text-white shadow-sm shadow-purple-500/30"
+                      : "text-gray-300 hover:text-purple-300"
+                  }`}
+                >
+                  Склад ({storageToads})
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </>

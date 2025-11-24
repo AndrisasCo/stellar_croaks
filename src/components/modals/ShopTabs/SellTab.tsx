@@ -20,29 +20,14 @@ import { completeAchivement } from "../../../backend/achivements-manager";
 import { useFilters } from "../../../hooks/use-filters";
 import { Filters } from "../../shared/Filters";
 
-// Иконка стрелки для сортировки
-const SortArrowIcon = ({ direction }: { direction: "asc" | "desc" | null }) => (
-  <svg
-    className={`w-3 h-3 transition-transform ${
-      direction === "desc" ? "rotate-180" : ""
-    }`}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 16 16"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      d="M4 6l4 4 4-4"
-    />
-  </svg>
-);
-
 const SellTab: React.FC = () => {
   const { allToads: activeToads, account, currentScene } = useToads();
   const { playCell } = useSoundEffects();
   const [selectedToads, setSelectedToads] = useState<number[]>([]);
+
+  const preparedToads = activeToads.filter(
+    (t) => t.scene_id === null || t.scene_id === currentScene.id
+  );
 
   const { tokens = 0 } = account || {};
 
@@ -54,7 +39,7 @@ const SellTab: React.FC = () => {
     setSortDirection,
     filterBy,
     setFilterBy,
-  } = useFilters(activeToads);
+  } = useFilters(preparedToads);
 
   const selectedFilteredToads = selectedToads.filter((id) =>
     filteredToads.some((toad) => toad.id === id)
@@ -126,12 +111,6 @@ const SellTab: React.FC = () => {
     filteredToads.length > 0 &&
     filteredToads.every((toad) => selectedToads.includes(toad.id));
 
-  // Статистика для отображения
-  const enclosureCount = activeToads.filter(
-    (t) => t.scene_id === currentScene.id
-  ).length;
-  const storageCount = activeToads.filter((t) => t.scene_id === null).length;
-
   return (
     <div className="space-y-3 px-3 pb-3">
       {/* Панель фильтров */}
@@ -201,7 +180,6 @@ const SellTab: React.FC = () => {
           {filteredToads.map((toad) => {
             const price = calculateSellPrice(toad);
             const isSelected = selectedToads.includes(toad.id);
-
             return (
               <ToadItem
                 key={toad.id}

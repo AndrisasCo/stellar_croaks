@@ -24,10 +24,14 @@ export const processHunger = (hoursPassed: number) => {
     const hunger = getHunger(t.state.hunger, t.genes.hungerRate, hoursPassed);
     console.log(`Toad ${t.name} hunger ${t.state.hunger} to ${hunger}`);
 
-    updateToadById(t.id, {
-      state: {
-        hunger,
+    updateToadById(
+      t.id,
+      {
+        state: {
+          hunger,
+        },
       },
-    });
+      true
+    );
   });
 };

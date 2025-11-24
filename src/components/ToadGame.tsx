@@ -11,11 +11,7 @@ import { processBreeding, TimeManager } from "../utils/breeding-manager";
 import ShopMenu from "./modals/ShopMenuModal";
 import StorageModal from "./modals/StorageModal";
 import { processHunger } from "../utils/state-manager";
-import {
-  syncGameState,
-  updateGameStateDB,
-  updateLeaderbord,
-} from "../backend/db";
+import { syncGameState, updateGameStateDB } from "../backend/db";
 import LeaderboardModal from "./modals/LeaderboardModal";
 import TutorialModal from "./modals/TutorialModal";
 import { useTelegram } from "../hooks/use-tg";
@@ -84,14 +80,17 @@ export default function ToadGame() {
   }, []);
 
   useEffect(() => {
-    window.addEventListener("AchivementCompleted", (e) => {
+    const notification = (e: any) => {
       addNotification({
         type: "success",
         content: `Новое достижение! ${e.detail.name}`,
       });
-    });
+    };
 
-    return () => window.removeEventListener("AchivementCompleted");
+    window.addEventListener("AchivementCompleted", notification);
+
+    return () =>
+      window.removeEventListener("AchivementCompleted", notification);
   }, []);
 
   useEffect(() => {
@@ -100,14 +99,13 @@ export default function ToadGame() {
     }, 2000);
   }, []);
 
-  // todo поменять метод синка
-  // useEffect(() => {
-  //   const interval = setInterval(() => {
-  //     updateGameStateDB();
-  //   }, 1000 * 60 * 2); // 2m
+  useEffect(() => {
+    const interval = setInterval(() => {
+      updateGameStateDB();
+    }, 1000 * 60 * 3); // 3m
 
-  //   return () => clearInterval(interval);
-  // }, []);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleShopClick = () => {
     setShopMenuOpen(true);

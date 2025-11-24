@@ -70,11 +70,12 @@ export const getGameState = (): GameState => {
 };
 
 // Сохранение всего состояния
-export const saveGameState = (state: GameState): void => {
+export const saveGameState = (state: GameState, syntetic: boolean): void => {
   try {
     const stateToSave = {
       ...state,
-      lastSaved: new Date().toISOString(),
+      // не обновляем время, если событие было вызвано gameLoop
+      lastSaved: syntetic ? state.lastSaved : new Date().toISOString(),
     };
     localStorage.setItem(LS_KEY, JSON.stringify(stateToSave));
 
@@ -93,10 +94,13 @@ export const saveGameState = (state: GameState): void => {
 };
 
 // Обновление состояния (частичное)
-export const updateGameState = (updates: Partial<GameState>): GameState => {
+export const updateGameState = (
+  updates: Partial<GameState>,
+  syntetic = false
+): GameState => {
   const currentState = getGameState();
   const newState = { ...currentState, ...updates };
 
-  saveGameState(newState);
+  saveGameState(newState, syntetic);
   return newState;
 };
