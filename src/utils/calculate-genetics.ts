@@ -134,11 +134,11 @@ export const generateChildToad = (
 
   const childSize = inheritTrait(
     parents.map((p) => p.genes.weight),
-    personalityTrait?.weightMultiplier
+    personalityTrait?.weightMultiplier || 1
   );
   const childSpeed = inheritTrait(
     parents.map((p) => p.genes.speed),
-    personalityTrait?.speedMultiplier
+    personalityTrait?.speedMultiplier || 1
   );
 
   const hungerRate = inheritTrait(
