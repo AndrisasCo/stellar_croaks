@@ -181,6 +181,10 @@ export const syncGameState = async () => {
 
   const data = await getGameStateDB();
 
+  if (data?.error) {
+    return;
+  }
+
   if (!data?.data) {
     await createGameStateDB();
 
