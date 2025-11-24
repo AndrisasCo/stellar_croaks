@@ -33,10 +33,18 @@ export const mixColors = (colors: string[]): string => {
     .padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
 };
 
-export const inheritTrait = (parents: number[]): number => {
-  const average = getSum(parents) / parents.length;
-  const mutation = Math.random() * 0.3 - 0.15; // -15% to +15%
-  return average * (1 + mutation);
+export const inheritTrait = (
+  parents: number[],
+  multiplier?: number
+): number => {
+  let average = getSum(parents) / parents.length;
+  const mutation = Math.random() * 0.3 - 0.15; // -10% to +10%
+  average *= 1 + mutation;
+
+  if (multiplier) {
+    return average * (0.7 + 0.3 * multiplier); // влияние мультиплайра
+  }
+  return average;
 };
 
 // макс редкость 1 + 0.9 + 0.5 = 2.4
@@ -124,19 +132,23 @@ export const generateChildToad = (
   const personalityTrait =
     personalities[personality as keyof typeof personalities];
 
-  const childSize =
-    inheritTrait(parents.map((p) => p.genes.weight)) *
-    (personalityTrait?.weightMultiplier || 1);
-  const childSpeed =
-    inheritTrait(parents.map((p) => p.genes.speed)) *
-    (personalityTrait?.speedMultiplier || 1);
+  const childSize = inheritTrait(
+    parents.map((p) => p.genes.weight),
+    personalityTrait?.weightMultiplier
+  );
+  const childSpeed = inheritTrait(
+    parents.map((p) => p.genes.speed),
+    personalityTrait?.speedMultiplier
+  );
 
-  const hungerRate =
-    inheritTrait(parents.map((p) => p.genes.hungerRate)) *
-    (personality ? personalityTrait.hungerRate : 1);
-  const fertility =
-    inheritTrait(parents.map((p) => p.genes.fertility)) *
-    (personality ? personalityTrait.fertility : 1);
+  const hungerRate = inheritTrait(
+    parents.map((p) => p.genes.hungerRate),
+    personalityTrait.hungerRate
+  );
+  const fertility = inheritTrait(
+    parents.map((p) => p.genes.fertility),
+    personalityTrait.fertility
+  );
 
   return {
     name: `Жаб-${generation}-${Math.floor(Math.random() * 1000)}`,

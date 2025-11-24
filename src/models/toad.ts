@@ -501,9 +501,9 @@ export const calculateSellPrice = (toad: Toad): number => {
     basePrice /= 3;
   }
 
-  basePrice += toad.genes?.fertility || 1;
-  basePrice += toad.state?.hunger / 100;
-  basePrice -= toad.genes?.hungerRate;
+  basePrice += toad.genes.fertility || 1;
+  basePrice += toad.state.hunger / 100;
+  basePrice -= toad.genes.hungerRate;
 
   return Math.max(0, Math.round(basePrice));
 };
