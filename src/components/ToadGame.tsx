@@ -100,13 +100,14 @@ export default function ToadGame() {
     }, 2000);
   }, []);
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      updateGameStateDB();
-    }, 1000 * 60 * 2); // 2m
+  // todo поменять метод синка
+  // useEffect(() => {
+  //   const interval = setInterval(() => {
+  //     updateGameStateDB();
+  //   }, 1000 * 60 * 2); // 2m
 
-    return () => clearInterval(interval);
-  }, []);
+  //   return () => clearInterval(interval);
+  // }, []);
 
   const handleShopClick = () => {
     setShopMenuOpen(true);
