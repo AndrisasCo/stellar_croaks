@@ -1,5 +1,5 @@
 # Используем официальный образ Node.js 18 как базовый
-FROM node:18-alpine
+FROM mirror.gcr.io/library/node:18-alpine
 
 # Устанавливаем рабочую директорию
 WORKDIR /app
