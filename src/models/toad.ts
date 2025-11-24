@@ -491,7 +491,7 @@ export const getRarityConfig = (rarity: number) => {
 };
 
 export const calculateSellPrice = (toad: Toad): number => {
-  let basePrice = toad.genes.rarity;
+  let basePrice = toad.genes.rarity * 1.5;
 
   if (toad.stage !== "adult") {
     basePrice /= 1.5;
