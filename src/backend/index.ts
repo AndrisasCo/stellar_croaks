@@ -43,7 +43,7 @@ export const createToads = (toadsData: Partial<Toad>[]): Toad[] => {
   const newToads: Toad[] = toadsData.map(
     (toadData) =>
       ({
-        id: Date.now() + Math.random(),
+        id: Math.round(Math.random() * Date.now()),
         created_at: new Date().toISOString(),
         owner: state.user.id,
         ...toadData,
@@ -87,9 +87,7 @@ export const updateToadById = (
 ): Toad[] => {
   const state = getGameState();
   const updatedToads = state.toads.map((toad) =>
-    toad.id === toadId
-      ? { ...toad, ...toadData, updated_at: new Date().toISOString() }
-      : toad
+    toad.id === toadId ? { ...toad, ...toadData } : toad
   );
 
   updateGameState({ toads: updatedToads });
@@ -104,9 +102,7 @@ export const updateToadsByIds = (
 ): Toad[] => {
   const state = getGameState();
   const updatedToads = state.toads.map((toad) =>
-    toadIds.includes(toad.id)
-      ? { ...toad, ...toadData, updated_at: new Date().toISOString() }
-      : toad
+    toadIds.includes(toad.id) ? { ...toad, ...toadData } : toad
   );
 
   updateGameState({ toads: updatedToads });
