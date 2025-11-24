@@ -146,9 +146,12 @@ export const generateChildToad = (
     personalityTrait?.speedMultiplier
   );
 
-  const hungerRate = inheritTrait(
-    parents.map((p) => p.genes.hungerRate),
-    personalityTrait.hungerRate
+  const hungerRate = Math.max(
+    inheritTrait(
+      parents.map((p) => p.genes.hungerRate),
+      personalityTrait.hungerRate
+    ),
+    0.1
   );
   const fertility = inheritTrait(
     parents.map((p) => p.genes.fertility),
