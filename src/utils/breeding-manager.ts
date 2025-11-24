@@ -202,7 +202,10 @@ export const startPregnancy = async (toad: Toad, father: Toad) => {
   toad.pregnancy = {
     isPregnant: true,
     pregnancyStart: Date.now(),
-    pregnancyDuration: Math.min(getPregnancyDuration() * toad.genes.rarity, 12),
+    pregnancyDuration: Math.min(
+      getPregnancyDuration() + toad.genes.rarity / 2,
+      12
+    ),
     fatherId: father.id,
     father,
     offspringCount: calculateOffspringCount(toad),
