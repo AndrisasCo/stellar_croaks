@@ -38,7 +38,7 @@ export const inheritTrait = (
   multiplier?: number
 ): number => {
   let average = getSum(parents) / parents.length;
-  const mutation = Math.random() * 0.3 - 0.15; // -10% to +10%
+  const mutation = Math.random() * 0.2 - 0.1; // -10% to +10%
   average *= 1 + mutation;
 
   if (multiplier) {
