@@ -47,9 +47,9 @@ export const inheritTrait = (
   }
 
   if (multiplier) {
-    return average + (multiplier - 1); // влияние мультиплайра
+    return Math.max(0, average + (multiplier - 1)); // влияние мультиплайра
   }
-  return average;
+  return Math.max(0, average);
 };
 
 // макс редкость 1 + 0.9 + 0.5 = 2.4
