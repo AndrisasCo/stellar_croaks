@@ -224,7 +224,7 @@ export const syncGameState = async () => {
     `last saved ls: ${currentGS.lastSaved}, last saved db: ${gameStateStored.content.lastSaved}`
   );
 
-  if (lastVisitLs > lastVisitDb) {
+  if (lastVisitLs >= lastVisitDb) {
     console.log("sync GameState db");
     await updateGameStateDB();
     return;
