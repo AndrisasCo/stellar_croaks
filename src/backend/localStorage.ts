@@ -73,8 +73,6 @@ export const saveGameState = (state: GameState): void => {
   try {
     const stateToSave = {
       ...state,
-      // todo убрать!
-      toads: state.toads.filter((t) => t.is_off === false),
       lastSaved: new Date().toISOString(),
     };
     localStorage.setItem(LS_KEY, JSON.stringify(stateToSave));

@@ -32,9 +32,7 @@ export class TimeManager {
 }
 
 export const processBreeding = (daysPassed: number, addNotification: any) => {
-  const toads = getGameState()
-    .toads.filter((t) => t.scene_id !== null)
-    .filter((t) => !t.is_off);
+  const toads = getGameState().toads.filter((t) => t.scene_id !== null);
 
   // Группируем жаб по сценам
   const toadsByScene = groupToadsByScene(toads);
@@ -256,9 +254,8 @@ export const endPregnancy = async (toad: Toad, addNotification: any) => {
   }
 
   const allToadsOnScene =
-    getGameState().toads.filter(
-      (t) => !t.is_off && t.scene_id === currentSceneId
-    ).length + children.length;
+    getGameState().toads.filter((t) => t.scene_id === currentSceneId).length +
+    children.length;
 
   if (currentScene.capacity < allToadsOnScene) {
     children.slice(0, allToadsOnScene - currentScene.capacity).forEach((c) => {

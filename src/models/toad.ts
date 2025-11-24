@@ -4,7 +4,6 @@ export interface Toad {
   created_at: string;
   description: string | null;
   generation: number;
-  is_off: boolean | null; // продан или уничтожен *deprecated*
   name: string | null;
   owner: number;
   parents: number[] | null;
@@ -46,7 +45,6 @@ export const DEFAULT_TOADS: Toad[] = [
     scene_id: 1,
     created_at: new Date().toISOString(),
     description: null,
-    is_off: false,
     owner: 0, // будет заменено при создании
     parents: null,
     state: {
@@ -74,7 +72,6 @@ export const DEFAULT_TOADS: Toad[] = [
     scene_id: 1,
     created_at: new Date().toISOString(),
     description: null,
-    is_off: false,
     owner: 0, // будет заменено при создании
     parents: null,
     state: {
@@ -102,7 +99,6 @@ export const DEFAULT_TOADS: Toad[] = [
     scene_id: 1,
     created_at: new Date().toISOString(),
     description: null,
-    is_off: false,
     owner: 0, // будет заменено при создании
     parents: null,
     state: {

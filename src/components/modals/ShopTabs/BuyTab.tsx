@@ -72,9 +72,8 @@ const BuyTab: React.FC = () => {
     completeAchivement("buy-toad");
 
     const allToadsOnScene =
-      getGameState().toads.filter(
-        (t) => !t.is_off && t.scene_id === currentScene.id
-      ).length + 1;
+      getGameState().toads.filter((t) => t.scene_id === currentScene.id)
+        .length + 1;
 
     if (currentScene.capacity < allToadsOnScene) {
       createToad({ ...toad, scene_id: null });

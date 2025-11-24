@@ -29,7 +29,6 @@ export const createToad = (toadData: Partial<Toad>): Toad[] => {
     id: Date.now(),
     created_at: new Date().toISOString(),
     owner: state.user.id,
-    is_off: false,
     ...toadData,
   } as Toad;
 
@@ -47,7 +46,6 @@ export const createToads = (toadsData: Partial<Toad>[]): Toad[] => {
         id: Date.now() + Math.random(),
         created_at: new Date().toISOString(),
         owner: state.user.id,
-        is_off: false,
         ...toadData,
       } as Toad)
   );
@@ -60,7 +58,7 @@ export const createToads = (toadsData: Partial<Toad>[]): Toad[] => {
 
 export const getAllToads = (): Toad[] => {
   const state = getGameState();
-  return state.toads.filter((toad) => !toad.is_off);
+  return state.toads;
 };
 
 export const getToadById = (toadId: number): Toad => {

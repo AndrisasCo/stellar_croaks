@@ -50,10 +50,8 @@ export const ToadProvider: React.FC<ToadProviderProps> = ({ children }) => {
   const {
     user: account,
     scenes: ownedScenes,
-    toads: allToadsRaw,
+    toads: allToads,
   } = useGameState();
-
-  const allToads = allToadsRaw.filter((t) => !t.is_off);
 
   const currentScene = ownedScenes[currentSceneIndex];
 

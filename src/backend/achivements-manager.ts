@@ -95,7 +95,6 @@ export const achievementGroups = [
           created_at: new Date().toISOString(),
           description:
             "Награда за освоение основ жабьей науки. Кажется, знает о вас больше, чем вы сами",
-          is_off: false,
           owner: 0,
           parents: null,
           state: {
