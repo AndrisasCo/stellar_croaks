@@ -176,13 +176,14 @@ export const syncGameState = async () => {
   const { user } = currentGS;
 
   if (!user.tg_id) {
-    await createGameStateDB();
     return;
   }
 
   const data = await getGameStateDB();
 
   if (!data?.data) {
+    await createGameStateDB();
+
     return;
   }
 
