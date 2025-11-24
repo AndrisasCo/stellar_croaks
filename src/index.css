@@ -766,3 +766,13 @@ body {
   background-size: 200% 200%;
   animation: gradient 5s ease infinite;
 }
+
+/* Скрыть все скроллбары на сайте */
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+*::-webkit-scrollbar {
+  display: none;
+}
