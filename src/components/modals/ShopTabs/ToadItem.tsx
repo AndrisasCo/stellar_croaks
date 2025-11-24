@@ -1,19 +1,43 @@
 import { ReactElement } from "react";
 import { getRarityConfig, RARITY_CONFIG, Toad } from "../../../models/toad";
-import { CURRENCY_CONFIG, TYPE_ICONS } from "../../../utils/constants";
 import { ToadGender } from "../../shared/ToadGender";
 import { PregnancyIcon } from "../../../assets/icons";
+
+const HungerIcon = ({ level }: { level: number }) => {
+  const getHungerColor = (level: number) => {
+    if (level >= 80) return "text-green-400";
+    if (level >= 50) return "text-yellow-400";
+    if (level >= 20) return "text-orange-400";
+    return "text-red-400";
+  };
+
+  const getHungerIcon = (level: number) => {
+    if (level >= 80) return "🤤";
+    if (level >= 50) return "😐";
+    if (level >= 20) return "😟";
+    return "😵";
+  };
+
+  return (
+    <div className={`flex items-center gap-1 ${getHungerColor(level)}`}>
+      <span className="text-xs">{getHungerIcon(level)}</span>
+      <span className="text-[10px] font-medium">{level}%</span>
+    </div>
+  );
+};
 
 export const ToadItem = ({
   toad,
   button,
   onClick,
   isSelected,
+  showHunger,
 }: {
   toad: Toad;
   button: ReactElement;
   onClick?: () => void;
   isSelected?: boolean;
+  showHunger?: boolean;
 }) => {
   return (
     <div
@@ -78,6 +102,26 @@ export const ToadItem = ({
           </div>
         </div>
       </div>
+      {showHunger && (
+        <div className="flex w-full mt-2 items-center justify-between gap-3">
+          <HungerIcon level={toad.state.hunger} />
+          {/* Прогресс-бар голода */}
+          <div className="flex-1 h-1.5 bg-gray-600 rounded-full overflow-hidden">
+            <div
+              className={`h-full rounded-full ${
+                toad.state.hunger >= 80
+                  ? "bg-green-500"
+                  : toad.state.hunger >= 50
+                  ? "bg-yellow-500"
+                  : toad.state.hunger >= 20
+                  ? "bg-orange-500"
+                  : "bg-red-500"
+              }`}
+              style={{ width: `${toad.state.hunger}%` }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

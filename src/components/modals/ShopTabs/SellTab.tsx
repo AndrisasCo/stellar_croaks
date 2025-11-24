@@ -17,6 +17,8 @@ import {
 } from "../../../backend/shop-state";
 import { ToadItem } from "./ToadItem";
 import { completeAchivement } from "../../../backend/achivements-manager";
+import { useFilters } from "../../../hooks/use-filters";
+import { Filters } from "../../shared/Filters";
 
 // Иконка стрелки для сортировки
 const SortArrowIcon = ({ direction }: { direction: "asc" | "desc" | null }) => (
@@ -41,67 +43,19 @@ const SellTab: React.FC = () => {
   const { allToads: activeToads, account, currentScene } = useToads();
   const { playCell } = useSoundEffects();
   const [selectedToads, setSelectedToads] = useState<number[]>([]);
-  const [sortBy, setSortBy] = useState<"rarity" | "price" | "name">("rarity");
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
-  const [filterBy, setFilterBy] = useState<"all" | "enclosure" | "storage">(
-    "all"
-  );
+
   const { tokens = 0 } = account || {};
 
-  // Обработчик сортировки
-  const handleSort = (type: "rarity" | "price" | "name") => {
-    if (sortBy === type) {
-      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
-    } else {
-      setSortBy(type);
-      setSortDirection("desc");
-    }
-  };
+  const {
+    filteredAndSortedToads: filteredToads,
+    sortBy,
+    setSortBy,
+    sortDirection,
+    setSortDirection,
+    filterBy,
+    setFilterBy,
+  } = useFilters(activeToads);
 
-  // Фильтрация по бизнес-логике
-  const getFilteredToads = () => {
-    switch (filterBy) {
-      case "enclosure":
-        return activeToads.filter((t) => t.scene_id === currentScene.id);
-      case "storage":
-        return activeToads.filter((t) => t.scene_id === null);
-      case "all":
-      default:
-        return activeToads;
-    }
-  };
-
-  // Сортировка
-  const getSortedToads = (toads: Toad[]) => {
-    return [...toads].sort((a, b) => {
-      let aValue: any, bValue: any;
-
-      switch (sortBy) {
-        case "rarity":
-          aValue = a.genes.rarity;
-          bValue = b.genes.rarity;
-          break;
-        case "price":
-          aValue = calculateSellPrice(a);
-          bValue = calculateSellPrice(b);
-          break;
-        case "name":
-          aValue = a.name?.toLowerCase() || "";
-          bValue = b.name?.toLowerCase() || "";
-          break;
-        default:
-          return 0;
-      }
-
-      if (sortDirection === "desc") {
-        return bValue > aValue ? 1 : -1;
-      } else {
-        return aValue > bValue ? 1 : -1;
-      }
-    });
-  };
-
-  const filteredToads = getSortedToads(getFilteredToads());
   const selectedFilteredToads = selectedToads.filter((id) =>
     filteredToads.some((toad) => toad.id === id)
   );
@@ -181,134 +135,16 @@ const SellTab: React.FC = () => {
   return (
     <div className="space-y-3 px-3 pb-3">
       {/* Панель фильтров */}
-      <div className="bg-gray-800/40 backdrop-blur-sm rounded-xl p-3 border border-cyan-500/20">
-        <div className="space-y-2">
-          {/* Селектор сортировки */}
-          <div className="flex items-center gap-2">
-            <span className="text-cyan-300 text-xs font-medium min-w-[20px]">
-              <svg
-                className="w-4 h-4"
-                viewBox="0 0 16 16"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M4 6L8 2L12 6"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                <path
-                  d="M12 10L8 14L4 10"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </span>
-            <div className="flex bg-gray-700/50 rounded-lg p-1 border border-cyan-500/10">
-              <button
-                onClick={() => handleSort("rarity")}
-                className={`px-2 py-1 rounded text-xs font-medium transition-all flex items-center gap-1 ${
-                  sortBy === "rarity"
-                    ? "bg-cyan-600 text-white shadow-sm shadow-cyan-500/30"
-                    : "text-gray-300 hover:text-cyan-300"
-                }`}
-              >
-                Редкость
-                <SortArrowIcon
-                  direction={sortBy === "rarity" ? sortDirection : null}
-                />
-              </button>
-              <div className="w-px bg-cyan-500/20 my-1"></div>
-              <button
-                onClick={() => handleSort("price")}
-                className={`px-2 py-1 rounded text-xs font-medium transition-all flex items-center gap-1 ${
-                  sortBy === "price"
-                    ? "bg-cyan-600 text-white shadow-sm shadow-cyan-500/30"
-                    : "text-gray-300 hover:text-cyan-300"
-                }`}
-              >
-                Цена
-                <SortArrowIcon
-                  direction={sortBy === "price" ? sortDirection : null}
-                />
-              </button>
-              <div className="w-px bg-cyan-500/20 my-1"></div>
-              <button
-                onClick={() => handleSort("name")}
-                className={`px-2 py-1 rounded text-xs font-medium transition-all flex items-center gap-1 ${
-                  sortBy === "name"
-                    ? "bg-cyan-600 text-white shadow-sm shadow-cyan-500/30"
-                    : "text-gray-300 hover:text-cyan-300"
-                }`}
-              >
-                Имя
-                <SortArrowIcon
-                  direction={sortBy === "name" ? sortDirection : null}
-                />
-              </button>
-            </div>
-          </div>
-
-          {/* Селектор фильтрации */}
-          <div className="flex items-center gap-2">
-            <span className="text-purple-300 text-xs font-medium min-w-[20px]">
-              <svg
-                className="w-4 h-4"
-                viewBox="0 0 16 16"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M14 2H2L6 8V14L10 12V8L14 2Z"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  fill="none"
-                />
-              </svg>
-            </span>
-            <div className="flex bg-gray-700/50 rounded-lg p-1 border border-purple-500/10">
-              <button
-                onClick={() => setFilterBy("all")}
-                className={`px-2 py-1 rounded text-xs font-medium transition-all ${
-                  filterBy === "all"
-                    ? "bg-purple-600 text-white shadow-sm shadow-purple-500/30"
-                    : "text-gray-300 hover:text-purple-300"
-                }`}
-              >
-                Все ({activeToads.length})
-              </button>
-              <div className="w-px bg-purple-500/20 my-1"></div>
-              <button
-                onClick={() => setFilterBy("enclosure")}
-                className={`px-2 py-1 rounded text-xs font-medium transition-all ${
-                  filterBy === "enclosure"
-                    ? "bg-purple-600 text-white shadow-sm shadow-purple-500/30"
-                    : "text-gray-300 hover:text-purple-300"
-                }`}
-              >
-                Вольер ({enclosureCount})
-              </button>
-              <div className="w-px bg-purple-500/20 my-1"></div>
-              <button
-                onClick={() => setFilterBy("storage")}
-                className={`px-2 py-1 rounded text-xs font-medium transition-all ${
-                  filterBy === "storage"
-                    ? "bg-purple-600 text-white shadow-sm shadow-purple-500/30"
-                    : "text-gray-300 hover:text-purple-300"
-                }`}
-              >
-                Склад ({storageCount})
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+      <Filters
+        toads={activeToads}
+        setSortDirection={setSortDirection}
+        setSortBy={setSortBy}
+        filterBy={filterBy}
+        setFilterBy={setFilterBy}
+        sortBy={sortBy}
+        sortDirection={sortDirection}
+        addPrice
+      />
 
       {/* Панель выбора */}
       <div className="bg-gray-800/30 backdrop-blur-sm rounded-xl p-3 border border-yellow-500/20">

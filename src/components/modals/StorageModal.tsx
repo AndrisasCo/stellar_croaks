@@ -8,6 +8,9 @@ import { updateToadById } from "../../backend";
 import { ToadGender } from "../shared/ToadGender";
 import { PregnancyIcon } from "../../assets/icons";
 import { useNotifications } from "../../hooks/use-notification";
+import { ToadItem } from "./ShopTabs/ToadItem";
+import { useFilters } from "../../hooks/use-filters";
+import { Filters } from "../shared/Filters";
 
 interface StorageModalProps {
   isOpen: boolean;
@@ -32,9 +35,18 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
   const { addNotification } = useNotifications();
   const { allToads = [], account, currentScene, toads } = useToads();
   const { playClick } = useSoundEffects();
-
   // Жабы на складе (без сцены)
   const storedToads = allToads?.filter((toad) => toad.scene_id === null) || [];
+
+  const {
+    filteredAndSortedToads,
+    sortBy,
+    setSortBy,
+    sortDirection,
+    setSortDirection,
+    filterBy,
+    setFilterBy,
+  } = useFilters(toads);
 
   // Предметы на складе
   const storageItems: StorageItem[] = [
@@ -312,6 +324,16 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
               </div>
             </div>
 
+            <Filters
+              toads={storedToads}
+              setSortDirection={setSortDirection}
+              setSortBy={setSortBy}
+              filterBy={filterBy}
+              setFilterBy={setFilterBy}
+              sortBy={sortBy}
+              sortDirection={sortDirection}
+            />
+
             {storedToads.length === 0 ? (
               <div className="text-center py-8">
                 <div className="text-gray-400 text-4xl mb-3">🐸</div>
@@ -321,83 +343,22 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
                 </p>
               </div>
             ) : (
-              storedToads.map((toad) => {
-                const rarityConfig = getRarityConfig(toad.genes.rarity);
-
+              filteredAndSortedToads.map((toad) => {
                 return (
-                  <div
+                  <ToadItem
                     key={toad.id}
-                    className="bg-gray-800 rounded-xl p-3 border border-gray-700 hover:border-green-500/50 transition-all cursor-pointer"
-                    onClick={() => handleMoveToadToScene(toad)}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="relative">
-                        <div
-                          className="w-10 h-10 rounded-full border-2"
-                          style={{
-                            backgroundColor: toad.genes.colors[0],
-                            borderColor: rarityConfig.borderColor
-                              .replace("border-", "")
-                              .replace("/50", ""),
-                          }}
-                        />
-                        <span className="absolute -top-1 -right-1 text-xs bg-gray-800 rounded-full p-1">
-                          <ToadGender gender={toad.sex} />
-                        </span>
-                        {toad.pregnancy?.isPregnant && (
-                          <span className="absolute -bottom-1 -left-1 text-xs text-pink-400 bg-gray-800 rounded-full p-1">
-                            <PregnancyIcon />
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <p className="text-white font-medium truncate">
-                            {toad.name || "Без имени"}
-                          </p>
-                          <span className={`text-xs ${rarityConfig.color}`}>
-                            {rarityConfig.label}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-3 text-xs text-gray-400 mb-1">
-                          <span>Размер: {toad.genes.weight.toFixed(1)}</span>
-                          <span>Скорость: {toad.genes.speed.toFixed(1)}</span>
-                          <span>Редкость: {toad.genes.rarity.toFixed(1)}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-xs text-gray-400 flex-wrap">
-                          <span>Поколение {toad.generation}</span>
-                          <span>•</span>
-                          <span>
-                            {toad.stage === "adult" ? "Взрослый" : "Головастик"}
-                          </span>
-                          <span>•</span>
-                          <span>Сытость: {toad.state.hunger}/100</span>
-                          {toad.genes.personality && (
-                            <>
-                              <span>•</span>
-                              <span className="text-purple-400">
-                                {getPersonalityLabel(toad.genes.personality)}
-                              </span>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                      <div className="text-green-400 text-sm font-medium">
+                    button={
+                      <button
+                        className="text-green-400 px-1 py-2 bg-green-400 bg-opacity-30 rounded-lg text-sm font-medium"
+                        onClick={() => handleMoveToadToScene(toad)}
+                      >
                         В вольер →
-                      </div>
-                    </div>
-                  </div>
+                      </button>
+                    }
+                    toad={toad}
+                  />
                 );
               })
-            )}
-
-            {/* Подсказка */}
-            {storedToads.length > 0 && (
-              <div className="mt-4 p-3 bg-gray-700/50 rounded-lg border border-gray-600/50">
-                <div className="text-gray-400 text-sm text-center">
-                  Нажмите на жабу чтобы переместить в активный вольер
-                </div>
-              </div>
             )}
           </div>
         )}

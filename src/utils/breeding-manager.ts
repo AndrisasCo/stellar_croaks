@@ -139,7 +139,7 @@ const processSceneBreeding = async (
 
       if (t.state.hunger - hunger < 0) {
         addNotification({
-          content: `Toad ${t.name} was too hungry to grow!`,
+          content: `${t.name}  был слишком голодный и не смог вырасти!`,
           type: "warn",
         });
       } else {

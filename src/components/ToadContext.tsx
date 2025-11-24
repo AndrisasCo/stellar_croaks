@@ -83,7 +83,7 @@ export const ToadProvider: React.FC<ToadProviderProps> = ({ children }) => {
     return () => {
       window.removeEventListener("colliderChanged", updateCollider);
     };
-  }, [colliderState]);
+  }, [JSON.stringify(colliderState)]);
 
   const startBreeding = (child: Toad) => {
     const duration = calculateBreedingTime(
