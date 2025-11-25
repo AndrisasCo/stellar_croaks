@@ -115,7 +115,7 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
 
   // Проверка, является ли игрок текущим пользователем
   const isCurrentUser = (player: LeaderboardItemType): boolean => {
-    return account?.id === player.user_id;
+    return account?.tg_id === player.tg_id;
   };
 
   // Функция для получения заголовка вкладки
@@ -177,7 +177,7 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
   );
 
   const getRank = () => {
-    return 1 + sortedPlayers.findIndex((p) => p.user_id === account.id);
+    return 1 + sortedPlayers.findIndex((p) => p.tg_id === account.tg_id);
   };
 
   // Компонент для отображения информации о редкой жабе (оптимизированный для мобилок)
@@ -333,7 +333,7 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
             <span className="text-purple-400">⭐</span>
             <span className="text-gray-300">
               {players
-                .find((p) => p.user_id === account.id)
+                .find((p) => p.tg_id === account.tg_id)
                 ?.rarest_toad.genes.rarity.toFixed(1) || "0.0"}
             </span>
           </div>

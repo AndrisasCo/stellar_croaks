@@ -49,7 +49,17 @@ const SceneInfoModal: React.FC<SceneInfoModalProps> = ({ isOpen, onClose }) => {
   const handleUpgrade = () => {
     const newTokens = account.tokens - upgradeCost;
 
-    if (isMaxLevel || newTokens < 0) {
+    if (isMaxLevel) {
+      return;
+    }
+
+    if (newTokens < 0) {
+      addNotification({
+        type: "danger",
+        content: `Не хватает ${Math.abs(newTokens)} ${
+          CURRENCY_CONFIG.tokens.icon
+        }`,
+      });
       return;
     }
 

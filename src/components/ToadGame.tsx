@@ -144,7 +144,7 @@ export default function ToadGame() {
   };
 
   return (
-    <div className="min-h-screen flex mb-8 flex-col items-center p-2 bg-gradient-to-br from-gray-900 via-purple-900/20 to-green-900/20">
+    <div className="min-h-screen flex mb-9 pb-4 flex-col items-center p-2 bg-gradient-to-br from-gray-900 via-purple-900/20 to-green-900/20">
       {showLoadingScreen && <LoadingScreen />}
       <div className="w-full min-h-screen flex flex-col max-w-md relative mx-auto">
         {/* Кнопка открытия дополнительного меню */}
@@ -240,24 +240,24 @@ export default function ToadGame() {
         <ColliderButton />
 
         {/* Статистика в футере */}
-        <footer className="mt-auto text-center">
+        <footer className="mt-auto text-center pb-4">
           <p className="text-gray-500 text-xs">
             {toads.length} / {currentScene.capacity} жаб в вольере |{" "}
             {toads.filter((t) => t.type === "hybrid").length} гибридов
           </p>
         </footer>
-        <footer className="fixed bottom-0 left-0 right-0 bg-gray-900/80 backdrop-blur-sm border-t border-purple-500/20 py-2 z-20">
-          <div className="max-w-md mx-auto px-4">
+        <footer className="fixed bottom-0 left-0 right-0 bg-gray-900/80 backdrop-blur-sm border-t border-purple-500/20 pt-2 pb-3 z-20">
+          <div className="max-w-md mx-auto px-10">
             <div className="flex justify-between items-center text-xs px-3">
-              <div className="text-pink-300/80">
-                {" "}
-                🍎 {account.storage.food}{" "}
-              </div>
+              <div className="text-pink-300/80">🍎 {account.storage.food} </div>
               <div className="text-cyan-300/80">
                 {CURRENCY_CONFIG.tokens.icon} {account?.tokens || 0}
               </div>
               <div className="text-green-300/80">
                 {CURRENCY_CONFIG.astro_quax.icon} {account?.astro_quax || 0}
+              </div>
+              <div className="text-purple-300/80 flex gap-1">
+                <img src="/assets/logo.png" width={16} /> {allToads.length}
               </div>
             </div>
           </div>
