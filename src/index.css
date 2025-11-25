@@ -776,3 +776,17 @@ body {
 *::-webkit-scrollbar {
   display: none;
 }
+
+/* Глобальный CSS */
+:root {
+  --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.min-h-screen {
+  min-height: 100vh; /* fallback */
+  min-height: 100dvh;
+}
+
+.safe-area-bottom {
+  padding-bottom: calc(var(--safe-area-inset-bottom) + 1rem);
+}
