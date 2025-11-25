@@ -144,7 +144,7 @@ export default function ToadGame() {
   };
 
   return (
-    <div className="min-h-[100dvh] pb-safe flex mb-9 pb-4 flex-col items-center p-2 bg-gradient-to-br from-gray-900 via-purple-900/20 to-green-900/20">
+    <div className="min-h-[100dvh] safe-area-bottom  flex mb-9 pb-4 flex-col items-center p-2 bg-gradient-to-br from-gray-900 via-purple-900/20 to-green-900/20">
       {showLoadingScreen && <LoadingScreen />}
       <div className="w-full flex flex-col max-w-md relative mx-auto">
         {/* Кнопка открытия дополнительного меню */}
