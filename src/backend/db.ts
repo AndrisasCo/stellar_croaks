@@ -78,14 +78,12 @@ export const updateLeaderbord = async () => {
     total_toads: toads.length,
   };
 
-  const { data, error } = await supabase
+  await supabase
     .from("leaderboard")
     .update(leaderbordData)
-    .eq("user_id", user.id)
-    .select();
+    .eq("tg_id", user.tg_id);
 
   console.log("Updated leaderboard");
-  return { data, error };
 };
 
 export const getAllLeaderboards = async () => {
