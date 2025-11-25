@@ -5,6 +5,7 @@ import {
   getDefaultGameState,
   updateGameState,
 } from "../../backend/localStorage";
+import { updateGameStateDB } from "../../backend/db";
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -48,6 +49,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   const handleConfirmReset = () => {
     localStorage.clear();
     updateGameState(getDefaultGameState());
+    updateGameStateDB();
     setShowResetConfirmation(false);
     onClose();
   };
