@@ -119,6 +119,11 @@ export default function ToadGame() {
           timeout: 15000,
         });
       }
+
+      if (!localStorage.getItem("tutorial_read")) {
+        localStorage.setItem("tutorial_read", "true");
+        setIsTutorialOpen(true);
+      }
     }, 2000);
   }, []);
 

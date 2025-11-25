@@ -39,6 +39,7 @@ const TutorialModal: React.FC<TutorialModalProps> = ({ isOpen, onClose }) => {
         "💚 Кормите жаб регулярно - голодные жабы стоят дешевле, не растут и не размножаются",
         "🎯 Нажимайте на жаб для просмотра характеристик",
         "🏠 Перемещайте жаб между вольерами для селекции",
+        "🌝 Если вы случайно уничтожили единственных жаб и при этом не можете купить новых - не беда! Сбросьте игровой прогресс в настройках, это позволит попробовать свои силы еще раз. ",
       ],
     },
     {
@@ -59,8 +60,8 @@ const TutorialModal: React.FC<TutorialModalProps> = ({ isOpen, onClose }) => {
       description: `Зарабатывайте ${CURRENCY_CONFIG.tokens.icon} продажей жаб и выполнением заказов. Используйте их для покупки корма и улучшений.`,
       color: "yellow",
       tips: [
-        `💸 Продавайте жаб на рынке за ${CURRENCY_CONFIG.tokens.icon} ${CURRENCY_CONFIG.tokens.name}ы`,
-        `⭐ Выполняйте элитные заказы за ${CURRENCY_CONFIG.astro_quax.icon} ${CURRENCY_CONFIG.astro_quax.name}ы`,
+        `💸 Продавайте жаб на рынке за ${CURRENCY_CONFIG.tokens.icon} ${CURRENCY_CONFIG.tokens.name}`,
+        `⭐ Выполняйте элитные заказы за ${CURRENCY_CONFIG.astro_quax.icon} ${CURRENCY_CONFIG.astro_quax.name}`,
         "🛒 Покупайте корм, жаб, вольеры и предметы в магазине",
       ],
     },

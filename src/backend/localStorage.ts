@@ -26,7 +26,7 @@ const getWAData = () => {
 
 export const webAppData = getWAData();
 // Инициализация состояния по умолчанию
-const getDefaultGameState = (): GameState => {
+export const getDefaultGameState = (): GameState => {
   return {
     user: {
       id: `user_${Date.now()}`,

@@ -33,10 +33,9 @@ export const createLeaderbord = async () => {
   if (!user.tg_id) {
     return;
   }
-  const { data: ldData } = await getLeaderboardByTg();
-  console.log({ ldData });
+  const ldData = await getLeaderboardByTg();
 
-  if (ldData) {
+  if (ldData?.data) {
     return;
   }
   const leaderbordData = {
@@ -62,6 +61,11 @@ export const createLeaderbord = async () => {
 export const updateLeaderbord = async () => {
   const { user, toads } = getGameState();
   if (!user.tg_id) {
+    return;
+  }
+
+  const ldData = await getLeaderboardByTg();
+  if (!ldData?.data) {
     return;
   }
 
@@ -97,7 +101,7 @@ export const getLeaderboardByTg = async () => {
   if (!user.tg_id) {
     return;
   }
-  const { data, error } = await supabase
+  const data = await supabase
     .from("leaderboard")
     .select()
     .eq("tg_id", user.tg_id)

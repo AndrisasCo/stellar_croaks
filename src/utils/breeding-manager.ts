@@ -124,7 +124,7 @@ const processSceneBreeding = async (
   // смотрим нужно ли жабе вырасти
   const toadpoles = sceneToads.filter((t) => t.stage === "toadpole");
 
-  const boost = getBoostByScene(toadpoles[0].scene_id, "grow");
+  const boost = getBoostByScene(toadpoles[0]?.scene_id, "grow");
 
   const boostedTimeToGrow = HOURS_TO_GROW_UP / boost;
 
