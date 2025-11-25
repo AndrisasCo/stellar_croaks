@@ -189,7 +189,7 @@ export default function ToadScene() {
 
             {/* Тултип подтверждения */}
             {showFoodTooltip && (
-              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 z-50">
+              <div className="absolute bottom-full right-2 transform  mb-2 z-50">
                 <div
                   className="
                   bg-gray-800 border border-gray-600 rounded-lg p-3 
