@@ -3,12 +3,11 @@ import { completeAchivement } from "../../../backend/achivements-manager";
 import { getGameState } from "../../../backend/localStorage";
 import {
   ShopState,
-  initializeShop,
   getShopState,
   saveShopState,
   INSTANT_REFRESH_COST,
   REFRESH_COOLDOWN,
-  ALL_TOADS,
+  getNewToads,
 } from "../../../backend/shop-state";
 import { useNotifications } from "../../../hooks/use-notification";
 
@@ -21,7 +20,8 @@ import { useState, useEffect } from "react";
 
 const refreshShop = (): ShopState => {
   const now = Date.now();
-  const newState = initializeShop();
+  const newState = getShopState();
+  newState.availableToads = getNewToads();
   newState.lastRefresh = now;
   newState.nextRefresh = now + REFRESH_COOLDOWN;
   return newState;
@@ -75,17 +75,18 @@ const BuyTab: React.FC = () => {
       getGameState().toads.filter((t) => t.scene_id === currentScene.id)
         .length + 1;
 
+    let scene_id: number | null = currentScene?.id;
+
     if (currentScene.capacity < allToadsOnScene) {
-      createToad({ ...toad, scene_id: null });
+      scene_id = null;
       addNotification({
         type: "warn",
         content:
           "Превышен лимит жаб на вольер, новая жаба была помещена на склад.",
       });
-      return;
     }
 
-    createToad({ ...toad, scene_id: currentScene?.id });
+    createToad({ ...toad, scene_id });
     updateUser({ tokens: tokens - calculateBuyPrice(toad) });
 
     // Помечаем жабу как купленную

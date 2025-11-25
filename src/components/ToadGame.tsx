@@ -20,9 +20,10 @@ import { CURRENCY_CONFIG } from "../utils/constants";
 import { createToad } from "../backend";
 import { DEFAULT_TOADS } from "../models/toad";
 import AchivementsModal from "./modals/AchivementsModal";
+import { getGameState } from "../backend/localStorage";
 
 export default function ToadGame() {
-  const { toads, account, allToads } = useToads();
+  const { toads, account, allToads, currentScene } = useToads();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [shopMenuOpen, setShopMenuOpen] = useState(false);
@@ -74,6 +75,10 @@ export default function ToadGame() {
       processHunger(0.1);
     }, 5 * 60 * 1000); // Каждые 5 минут
 
+    setInterval(() => {
+      processBreeding(0, addNotification);
+    }, 60 * 1000); // Каждую минуту
+
     return () => {
       clearInterval(gameLoop);
     };
@@ -96,6 +101,24 @@ export default function ToadGame() {
   useEffect(() => {
     setTimeout(() => {
       setIsLoading(false);
+
+      // нотификейшн при заходе в игру
+      const updateDeployTime = 1764087709219;
+      const lastSaveTime = new Date(getGameState().lastSaved).getTime();
+
+      if (updateDeployTime > lastSaveTime) {
+        addNotification({
+          type: "info",
+          content: "Добавлены улучшения для вольеров",
+          timeout: 15000,
+        });
+
+        addNotification({
+          type: "info",
+          content: "Обновлена элитная секция рынка",
+          timeout: 15000,
+        });
+      }
     }, 2000);
   }, []);
 
@@ -214,7 +237,7 @@ export default function ToadGame() {
         {/* Статистика в футере */}
         <footer className="mt-auto text-center">
           <p className="text-gray-500 text-xs">
-            {toads.length} жаб в вольере |{" "}
+            {toads.length} / {currentScene.capacity} жаб в вольере |{" "}
             {toads.filter((t) => t.type === "hybrid").length} гибридов
           </p>
         </footer>

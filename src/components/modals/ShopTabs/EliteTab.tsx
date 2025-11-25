@@ -1,92 +1,181 @@
-import React, { useState } from "react";
-import { deleteToadsByIds, updateToadById, updateUser } from "../../../backend";
+import React, { useEffect, useState } from "react";
+import { deleteToadsByIds, updateUser } from "../../../backend";
 import { useSoundEffects } from "../../../hooks/use-sound-effects";
 import { Toad } from "../../../models/toad";
 import { useToads } from "../../ToadContext";
-import { CURRENCY_CONFIG, TYPE_ICONS } from "../../../utils/constants";
+import { CURRENCY_CONFIG } from "../../../utils/constants";
 import { ToadGender } from "../../shared/ToadGender";
+import {
+  eliteOrders,
+  getNewElite,
+  getShopState,
+  INSTANT_REFRESH_COST,
+  REFRESH_COOLDOWN,
+  saveShopState,
+  ShopState,
+} from "../../../backend/shop-state";
+import { useNotifications } from "../../../hooks/use-notification";
+
+const refreshShop = (): ShopState => {
+  const now = Date.now();
+  const newState = getShopState();
+  newState.eliteOrders = getNewElite();
+  newState.lastRefreshElite = now;
+  newState.nextRefreshElite = now + REFRESH_COOLDOWN;
+  return newState;
+};
 
 const EliteTab: React.FC = () => {
   const { allToads: activeToads, account } = useToads();
   const { playBuy } = useSoundEffects();
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
-  const { astro_quax = 0 } = account || {};
+  const { astro_quax = 0, tokens = 0 } = account || {};
+  const [shopState, setShopState] = useState<ShopState>(getShopState());
+  const [timeLeft, setTimeLeft] = useState<string>("");
 
-  // Элитные заказы
-  const eliteOrders = [
-    {
-      id: "1",
-      title: "Гигантская жаба",
-      description: "Нужна жаба размером более 25",
-      requirement: (toad: Toad) => toad.genes.weight > 25,
-      reward: 50,
-      currency: "elite",
-    },
-    {
-      id: "2",
-      title: "Романтичная душа",
-      description: 'Жаба с характером "Романтик"',
-      requirement: (toad: Toad) => toad.genes.personality === "romantic",
-      reward: 40,
-      currency: "elite",
-    },
-    {
-      id: "3",
-      title: "Загадочный андрогин",
-      description: "Жаба с полом Neuter",
-      requirement: (toad: Toad) => toad.sex === "neuter",
-      reward: 60,
-      currency: "elite",
-    },
-    {
-      id: "4",
-      title: "Скоростной чемпион",
-      description: "Жаба со скоростью более 1.8",
-      requirement: (toad: Toad) => toad.genes.speed > 1.8,
-      reward: 35,
-      currency: "elite",
-    },
-    {
-      id: "5",
-      title: "Эпический гигант",
-      description: "Эпическая жаба размером более 30",
-      requirement: (toad: Toad) =>
-        toad.genes.weight > 30 && toad.genes.rarity >= 7,
-      reward: 80,
-      currency: "elite",
-    },
-  ];
+  const { addNotification } = useNotifications();
+
+  // Таймер обратного отсчета
+  useEffect(() => {
+    const updateTimer = () => {
+      const now = Date.now();
+      const timeRemaining = shopState.nextRefreshElite - now;
+
+      if (timeRemaining <= 0) {
+        setTimeLeft("00:00:00");
+        return;
+      }
+
+      const hours = Math.floor(timeRemaining / (1000 * 60 * 60));
+      const minutes = Math.floor(
+        (timeRemaining % (1000 * 60 * 60)) / (1000 * 60)
+      );
+      const seconds = Math.floor((timeRemaining % (1000 * 60)) / 1000);
+
+      setTimeLeft(
+        `${hours.toString().padStart(2, "0")}:${minutes
+          .toString()
+          .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`
+      );
+    };
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+
+    return () => clearInterval(interval);
+  }, [shopState.nextRefreshElite]);
+
+  const handleInstantRefresh = () => {
+    if (tokens < INSTANT_REFRESH_COST) {
+      addNotification({
+        type: "warn",
+        content: `Недостаточно астрокваксов! Нужно ${INSTANT_REFRESH_COST}`,
+      });
+      return;
+    }
+
+    updateUser({ tokens: tokens - INSTANT_REFRESH_COST });
+    const newShopState = refreshShop();
+    setShopState(newShopState);
+    saveShopState(newShopState);
+    addNotification({
+      content: "Элитные заказы обновлены!",
+      type: "success",
+    });
+  };
 
   const handleAcceptEliteOrder = (order: any) => {
     setSelectedOrder(order);
   };
 
-  const handleSubmitEliteOrder = async (toad: Toad) => {
+  const handleSubmitEliteOrder = (order: string) => (toad: Toad) => {
     playBuy();
     deleteToadsByIds([toad.id]);
-
     updateUser({ astro_quax: astro_quax + selectedOrder.reward });
+
+    const newShopState: ShopState = {
+      ...shopState,
+      eliteOrders: shopState.eliteOrders.filter((or) => or !== order),
+    };
+
+    setShopState(newShopState);
+    saveShopState(newShopState);
     setSelectedOrder(null);
   };
 
   const getAvailableOrders = () => {
-    return eliteOrders.map((order) => {
-      const suitableToads = activeToads.filter(order.requirement);
-      return {
-        ...order,
-        canComplete: suitableToads.length > 0,
-        suitableToads,
-      };
-    });
+    return eliteOrders
+      .filter((oreder) => shopState.eliteOrders.includes(oreder.id))
+      .map((order) => {
+        const suitableToads = activeToads.filter(order.requirement);
+        return {
+          ...order,
+          canComplete: suitableToads.length > 0,
+          suitableToads,
+        };
+      });
+  };
+
+  const handleRefreshShop = () => {
+    const now = Date.now();
+    if (now < shopState.nextRefreshElite) {
+      addNotification({
+        type: "warn",
+        content: "Рынок можно обновить только раз в 3 часа",
+      });
+      return;
+    }
+
+    const newShopState = refreshShop();
+    setShopState(newShopState);
+    saveShopState(newShopState);
+    addNotification({ content: "Элитные заказы обновлены!", type: "success" });
   };
 
   const availableOrders = getAvailableOrders();
+
+  const canRefresh = Date.now() >= shopState.nextRefreshElite;
 
   return (
     <div className="space-y-4  pb-4">
       <h3 className="text-white font-semibold mb-3 px-2 text-lg">
         Элитные заказы
       </h3>
+      <div className="bg-gray-800 rounded-2xl py-4 px-2 border border-gray-700">
+        <div className="flex flex-col gap-3">
+          <div className="flex justify-between items-center">
+            <span className="text-gray-400">Обновление заказов:</span>
+            <span className="text-white font-mono">{timeLeft}</span>
+          </div>
+
+          <div className="flex gap-2">
+            <button
+              onClick={handleRefreshShop}
+              disabled={!canRefresh}
+              className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                canRefresh
+                  ? "bg-blue-600 hover:bg-blue-500 text-white"
+                  : "bg-gray-600 text-gray-400 cursor-not-allowed"
+              }`}
+            >
+              Обновить
+            </button>
+
+            <button
+              onClick={handleInstantRefresh}
+              disabled={tokens < INSTANT_REFRESH_COST}
+              className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+                tokens >= INSTANT_REFRESH_COST
+                  ? "bg-purple-600 hover:bg-purple-500 text-white"
+                  : "bg-gray-600 text-gray-400 cursor-not-allowed"
+              }`}
+            >
+              {INSTANT_REFRESH_COST} {CURRENCY_CONFIG.tokens.icon}
+            </button>
+          </div>
+        </div>
+      </div>
+
       {availableOrders.map((order) => (
         <div
           key={order.id}
@@ -145,7 +234,7 @@ const EliteTab: React.FC = () => {
         <EliteOrderTooltip
           order={selectedOrder}
           availableToads={selectedOrder.suitableToads}
-          onSelectToad={handleSubmitEliteOrder}
+          onSelectToad={handleSubmitEliteOrder(selectedOrder.id)}
           onClose={() => setSelectedOrder(null)}
         />
       )}

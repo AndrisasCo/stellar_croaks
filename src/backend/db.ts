@@ -34,6 +34,8 @@ export const createLeaderbord = async () => {
     return;
   }
   const { data: ldData } = await getLeaderboardByTg();
+  console.log({ ldData });
+
   if (ldData) {
     return;
   }

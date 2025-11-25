@@ -1,4 +1,18 @@
-export const Tooltip = ({ children, isOpen, onClose, title, revert }) => {
+interface TooltipProps {
+  children: React.ReactNode;
+  isOpen: boolean;
+  onClose: () => void;
+  title?: string;
+  revert?: boolean; // для позиционирования (сверху/снизу)
+}
+
+export const Tooltip = ({
+  children,
+  isOpen,
+  onClose,
+  title,
+  revert,
+}: TooltipProps) => {
   if (!isOpen) {
     return null;
   }

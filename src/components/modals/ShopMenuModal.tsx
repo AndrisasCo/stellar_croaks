@@ -35,7 +35,7 @@ export default function ShopMenu({ isOpen, onClose }: ShopMenuProps) {
       id: "elite" as TabType,
       label: "Элитные",
       color: "text-purple-400",
-      disabled: true,
+      // disabled: true,
     },
     { id: "enclosure" as TabType, label: "Вольеры", color: "text-blue-400" },
   ];

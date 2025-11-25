@@ -26,7 +26,7 @@ export class TimeManager {
   }
 }
 
-export const processBreeding = (daysPassed: number, addNotification: any) => {
+export const processBreeding = (hoursPassed: number, addNotification: any) => {
   const toads = getGameState().toads.filter((t) => t.scene_id !== null);
 
   // Группируем жаб по сценам
@@ -34,7 +34,7 @@ export const processBreeding = (daysPassed: number, addNotification: any) => {
 
   // Обрабатываем каждую сцену отдельно
   Object.entries(toadsByScene).forEach(([sceneId, sceneToads]) => {
-    processSceneBreeding(sceneId, sceneToads, daysPassed, addNotification);
+    processSceneBreeding(sceneId, sceneToads, hoursPassed, addNotification);
   });
 };
 

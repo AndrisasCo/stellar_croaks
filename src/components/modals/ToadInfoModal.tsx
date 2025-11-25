@@ -316,7 +316,7 @@ export default function ToadInfo({ onClose }: ToadInfoProps) {
             {showPersonalityTooltip && personalityData && (
               <Tooltip
                 title="Влияние характера"
-                isOpen={showPersonalityTooltip && personalityData}
+                isOpen={showPersonalityTooltip && !!personalityData}
                 onClose={() => setShowPersonalityTooltip(false)}
               >
                 <>

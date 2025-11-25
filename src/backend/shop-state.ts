@@ -6,6 +6,9 @@ export interface ShopState {
   availableToads: Partial<Toad>[];
   lastRefresh: number; // timestamp последнего обновления
   nextRefresh: number; // timestamp следующего обновления
+  lastRefreshElite: number; // timestamp последнего обновления
+  nextRefreshElite: number; // timestamp следующего обновления
+  eliteOrders: string[];
 }
 
 // Список всех возможных жаб для магазина
@@ -167,7 +170,7 @@ export const ALL_TOADS: Partial<Toad>[] = [
 ];
 
 // Ключ для localStorage
-export const SHOP_STATE_KEY = "toad_shop_state";
+export const SHOP_STATE_KEY = "toad_shop_state2";
 export const REFRESH_COOLDOWN = 3 * 60 * 60 * 1000; // 3 часа в миллисекундах
 export const INSTANT_REFRESH_COST = 20; // Стоимость мгновенного обновления
 
@@ -189,15 +192,248 @@ export const saveShopState = (state: ShopState) => {
 // Инициализация магазина со случайным набором жаб
 export const initializeShop = (): ShopState => {
   const now = Date.now();
+
+  return {
+    availableToads: getNewToads(),
+    lastRefresh: now - REFRESH_COOLDOWN,
+    nextRefresh: now,
+    lastRefreshElite: now - REFRESH_COOLDOWN,
+    nextRefreshElite: now,
+    eliteOrders: getNewElite(),
+  };
+};
+
+export const getNewToads = () => {
   const shuffled = [...ALL_TOADS].sort(() => Math.random() - 0.5);
-  const availableToads = shuffled.slice(0, 3).map((toad) => ({
+  return shuffled.slice(0, 3).map((toad) => ({
     ...randomizeToadCharacteristics(toad, 0.1),
     id: Math.round(Math.random() * Date.now()),
   }));
-
-  return {
-    availableToads,
-    lastRefresh: now - REFRESH_COOLDOWN,
-    nextRefresh: now,
-  };
 };
+
+export const getNewElite = () => {
+  const shuffled = [...eliteOrders].sort(() => Math.random() - 0.5);
+  return shuffled.map((e) => e.id).slice(0, 3);
+};
+
+const BASE_PRICE = 3; // Базовая стоимость = 5 токенов
+
+export const eliteOrders = [
+  {
+    id: "elite_1",
+    title: "Нежный гигант",
+    description: "Жаба размером более 35 с характером Романтик",
+    requirement: (toad: Toad) =>
+      toad.genes.weight > 35 && toad.genes.personality === "romantic",
+    reward: BASE_PRICE * 18, // 90 токенов (очень редкое сочетание)
+    difficulty: "extreme",
+  },
+  {
+    id: "elite_2",
+    title: "Поэт болотных глубин",
+    description: "Жаба с характером Мечтатель",
+    requirement: (toad: Toad) => toad.genes.personality === "dreamer",
+    reward: BASE_PRICE * 4, // 20 токенов (редкий характер)
+    difficulty: "medium",
+  },
+  {
+    id: "elite_3",
+    title: "Загадка бездны",
+    description: "Жаба с полом Бесполый",
+    requirement: (toad: Toad) => toad.sex === "neuter",
+    reward: BASE_PRICE * 5, // 25 токенов
+    difficulty: "extreme",
+  },
+  {
+    id: "elite_4",
+    title: "Вихрь судьбы",
+    description: "Жаба со скоростью более 2",
+    requirement: (toad: Toad) => toad.genes.speed > 2,
+    reward: BASE_PRICE * 14, // 70 токенов (очень редкий)
+    difficulty: "hard",
+  },
+  {
+    id: "elite_5",
+    title: "Исполин рассвета",
+    description: "Жаба редкостью 7 и больше размером более 40",
+    requirement: (toad: Toad) =>
+      toad.genes.weight > 40 && toad.genes.rarity >= 7,
+    reward: BASE_PRICE * 32, // 160 токенов (почти невозможно)
+    difficulty: "extreme",
+  },
+  {
+    id: "elite_6",
+    title: "Вечный странник",
+    description: "Жаба с полом Бесполый и редкостью 7+",
+    requirement: (toad: Toad) =>
+      toad.sex === "neuter" && toad.genes.rarity >= 7,
+    reward: BASE_PRICE * 8, // 40 токенов
+    difficulty: "extreme",
+  },
+  {
+    id: "elite_7",
+    title: "Безумный гений",
+    description: "Жаба с характером Новатор или Энергичный и редкостью 6+",
+    requirement: (toad: Toad) =>
+      (toad.genes.personality === "innovator" ||
+        toad.genes.personality === "energetic") &&
+      toad.genes.rarity >= 6,
+    reward: BASE_PRICE * 13, // 65 токенов (сложное сочетание)
+    difficulty: "hard",
+  },
+  {
+    id: "elite_8",
+    title: "Идеальный баланс",
+    description: "Жаба с размером 12-16, скоростью 0.6-0.8 и фертильностью 3+",
+    requirement: (toad: Toad) =>
+      toad.genes.weight >= 12 &&
+      toad.genes.weight <= 16 &&
+      toad.genes.speed >= 0.6 &&
+      toad.genes.speed <= 0.8 &&
+      toad.genes.fertility >= 3,
+    reward: BASE_PRICE * 11, // 55 токенов (сбалансированная сложность)
+    difficulty: "medium",
+  },
+  {
+    id: "elite_9",
+    title: "Наследник легенд",
+    description: "Головастик 8+ поколения с редкостью 6+",
+    requirement: (toad: Toad) =>
+      toad.stage === "toadpole" &&
+      toad.generation >= 8 &&
+      toad.genes.rarity >= 6,
+    reward: BASE_PRICE * 15, // 75 токенов (сложный для головастика)
+    difficulty: "hard",
+  },
+  {
+    id: "elite_10",
+    title: "Ненасытный титан",
+    description: "Жаба с характером Обжора и размером более 25",
+    requirement: (toad: Toad) =>
+      toad.genes.personality === "glutton" && toad.genes.weight > 25,
+    reward: BASE_PRICE * 9, // 45 токенов (редкое сочетание)
+    difficulty: "medium",
+  },
+  {
+    id: "elite_11",
+    title: "Вечный карнавал",
+    description: "Жаба 10+ поколения с характером Тусовщик",
+    requirement: (toad: Toad) =>
+      toad.generation >= 10 && toad.genes.personality === "partyAnimal",
+    reward: BASE_PRICE * 14, // 70 токенов (очень редкий)
+    difficulty: "hard",
+  },
+  {
+    id: "elite_12",
+    title: "Аскеза желаний",
+    description: "Жаба с характером Аскет и фертильностью более 3",
+    requirement: (toad: Toad) =>
+      toad.genes.personality === "ascetic" && toad.genes.fertility > 3,
+    reward: BASE_PRICE * 17, // 85 токенов (парадоксальное сочетание)
+    difficulty: "hard",
+  },
+  {
+    id: "elite_13",
+    title: "Повелитель иллюзий",
+    description: "Жаба с характером Лидер и редкостью 5+",
+    requirement: (toad: Toad) =>
+      toad.genes.personality === "leader" && toad.genes.rarity >= 5,
+    reward: BASE_PRICE * 12, // 60 токенов (сложное сочетание)
+    difficulty: "medium",
+  },
+  {
+    id: "elite_14",
+    title: "Мыслитель в движении",
+    description: "Жаба с характером Философ и скоростью менее 0.5",
+    requirement: (toad: Toad) =>
+      toad.genes.personality === "philosopher" && toad.genes.speed < 0.5,
+    reward: BASE_PRICE * 8, // 40 токенов (средняя сложность)
+    difficulty: "medium",
+  },
+  {
+    id: "elite_15",
+    title: "Одержимость плотью",
+    description: "Жаба с характером Страстный и фертильностью более 4",
+    requirement: (toad: Toad) =>
+      toad.genes.personality === "passionate" && toad.genes.fertility > 4,
+    reward: BASE_PRICE * 19, // 95 токенов (очень редкое)
+    difficulty: "hard",
+  },
+  {
+    id: "elite_16",
+    title: "Болотная дива",
+    description: "Самка с характером Светская жаба и редкостью 6+",
+    requirement: (toad: Toad) =>
+      toad.sex === "female" &&
+      toad.genes.personality === "socialite" &&
+      toad.genes.rarity >= 6,
+    reward: BASE_PRICE * 13, // 65 токенов (сложное сочетание)
+    difficulty: "medium",
+  },
+  {
+    id: "elite_17",
+    title: "Грёзы реальности",
+    description: "Жаба с характером Мечтатель и беременностью",
+    requirement: (toad: Toad) =>
+      toad.genes.personality === "dreamer" && toad.pregnancy?.isPregnant,
+    reward: BASE_PRICE * 11, // 55 токенов (средняя сложность)
+    difficulty: "medium",
+  },
+  {
+    id: "elite_18",
+    title: "Особый вкус",
+    description: "Жаба с характером Гурман и голодом менее 20%",
+    requirement: (toad: Toad) =>
+      toad.genes.personality === "gourmet" && toad.state.hunger < 20,
+    reward: BASE_PRICE * 15, // 75 токенов (сложное условие)
+    difficulty: "hard",
+  },
+  {
+    id: "elite_19",
+    title: "Умудренный жизнью в неволе",
+    description: "Жаба с характером Свободный дух и возрастом более 3 дней",
+    requirement: (toad: Toad) =>
+      toad.genes.personality === "freeSpirit" &&
+      Date.now() - new Date(toad.created_at).getTime() >
+        3 * 24 * 60 * 60 * 1000,
+    reward: BASE_PRICE * 10,
+    difficulty: "medium",
+  },
+  {
+    id: "elite_20",
+    title: "Ритм вечности",
+    description: "Жаба с характером Трудоголик и поколением 7+",
+    requirement: (toad: Toad) =>
+      toad.genes.personality === "workaholic" && toad.generation >= 7,
+    reward: BASE_PRICE * 16, // 80 токенов (редкое сочетание)
+    difficulty: "hard",
+  },
+  {
+    id: "elite_21",
+    title: "Тень былой славы",
+    description: "Жаба с характером Обаятельный и поколением 9+",
+    requirement: (toad: Toad) =>
+      toad.genes.personality === "charmer" && toad.generation >= 9,
+    reward: BASE_PRICE * 18, // 90 токенов (очень редкое)
+    difficulty: "hard",
+  },
+  {
+    id: "elite_22",
+    title: "Молчание мудреца",
+    description: "Жаба с характером Отшельник и редкостью 8+",
+    requirement: (toad: Toad) =>
+      toad.genes.personality === "hermit" && toad.genes.rarity >= 8,
+    reward: BASE_PRICE * 22, // 110 токенов (экстремально редкое)
+    difficulty: "extreme",
+  },
+  {
+    id: "elite_23",
+    title: "Он видел все",
+    description: "Жаба возрастом более 10 дней",
+    requirement: (toad: Toad) =>
+      Date.now() - new Date(toad.created_at).getTime() >
+      10 * 24 * 60 * 60 * 1000,
+    reward: BASE_PRICE * 20,
+    difficulty: "extreme",
+  },
+];

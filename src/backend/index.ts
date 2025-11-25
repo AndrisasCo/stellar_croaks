@@ -124,3 +124,18 @@ export const deleteToadsByIds = (toadIds: number[]): Toad[] => {
 
   return updatedToads;
 };
+
+// Scene operations
+export const updateScene = (
+  sceneId: number,
+  sceneData: Partial<Scene>
+): Scene[] => {
+  const state = getGameState();
+  const updatedScenes = state.scenes.map((scene) =>
+    scene.id === sceneId ? { ...scene, ...sceneData } : scene
+  );
+
+  updateGameState({ scenes: updatedScenes });
+
+  return updatedScenes;
+};

@@ -1,6 +1,6 @@
-import React, { useState, useEffect, createContext, useContext } from "react";
+import React, { useState, createContext, useContext } from "react";
 
-export type NotificationType = "warn" | "success" | "danger";
+export type NotificationType = "warn" | "success" | "danger" | "info";
 
 export interface Notification {
   id: string;
@@ -87,24 +87,98 @@ const NotificationStack: React.FC = () => {
   const getTypeStyles = (type: NotificationType) => {
     switch (type) {
       case "success":
-        return "bg-green-500 border-green-400";
+        return "bg-emerald-500/20 border-emerald-400/40 text-emerald-100 backdrop-blur-md";
       case "danger":
-        return "bg-red-500 border-red-400";
+        return "bg-rose-500/20 border-rose-400/40 text-rose-100 backdrop-blur-md";
+      case "info":
+        return "bg-slate-600/20 border-slate-400/40 text-slate-100 backdrop-blur-md";
       case "warn":
       default:
-        return "bg-yellow-500 border-yellow-400";
+        return "bg-amber-500/20 border-amber-400/40 text-amber-100 backdrop-blur-md";
     }
   };
 
   const getTypeIcon = (type: NotificationType) => {
     switch (type) {
       case "success":
-        return "✅";
+        return (
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+        );
       case "danger":
-        return "❌";
+        return (
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+        );
+      case "info":
+        return (
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+        );
       case "warn":
       default:
-        return "⚠️";
+        return (
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.35 16.5c-.77.833.192 2.5 1.732 2.5z"
+            />
+          </svg>
+        );
+    }
+  };
+
+  const getTypeBg = (type: NotificationType) => {
+    switch (type) {
+      case "success":
+        return "bg-emerald-400/60";
+      case "danger":
+        return "bg-rose-400/60";
+      case "info":
+        return "bg-slate-400/60";
+      case "warn":
+      default:
+        return "bg-amber-400/60";
     }
   };
 
@@ -115,10 +189,11 @@ const NotificationStack: React.FC = () => {
           <div
             key={notification.id}
             className={`
-              w-full text-white px-4 py-3 rounded-xl shadow-2xl 
+              w-full px-4 py-3 rounded-xl shadow-2xl 
               border transform transition-all duration-500 ease-out
               flex items-center gap-3 pointer-events-auto
-              backdrop-blur-sm bg-opacity-95
+              backdrop-blur-md bg-opacity-95
+              
               ${getTypeStyles(notification.type)}
               ${
                 notification.isExiting
@@ -142,18 +217,12 @@ const NotificationStack: React.FC = () => {
           >
             {/* Анимированная полоска прогресса */}
             {notification.timeout !== 0 && (
-              <div className="absolute top-0 left-1 right-1 h-1 bg-white/30 rounded-t-2xl overflow-hidden">
+              <div className="absolute top-0 left-1 right-1 h-1 bg-white/10 rounded-t-2xl overflow-hidden">
                 <div
                   className={`
                     h-full transition-all duration-300 ease-linear
                     ${notification.isExiting ? "w-0" : "w-full"}
-                    ${
-                      notification.type === "success"
-                        ? "bg-green-200"
-                        : notification.type === "danger"
-                        ? "bg-red-200"
-                        : "bg-yellow-200"
-                    }
+                    ${getTypeBg(notification.type)}
                   `}
                   style={{
                     animation: notification.isExiting
@@ -168,7 +237,7 @@ const NotificationStack: React.FC = () => {
 
             <span
               className={`
-                text-lg flex-shrink-0 transition-transform duration-300
+                flex-shrink-0 transition-transform duration-300
                 ${notification.isExiting ? "scale-0" : "scale-100"}
               `}
               style={{
@@ -197,7 +266,7 @@ const NotificationStack: React.FC = () => {
             <button
               onClick={() => removeNotification(notification.id)}
               className={`
-                flex-shrink-0 w-6 h-6 rounded-full bg-white/20 hover:bg-white/30 
+                flex-shrink-0 w-6 h-6 rounded-full bg-white/10 hover:bg-white/20 
                 flex items-center justify-center transition-all duration-300
                 ${
                   notification.isExiting
@@ -210,7 +279,7 @@ const NotificationStack: React.FC = () => {
               }}
             >
               <svg
-                className="w-3 h-3 text-white transition-transform duration-200 hover:scale-110"
+                className="w-3 h-3 text-white/70 transition-transform duration-200 hover:scale-110 hover:text-white"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -227,7 +296,7 @@ const NotificationStack: React.FC = () => {
         ))}
       </div>
 
-      <style jsx>{`
+      <style>{`
         @keyframes progress {
           from {
             width: 100%;
