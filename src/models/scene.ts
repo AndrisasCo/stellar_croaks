@@ -1,3 +1,5 @@
+import { getGameState } from "../backend/localStorage";
+
 export interface Scene {
   created_at: string;
   description: string | null;
@@ -62,3 +64,25 @@ export const bonuses = [
     ],
   },
 ];
+
+const bonusMap = {
+  pregnancy: [3, 5, 10],
+  grow: [3, 5, 10],
+};
+
+export const getBoostByScene = (
+  scene_id: number | null,
+  bonusType: BonusType
+) => {
+  if (!scene_id) {
+    return 1;
+  }
+  const currentScene = getGameState().scenes.find((s) => s.id === scene_id);
+
+  if (!currentScene || !currentScene.bonuses) {
+    return 1;
+  }
+
+  const boost = currentScene.bonuses[bonusType];
+  return bonusMap[bonusType][boost - 1] / 100 + 100;
+};

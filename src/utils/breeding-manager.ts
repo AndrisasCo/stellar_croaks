@@ -5,6 +5,7 @@ import { getHoursFromNow } from "./date";
 import { getGameState } from "../backend/localStorage";
 import { getHunger } from "./state-manager";
 import { completeAchivement } from "../backend/achivements-manager";
+import { getBoostByScene } from "../models/scene";
 
 export class TimeManager {
   lastPlayTime: string | number;
@@ -123,13 +124,17 @@ const processSceneBreeding = async (
   // смотрим нужно ли жабе вырасти
   const toadpoles = sceneToads.filter((t) => t.stage === "toadpole");
 
+  const boost = getBoostByScene(toadpoles[0].scene_id, "grow");
+
+  const boostedTimeToGrow = HOURS_TO_GROW_UP / boost;
+
   const grownToadpoles: number[] = [];
   toadpoles.forEach((t) => {
-    if (getHoursFromNow(t.created_at) >= HOURS_TO_GROW_UP) {
+    if (getHoursFromNow(t.created_at) >= boostedTimeToGrow) {
       const hunger = getHunger(
         t.state.hunger,
         t.genes.hungerRate,
-        HOURS_TO_GROW_UP
+        boostedTimeToGrow
       );
 
       if (t.state.hunger - hunger < 0) {
@@ -199,13 +204,12 @@ const selectFather = (males: Toad[]): Toad => {
 };
 
 export const startPregnancy = async (toad: Toad, father: Toad) => {
+  const boost = getBoostByScene(toad.scene_id, "pregnancy");
   toad.pregnancy = {
     isPregnant: true,
     pregnancyStart: Date.now(),
-    pregnancyDuration: Math.min(
-      getPregnancyDuration() + toad.genes.rarity / 2,
-      12
-    ),
+    pregnancyDuration:
+      Math.min(getPregnancyDuration() + toad.genes.rarity / 2, 12) / boost,
     fatherId: father.id,
     father,
     offspringCount: calculateOffspringCount(toad),

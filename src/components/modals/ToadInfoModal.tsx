@@ -16,6 +16,7 @@ import { Tooltip } from "../shared/Tooltip";
 import { useSoundEffects } from "../../hooks/use-sound-effects";
 import { updateToadById } from "../../backend";
 import { completeAchivement } from "../../backend/achivements-manager";
+import { getBoostByScene } from "../../models/scene";
 
 interface ToadInfoProps {
   onClose: () => void;
@@ -77,9 +78,11 @@ export default function ToadInfo({ onClose }: ToadInfoProps) {
     if (toad.stage !== "toadpole") {
       return null;
     }
+    const boost = getBoostByScene(toad.scene_id, "grow");
 
+    const boostedTimeToGrow = HOURS_TO_GROW_UP / boost;
     const start = new Date(toad.created_at).getTime();
-    const duration = HOURS_TO_GROW_UP * 60 * 60 * 1000;
+    const duration = boostedTimeToGrow * 60 * 60 * 1000;
     const now = Date.now();
     const elapsed = now - start;
     const progress = (elapsed / duration) * 100;
