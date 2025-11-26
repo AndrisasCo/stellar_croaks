@@ -14,6 +14,7 @@ import { ColliderIcons, PregnancyIcon } from "../../assets/icons";
 import Modal from "../shared/Modal";
 import { deleteToadsByIds, updateToadsByIds } from "../../backend";
 import { ToadGender } from "../shared/ToadGender";
+import { nameGenerator } from "../../utils/name-generator";
 
 interface ToadColliderProps {
   isOpen: boolean;
@@ -123,7 +124,7 @@ export default function ToadCollider({
     }
 
     setBreedingResult({
-      success: true,
+      success: !genesBreakChance,
       child,
       message: message,
     });
@@ -154,6 +155,12 @@ export default function ToadCollider({
     setSelectedToads([null, null, null, null, null]);
     setBreedingResult(null);
     setCustomName("");
+  };
+
+  // Функция для генерации случайного имени
+  const generateRandomName = () => {
+    const randomName = nameGenerator.generate();
+    setCustomName(randomName);
   };
 
   return (
@@ -363,7 +370,11 @@ export default function ToadCollider({
       ) : (
         /* Результат скрещивания */
         <div className="text-center">
-          <div className="text-green-400 text-base sm:text-lg mb-3 font-semibold">
+          <div
+            className={`mb-3 text-base ${
+              breedingResult.success ? "text-green-400" : "text-red-400"
+            }`}
+          >
             {breedingResult.message}
           </div>
 
@@ -374,13 +385,18 @@ export default function ToadCollider({
                 backgroundColor: breedingResult.child!.genes.colors[0],
               }}
             />
-            <input
-              type="text"
-              value={customName}
-              onChange={(e) => setCustomName(e.target.value)}
-              placeholder="Введите имя для жабы..."
-              className="bg-gray-600/50 border border-gray-500 text-white rounded-xl px-3 py-2 text-center w-full mb-3 text-sm sm:text-lg placeholder-gray-400 focus:outline-none focus:border-green-500/50"
-            />
+            <div className="flex justify-center items-center gap-3 mb-3 ">
+              <button className="text-2xl" onClick={generateRandomName}>
+                🎲
+              </button>
+              <input
+                type="text"
+                value={customName}
+                onChange={(e) => setCustomName(e.target.value)}
+                placeholder="Введите имя для жабы..."
+                className="bg-gray-600/50 border border-gray-500 text-white rounded-xl px-3 py-2 text-center w-full text-sm sm:text-lg placeholder-gray-400 focus:outline-none focus:border-green-500/50"
+              />
+            </div>
             <div className="grid grid-cols-3 gap-2 text-xs sm:text-sm mb-3">
               {/* Редкость */}
               <div
@@ -442,7 +458,7 @@ export default function ToadCollider({
             </p>
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex mt-2 gap-2">
             <button
               onClick={handleConfirm}
               className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white py-2 text-sm sm:text-base rounded-xl transition-all duration-300 transform hover:scale-105 border-2 border-white/20 shadow-lg font-bold"
