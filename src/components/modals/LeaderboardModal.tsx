@@ -326,30 +326,6 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
             )}
           </div>
         </div>
-
-        {/* Статистика текущего пользователя */}
-        <div className="flex justify-between text-sm">
-          <div className="flex items-center gap-1">
-            <span className="text-purple-400">⭐</span>
-            <span className="text-gray-300">
-              {players
-                .find((p) => p.tg_id === account.tg_id)
-                ?.rarest_toad.genes.rarity.toFixed(1) || "0.0"}
-            </span>
-          </div>
-          <div className="flex items-center gap-1">
-            <span className="text-yellow-400">
-              {CURRENCY_CONFIG.tokens.icon}
-            </span>
-            <span className="text-gray-300">
-              {account?.tokens?.toLocaleString() || "0"}
-            </span>
-          </div>
-          <div className="flex items-center gap-1">
-            <span className="text-green-400">🐸</span>
-            <span className="text-gray-300">{allToads.length || "0"}</span>
-          </div>
-        </div>
       </div>
 
       {/* Табы */}
@@ -398,7 +374,7 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
       {/* Контент */}
       <div className="px-1">
         {/* Заголовок и описание вкладки */}
-        <div className="text-center mb-4">
+        <div className="text-center my-4">
           <h3 className="text-white px-2 font-semibold text-sm mb-1">
             {getTabTitle()}
           </h3>
