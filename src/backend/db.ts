@@ -228,7 +228,13 @@ export const syncGameState = async () => {
     `last saved ls: ${currentGS.lastSaved}, last saved db: ${gameStateStored.content.lastSaved}`
   );
 
-  if (lastVisitLs >= lastVisitDb) {
+  // последний синк меньше чем 3 минуты - много багов у пользователй, может какие-то тормоза мешают
+  if (Math.abs(lastVisitLs - lastVisitDb) < 1000 * 60 * 3) {
+    console.log("sync Data is fresh");
+    return;
+  }
+
+  if (lastVisitLs > lastVisitDb) {
     console.log("sync GameState db");
     await updateGameStateDB();
     return;
