@@ -2,16 +2,15 @@ export interface Toad {
   id: number;
   stage: string; // 'toadpole' | 'adult'
   created_at: string;
-  description: string | null;
   generation: number;
   name: string | null;
-  owner: number;
-  parents: number[] | null;
+  parents: number[] | null; // ?
   scene_id: number | null; //  null это в инвентаре
   sex: string; // 'male' 'female' 'neuter'
   type: string | null; // пока не используется, мб тут будут варианты окраса
   state: {
     hunger: number; // 0 to 100
+    genetic_fault?: number; // 0 to 100
     // добавить потом болезни, которые дают дебаффы к голоду/цене/размножению + нельзя в коллайдер
   };
   pregnancy: null | {
@@ -44,11 +43,10 @@ export const DEFAULT_TOADS: Toad[] = [
     stage: "adult",
     scene_id: 1,
     created_at: new Date().toISOString(),
-    description: null,
-    owner: 0, // будет заменено при создании
     parents: null,
     state: {
       hunger: 30,
+      genetic_fault: 0,
     },
     pregnancy: null,
     genes: {

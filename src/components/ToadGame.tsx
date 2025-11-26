@@ -103,19 +103,14 @@ export default function ToadGame() {
       setIsLoading(false);
 
       // нотификейшн при заходе в игру
-      const updateDeployTime = 1764087709219;
+      const updateDeployTime = 1764176863279;
       const lastSaveTime = new Date(getGameState().lastSaved).getTime();
 
       if (updateDeployTime > lastSaveTime) {
         addNotification({
           type: "info",
-          content: "Добавлены улучшения для вольеров",
-          timeout: 15000,
-        });
-
-        addNotification({
-          type: "info",
-          content: "Обновлена элитная секция рынка",
+          content:
+            "Добавлен генератор имен для жабок! Попробуйте переименовать жабу",
           timeout: 15000,
         });
       }

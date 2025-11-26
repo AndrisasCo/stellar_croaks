@@ -112,7 +112,7 @@ const SellTab: React.FC = () => {
     filteredToads.every((toad) => selectedToads.includes(toad.id));
 
   return (
-    <div className="space-y-3 px-3 pb-3">
+    <div className="space-y-3 pb-3">
       {/* Панель фильтров */}
       <Filters
         toads={activeToads}

@@ -83,7 +83,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   return (
     <>
       <Modal isOpen={isOpen} onClose={onClose} icon={icon} title="Настройки">
-        <div className="space-y-4 overflow-auto h-[calc(80vh-80px)]">
+        <div className="flex flex-col gap-3">
           {/* Настройки музыки */}
           <div className="bg-gray-700/50 rounded-xl py-4 px-2 border border-gray-600/50">
             <div className="flex items-center justify-between mb-4">
@@ -274,15 +274,15 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
               Начать заново
             </button>
           </div>
-        </div>
 
-        {/* Кнопка закрытия */}
-        <button
-          onClick={handleClose}
-          className="w-full bg-gradient-to-r from-green-600 to-purple-600 hover:from-green-500 hover:to-purple-500 text-white font-bold py-3 rounded-xl mt-6 transition-all duration-300 transform hover:scale-105 active:scale-95 border-2 border-white/20 shadow-lg hover:shadow-xl"
-        >
-          Готово
-        </button>
+          {/* Кнопка закрытия */}
+          <button
+            onClick={handleClose}
+            className="w-full bg-gradient-to-r from-green-600 to-purple-600 hover:from-green-500 hover:to-purple-500 text-white font-bold py-3 rounded-xl mt-6 transition-all duration-300 transform hover:scale-105 active:scale-95 border-2 border-white/20 shadow-lg hover:shadow-xl"
+          >
+            Готово
+          </button>
+        </div>
       </Modal>
 
       {/* Модальное окно подтверждения сброса */}

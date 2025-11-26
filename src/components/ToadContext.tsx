@@ -132,23 +132,25 @@ export const ToadProvider: React.FC<ToadProviderProps> = ({ children }) => {
   };
 
   const collectChild = (slotId: number) => {
+    const slot = colliderState.slots.find((s) => s.id === slotId);
+
+    if (!slot?.child) {
+      return;
+    }
+
+    const allToadsOnScene = toads.length + 1;
+
+    if (currentScene.capacity < allToadsOnScene) {
+      addNotification({
+        type: "warn",
+        content: "Превышена вместимость вольера, гибрид помещен на склад.",
+      });
+      createToad({ ...slot.child, scene_id: null });
+    } else {
+      createToad(slot.child);
+    }
+
     setColliderState((prev) => {
-      const slot = prev.slots.find((s) => s.id === slotId);
-
-      if (slot?.child) {
-        const allToadsOnScene = toads.length + 1;
-
-        if (currentScene.capacity < allToadsOnScene) {
-          slot.child.scene_id = null;
-          addNotification({
-            type: "warn",
-            content: "Превышена вместимость вольера, гибрид помещен на склад.",
-          });
-        }
-
-        createToad(slot.child);
-      }
-
       return {
         ...prev,
         slots: prev.slots.map((s) =>

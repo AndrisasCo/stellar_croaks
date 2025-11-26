@@ -1,22 +1,22 @@
 import { TYPE_ICONS } from "../../utils/constants";
 import {
-  getPersonalityLabel,
-  getPersonalityDescription,
   getPersonalityMultipliers,
   getRarityConfig,
   personalities,
-  Toad,
   HOURS_TO_GROW_UP,
+  getPersonalityDescription,
+  getPersonalityLabel,
 } from "../../models/toad";
 import { useToads } from "../ToadContext";
 import { InfoIcons } from "../../assets/icons";
 import Modal from "../shared/Modal";
 import { useState } from "react";
-import { Tooltip } from "../shared/Tooltip";
 import { useSoundEffects } from "../../hooks/use-sound-effects";
 import { updateToadById } from "../../backend";
 import { completeAchivement } from "../../backend/achivements-manager";
 import { getBoostByScene } from "../../models/scene";
+import { nameGenerator } from "../../utils/name-generator";
+import { Tooltip } from "../shared/Tooltip";
 
 interface ToadInfoProps {
   onClose: () => void;
@@ -48,6 +48,12 @@ export default function ToadInfo({ onClose }: ToadInfoProps) {
       updateToadById(toad.id, { name: editedName.trim() });
     }
     setIsEditingName(false);
+  };
+
+  // Функция для генерации случайного имени
+  const generateRandomName = () => {
+    const randomName = nameGenerator.generate();
+    setEditedName(randomName);
   };
 
   const calculateAge = () => {
@@ -119,7 +125,7 @@ export default function ToadInfo({ onClose }: ToadInfoProps) {
   const icon = (
     <div
       style={{ display: toad.sex === "neuter" ? "none" : "flex" }}
-      className={`flex items-center justify-center w-9 rounded-xl ${
+      className={`flex items-center justify-center w-8 rounded-xl ${
         toad.sex === "male"
           ? "bg-blue-900/50 border-blue-500/50"
           : toad.sex === "female"
@@ -127,7 +133,7 @@ export default function ToadInfo({ onClose }: ToadInfoProps) {
           : "bg-gray-900/50 border-gray-500/50"
       } border-2`}
     >
-      <span className="text-xl">
+      <span className="text-lg">
         {TYPE_ICONS[toad.sex as keyof typeof TYPE_ICONS]}
       </span>
     </div>
@@ -145,48 +151,86 @@ export default function ToadInfo({ onClose }: ToadInfoProps) {
   };
 
   return (
-    <Modal
-      isOpen
-      icon={icon}
-      title={
-        <div className="flex items-center justify-between w-full px-2">
-          <div className="flex items-center gap-2 flex-1 justify-center min-w-0">
-            {isEditingName ? (
-              <div className="flex items-center gap-2 max-w-full">
-                <input
-                  type="text"
-                  value={editedName}
-                  onChange={(e) => setEditedName(e.target.value)}
-                  className="bg-gray-700 outline-none border border-gray-600 rounded-lg px-3 py-2 text-white text-lg font-semibold w-full max-w-40"
-                  autoFocus
-                  onBlur={handleNameSave}
-                  onKeyDown={(e) => e.key === "Enter" && handleNameSave()}
-                />
-              </div>
-            ) : (
-              <div className="flex items-center gap-2 max-w-full">
-                <span className="text-lg px-2 py-1 font-semibold truncate max-w-40">
-                  {toad.name}
-                </span>
-                <button
-                  onClick={() => {
-                    setEditedName(toad.name || "");
-                    setIsEditingName(true);
-                  }}
-                  className="text-gray-400 hover:text-white transition-colors p-1 flex-shrink-0"
+    <Modal isOpen onClose={onClose}>
+      <div className="flex w-full items-center pb-4 px-10 ">
+        {isEditingName ? (
+          <div className="flex w-full text-white bg-none items-center gap-2 max-w-full">
+            <button className="text-xl" onClick={generateRandomName}>
+              🎲
+            </button>
+
+            <input
+              type="text"
+              value={editedName}
+              onChange={(e) => setEditedName(e.target.value)}
+              className="bg-gray-700 outline-none border border-gray-600 rounded-lg px-1 py-[7px] text-white text-sm w-full "
+              autoFocus
+              onKeyDown={(e) => e.key === "Enter" && handleNameSave()}
+              maxLength={33}
+            />
+            <div className="flex gap-1">
+              <button
+                onClick={handleNameSave}
+                className="p-1 text-green-400 hover:text-green-300 disabled:opacity-50"
+                title="Сохранить"
+              >
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
                 >
-                  {InfoIcons.pencil}
-                </button>
-              </div>
-            )}
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 13l4 4L19 7"
+                  />
+                </svg>
+              </button>
+              <button
+                onClick={() => setIsEditingName(false)}
+                className="p-1 text-red-400 hover:text-red-300 disabled:opacity-50"
+                title="Отмена"
+              >
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
           </div>
-        </div>
-      }
-      onClose={onClose}
-    >
-      <div className="flex justify-between items-center mb-4 px-10">
+        ) : (
+          <h2 className="font-bold flex gap-2 bg-gradient-to-r from-green-400 to-purple-500 bg-clip-text text-transparent">
+            <span className="text-lg py-1 font-semibold max-w-[260px] whitespace-break-spaces">
+              {toad.name}
+            </span>
+            <button
+              onClick={() => {
+                setEditedName(toad.name || "");
+                setIsEditingName(true);
+              }}
+              className="text-gray-400 hover:text-white transition-colors p-1 flex-shrink-0"
+            >
+              {InfoIcons.pencil}
+            </button>
+          </h2>
+        )}
+      </div>
+
+      <div className="flex gap-2 items-center mb-4 px-10">
+        {icon}
         <p className="text-gray-400 text-xs">Поколение {toad.generation}</p>
-        <p className="text-gray-400 text-xs">
+        <p className="text-gray-400 text-xs ml-auto">
           {toad.stage === "adult" ? "Взрослый" : "Детеныш"}: {calculateAge()}{" "}
           дней
         </p>
@@ -213,7 +257,7 @@ export default function ToadInfo({ onClose }: ToadInfoProps) {
           </svg>
         </button>
 
-        <div className="flex flex-col w-full overflow-y-auto h-[calc(80vh-100px)]">
+        <div className="flex flex-col w-full ">
           {/* РЕДКОСТЬ - на всю ширину */}
           <div className="bg-gray-700/50 rounded-xl p-2 mb-3 border border-gray-600/50">
             <div className="flex items-center gap-2 mb-1">
@@ -442,17 +486,6 @@ export default function ToadInfo({ onClose }: ToadInfoProps) {
             </div>
           )}
 
-          {/* ОПИСАНИЕ */}
-          <div className="bg-gray-700/50 rounded-xl p-2 border border-gray-600/50">
-            <div className="flex items-center gap-2 mb-2">
-              {InfoIcons.description}
-              <p className="text-gray-400 text-xs font-medium">ОПИСАНИЕ</p>
-            </div>
-            <p className="text-gray-400 text-sm leading-relaxed">
-              {toad.description || "Описание отсутствует"}
-            </p>
-          </div>
-
           {/* ПАНЕЛЬ УПРАВЛЕНИЯ */}
           <div className="bg-gray-800/50 rounded-xl p-2 border border-gray-600/50 mt-3">
             <div className="flex items-center gap-2 mb-2">
@@ -548,7 +581,7 @@ export default function ToadInfo({ onClose }: ToadInfoProps) {
 
       <button
         onClick={onClose}
-        className="flex-1 w-full bg-gray-700 hover:bg-gray-600 text-gray-300 hover:text-white py-3 text-base rounded-xl transition-all duration-300 border border-gray-600 touch-manipulation active:scale-95"
+        className="flex-1 w-full bg-gray-700 hover:bg-gray-600 text-gray-300 hover:text-white py-3 text-base rounded-xl mt-4  border border-gray-600 touch-manipulation active:scale-95"
       >
         Закрыть
       </button>

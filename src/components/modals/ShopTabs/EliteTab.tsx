@@ -303,7 +303,7 @@ const EliteOrderTooltip: React.FC<EliteOrderTooltipProps> = ({
           </div>
         </div>
 
-        <div className="max-h-60 overflow-y-auto space-y-3 mb-4">
+        <div className=" space-y-3 mb-4">
           <p className="text-gray-400 text-sm mb-2">Подходящие жабы:</p>
           {availableToads.map((toad) => (
             <div

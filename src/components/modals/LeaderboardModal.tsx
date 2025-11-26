@@ -396,7 +396,7 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
       </div>
 
       {/* Контент */}
-      <div className="py-3 px-1 overflow-y-auto h-[calc(80vh-180px)]">
+      <div className="px-1">
         {/* Заголовок и описание вкладки */}
         <div className="text-center mb-4">
           <h3 className="text-white px-2 font-semibold text-sm mb-1">

@@ -139,7 +139,7 @@ const TutorialModal: React.FC<TutorialModalProps> = ({ isOpen, onClose }) => {
   return (
     <Modal isOpen={isOpen} onClose={handleClose} icon={icon} title="Обучение">
       {/* Контент */}
-      <div className="p-4 overflow-y-auto  h-[calc(80vh-60px)] ">
+      <div className="px-4">
         {/* Вступление */}
         <div className="text-center mb-8">
           <div className="text-4xl mb-4">🐸✨</div>

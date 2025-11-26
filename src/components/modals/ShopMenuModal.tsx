@@ -112,9 +112,7 @@ export default function ShopMenu({ isOpen, onClose }: ShopMenuProps) {
       </div>
 
       {/* Контент */}
-      <div className="py-4 overflow-y-auto h-[calc(80vh-176px)]">
-        {renderTabContent()}
-      </div>
+      <div className="py-4">{renderTabContent()}</div>
     </Modal>
   );
 }

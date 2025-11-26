@@ -5,7 +5,7 @@ interface ToadListModalProps {
   children: any;
   isOpen: boolean;
   onClose: () => void;
-  title: string | ReactNode;
+  title?: string | ReactNode;
 }
 
 const Modal: React.FC<ToadListModalProps> = ({
@@ -37,25 +37,29 @@ const Modal: React.FC<ToadListModalProps> = ({
     <div onClick={onClose} className="overlay">
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-gray-800/90 text-white py-4 px-1 rounded-2xl w-full max-w-md max-h-[80vh] overflow-hidden border-2 border-green-500/50 shadow-2xl backdrop-blur-sm"
+        className="bg-gray-800/90 text-white  px-1 rounded-2xl w-full max-w-md max-h-[80vh] overflow-hidden border-2 border-green-500/50 shadow-2xl backdrop-blur-sm"
       >
-        {/* Заголовок */}
-        <div className="flex w-full justify-center items-center pb-4">
-          <div className="flex items-center gap-2">
-            {icon}
-            <h2 className="text-xl font-bold bg-gradient-to-r from-green-400 to-purple-500 bg-clip-text text-transparent">
-              {title}
-            </h2>
+        <div className="h-[calc(80vh-32px)] overflow-auto py-4">
+          {/* Заголовок */}
+          <div className="flex w-full justify-center items-center relative">
+            {title && (
+              <div className="flex items-center gap-2 pb-4 ">
+                {icon}
+                <h2 className="text-xl font-bold bg-gradient-to-r from-green-400 to-purple-500 bg-clip-text text-transparent">
+                  {title}
+                </h2>
+              </div>
+            )}
+            <button
+              onClick={onClose}
+              className="text-gray-400 absolute right-2 top-[-8px] hover:text-green-400 text-2xl transition-colors duration-300 p-1 hover:scale-110"
+            >
+              ×
+            </button>
           </div>
-          <button
-            onClick={onClose}
-            className="text-gray-400 absolute right-2 top-1 hover:text-green-400 text-2xl transition-colors duration-300 p-1 hover:scale-110"
-          >
-            ×
-          </button>
-        </div>
 
-        {children}
+          {children}
+        </div>
       </div>
     </div>
   );

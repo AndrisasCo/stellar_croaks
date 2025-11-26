@@ -124,7 +124,7 @@ const ToadListModal: React.FC<ToadListModalProps> = ({
       />
 
       {/* Контент с прокруткой */}
-      <div className="overflow-y-auto h-[calc(80vh-280px)] px-1">
+      <div className="px-1">
         {filteredAndSortedToads.length === 0 ? (
           <div className="text-center py-8">
             <div className="text-gray-400 text-4xl mb-3">🐸</div>
@@ -178,7 +178,7 @@ const ToadListModal: React.FC<ToadListModalProps> = ({
       </div>
 
       {/* Подвал с статистикой */}
-      <div className="border-t border-gray-700/50 py-3 px-2 bg-gray-900/50 mx-1 mt-3">
+      <div className="border-t border-gray-700/50 py-3 px-2 bg-gray-900/50 mt-3">
         <div className="grid grid-cols-5 gap-1 text-center text-xs mb-2">
           <div>
             <div className="text-green-400 font-bold">
