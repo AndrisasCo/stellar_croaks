@@ -84,5 +84,5 @@ export const getBoostByScene = (
   }
 
   const boost = currentScene.bonuses[bonusType];
-  return bonusMap[bonusType][boost - 1] / 100 + 100;
+  return bonusMap[bonusType][boost - 1] / 100 + 1;
 };

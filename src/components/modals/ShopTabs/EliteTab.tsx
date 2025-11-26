@@ -9,7 +9,7 @@ import {
   eliteOrders,
   getNewElite,
   getShopState,
-  INSTANT_REFRESH_COST,
+  INSTANT_REFRESH_ELITE_COST,
   REFRESH_COOLDOWN,
   saveShopState,
   ShopState,
@@ -66,15 +66,15 @@ const EliteTab: React.FC = () => {
   }, [shopState.nextRefreshElite]);
 
   const handleInstantRefresh = () => {
-    if (tokens < INSTANT_REFRESH_COST) {
+    if (tokens < INSTANT_REFRESH_ELITE_COST) {
       addNotification({
         type: "warn",
-        content: `Недостаточно астрокваксов! Нужно ${INSTANT_REFRESH_COST}`,
+        content: `Недостаточно астрокваксов! Нужно ${INSTANT_REFRESH_ELITE_COST}`,
       });
       return;
     }
 
-    updateUser({ tokens: tokens - INSTANT_REFRESH_COST });
+    updateUser({ tokens: tokens - INSTANT_REFRESH_ELITE_COST });
     const newShopState = refreshShop();
     setShopState(newShopState);
     saveShopState(newShopState);
@@ -163,14 +163,14 @@ const EliteTab: React.FC = () => {
 
             <button
               onClick={handleInstantRefresh}
-              disabled={tokens < INSTANT_REFRESH_COST}
+              disabled={tokens < INSTANT_REFRESH_ELITE_COST}
               className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
-                tokens >= INSTANT_REFRESH_COST
+                tokens >= INSTANT_REFRESH_ELITE_COST
                   ? "bg-purple-600 hover:bg-purple-500 text-white"
                   : "bg-gray-600 text-gray-400 cursor-not-allowed"
               }`}
             >
-              {INSTANT_REFRESH_COST} {CURRENCY_CONFIG.tokens.icon}
+              {INSTANT_REFRESH_ELITE_COST} {CURRENCY_CONFIG.tokens.icon}
             </button>
           </div>
         </div>
@@ -269,16 +269,17 @@ const EliteOrderTooltip: React.FC<EliteOrderTooltipProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-gray-800 rounded-2xl p-6 w-full max-w-sm border border-purple-500/30">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-white font-bold px-2 text-lg">Выбор жабы</h3>
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
+      <div className="bg-gray-800 rounded-xl p-4 w-full max-w-xs border border-purple-500/40 shadow-lg">
+        {/* Заголовок */}
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-white font-semibold text-sm">Выбор жабы</h3>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-white transition-colors p-1"
           >
             <svg
-              className="w-7 h-7"
+              className="w-5 h-5"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -293,44 +294,47 @@ const EliteOrderTooltip: React.FC<EliteOrderTooltipProps> = ({
           </button>
         </div>
 
-        <div className="mb-4">
-          <h4 className="text-purple-400 font-semibold text-base mb-2">
+        {/* Информация о заказе */}
+        <div className="mb-3">
+          <h4 className="text-purple-400 font-medium text-xs mb-1">
             {order.title}
           </h4>
-          <p className="text-gray-300 text-sm mb-3">{order.description}</p>
-          <div className="text-green-400 text-base font-semibold mb-4">
+          <p className="text-gray-300 text-xs mb-2 line-clamp-2">
+            {order.description}
+          </p>
+          <div className="text-green-400 text-sm font-semibold">
             Награда: {order.reward} {CURRENCY_CONFIG.astro_quax.icon}
           </div>
         </div>
 
-        <div className=" space-y-3 mb-4">
-          <p className="text-gray-400 text-sm mb-2">Подходящие жабы:</p>
+        {/* Список жаб */}
+        <div className="space-y-2 mb-3 max-h-48 overflow-y-auto">
+          <p className="text-gray-400 text-xs">Подходящие жабы:</p>
           {availableToads.map((toad) => (
             <div
               key={toad.id}
               onClick={() => setSelectedToadId(toad.id)}
-              className={`p-4 rounded-xl border cursor-pointer transition-all ${
+              className={`p-2 rounded-lg border cursor-pointer transition-all ${
                 selectedToadId === toad.id
                   ? "bg-purple-900/30 border-purple-500"
                   : "bg-gray-700/50 border-gray-600 hover:border-purple-400/50"
               }`}
             >
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
                 <div
-                  className="w-10 h-10 rounded-full border-2 border-white/80 flex-shrink-0"
+                  className="w-8 h-8 rounded-full border border-white/80 flex-shrink-0"
                   style={{ backgroundColor: toad.genes.colors[0] }}
                 />
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-white font-medium text-sm truncate">
+                  <div className="flex items-center gap-1 mb-1">
+                    <span className="text-white font-medium text-xs truncate">
                       {toad.name}
                     </span>
                     <ToadGender gender={toad.sex} />
                   </div>
-                  <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-gray-400">
-                    <span>Разм: {toad.genes.weight.toFixed(1)}</span>
-                    <span>Скор: {toad.genes.speed.toFixed(1)}</span>
-                    <span>Редк: {toad.genes.rarity.toFixed(1)}</span>
+                  <div className="grid grid-cols-2 gap-x-2 text-xs text-gray-400">
+                    <span>Вес: {toad.genes.weight.toFixed(1)}</span>
+                    <span>Скр: {toad.genes.speed.toFixed(1)}</span>
                   </div>
                 </div>
               </div>
@@ -338,17 +342,18 @@ const EliteOrderTooltip: React.FC<EliteOrderTooltipProps> = ({
           ))}
         </div>
 
-        <div className="flex gap-3">
+        {/* Кнопки действий */}
+        <div className="flex gap-2">
           <button
             onClick={onClose}
-            className="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-3 rounded-xl transition-colors text-base"
+            className="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-2 rounded-lg transition-colors text-xs font-medium"
           >
             Отмена
           </button>
           <button
             onClick={handleSubmit}
             disabled={!selectedToadId}
-            className={`flex-1 py-3 rounded-xl font-medium transition-colors text-base ${
+            className={`flex-1 py-2 rounded-lg font-medium transition-colors text-xs ${
               selectedToadId
                 ? "bg-purple-600 hover:bg-purple-500 text-white"
                 : "bg-gray-600 text-gray-400 cursor-not-allowed"
