@@ -8,7 +8,7 @@ import { updateToadById } from "../../backend";
 import { ToadGender } from "../shared/ToadGender";
 import { PregnancyIcon } from "../../assets/icons";
 import { useNotifications } from "../../hooks/use-notification";
-import { ToadItem } from "./ShopTabs/ToadItem";
+import { ToadItem } from "../shared/ToadItem";
 import { useFilters } from "../../hooks/use-filters";
 import { Filters } from "../shared/Filters";
 

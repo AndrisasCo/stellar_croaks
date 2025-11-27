@@ -53,40 +53,102 @@ export default function ToadInfo({ onClose }: ToadInfoProps) {
 
   // Функция для получения информации о родственниках
   const relativesInfo = useMemo(() => {
-    const children = allToads
-      .filter((t) => t.parents && t.parents.includes(toad.id))
-      .map((i) => i.id);
-    if ((!toad.parents || toad.parents.length === 0) && children.length === 0) {
+    if (!toad) {
       return { relatives: [], inbreedingRisk: false };
     }
 
-    const relatives = [...(toad.parents || []), ...children]
-      .map((parentId) => {
+    const relatives = new Map();
+
+    // 1. Находим родителей текущей жабы
+    if (toad.parents && toad.parents.length > 0) {
+      toad.parents.forEach((parentId) => {
         const parent = allToads.find((t) => t.id === parentId);
-        return parent
-          ? {
-              id: parent.id,
-              name: parent.name,
-              sex: parent.sex,
-              sceneId: parent.scene_id,
-              isInSameEnclosure: parent.scene_id === toad.scene_id,
-            }
-          : null;
-      })
-      .filter(Boolean);
+        if (parent) {
+          relatives.set(parent.id, {
+            id: parent.id,
+            name: parent.name,
+            sex: parent.sex,
+            sceneId: parent.scene_id,
+            isInSameEnclosure: parent.scene_id === toad.scene_id,
+            relation: "parent",
+          });
+        }
+      });
+    }
+
+    // 2. Находим детей текущей жабы
+    const children = allToads.filter(
+      (t) => t.parents && t.parents.includes(toad.id)
+    );
+
+    children.forEach((child) => {
+      if (!relatives.has(child.id)) {
+        relatives.set(child.id, {
+          id: child.id,
+          name: child.name,
+          sex: child.sex,
+          sceneId: child.scene_id,
+          isInSameEnclosure: child.scene_id === toad.scene_id,
+          relation: "child",
+        });
+      }
+    });
+
+    // 3. Находим братьев и сестер (жабы с общими родителями)
+    const siblings = allToads.filter((otherToad) => {
+      // Пропускаем текущую жабу
+      if (otherToad.id === toad.id) return false;
+
+      // Если у обоих есть родители и есть общие родители
+      if (toad.parents && otherToad.parents) {
+        return toad.parents.some((parentId) =>
+          otherToad.parents?.includes(parentId)
+        );
+      }
+      return false;
+    });
+
+    siblings.forEach((sibling) => {
+      if (!relatives.has(sibling.id)) {
+        relatives.set(sibling.id, {
+          id: sibling.id,
+          name: sibling.name,
+          sex: sibling.sex,
+          sceneId: sibling.scene_id,
+          isInSameEnclosure: sibling.scene_id === toad.scene_id,
+          relation: "sibling",
+        });
+      }
+    });
+
+    const relativesArray = Array.from(relatives.values());
 
     // Проверяем риск имбридинга: есть ли родственники другого пола в том же вольере
-    const inbreedingRisk = relatives.some(
+    // (кроме детей, так как дети обычно не представляют риска имбридинга)
+    const inbreedingRisk = relativesArray.some(
       (rel) =>
         rel &&
         rel.isInSameEnclosure &&
         rel.sex !== toad.sex &&
         rel.sex !== "neuter" &&
-        toad.sex !== "neuter"
+        toad.sex !== "neuter" &&
+        rel.relation !== "child" // Исключаем детей из проверки риска
     );
 
-    return { relatives, inbreedingRisk };
-  }, [toad, toads]);
+    return {
+      relatives: relativesArray,
+      inbreedingRisk,
+      parentsCount: Array.from(relatives.values()).filter(
+        (r) => r.relation === "parent"
+      ).length,
+      siblingsCount: Array.from(relatives.values()).filter(
+        (r) => r.relation === "sibling"
+      ).length,
+      childrenCount: Array.from(relatives.values()).filter(
+        (r) => r.relation === "child"
+      ).length,
+    };
+  }, [toad, allToads]);
 
   // Функция для переключения на родственника
   const handleSelectRelative = (rel) => {
@@ -510,11 +572,6 @@ export default function ToadInfo({ onClose }: ToadInfoProps) {
                                     ? "bg-yellow-500/50 text-yellow-100"
                                     : "bg-gray-500/50 text-gray-300"
                                 }`}
-                                title={
-                                  rel.sex !== toad.sex
-                                    ? "Родственник другого пола в одном вольере"
-                                    : "В том же вольере"
-                                }
                               >
                                 {rel.sex !== toad.sex ? "🔸" : ""}
                               </span>
@@ -526,7 +583,7 @@ export default function ToadInfo({ onClose }: ToadInfoProps) {
                         ))}
                       </div>
 
-                      {relativesInfo.inbreedingRisk && (
+                      {relativesInfo.inbreedingRisk ? (
                         <div className="mt-2 p-2 bg-yellow-900/20 border border-yellow-500/30 rounded text-xs">
                           <p className="text-yellow-300 font-semibold">
                             🔸 Обратите внимание
@@ -538,6 +595,8 @@ export default function ToadInfo({ onClose }: ToadInfoProps) {
                             потомства.
                           </p>
                         </div>
+                      ) : (
+                        <p>Родственники другого пола, риска ибридинга нет</p>
                       )}
                     </>
                   ) : (

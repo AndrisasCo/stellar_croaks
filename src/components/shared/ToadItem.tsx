@@ -3,9 +3,9 @@ import {
   getRarityConfig,
   getGeneticFaultConfig,
   Toad,
-} from "../../../models/toad";
-import { ToadGender } from "../../shared/ToadGender";
-import { PregnancyIcon } from "../../../assets/icons";
+} from "../../models/toad";
+import { ToadGender } from "./ToadGender";
+import { PregnancyIcon } from "../../assets/icons";
 
 const HungerIcon = ({ level }: { level: number }) => {
   const getHungerColor = (level: number) => {

@@ -15,7 +15,7 @@ import { useSoundEffects } from "../../../hooks/use-sound-effects";
 import { calculateSellPrice, Toad } from "../../../models/toad";
 import { CURRENCY_CONFIG, TYPE_ICONS } from "../../../utils/constants";
 import { useToads } from "../../ToadContext";
-import { ToadItem } from "./ToadItem";
+import { ToadItem } from "../../shared/ToadItem";
 import { useState, useEffect } from "react";
 
 const refreshShop = (): ShopState => {

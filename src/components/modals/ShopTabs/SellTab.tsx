@@ -15,7 +15,7 @@ import {
   saveShopState,
   ShopState,
 } from "../../../backend/shop-state";
-import { ToadItem } from "./ToadItem";
+import { ToadItem } from "../../shared/ToadItem";
 import { completeAchivement } from "../../../backend/achivements-manager";
 import { useFilters } from "../../../hooks/use-filters";
 import { Filters } from "../../shared/Filters";

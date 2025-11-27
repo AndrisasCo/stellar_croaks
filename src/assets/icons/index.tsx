@@ -417,3 +417,7 @@ export const PregnancyIcon = () => (
     <circle cx="16" cy="10" r="1.5" fill="currentColor" />
   </svg>
 );
+
+export const ToadpoleIcon = () => {
+  return "🔵";
+};
