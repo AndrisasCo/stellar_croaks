@@ -164,10 +164,15 @@ export default function ToadCollider({
     setCustomName(randomName);
   };
 
+  const handleClose = () => {
+    handleReset();
+    onClose();
+  };
+
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={handleClose}
       icon={ColliderIcons.collider}
       title="Генетический Коллайдер"
     >
@@ -384,7 +389,7 @@ export default function ToadCollider({
               Очистить
             </button>
             <button
-              onClick={onClose}
+              onClick={handleClose}
               className="flex-1 bg-gray-700 hover:bg-gray-600 text-gray-300 hover:text-white py-2 text-sm sm:text-base rounded-xl transition-all duration-300 border border-gray-600"
             >
               Закрыть

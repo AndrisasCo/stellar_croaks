@@ -11,7 +11,7 @@ import {
 import { useToads } from "../ToadContext";
 import { InfoIcons } from "../../assets/icons";
 import Modal from "../shared/Modal";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useSoundEffects } from "../../hooks/use-sound-effects";
 import { updateToadById } from "../../backend";
 import { completeAchivement } from "../../backend/achivements-manager";
@@ -29,16 +29,19 @@ export default function ToadInfo({ onClose }: ToadInfoProps) {
   const {
     selectedToad: toad,
     toads,
+    allToads,
     selectToad,
     handleFeedToads,
     ownedScenes,
     currentScene,
+    setCurrentSceneId,
   } = useToads();
   const [isEditingName, setIsEditingName] = useState(false);
   const [editedName, setEditedName] = useState(toad?.name || "");
   const [showPersonalityTooltip, setShowPersonalityTooltip] = useState(false);
   const [showScenesTooltip, setShowScenesTooltip] = useState(false);
   const [showGeneticFaultTooltip, setShowGeneticFaultTooltip] = useState(false);
+  const [showRelativesTooltip, setShowRelativesTooltip] = useState(false);
   const { addNotification } = useNotifications();
   const { playCrunchShort } = useSoundEffects();
 
@@ -47,6 +50,55 @@ export default function ToadInfo({ onClose }: ToadInfoProps) {
   if (!toad) {
     return null;
   }
+
+  // Функция для получения информации о родственниках
+  const relativesInfo = useMemo(() => {
+    const children = allToads
+      .filter((t) => t.parents && t.parents.includes(toad.id))
+      .map((i) => i.id);
+    if ((!toad.parents || toad.parents.length === 0) && children.length === 0) {
+      return { relatives: [], inbreedingRisk: false };
+    }
+
+    const relatives = [...(toad.parents || []), ...children]
+      .map((parentId) => {
+        const parent = allToads.find((t) => t.id === parentId);
+        return parent
+          ? {
+              id: parent.id,
+              name: parent.name,
+              sex: parent.sex,
+              sceneId: parent.scene_id,
+              isInSameEnclosure: parent.scene_id === toad.scene_id,
+            }
+          : null;
+      })
+      .filter(Boolean);
+
+    // Проверяем риск имбридинга: есть ли родственники другого пола в том же вольере
+    const inbreedingRisk = relatives.some(
+      (rel) =>
+        rel &&
+        rel.isInSameEnclosure &&
+        rel.sex !== toad.sex &&
+        rel.sex !== "neuter" &&
+        toad.sex !== "neuter"
+    );
+
+    return { relatives, inbreedingRisk };
+  }, [toad, toads]);
+
+  // Функция для переключения на родственника
+  const handleSelectRelative = (rel) => {
+    if (!rel.sceneId) {
+      return null;
+    }
+    if (rel.sceneId !== currentScene.id) {
+      setCurrentSceneId(rel.sceneId);
+    }
+    selectToad(rel.id);
+    setShowRelativesTooltip(false);
+  };
 
   const handleNameSave = async () => {
     if (editedName.trim() && editedName !== toad.name) {
@@ -107,6 +159,7 @@ export default function ToadInfo({ onClose }: ToadInfoProps) {
   const handleNextToad = () => {
     setShowScenesTooltip(false);
     setShowGeneticFaultTooltip(false);
+    setShowRelativesTooltip(false);
     const currIndex = toads.findIndex((t) => t.id === toad.id);
     if (currIndex === -1) return;
     selectToad(toads[(currIndex + 1) % toads.length].id);
@@ -115,6 +168,7 @@ export default function ToadInfo({ onClose }: ToadInfoProps) {
   const handlePrevToad = () => {
     setShowScenesTooltip(false);
     setShowGeneticFaultTooltip(false);
+    setShowRelativesTooltip(false);
     const currIndex = toads.findIndex((t) => t.id === toad.id);
     if (currIndex === -1) return;
     selectToad(toads[(currIndex - 1 + toads.length) % toads.length].id);
@@ -153,6 +207,12 @@ export default function ToadInfo({ onClose }: ToadInfoProps) {
   };
 
   const handleMoveToScene = (scene_id: number | null) => () => {
+    if (scene_id === null) {
+      updateToadById(toad.id, { scene_id });
+      handleNextToad();
+      return;
+    }
+
     const nextScene = getGameState().scenes.find((s) => s.id === scene_id);
     const nextSceneToads =
       getGameState().toads.filter((t) => t.scene_id === scene_id).length + 1;
@@ -380,6 +440,115 @@ export default function ToadInfo({ onClose }: ToadInfoProps) {
                 {toad.genes?.speed?.toFixed(1) || "0.0"}
               </p>
             </div>
+          </div>
+
+          {/* РОДСТВЕННИКИ */}
+          <div className="relative mb-3">
+            <div
+              onClick={() => setShowRelativesTooltip(!showRelativesTooltip)}
+              className={`rounded-xl p-2 border cursor-pointer transition-colors ${
+                relativesInfo.inbreedingRisk
+                  ? "bg-yellow-900/20 border-yellow-500/50 hover:bg-yellow-900/30"
+                  : relativesInfo.relatives.length > 0
+                  ? "bg-blue-900/20 border-blue-500/50 hover:bg-blue-900/30"
+                  : "bg-gray-700/50 border-gray-600/50 hover:bg-gray-600/50"
+              }`}
+            >
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-sm">🔸</span>
+                <p className="text-gray-400 text-xs font-medium">
+                  РОДСТВЕННИКИ
+                </p>
+              </div>
+              <p
+                className={`text-sm font-semibold ${
+                  relativesInfo.inbreedingRisk
+                    ? "text-yellow-400"
+                    : relativesInfo.relatives.length > 0
+                    ? "text-blue-400"
+                    : "text-gray-400"
+                }`}
+              >
+                {relativesInfo.relatives.length > 0
+                  ? `${relativesInfo.relatives.length} найдено`
+                  : "Не обнаружено"}
+                {relativesInfo.inbreedingRisk}
+              </p>
+            </div>
+
+            {showRelativesTooltip && (
+              <Tooltip
+                title="Родственники"
+                isOpen={showRelativesTooltip}
+                onClose={() => setShowRelativesTooltip(false)}
+              >
+                <div className="space-y-2 text-sm max-w-xs">
+                  {relativesInfo.relatives.length > 0 ? (
+                    <>
+                      <p className="text-gray-300 mb-2">
+                        {relativesInfo.relatives.length} родственников найдено:
+                      </p>
+                      <div className="space-y-1 max-h-40 overflow-y-auto">
+                        {relativesInfo.relatives.map((rel: any) => (
+                          <button
+                            key={rel.id}
+                            onClick={() => handleSelectRelative(rel)}
+                            className={`flex items-center gap-2 p-2 rounded text-xs w-full text-left hover:bg-gray-600/50 transition-colors ${
+                              rel.isInSameEnclosure && rel.sex !== toad.sex
+                                ? "bg-yellow-900/20 border border-yellow-500/30"
+                                : "bg-gray-700/30"
+                            }`}
+                          >
+                            <span className="flex-shrink-0">
+                              {TYPE_ICONS[rel.sex as keyof typeof TYPE_ICONS]}
+                            </span>
+                            <span className="truncate flex-1">{rel.name}</span>
+                            {rel.isInSameEnclosure && (
+                              <span
+                                className={`px-1 rounded text-xs ${
+                                  rel.sex !== toad.sex
+                                    ? "bg-yellow-500/50 text-yellow-100"
+                                    : "bg-gray-500/50 text-gray-300"
+                                }`}
+                                title={
+                                  rel.sex !== toad.sex
+                                    ? "Родственник другого пола в одном вольере"
+                                    : "В том же вольере"
+                                }
+                              >
+                                {rel.sex !== toad.sex ? "🔸" : ""}
+                              </span>
+                            )}
+                            {!rel.sceneId && (
+                              <span className="px-1 rounded text-xs">📦</span>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+
+                      {relativesInfo.inbreedingRisk && (
+                        <div className="mt-2 p-2 bg-yellow-900/20 border border-yellow-500/30 rounded text-xs">
+                          <p className="text-yellow-300 font-semibold">
+                            🔸 Обратите внимание
+                          </p>
+                          <p className="text-yellow-200 mt-1">
+                            В этом вольере есть родственники другого пола.
+                            Рекомендуется рассмотреть их перемещение для
+                            предотвращения возможных генетических проблем у
+                            потомства.
+                          </p>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <p className="text-gray-300">
+                      Родственников данной жабы не обнаружено, разведение
+                      безопасно.
+                    </p>
+                  )}
+                </div>
+              </Tooltip>
+            )}
           </div>
 
           {/* ХАРАКТЕР */}
