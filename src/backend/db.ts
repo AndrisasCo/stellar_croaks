@@ -66,6 +66,7 @@ export const updateLeaderbord = async () => {
 
   const ldData = await getLeaderboardByTg();
   if (!ldData?.data) {
+    await createLeaderbord();
     return;
   }
 
