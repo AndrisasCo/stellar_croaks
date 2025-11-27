@@ -6,6 +6,7 @@ import {
   HOURS_TO_GROW_UP,
   getPersonalityDescription,
   getPersonalityLabel,
+  getGeneticFaultConfig,
 } from "../../models/toad";
 import { useToads } from "../ToadContext";
 import { InfoIcons } from "../../assets/icons";
@@ -17,6 +18,8 @@ import { completeAchivement } from "../../backend/achivements-manager";
 import { getBoostByScene } from "../../models/scene";
 import { nameGenerator } from "../../utils/name-generator";
 import { Tooltip } from "../shared/Tooltip";
+import { getGameState } from "../../backend/localStorage";
+import { useNotifications } from "../../hooks/use-notification";
 
 interface ToadInfoProps {
   onClose: () => void;
@@ -35,6 +38,8 @@ export default function ToadInfo({ onClose }: ToadInfoProps) {
   const [editedName, setEditedName] = useState(toad?.name || "");
   const [showPersonalityTooltip, setShowPersonalityTooltip] = useState(false);
   const [showScenesTooltip, setShowScenesTooltip] = useState(false);
+  const [showGeneticFaultTooltip, setShowGeneticFaultTooltip] = useState(false);
+  const { addNotification } = useNotifications();
   const { playCrunchShort } = useSoundEffects();
 
   const allScenes = ownedScenes.filter((s) => s.id !== currentScene.id);
@@ -101,6 +106,7 @@ export default function ToadInfo({ onClose }: ToadInfoProps) {
 
   const handleNextToad = () => {
     setShowScenesTooltip(false);
+    setShowGeneticFaultTooltip(false);
     const currIndex = toads.findIndex((t) => t.id === toad.id);
     if (currIndex === -1) return;
     selectToad(toads[(currIndex + 1) % toads.length].id);
@@ -108,13 +114,14 @@ export default function ToadInfo({ onClose }: ToadInfoProps) {
 
   const handlePrevToad = () => {
     setShowScenesTooltip(false);
-
+    setShowGeneticFaultTooltip(false);
     const currIndex = toads.findIndex((t) => t.id === toad.id);
     if (currIndex === -1) return;
     selectToad(toads[(currIndex - 1 + toads.length) % toads.length].id);
   };
 
   const rarityConfig = getRarityConfig(toad.genes?.rarity || 1);
+  const geneticFaultConfig = getGeneticFaultConfig(toad.state?.genetic_fault);
   const personalityData = toad.genes?.personality
     ? personalities[toad.genes.personality as keyof typeof personalities]
     : null;
@@ -146,6 +153,13 @@ export default function ToadInfo({ onClose }: ToadInfoProps) {
   };
 
   const handleMoveToScene = (scene_id: number | null) => () => {
+    const nextScene = getGameState().scenes.find((s) => s.id === scene_id);
+    const nextSceneToads =
+      getGameState().toads.filter((t) => t.scene_id === scene_id).length + 1;
+    if (!nextScene || nextScene.capacity < nextSceneToads) {
+      addNotification({ type: "warn", content: "Данный вольер переполнен!" });
+      return;
+    }
     updateToadById(toad.id, { scene_id });
     handleNextToad();
   };
@@ -258,15 +272,52 @@ export default function ToadInfo({ onClose }: ToadInfoProps) {
         </button>
 
         <div className="flex flex-col w-full ">
-          {/* РЕДКОСТЬ - на всю ширину */}
-          <div className="bg-gray-700/50 rounded-xl p-2 mb-3 border border-gray-600/50">
-            <div className="flex items-center gap-2 mb-1">
-              {InfoIcons.rarity}
-              <p className="text-gray-400 text-xs font-medium">РЕДКОСТЬ</p>
+          {/* РЕДКОСТЬ и ГЕНЕТИЧЕСКАЯ ПОЛОМКА - колонки */}
+          <div className="grid grid-cols-2 gap-2 mb-3 relative">
+            {/* РЕДКОСТЬ */}
+            <div className="bg-gray-700/50 rounded-xl p-2 border border-gray-600/50">
+              <div className="flex items-center gap-2 mb-1">
+                {InfoIcons.rarity}
+                <p className="text-gray-400 text-xs font-medium h-5">
+                  РЕДКОСТЬ
+                </p>
+              </div>
+              <p className={`text-sm font-semibold ${rarityConfig.color}`}>
+                {rarityConfig.label} ({toad.genes?.rarity?.toFixed(1) || "1.0"})
+              </p>
             </div>
-            <p className={`text-sm font-semibold ${rarityConfig.color}`}>
-              {rarityConfig.label} ({toad.genes?.rarity?.toFixed(1) || "1.0"})
-            </p>
+
+            {/* ГЕНЕТИЧЕСКАЯ ПОЛОМКА */}
+            <div
+              className={`rounded-xl p-2 border ${geneticFaultConfig.bgColor} ${geneticFaultConfig.borderColor} cursor-pointer hover:opacity-90 transition-opacity`}
+              onClick={() =>
+                setShowGeneticFaultTooltip(!showGeneticFaultTooltip)
+              }
+            >
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-sm">{geneticFaultConfig.icon}</span>
+                <p className="text-gray-400 text-xs font-medium">ГЕНЕТИКА</p>
+              </div>
+              <p
+                className={`text-sm font-semibold ${geneticFaultConfig.color}`}
+              >
+                {geneticFaultConfig.label} ({toad.state?.genetic_fault || 0}%)
+              </p>
+            </div>
+
+            {showGeneticFaultTooltip && (
+              <Tooltip
+                title="Генетика"
+                isOpen={showGeneticFaultTooltip}
+                onClose={() => setShowGeneticFaultTooltip(false)}
+              >
+                <div className="space-y-2 text-sm">
+                  <p className="text-gray-300">
+                    {geneticFaultConfig.description}
+                  </p>
+                </div>
+              </Tooltip>
+            )}
           </div>
 
           {/* ПЛОДОВИТОСТЬ и HUNGER RATE - колонки */}

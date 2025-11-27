@@ -28,6 +28,10 @@ export const useFilters = (toads: Toad[]) => {
           aValue = a.state.hunger;
           bValue = b.state.hunger;
           break;
+        case "genetic_fault":
+          aValue = a.state.genetic_fault || 0;
+          bValue = b.state.genetic_fault || 0;
+          break;
         case "size":
           aValue = a.genes.weight;
           bValue = b.genes.weight;

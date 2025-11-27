@@ -242,7 +242,7 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
 
       {/* Вкладка предметов */}
       {activeTab === "items" && (
-        <div className="flex flex-col h-[calc(80vh-210px)] gap-5">
+        <div className="flex flex-col gap-5">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-white px-2 font-semibold">Инвентарь</h3>
             <div className="text-gray-400 text-sm">
@@ -314,7 +314,7 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
 
       {/* Вкладка жаб */}
       {activeTab === "toads" && (
-        <div className="space-y-3 h-[calc(80vh-156px)]">
+        <div className="space-y-3">
           <div className="flex justify-between items-center mb-3">
             <h3 className="text-white px-2 font-semibold">Жабы на складе</h3>
             <div className="text-gray-400 text-sm">
@@ -361,8 +361,8 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
         </div>
       )}
 
-      {/* Статистика в подвале */}
-      <div className="border-t border-gray-700/50 py-4 px-2 bg-gray-900/50">
+      {/* Статистика в подвале
+      <div className="border-t border-gray-700/50 py-4 px-2 bg-gray-900/50 mt-5">
         <div className="grid grid-cols-3 gap-4 text-center text-xs">
           <div>
             <div className="text-blue-400 font-bold">
@@ -385,7 +385,7 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
             <div className="text-gray-400 text-[10px]">Жабы</div>
           </div>
         </div>
-      </div>
+      </div> */}
     </Modal>
   );
 };

@@ -1,5 +1,9 @@
 import { ReactElement } from "react";
-import { getRarityConfig, RARITY_CONFIG, Toad } from "../../../models/toad";
+import {
+  getRarityConfig,
+  getGeneticFaultConfig,
+  Toad,
+} from "../../../models/toad";
 import { ToadGender } from "../../shared/ToadGender";
 import { PregnancyIcon } from "../../../assets/icons";
 
@@ -22,6 +26,17 @@ const HungerIcon = ({ level }: { level: number }) => {
     <div className={`flex items-center gap-1 ${getHungerColor(level)}`}>
       <span className="text-xs">{getHungerIcon(level)}</span>
       <span className="text-[10px] font-medium">{level}%</span>
+    </div>
+  );
+};
+
+const GeneticFaultIcon = ({ fault }: { fault: number }) => {
+  const config = getGeneticFaultConfig(fault);
+
+  return (
+    <div className={`flex items-center gap-1 ${config.color}`}>
+      <span>{config.icon}</span>
+      <span>{fault}%</span>
     </div>
   );
 };
@@ -76,13 +91,23 @@ export const ToadItem = ({
 
           {button}
         </div>
-        <div className={`${getRarityConfig(toad.genes?.rarity).color}`}>
-          <span className="text-gray-500">Редкость:</span>{" "}
-          {getRarityConfig(toad.genes?.rarity).icon}{" "}
-          {toad.genes?.rarity.toFixed(1)}
-        </div>
+
+        {/* Редкость и генетика в одной строке */}
         {/* Характеристики */}
         <div className="grid grid-cols-2 gap-2 text-sm">
+          <div className={`${getRarityConfig(toad.genes?.rarity).color}`}>
+            <span className="text-gray-500">Редкость:</span>{" "}
+            {getRarityConfig(toad.genes?.rarity).icon}{" "}
+            <span className="font-semibold">
+              {toad.genes?.rarity.toFixed(1)}
+            </span>
+          </div>
+
+          <div className="text-gray-400 flex gap-1">
+            <span className="text-gray-500">Поломки ДНК:</span>
+            <GeneticFaultIcon fault={toad.state?.genetic_fault || 0} />
+          </div>
+
           <div className="text-gray-400">
             <span className="text-gray-500">Размер:</span>{" "}
             {toad.genes?.weight.toFixed(1)}

@@ -15,6 +15,7 @@ import Modal from "../shared/Modal";
 import { deleteToadsByIds, updateToadsByIds } from "../../backend";
 import { ToadGender } from "../shared/ToadGender";
 import { nameGenerator } from "../../utils/name-generator";
+import { getGeneticFaultConfig } from "../../models/toad";
 
 interface ToadColliderProps {
   isOpen: boolean;
@@ -102,7 +103,7 @@ export default function ToadCollider({
 
     // Мутация - шанс на повышенную редкость
     const mutationChance = Math.random() < 0.1;
-    const genesBreakChance = Math.random() < 0.3;
+    const genesBreakChance = Math.random() < 0.1;
 
     const child = generateChildToad(currentToads, true, {
       mutationChance,
@@ -120,7 +121,7 @@ export default function ToadCollider({
     }
 
     if (mutationChance) {
-      message += " 💥 Жаба мутировала! Ее редкость повышена";
+      message += " Жаба мутировала! Ее редкость повышена";
     }
 
     setBreedingResult({
@@ -170,62 +171,61 @@ export default function ToadCollider({
       icon={ColliderIcons.collider}
       title="Генетический Коллайдер"
     >
-      <div className="bg-gray-700  rounded-lg p-3 mb-4 sm:mb-6 border border-gray-600">
-        <div className="text-xs sm:text-sm text-white font-medium mb-2 sm:mb-3 text-center flex items-center justify-center gap-2">
-          <span className="text-yellow-400">⭐</span>
-          Бонусы редкости
-          <span className="text-yellow-400">⭐</span>
-        </div>
-        <div className="grid grid-cols-4 gap-2 text-xs">
-          {[
-            {
-              count: 2,
-              colors: "from-green-400 to-green-600",
-              shadow: "shadow-green-500/40",
-            },
-            {
-              count: 3,
-              colors: "from-blue-400 to-blue-600",
-              shadow: "shadow-blue-500/40",
-            },
-            {
-              count: 4,
-              colors: "from-purple-500 to-pink-500",
-              shadow: "shadow-purple-500/40",
-            },
-            {
-              count: 5,
-              colors: "from-yellow-400 to-red-500",
-              shadow: "shadow-yellow-500/40",
-            },
-          ].map(({ count, colors, shadow }) => (
-            <div
-              key={count}
-              className={`text-center p-1 sm:p-2 rounded-xl transition-all duration-500 transform ${
-                currentToads.length >= count
-                  ? `bg-gradient-to-br ${colors} text-white shadow-lg ${shadow} scale-105 border-2 border-white border-opacity-30 animate-gradient-x`
-                  : "bg-gray-600 text-gray-400 border-2 border-transparent hover:border-gray-500"
-              }`}
-            >
-              <div className="font-bold text-[10px] sm:text-[11px]">
-                {count} жаб
-              </div>
-              <div
-                className={`font-bold text-[9px] sm:text-[10px] mt-1 ${
-                  currentToads.length >= count
-                    ? "text-yellow-300"
-                    : "text-gray-300"
-                }`}
-              >
-                +{calculateRarityBonus(count)}%
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
       {!breedingResult ? (
         <>
+          <div className="bg-gray-700  rounded-lg p-3 mb-4 sm:mb-6 border border-gray-600">
+            <div className="text-xs sm:text-sm text-white font-medium mb-2 sm:mb-3 text-center flex items-center justify-center gap-2">
+              <span className="text-yellow-400">⭐</span>
+              Бонусы редкости
+              <span className="text-yellow-400">⭐</span>
+            </div>
+            <div className="grid grid-cols-4 gap-2 text-xs">
+              {[
+                {
+                  count: 2,
+                  colors: "from-green-400 to-green-600",
+                  shadow: "shadow-green-500/40",
+                },
+                {
+                  count: 3,
+                  colors: "from-blue-400 to-blue-600",
+                  shadow: "shadow-blue-500/40",
+                },
+                {
+                  count: 4,
+                  colors: "from-purple-500 to-pink-500",
+                  shadow: "shadow-purple-500/40",
+                },
+                {
+                  count: 5,
+                  colors: "from-yellow-400 to-red-500",
+                  shadow: "shadow-yellow-500/40",
+                },
+              ].map(({ count, colors, shadow }) => (
+                <div
+                  key={count}
+                  className={`text-center p-1 sm:p-2 rounded-xl transition-all duration-500 transform ${
+                    currentToads.length >= count
+                      ? `bg-gradient-to-br ${colors} text-white shadow-lg ${shadow} scale-105 border-2 border-white border-opacity-30 animate-gradient-x`
+                      : "bg-gray-600 text-gray-400 border-2 border-transparent hover:border-gray-500"
+                  }`}
+                >
+                  <div className="font-bold text-[10px] sm:text-[11px]">
+                    {count} жаб
+                  </div>
+                  <div
+                    className={`font-bold text-[9px] sm:text-[10px] mt-1 ${
+                      currentToads.length >= count
+                        ? "text-yellow-300"
+                        : "text-gray-300"
+                    }`}
+                  >
+                    +{calculateRarityBonus(count)}%
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
           {/* Слоты-колбы для жаб */}
           <div className="flex flex-wrap justify-center gap-2 sm:gap-3 mb-3">
             {[0, 1, 2, 3, 4].map((slot: number) => (
@@ -304,47 +304,71 @@ export default function ToadCollider({
               </p>
               <div className="min-h-24">
                 <div className="flex flex-wrap gap-1 sm:gap-2 justify-center">
-                  {availableToads.length === 0 && <>Нет доступных жаб</>}
-                  {availableToads.map((toad) => (
-                    <button
-                      key={toad.id}
-                      onClick={() => handleSelectToad(toad)}
-                      className={`p-1 relative sm:p-2 rounded-lg text-xs text-center transition-all flex flex-col items-center min-w-[70px] sm:min-w-[80px] border ${
-                        currentToads.find((t) => t.id === toad.id)
-                          ? "bg-purple-600/50 text-white cursor-not-allowed border-purple-500/50"
-                          : `text-gray-300  cursor-pointer ${getRarityBackground(
-                              toad.genes.rarity
-                            )}`
-                      }`}
-                    >
-                      <div
-                        className="w-4 h-4 sm:w-6 sm:h-6 rounded-full mb-1 border border-white/80"
-                        style={{ backgroundColor: toad.genes.colors[0] }}
-                      />
-                      {toad.pregnancy && (
-                        <span className="absolute right-1">
-                          <PregnancyIcon />
-                        </span>
-                      )}
-                      <span className="truncate w-full h-6 gap-1 flex items-center">
-                        <ToadGender gender={toad.sex} /> {toad.name}
-                      </span>
-                      {/* Информация о редкости */}
-                      <div
-                        className={`text-sm font-bold ${getRarityColor(
-                          toad.genes.rarity
-                        )} flex items-center gap-1`}
+                  {availableToads.length === 0 && (
+                    <div className="text-gray-500 text-sm py-4">
+                      Нет доступных жаб
+                    </div>
+                  )}
+                  {availableToads.map((toad) => {
+                    const geneticFaultConfig = getGeneticFaultConfig(
+                      toad.state?.genetic_fault
+                    );
+
+                    return (
+                      <button
+                        key={toad.id}
+                        onClick={() => handleSelectToad(toad)}
+                        className={`p-2 relative rounded-lg text-xs text-center transition-all flex flex-col items-center w-[100px] max-w-[100px] border ${
+                          currentToads.find((t) => t.id === toad.id)
+                            ? "bg-purple-600/50 text-white cursor-not-allowed border-purple-500/50"
+                            : `text-gray-300 cursor-pointer ${getRarityBackground(
+                                toad.genes.rarity
+                              )} hover:bg-gray-600/30`
+                        }`}
                       >
-                        <span>{getRarityBadge(toad.genes.rarity)}</span>
-                        <span>{toad.genes.rarity.toFixed(1)}</span>
-                      </div>
-                      {/* Дополнительная информация */}
-                      <div className="text-xs text-gray-400 mt-1">
-                        Разм: {toad.genes.weight.toFixed(1)} | Скр:{" "}
-                        {toad.genes.speed.toFixed(1)}
-                      </div>
-                    </button>
-                  ))}
+                        {/* Аватар и имя */}
+                        <div
+                          className="w-6 h-6 rounded-full mb-1 border-2 border-white/80 shadow-sm"
+                          style={{ backgroundColor: toad.genes.colors[0] }}
+                        />
+
+                        {toad.pregnancy && (
+                          <span className="absolute -top-1 -right-1">
+                            <PregnancyIcon />
+                          </span>
+                        )}
+
+                        <div className="flex items-center gap-1 mb-1 w-full justify-center min-h-[20px]">
+                          <ToadGender gender={toad.sex} />
+                          <span className="truncate font-medium text-[11px]">
+                            {toad.name}
+                          </span>
+                        </div>
+
+                        {/* Редкость */}
+                        <div
+                          className={`text-xs font-bold ${getRarityColor(
+                            toad.genes.rarity
+                          )} flex items-center gap-1 mb-1`}
+                        >
+                          <span className="text-[10px]">
+                            {getRarityBadge(toad.genes.rarity)}
+                          </span>
+                          <span>{toad.genes.rarity.toFixed(1)}</span>
+                        </div>
+
+                        {/* Генетическая поломка */}
+                        <div
+                          className={`w-full rounded px-1 py-0.5 text-[9px] font-medium border ${geneticFaultConfig.bgColor} ${geneticFaultConfig.borderColor} ${geneticFaultConfig.color}`}
+                        >
+                          <div className="flex items-center justify-center gap-1">
+                            <span>{geneticFaultConfig.icon}</span>
+                            <span>{toad.state?.genetic_fault || 0}%</span>
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -368,100 +392,172 @@ export default function ToadCollider({
           </div>
         </>
       ) : (
-        /* Результат скрещивания */
         <div className="text-center">
+          {/* Сообщение о результате */}
           <div
-            className={`mb-3 text-base ${
-              breedingResult.success ? "text-green-400" : "text-red-400"
+            className={`rounded-xl p-4 mb-4 border-2 ${
+              breedingResult.success
+                ? "bg-green-900/30 border-green-500/50 text-green-300"
+                : "bg-red-900/30 border-red-500/50 text-red-300"
             }`}
           >
-            {breedingResult.message}
+            <div className="flex items-center justify-center gap-3">
+              <div className="text-left">
+                <div className="font-bold text-sm mb-1">
+                  {breedingResult.success
+                    ? "Успешное скрещивание!"
+                    : "Особый результат"}
+                </div>
+                <div className="text-sm leading-relaxed">
+                  {breedingResult.message}
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div className="bg-gray-700/50 rounded-xl p-3 mb-4 border border-gray-600/50">
-            <div
-              className="w-16 h-16 mx-auto rounded-full mb-3 border-2 border-white/80 shadow-lg"
-              style={{
-                backgroundColor: breedingResult.child!.genes.colors[0],
-              }}
-            />
-            <div className="flex justify-center items-center gap-3 mb-3 ">
-              <button className="text-2xl" onClick={generateRandomName}>
-                🎲
-              </button>
-              <input
-                type="text"
-                value={customName}
-                onChange={(e) => setCustomName(e.target.value)}
-                placeholder="Введите имя для жабы..."
-                className="bg-gray-600/50 border border-gray-500 text-white rounded-xl px-3 py-2 text-center w-full text-sm sm:text-lg placeholder-gray-400 focus:outline-none focus:border-green-500/50"
+          <div className="bg-gray-700/50 rounded-xl p-2 border border-gray-600/50">
+            {/* Верхний блок: аватар + редкость + имя */}
+            <div className="flex items-center gap-4 mb-4">
+              {/* Поле ввода имени */}
+              <div className="flex-1">
+                <div className="flex items-center gap-2 ">
+                  <button
+                    className="text-xl p-2 hover:bg-gray-600/50 rounded-xl transition-colors flex-shrink-0"
+                    onClick={generateRandomName}
+                    title="Сгенерировать имя"
+                  >
+                    🎲
+                  </button>
+                  <input
+                    type="text"
+                    value={customName}
+                    onChange={(e) => setCustomName(e.target.value)}
+                    placeholder="Введите имя для жабы..."
+                    className="bg-gray-600/50 border border-gray-500 text-white rounded-xl px-3 py-2 text-center w-full text-sm placeholder-gray-400 focus:outline-none focus:border-green-500/50"
+                  />
+                </div>
+              </div>
+
+              <div
+                className="w-[38px] h-[38px] mb-auto rounded-full border-2 border-white/80 shadow-lg"
+                style={{
+                  backgroundColor: breedingResult.child!.genes.colors[0],
+                }}
               />
             </div>
-            <div className="grid grid-cols-3 gap-2 text-xs sm:text-sm mb-3">
-              {/* Редкость */}
-              <div
-                className={`bg-gray-600/50 rounded-xl p-2 sm:p-3 border ${getRarityColor(
-                  breedingResult.child!.genes.rarity
-                ).replace("text-", "border-")}/50`}
-              >
-                <div className="text-center">
-                  <div
-                    className={`mb-1 ${getRarityColor(
-                      breedingResult.child!.genes.rarity
-                    )}`}
-                  >
-                    {getRarityBadge(breedingResult.child!.genes.rarity)}
-                  </div>
-                  <div className="text-white text-base  font-black mb-1">
-                    {breedingResult.child!.genes.rarity.toFixed(1)}
-                  </div>
-                  <div className="text-gray-400 text-[8px] sm:text-[10px] font-bold uppercase">
-                    Редкость
-                  </div>
+            {/* Пол и поколение */}
+            <div className="flex items-center justify-center gap-3 text-sm text-gray-400">
+              <div className="flex items-center gap-2">
+                <ToadGender gender={breedingResult.child.sex} />
+                <span>
+                  {breedingResult.child.sex === "neuter"
+                    ? "Бесполый"
+                    : breedingResult.child.sex === "male"
+                    ? "Самец"
+                    : "Самка"}
+                </span>
+              </div>
+              <div className="w-px h-4 bg-gray-500"></div>
+              <div>Поколение: {breedingResult.child!.generation}</div>
+            </div>
+            {/* Редкость */}
+            <div
+              className={`text-center my-3 ${getRarityColor(
+                breedingResult.child!.genes.rarity
+              )}`}
+            >
+              <span className="text-gray-500 text-sm">Редкость:</span>{" "}
+              {getRarityBadge(breedingResult.child!.genes.rarity)}{" "}
+              <span className="font-semibold">
+                {breedingResult.child!.genes.rarity.toFixed(1)}
+              </span>
+            </div>
+
+            {/* Таблица характеристик */}
+            <div className="grid grid-cols-2 gap-2 text-sm mb-3">
+              <div className="text-gray-400 bg-gray-600/30 rounded-lg p-2 text-center">
+                <div className="text-gray-500 text-xs mb-1">Размер</div>
+                <div className="font-semibold">
+                  {breedingResult.child!.genes.weight.toFixed(1)}
                 </div>
               </div>
-
-              {/* Размер */}
-              <div className="bg-gray-600/50 rounded-xl p-2  border border-gray-500/50">
-                <div className="text-center">
-                  <div className="text-blue-400 mb-1">
-                    {ColliderIcons.weight}
-                  </div>
-                  <div className="text-white text-base  font-black mb-1">
-                    {breedingResult.child!.genes.weight.toFixed(1)}
-                  </div>
-                  <div className="text-gray-400 text-sm  font-bold uppercase">
-                    Размер
-                  </div>
+              <div className="text-gray-400 bg-gray-600/30 rounded-lg p-2 text-center">
+                <div className="text-gray-500 text-xs mb-1">Скорость</div>
+                <div className="font-semibold">
+                  {breedingResult.child!.genes.speed.toFixed(1)}
                 </div>
               </div>
-
-              {/* Скорость */}
-              <div className="bg-gray-600/50 rounded-xl p-2 sm:p-3 border border-gray-500/50">
-                <div className="text-center">
-                  <div className="text-purple-400 mb-1">
-                    {ColliderIcons.speed}
-                  </div>
-                  <div className="text-white text-base font-black mb-1">
-                    {breedingResult.child!.genes.speed.toFixed(1)}
-                  </div>
-                  <div className="text-gray-400 text-sm font-bold uppercase">
-                    Скорость
-                  </div>
+              <div className="text-gray-400 bg-gray-600/30 rounded-lg p-2 text-center">
+                <div className="text-gray-500 text-xs mb-1">Аппетит</div>
+                <div className="font-semibold">
+                  {breedingResult.child!.genes.hungerRate.toFixed(1)}
+                </div>
+              </div>
+              <div className="text-gray-400 bg-gray-600/30 rounded-lg p-2 text-center">
+                <div className="text-gray-500 text-xs mb-1">Плодовитость</div>
+                <div className="font-semibold">
+                  {breedingResult.child!.genes.fertility.toFixed(1)}
                 </div>
               </div>
             </div>
-            <ToadGender gender={breedingResult.child.sex} />
-            {breedingResult.child.sex === "neuter" && " Бесполый"}
-            <p className="text-gray-400 text-xs mt-2">
-              Поколение: {breedingResult.child!.generation}
-            </p>
+
+            {/* Генетическая поломка */}
+            {breedingResult.child!.state?.genetic_fault !== undefined && (
+              <div className="mb-3">
+                <div
+                  className={`rounded-xl p-3 border-2 ${
+                    getGeneticFaultConfig(
+                      breedingResult.child!.state?.genetic_fault
+                    ).bgColor
+                  } ${
+                    getGeneticFaultConfig(
+                      breedingResult.child!.state?.genetic_fault
+                    ).borderColor
+                  }`}
+                >
+                  <div className="flex items-center justify-center gap-2 mb-2">
+                    <span className="text-lg">
+                      {
+                        getGeneticFaultConfig(
+                          breedingResult.child!.state?.genetic_fault
+                        ).icon
+                      }
+                    </span>
+                    <span className="text-gray-400 text-sm font-semibold">
+                      ГЕНЕТИКА
+                    </span>
+                  </div>
+                  <div
+                    className={`text-base font-bold ${
+                      getGeneticFaultConfig(
+                        breedingResult.child!.state?.genetic_fault
+                      ).color
+                    } mb-1`}
+                  >
+                    {
+                      getGeneticFaultConfig(
+                        breedingResult.child!.state?.genetic_fault
+                      ).label
+                    }{" "}
+                    ({breedingResult.child!.state?.genetic_fault}%)
+                  </div>
+                  <div className="text-gray-500 text-xs leading-relaxed">
+                    {
+                      getGeneticFaultConfig(
+                        breedingResult.child!.state?.genetic_fault
+                      ).description
+                    }
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
-          <div className="flex mt-2 gap-2">
+          {/* Кнопка подтверждения */}
+          <div className="flex gap-3">
             <button
               onClick={handleConfirm}
-              className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white py-2 text-sm sm:text-base rounded-xl transition-all duration-300 transform hover:scale-105 border-2 border-white/20 shadow-lg font-bold"
+              className="flex-1 bg-gradient-to-r mt-4 from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white py-3 text-base rounded-xl transition-all duration-300 transform hover:scale-105 border-2 border-white/20 shadow-lg font-bold"
             >
               Поместить в инкубатор
             </button>

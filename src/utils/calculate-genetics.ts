@@ -1,4 +1,5 @@
 import { personalities, Toad } from "../models/toad";
+
 const getSum = (arr: number[]) => arr.reduce((a, b) => a + b, 0);
 
 export const calculateRarityBonus = (parentCount: number): number => {
@@ -105,6 +106,70 @@ export const assignRandomPersonality = (): string | null => {
   return personalityKeys[randomIndex];
 };
 
+// Функция для проверки родственных связей
+const calculateInbreedingLevel = (parents: Toad[]): number => {
+  const parent1 = parents[0];
+  const parent2 = parents[1];
+
+  // Проверяем, являются ли жабы прямыми родственниками (родитель-ребенок)
+  if (
+    parent1.parents?.includes(parent2.id) ||
+    parent2.parents?.includes(parent1.id)
+  ) {
+    return 0.8; // Высокий уровень инбридинга
+  }
+
+  // Проверяем общих родителей
+  const commonParents =
+    parent1.parents?.filter((parentId) =>
+      parent2.parents?.includes(parentId)
+    ) || [];
+
+  if (commonParents.length === 2) {
+    return 0.6; // Оба родителя общие (брат-сестра)
+  } else if (commonParents.length === 1) {
+    return 0.4; // Один общий родитель (полу-брат/сестра)
+  }
+
+  return 0; // Нет близкородственных связей
+};
+
+// Функция для расчета генетической поломки потомства
+const calculateGeneticFault = (
+  parents: Toad[],
+  isCollider: boolean,
+  inbreedingLevel: number
+): number => {
+  const parentFaults = parents.map((p) => p.state?.genetic_fault || 0);
+  const maxParentFault = Math.max(...parentFaults);
+  const avgParentFault = getSum(parentFaults) / parentFaults.length;
+
+  if (isCollider) {
+    // Коллайдер: берем максимальную поломку и умножаем на коэффициент
+    const colliderMultiplier = 1.2;
+    const baseFault =
+      ((maxParentFault + avgParentFault) / 2) * colliderMultiplier + 7;
+
+    // Добавляем случайную вариацию
+    const randomVariation = Math.random() * 5;
+    return Math.min(100, baseFault + randomVariation);
+  } else {
+    // Учитываем инбридинг
+    if (inbreedingLevel > 0) {
+      // 08 06 04
+      const inbreedingPenalty = inbreedingLevel * 10; // Штраф за инбридинг
+      return avgParentFault + inbreedingPenalty;
+    }
+    // Естественное размножение: мягкое сокращение поломки
+    const naturalReduction = 0.7; // Уменьшение на 30%
+    let baseFault = avgParentFault * naturalReduction;
+
+    // Небольшая случайная вариация
+    const randomVariation = (Math.random() - 0.5) * 5; // -2.5 to +2.5
+    return Math.max(0, Math.min(100, baseFault + randomVariation));
+  }
+};
+
 export const generateChildToad = (
   parents: Toad[],
   isCollider: boolean,
@@ -151,19 +216,26 @@ export const generateChildToad = (
     personality ? personalityTrait.fertility : 1
   );
 
+  // Расчет генетической поломки
+  const inbreedingLevel = isCollider ? 0 : calculateInbreedingLevel(parents);
+  const geneticFault = Math.round(
+    calculateGeneticFault(parents, isCollider, inbreedingLevel)
+  );
+
   return {
     name: `Жаб-${generation}-${Math.floor(Math.random() * 1000)}`,
     type: "hybrid",
-    description: isCollider
-      ? `Гибридное поколение ${generation}. Унаследовал черты родителей.`
-      : "Родился путем скрещивания",
     generation,
     parents: parents.map((p) => p.id),
-    sex: getSex(isCollider, chances?.genesBreakChance || false),
+    sex:
+      geneticFault === 100
+        ? "neuter"
+        : getSex(isCollider, chances?.genesBreakChance || false),
     stage: "toadpole",
     scene_id: parents[0].scene_id,
     state: {
       hunger: 0,
+      genetic_fault: geneticFault, // Округляем до целого числа
     },
     genes: {
       colors: [childColor, childColor2],
@@ -176,6 +248,5 @@ export const generateChildToad = (
       personality,
     },
     pregnancy: null,
-    owner: parents[0].owner,
   };
 };

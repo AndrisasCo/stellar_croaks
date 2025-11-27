@@ -246,7 +246,7 @@ export const endPregnancy = async (toad: Toad, addNotification: any) => {
     .fill(1)
     .map(() => generateChildToad([toad, father], false));
 
-  const currentSceneId = children[0].scene_id;
+  const currentSceneId = toad.scene_id;
   const currentScene = getGameState().scenes.find(
     (s) => s.id === currentSceneId
   );

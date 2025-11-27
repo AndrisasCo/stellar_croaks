@@ -115,6 +115,21 @@ export default function ToadGame() {
         });
       }
 
+      {
+        // нотификейшн при заходе в игру
+        const updateDeployTime = 1764247827677;
+        const lastSaveTime = new Date(getGameState().lastSaved).getTime();
+
+        if (updateDeployTime > lastSaveTime) {
+          addNotification({
+            type: "info",
+            content:
+              "Добавлена новая игровая механика: генетические поломки ДНК! Можете узнать больше в туториале, либо попробовать поэксперементировать!",
+            timeout: 15000,
+          });
+        }
+      }
+
       if (!localStorage.getItem("tutorial_read")) {
         localStorage.setItem("tutorial_read", "true");
         setIsTutorialOpen(true);

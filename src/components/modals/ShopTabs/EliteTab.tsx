@@ -21,7 +21,7 @@ const refreshShop = (): ShopState => {
   const newState = getShopState();
   newState.eliteOrders = getNewElite();
   newState.lastRefreshElite = now;
-  newState.nextRefreshElite = now + REFRESH_COOLDOWN;
+  newState.nextRefreshElite = now + REFRESH_COOLDOWN * 8;
   return newState;
 };
 

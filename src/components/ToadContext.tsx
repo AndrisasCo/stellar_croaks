@@ -138,9 +138,18 @@ export const ToadProvider: React.FC<ToadProviderProps> = ({ children }) => {
       return;
     }
 
-    const allToadsOnScene = toads.length + 1;
+    const currentSceneIdToCollect = slot?.child.scene_id;
+    const currentSceneToCollect = ownedScenes.find(
+      (s) => s.id === currentSceneIdToCollect
+    );
 
-    if (currentScene.capacity < allToadsOnScene) {
+    const allToadsOnScene =
+      allToads.filter((t) => t.scene_id === currentSceneIdToCollect).length + 1;
+
+    if (
+      !currentSceneToCollect ||
+      currentSceneToCollect.capacity < allToadsOnScene
+    ) {
       addNotification({
         type: "warn",
         content: "Превышена вместимость вольера, гибрид помещен на склад.",

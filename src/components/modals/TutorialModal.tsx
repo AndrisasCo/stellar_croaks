@@ -55,6 +55,34 @@ const TutorialModal: React.FC<TutorialModalProps> = ({ isOpen, onClose }) => {
       ],
     },
     {
+      icon: "⚗️",
+      title: "Генетика и мутации",
+      description:
+        "Управляйте генетическим здоровьем ваших жаб. Следите за поломками ДНК и выбирайте стратегию разведения.",
+      color: "indigo",
+      tips: [
+        "🧪 Поломка ДНК - показатель здоровья генов (0-100%)",
+        "💥 Коллайдер быстро увеличивает поломку, но дает редких жаб",
+        "❤️ Естественное размножение мягко уменьшает поломку",
+        "⚠️ Близкородственное скрещивание увеличивает поломку",
+        "🔬 Идеальная генетика (0%) - лучший выбор для разведения",
+      ],
+    },
+    {
+      icon: "📊",
+      title: "Характеристики жаб",
+      description:
+        "Каждая жаба имеет уникальные гены, влияющие на ее внешность, поведение и способности.",
+      color: "teal",
+      tips: [
+        "⚡ Скорость влияет на передвижение по вольеру",
+        "📊 Редкость увеличивает стоимость жаб",
+        "💕 Плодовитость влияет на успех размножения",
+        "🍽️ Аппетит определяет скорость голодания",
+        "📏 Размер влияет на визуальное отображение",
+      ],
+    },
+    {
       icon: "💰",
       title: "Экономика игры",
       description: `Зарабатывайте ${CURRENCY_CONFIG.tokens.icon} продажей жаб и выполнением заказов. Используйте их для покупки корма и улучшений.`,
@@ -66,15 +94,16 @@ const TutorialModal: React.FC<TutorialModalProps> = ({ isOpen, onClose }) => {
       ],
     },
     {
-      icon: "🧬",
-      title: "Генетика и характеристики",
+      icon: "⚡",
+      title: "Продвинутые механики",
       description:
-        "Каждая жаба имеет уникальные гены, влияющие на ее внешность, поведение и способности.",
-      color: "purple",
+        "Освойте продвинутые стратегии для максимальной эффективности в разведении и торговле.",
+      color: "blue",
       tips: [
-        "⚡ Скорость влияет на передвижение по вольеру",
-        "📊 Редкость увеличивает стоимость жаб",
-        "💕 Плодовитость влияет на успех размножения",
+        "🔍 Комбинируйте жаб в коллайдере, это даст более редкую жабу, но уничтожит родителей",
+        "📊 Осторожно! В коллайдере есть шанс получить бесполую жабу",
+        "🎯 Попробуйте вывести уникальную жабу",
+        "⚖️ Балансируйте между коллайдером и естественным размножением",
       ],
     },
     {
@@ -89,18 +118,6 @@ const TutorialModal: React.FC<TutorialModalProps> = ({ isOpen, onClose }) => {
         "🕒 Лидерборд обновляется ежедневно",
       ],
     },
-    {
-      icon: "⚡",
-      title: "Продвинутые механики",
-      description:
-        "Освойте продвинутые стратегии для максимальной эффективности в разведении и торговле.",
-      color: "blue",
-      tips: [
-        "🔍 Комбинируйте жаб в коллайдере, это даст более редкую жабу, но уничтожит родителей",
-        "📊 Осторожно! В коллайдере есть шанс получить бесполую жабу",
-        "🎯 Попробуйте вывести уникальную жабу",
-      ],
-    },
   ];
 
   const getColorClasses = (color: string) => {
@@ -112,6 +129,9 @@ const TutorialModal: React.FC<TutorialModalProps> = ({ isOpen, onClose }) => {
         "from-yellow-900/20 to-amber-900/10 border-yellow-400/50 text-yellow-400",
       purple:
         "from-purple-900/20 to-violet-900/10 border-purple-400/50 text-purple-400",
+      indigo:
+        "from-indigo-900/20 to-purple-900/10 border-indigo-400/50 text-indigo-400",
+      teal: "from-teal-900/20 to-cyan-900/10 border-teal-400/50 text-teal-400",
       orange:
         "from-orange-900/20 to-red-900/10 border-orange-400/50 text-orange-400",
       blue: "from-blue-900/20 to-cyan-900/10 border-blue-400/50 text-blue-400",
@@ -125,6 +145,8 @@ const TutorialModal: React.FC<TutorialModalProps> = ({ isOpen, onClose }) => {
       pink: "bg-pink-900/30 border-pink-500/30 text-pink-300",
       yellow: "bg-yellow-900/30 border-yellow-500/30 text-yellow-300",
       purple: "bg-purple-900/30 border-purple-500/30 text-purple-300",
+      indigo: "bg-indigo-900/30 border-indigo-500/30 text-indigo-300",
+      teal: "bg-teal-900/30 border-teal-500/30 text-teal-300",
       orange: "bg-orange-900/30 border-orange-500/30 text-orange-300",
       blue: "bg-blue-900/30 border-blue-500/30 text-blue-300",
     };
@@ -163,7 +185,19 @@ const TutorialModal: React.FC<TutorialModalProps> = ({ isOpen, onClose }) => {
               `}
             >
               {/* Номер секции */}
-              <div className="absolute -top-3 -left-3 w-8 h-8 bg-gray-800 border-2 border-gray-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
+              <div
+                className={`
+                  absolute -top-3 -left-3 w-8 h-8 rounded-full flex items-center justify-center 
+                  text-white font-bold text-sm border-2
+                  ${
+                    section.color === "indigo"
+                      ? "bg-indigo-800 border-indigo-500"
+                      : section.color === "teal"
+                      ? "bg-teal-800 border-teal-500"
+                      : "bg-gray-800 border-gray-600"
+                  }
+                `}
+              >
                 {index + 1}
               </div>
 
@@ -188,6 +222,13 @@ const TutorialModal: React.FC<TutorialModalProps> = ({ isOpen, onClose }) => {
                     className={`
                       flex items-start gap-2 p-3 rounded-lg border text-sm
                       ${getTipColorClasses(section.color)}
+                      ${
+                        section.color === "indigo"
+                          ? "hover:bg-indigo-800/50"
+                          : section.color === "teal"
+                          ? "hover:bg-teal-800/50"
+                          : ""
+                      }
                     `}
                   >
                     <span className="flex-shrink-0 mt-0.5">•</span>
@@ -199,18 +240,46 @@ const TutorialModal: React.FC<TutorialModalProps> = ({ isOpen, onClose }) => {
           ))}
         </div>
 
+        {/* Блок генетических уровней */}
+        <div className="mt-6 p-5 bg-gradient-to-r from-indigo-900/20 to-purple-900/20 rounded-xl border border-indigo-400/50">
+          <h4 className="text-indigo-400 font-semibold text-lg mb-3 text-center">
+            ⚗️ Уровни поломки ДНК
+          </h4>
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <div className="bg-green-900/30 border border-green-500/30 rounded-lg p-3 text-center hover:bg-green-800/40 transition-colors">
+              <div className="text-green-400 font-semibold mb-1">0% 🧬</div>
+              <div className="text-green-300 text-xs">Идеальная</div>
+            </div>
+            <div className="bg-yellow-900/30 border border-yellow-500/30 rounded-lg p-3 text-center hover:bg-yellow-800/40 transition-colors">
+              <div className="text-yellow-400 font-semibold mb-1">1-25% 🔬</div>
+              <div className="text-yellow-300 text-xs">Стабильная</div>
+            </div>
+            <div className="bg-orange-900/30 border border-orange-500/30 rounded-lg p-3 text-center hover:bg-orange-800/40 transition-colors">
+              <div className="text-orange-400 font-semibold mb-1">
+                26-50% ⚠️
+              </div>
+              <div className="text-orange-300 text-xs">Нестабильная</div>
+            </div>
+            <div className="bg-red-900/30 border border-red-500/30 rounded-lg p-3 text-center hover:bg-red-800/40 transition-colors">
+              <div className="text-red-400 font-semibold mb-1">51%+ 💥</div>
+              <div className="text-red-300 text-xs">Критическая</div>
+            </div>
+          </div>
+        </div>
+
         {/* Заключение */}
-        <div className="mt-8 p-5 bg-gradient-to-r from-purple-900/20 to-blue-900/20 rounded-xl border border-purple-400/50 text-center">
+        <div className="mt-6 p-5 bg-gradient-to-r from-purple-900/20 to-blue-900/20 rounded-xl border border-purple-400/50 text-center">
           <div className="text-2xl mb-3">🚀🌟</div>
           <h4 className="text-white font-semibold mb-2">
             Готовы к приключениям?
           </h4>
           <p className="text-gray-300 text-sm">
             Начните свое путешествие в мире космических жаб! Создавайте
-            уникальных существ, торгуйте с другими игроками и займите первое
-            место в галактическом рейтинге!
+            уникальных существ, управляйте генетикой и займите первое место в
+            галактическом рейтинге!
           </p>
         </div>
+
         {/* Кнопка закрытия */}
         <button
           onClick={() => {

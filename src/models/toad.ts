@@ -52,9 +52,9 @@ export const DEFAULT_TOADS: Toad[] = [
     genes: {
       colors: ["#5D8C59", "#6B8C42"],
       pattern: "smooth",
-      weight: 20,
+      weight: 22,
       speed: 0.4,
-      rarity: 1,
+      rarity: 1.2,
       hungerRate: 1.2,
       fertility: 1.1,
       personality: null,
@@ -69,53 +69,102 @@ export const DEFAULT_TOADS: Toad[] = [
     stage: "adult",
     scene_id: 1,
     created_at: new Date().toISOString(),
-    description: null,
-    owner: 0, // будет заменено при создании
     parents: null,
     state: {
       hunger: 25,
+      genetic_fault: 0,
     },
     pregnancy: null,
     genes: {
-      colors: ["#5D8C59", "#6B8C42"],
+      colors: ["#4CAF50", "#8BC34A"],
       pattern: "smooth",
-      weight: 24,
+      weight: 18,
       speed: 0.45,
-      rarity: 1,
+      rarity: 1.3,
       hungerRate: 1.0,
-      fertility: 1.3,
+      fertility: 1.4,
       personality: null,
     },
   },
   {
     id: 2,
     name: "Дикая жаба 3",
-    type: "horned",
+    type: "common",
     generation: 1,
     sex: "female",
     stage: "adult",
     scene_id: 1,
     created_at: new Date().toISOString(),
-    description: null,
-    owner: 0, // будет заменено при создании
     parents: null,
     state: {
       hunger: 40,
+      genetic_fault: 0,
     },
     pregnancy: null,
     genes: {
-      colors: ["#c75e52", "#4A4A4A"],
-      pattern: "horned",
-      weight: 14,
-      speed: 0.3,
-      rarity: 1.2,
+      colors: ["#388E3C", "#66BB6A"],
+      pattern: "smooth",
+      weight: 20,
+      speed: 0.35,
+      rarity: 1.1,
+      hungerRate: 0.9,
+      fertility: 1.3,
+      personality: null,
+    },
+  },
+  {
+    id: 3,
+    name: "Дикая жаба 4",
+    type: "common",
+    generation: 1,
+    sex: "male",
+    stage: "adult",
+    scene_id: 1,
+    created_at: new Date().toISOString(),
+    parents: null,
+    state: {
+      hunger: 35,
+      genetic_fault: 0,
+    },
+    pregnancy: null,
+    genes: {
+      colors: ["#c75e52", "#8B4513"],
+      pattern: "smooth",
+      weight: 20,
+      speed: 0.38,
+      rarity: 1.4,
+      hungerRate: 1.3,
+      fertility: 1.0,
+      personality: null,
+    },
+  },
+  {
+    id: 4,
+    name: "Дикая жаба 5",
+    type: "common",
+    generation: 1,
+    sex: "female",
+    stage: "adult",
+    scene_id: 1,
+    created_at: new Date().toISOString(),
+    parents: null,
+    state: {
+      hunger: 28,
+      genetic_fault: 0,
+    },
+    pregnancy: null,
+    genes: {
+      colors: ["#689F38", "#9CCC65"],
+      pattern: "smooth",
+      weight: 16,
+      speed: 0.42,
+      rarity: 1.5,
       hungerRate: 0.8,
-      fertility: 0.9,
+      fertility: 1.5,
       personality: null,
     },
   },
 ];
-
 export const personalities = {
   sleepy: {
     hungerRate: 0.6,
@@ -485,7 +534,7 @@ export const getRarityConfig = (rarity: number) => {
 };
 
 export const calculateSellPrice = (toad: Toad): number => {
-  let basePrice = toad.genes.rarity * 1.5;
+  let basePrice = toad.genes.rarity * 1.5 + 3;
 
   if (toad.stage !== "adult") {
     basePrice /= 1.5;
@@ -495,9 +544,60 @@ export const calculateSellPrice = (toad: Toad): number => {
     basePrice /= 3;
   }
 
+  if ((toad.state.genetic_fault || 0) > 25) {
+    basePrice *= (100 - (toad.state.genetic_fault || 0)) / 100;
+  }
+
   basePrice += toad.genes.fertility || 1;
   basePrice += toad.state.hunger / 100;
   basePrice -= toad.genes.hungerRate;
 
   return Math.max(0, Math.round(basePrice));
+};
+
+// Функция для получения конфигурации генетической поломки
+export const getGeneticFaultConfig = (fault: number | undefined) => {
+  const value = fault || 0;
+
+  if (value === 0) {
+    return {
+      color: "text-green-400",
+      bgColor: "bg-green-900/20",
+      borderColor: "border-green-500/30",
+      icon: "🧬",
+      label: "Идеальная",
+      description:
+        "Безупречная генетическая структура! Эта жаба - эталон селекции. Идеально подходит для разведения чистых линий и получения здорового потомства без риска мутаций.",
+    };
+  } else if (value <= 25) {
+    return {
+      color: "text-yellow-400",
+      bgColor: "bg-yellow-900/20",
+      borderColor: "border-yellow-500/30",
+      icon: "🔬",
+      label: "Стабильная",
+      description:
+        "Незначительные генетические вариации. Пара лишних пальцев или необычный окрас - это не баг, а фича! Потомство будет стабильным с минимальным риском мутаций.",
+    };
+  } else if (value <= 50) {
+    return {
+      color: "text-orange-400",
+      bgColor: "bg-orange-900/20",
+      borderColor: "border-orange-500/30",
+      icon: "⚠️",
+      label: "Нестабильная",
+      description:
+        "Заметные генетические аномалии. Иногда квакает ультразвуком или отращивает третье веко, но в целом сохраняет жизнеспособность. Потомство может унаследовать нестабильность.",
+    };
+  } else {
+    return {
+      color: "text-red-400",
+      bgColor: "bg-red-900/20",
+      borderColor: "border-red-500/30",
+      icon: "💥",
+      label: "Критическая",
+      description:
+        "Серьёзные генетические нарушения! Коллайдер явно перестарался... Возможны спонтанные мутации, изменение характеристик и непредсказуемое потомство или бесплодность. Зато выглядит круто!",
+    };
+  }
 };

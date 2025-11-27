@@ -14,6 +14,7 @@ export type SortByType =
   | "speed"
   | "fertility"
   | "price"
+  | "genetic_fault"
   | "appetite";
 
 export type FilterByType =
@@ -113,6 +114,7 @@ export const Filters = ({
                 { key: "appetite", label: "Аппетит" },
                 { key: "size", label: "Размер" },
                 { key: "speed", label: "Скорость" },
+                { key: "genetic_fault", label: "Генетика" },
                 addHunger ? { key: "hunger", label: "Голод" } : {},
               ]
                 .filter((i) => i.key)
