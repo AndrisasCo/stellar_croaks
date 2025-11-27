@@ -28,6 +28,7 @@ export const processHunger = (hoursPassed: number) => {
       t.id,
       {
         state: {
+          ...t.state,
           hunger,
         },
       },
