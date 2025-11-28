@@ -3,7 +3,7 @@ import { Toad, generateLootboxToad } from "../../models/toad";
 import Modal from "../shared/Modal";
 import { useToads } from "../ToadContext";
 import { useSoundEffects } from "../../hooks/use-sound-effects";
-import { createToad, updateToadById } from "../../backend";
+import { createToad, updateToadById, updateUser } from "../../backend";
 import { ToadGender } from "../shared/ToadGender";
 import { PregnancyIcon } from "../../assets/icons";
 import { useNotifications } from "../../hooks/use-notification";
@@ -52,11 +52,18 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
   } = useFilters(storedToads);
 
   const handleOpenLootbox = () => {
+    if (!account.storage.lootbox) {
+      return;
+    }
     const randomToad = randomizeToadCharacteristics(generateLootboxToad());
 
     addNotification({
       type: "success",
       content: `На склад добавлена новая жаба ${randomToad.name}!`,
+    });
+
+    updateUser({
+      storage: { ...account.storage, lootbox: account.storage.lootbox - 1 },
     });
 
     createToad(randomToad);
