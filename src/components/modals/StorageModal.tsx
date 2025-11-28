@@ -52,6 +52,11 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
   } = useFilters(storedToads);
 
   const handleOpenLootbox = () => {
+    addNotification({
+      type: "success",
+      content: `Извините, починю завтра!`,
+    });
+    return;
     if (!account.storage.lootbox) {
       return;
     }
@@ -206,13 +211,6 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
       legendary: "bg-yellow-900/20",
     };
     return colors[rarity];
-  };
-
-  // Функция использования предмета
-  const handleUseItem = (item: StorageItem) => {
-    playClick();
-    console.log("Использован предмет:", item.name);
-    // Здесь будет логика использования предмета
   };
 
   // Функция перемещения жабы на сцену
