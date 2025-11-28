@@ -67,16 +67,6 @@ const getFamilyGroups = (toads: Toad[]) => {
   const families = new Map<number, number>(); // toadId -> familyId
   let nextFamilyId = 0;
 
-  const findOrCreateFamily = (toadId: number): number => {
-    if (families.has(toadId)) {
-      return families.get(toadId)!;
-    }
-
-    const familyId = nextFamilyId++;
-    families.set(toadId, familyId);
-    return familyId;
-  };
-
   const connectRelatives = (toad1Id: number, toad2Id: number) => {
     const family1 = families.get(toad1Id);
     const family2 = families.get(toad2Id);
@@ -259,7 +249,7 @@ const CompactToadItem = ({
       <div className="flex items-center justify-between min-w-0">
         <div className="flex items-center gap-2 min-w-0 flex-1">
           <span className="text-sm flex-shrink-0">
-            {TYPE_ICONS[toad.sex as keyof typeof TYPE_ICONS]}
+             <ToadGender gender={toad.sex} />
           </span>
           <span className="text-white font-medium text-sm truncate">
             {toad.name}
@@ -522,7 +512,7 @@ const ToadListModal: React.FC<ToadListModalProps> = ({
       </div>
 
       {/* Панель управления выделением (только для компактного режима) */}
-      {viewMode === "compact" && selectedToads.size > 0 && (
+      {viewMode === "compact" && (
         <div className="bg-gray-800/50 rounded-lg p-3 mb-4 border border-gray-600/50">
           <div className="flex items-center justify-between relative">
             <div className="text-sm text-white">

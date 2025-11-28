@@ -10,6 +10,7 @@ import ToadListModal from "./modals/ToadListModal";
 import SceneInfoModal from "./modals/SceneInfoModal";
 import { useNotifications } from "../hooks/use-notification";
 import { completeAchivement } from "../backend/achivements-manager";
+import { ClickButton } from "./shared/ClickButton";
 
 export default function ToadScene() {
   const {
@@ -99,7 +100,7 @@ export default function ToadScene() {
         {/* Левая часть - название сцены */}
         <div className="flex items-center gap-2 flex-1 min-w-0">
           {/* Кнопка информации о сцене - ИКОНКА ГРАФИКА */}
-          <button
+          <ClickButton
             onClick={handleSceneInfo}
             className="
               flex items-center justify-center 
@@ -126,7 +127,7 @@ export default function ToadScene() {
                 d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
               />
             </svg>
-          </button>
+          </ClickButton>
           <h2 className="text-white font-bold text-sm truncate">
             {currentScene.name}
           </h2>
@@ -136,7 +137,7 @@ export default function ToadScene() {
         <div className="flex gap-1 sm:gap-2 items-center flex-shrink-0">
           {/* Кнопка информации о выбранной жабе */}
           {selectedToad && (
-            <button
+            <ClickButton
               onClick={() => setIsInfoOpen(true)}
               className="
                 flex items-center justify-center gap-2 
@@ -163,12 +164,12 @@ export default function ToadScene() {
                   d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                 />
               </svg>
-            </button>
+            </ClickButton>
           )}
 
           {/* Кнопка кормления жаб - ИКОНКА ЕДЫ */}
           <div className="relative">
-            <button
+            <ClickButton
               ref={buttonRef}
               onClick={handleShowFoodTooltip}
               disabled={isFoodActive}
@@ -185,7 +186,7 @@ export default function ToadScene() {
               title="Покормить жаб"
             >
               🍎
-            </button>
+            </ClickButton>
 
             {/* Тултип подтверждения */}
             {showFoodTooltip && (
@@ -204,7 +205,7 @@ export default function ToadScene() {
                     корма
                   </div>
                   <div className="flex gap-2">
-                    <button
+                    <ClickButton
                       onClick={handleCancelFeed}
                       className="
                         flex-1 py-2 px-3 rounded text-sm
@@ -213,8 +214,8 @@ export default function ToadScene() {
                       "
                     >
                       Отмена
-                    </button>
-                    <button
+                    </ClickButton>
+                    <ClickButton
                       onClick={handleConfirmFeed}
                       className="
                         flex-1 py-2 px-3 rounded text-sm
@@ -225,7 +226,7 @@ export default function ToadScene() {
                     >
                       <span>🍎</span>
                       Покормить
-                    </button>
+                    </ClickButton>
                   </div>
                 </div>
 
@@ -242,7 +243,7 @@ export default function ToadScene() {
           </div>
 
           {/* Кнопка списка жаб - ИКОНКА СПИСКА */}
-          <button
+          <ClickButton
             onClick={handleViewToads}
             className="
               flex items-center justify-center 
@@ -269,7 +270,7 @@ export default function ToadScene() {
                 d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
               />
             </svg>
-          </button>
+          </ClickButton>
         </div>
       </div>
 

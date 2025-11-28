@@ -333,8 +333,7 @@ const EliteOrderTooltip: React.FC<EliteOrderTooltipProps> = ({
                     <ToadGender gender={toad.sex} />
                   </div>
                   <div className="grid grid-cols-2 gap-x-2 text-xs text-gray-400">
-                    <span>Вес: {toad.genes.weight.toFixed(1)}</span>
-                    <span>Скр: {toad.genes.speed.toFixed(1)}</span>
+                    <span>Редкость: {toad.genes.rarity.toFixed(1)}</span>
                   </div>
                 </div>
               </div>

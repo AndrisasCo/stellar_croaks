@@ -21,6 +21,7 @@ import { createToad } from "../backend";
 import { DEFAULT_TOADS } from "../models/toad";
 import AchivementsModal from "./modals/AchivementsModal";
 import { getGameState } from "../backend/localStorage";
+import { ClickButton } from "./shared/ClickButton";
 
 export default function ToadGame() {
   const { toads, account, allToads, currentScene } = useToads();
@@ -103,14 +104,13 @@ export default function ToadGame() {
       setIsLoading(false);
 
       // нотификейшн при заходе в игру
-      const updateDeployTime = 1764176863279;
+      const updateDeployTime = 1764349635232;
       const lastSaveTime = new Date(getGameState().lastSaved).getTime();
 
       if (updateDeployTime > lastSaveTime) {
         addNotification({
           type: "info",
-          content:
-            "Добавлен генератор имен для жабок! Попробуйте переименовать жабу",
+          content: "Добавлены лутбоксы! Проверьте магазин!",
           timeout: 15000,
         });
       }
@@ -159,14 +159,14 @@ export default function ToadGame() {
       <div className="w-full flex flex-col max-w-md relative mx-auto">
         {/* Кнопка открытия дополнительного меню */}
         <div className="mb-4 text-center absolute right-1 top-1 z-10">
-          <button
+          <ClickButton
             onClick={() => setIsMenuOpen(true)}
             className="bg-gray-800/80 backdrop-blur-sm hover:bg-gray-700/80 text-gray-300 hover:text-white py-3 px-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 active:scale-95 border-2 border-purple-500/30 hover:border-purple-400/50 font-bold text-sm w-full neon-glow"
           >
             <div className="flex items-center justify-center gap-3">
               {MenuIcons.menu}
             </div>
-          </button>
+          </ClickButton>
         </div>
 
         <header className="text-center mb-4 pt-2">
@@ -181,7 +181,7 @@ export default function ToadGame() {
         {/* Основные кнопки действий */}
         <div className="grid grid-cols-2 gap-3 mb-4 px-2">
           {/* Магазин */}
-          <button
+          <ClickButton
             onClick={handleShopClick}
             className="bg-purple-900/40 backdrop-blur-sm hover:bg-purple-800/60 text-purple-300 hover:text-purple-100 py-3 px-4 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 active:scale-95 border-2 border-purple-500/40 hover:border-purple-400/60 font-bold neon-glow-purple"
           >
@@ -189,10 +189,10 @@ export default function ToadGame() {
               <span className="text-sm">РЫНОК</span>
               {MenuIcons.shop}
             </div>
-          </button>
+          </ClickButton>
 
           {/* Инвентарь */}
-          <button
+          <ClickButton
             onClick={handleInventoryClick}
             className="bg-green-900/40 backdrop-blur-sm hover:bg-green-800/60 text-green-300 hover:text-green-100 py-3 px-4 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 active:scale-95 border-2 border-green-500/40 hover:border-green-400/60 font-bold neon-glow-green"
           >
@@ -200,7 +200,7 @@ export default function ToadGame() {
               <span className="text-sm">СКЛАД</span>
               {MenuIcons.inventory}
             </div>
-          </button>
+          </ClickButton>
         </div>
 
         <ShopMenu

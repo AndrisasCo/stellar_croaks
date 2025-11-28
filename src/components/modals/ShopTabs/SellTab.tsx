@@ -25,10 +25,6 @@ const SellTab: React.FC = () => {
   const { playCell } = useSoundEffects();
   const [selectedToads, setSelectedToads] = useState<number[]>([]);
 
-  const preparedToads = activeToads.filter(
-    (t) => t.scene_id === null || t.scene_id === currentScene.id
-  );
-
   const { tokens = 0 } = account || {};
 
   const {
@@ -39,7 +35,7 @@ const SellTab: React.FC = () => {
     setSortDirection,
     filterBy,
     setFilterBy,
-  } = useFilters(preparedToads);
+  } = useFilters(activeToads);
 
   const selectedFilteredToads = selectedToads.filter((id) =>
     filteredToads.some((toad) => toad.id === id)

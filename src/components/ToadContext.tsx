@@ -9,7 +9,12 @@ import { Toad } from "../models/toad";
 import { calculateBreedingTime } from "../utils/calculate-genetics";
 import { ColliderState } from "../models/types";
 import { Scene } from "../models/scene";
-import { createToad, updateToadsByIds, updateUser } from "../backend";
+import {
+  createToad,
+  updateToadsByIds,
+  updateToadStateByIds,
+  updateUser,
+} from "../backend";
 import { useGameState } from "../hooks/use-game-state";
 import { User } from "../models/user";
 import { useNotifications } from "../hooks/use-notification";
@@ -206,7 +211,7 @@ export const ToadProvider: React.FC<ToadProviderProps> = ({ children }) => {
       });
       return;
     }
-    updateToadsByIds(toadsId, { state: { hunger: 100 } });
+    updateToadStateByIds(toadsId, { hunger: 100 });
     updateUser({
       storage: { food: newFood },
     });

@@ -116,6 +116,24 @@ export const updateToadsByIds = (
   return updatedToadsList;
 };
 
+export const updateToadStateByIds = (
+  toadIds: number[],
+  toadStateData: Record<string, number>,
+  syntetic?: boolean
+): Toad[] => {
+  const state = getGameState();
+  const updatedToads = state.toads.map((toad) =>
+    toadIds.includes(toad.id)
+      ? { ...toad, state: { ...toad.state, ...toadStateData } }
+      : toad
+  );
+
+  updateGameState({ toads: updatedToads }, syntetic);
+  const updatedToadsList = updatedToads.filter((t) => toadIds.includes(t.id));
+
+  return updatedToadsList;
+};
+
 export const deleteToadsByIds = (toadIds: number[]): Toad[] => {
   const state = getGameState();
   const updatedToads = state.toads.filter((toad) => !toadIds.includes(toad.id));

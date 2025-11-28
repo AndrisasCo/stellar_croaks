@@ -6,6 +6,30 @@ import { Toad } from "../models/toad";
  * @param variation - сила вариации (по умолчанию 0.1 = 10%)
  * @returns жаба с рандомизированными характеристиками
  */
+
+export const varyColor = (color: string): string => {
+  if (!color.startsWith("#")) return color;
+
+  // Преобразуем HEX в RGB
+  const hex = color.replace("#", "");
+  const r = parseInt(hex.substr(0, 2), 16);
+  const g = parseInt(hex.substr(2, 2), 16);
+  const b = parseInt(hex.substr(4, 2), 16);
+
+  // Слегка изменяем каждый канал
+  const varyChannel = (channel: number) => {
+    const change = Math.floor((Math.random() * 2 - 1) * 30); // -30 до +30
+    return Math.max(0, Math.min(255, channel + change));
+  };
+
+  const newR = varyChannel(r);
+  const newG = varyChannel(g);
+  const newB = varyChannel(b);
+
+  return `#${newR.toString(16).padStart(2, "0")}${newG
+    .toString(16)
+    .padStart(2, "0")}${newB.toString(16).padStart(2, "0")}`;
+};
 export const randomizeToadCharacteristics = (
   toad: Partial<Toad>,
   variation: number = 0.1
@@ -23,29 +47,6 @@ export const randomizeToadCharacteristics = (
   };
 
   // Функция для легкого изменения цвета
-  const varyColor = (color: string): string => {
-    if (!color.startsWith("#")) return color;
-
-    // Преобразуем HEX в RGB
-    const hex = color.replace("#", "");
-    const r = parseInt(hex.substr(0, 2), 16);
-    const g = parseInt(hex.substr(2, 2), 16);
-    const b = parseInt(hex.substr(4, 2), 16);
-
-    // Слегка изменяем каждый канал
-    const varyChannel = (channel: number) => {
-      const change = Math.floor((Math.random() * 2 - 1) * 30); // -30 до +30
-      return Math.max(0, Math.min(255, channel + change));
-    };
-
-    const newR = varyChannel(r);
-    const newG = varyChannel(g);
-    const newB = varyChannel(b);
-
-    return `#${newR.toString(16).padStart(2, "0")}${newG
-      .toString(16)
-      .padStart(2, "0")}${newB.toString(16).padStart(2, "0")}`;
-  };
 
   // Случайный пол (если не указан)
   const randomSex = toad.sex || (Math.random() > 0.5 ? "male" : "female");
@@ -66,9 +67,7 @@ export const randomizeToadCharacteristics = (
           speed: toad.genes.speed
             ? varyNumber(toad.genes.speed, 0.2, 1.0)
             : 0.4,
-          rarity: toad.genes.rarity
-            ? varyNumber(toad.genes.rarity, 0.5, 5.0)
-            : 1.0,
+          rarity: toad.genes.rarity ? varyNumber(toad.genes.rarity) : 1.0,
           hungerRate: toad.genes.hungerRate
             ? varyNumber(toad.genes.hungerRate, 0.3, 2.0)
             : 1.0,

@@ -1,16 +1,16 @@
 import React, { useState } from "react";
-import { Toad, getRarityConfig, getPersonalityLabel } from "../../models/toad";
-import { TYPE_ICONS } from "../../utils/constants";
+import { Toad, generateLootboxToad } from "../../models/toad";
 import Modal from "../shared/Modal";
 import { useToads } from "../ToadContext";
 import { useSoundEffects } from "../../hooks/use-sound-effects";
-import { updateToadById } from "../../backend";
+import { createToad, updateToadById } from "../../backend";
 import { ToadGender } from "../shared/ToadGender";
 import { PregnancyIcon } from "../../assets/icons";
 import { useNotifications } from "../../hooks/use-notification";
 import { ToadItem } from "../shared/ToadItem";
 import { useFilters } from "../../hooks/use-filters";
 import { Filters } from "../shared/Filters";
+import { randomizeToadCharacteristics } from "../../utils/randomize-toad-characteristics";
 
 interface StorageModalProps {
   isOpen: boolean;
@@ -28,6 +28,8 @@ interface StorageItem {
   description: string;
   type: "food" | "material" | "tool";
   rarity: "common" | "uncommon" | "rare" | "epic" | "legendary";
+  key: string;
+  onClick?: () => void;
 }
 
 const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
@@ -35,6 +37,7 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
   const { addNotification } = useNotifications();
   const { allToads = [], account, currentScene, toads } = useToads();
   const { playClick } = useSoundEffects();
+  const { lootbox } = account.storage || 0;
   // Жабы на складе (без сцены)
   const storedToads = allToads?.filter((toad) => toad.scene_id === null) || [];
 
@@ -48,6 +51,17 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
     setFilterBy,
   } = useFilters(storedToads);
 
+  const handleOpenLootbox = () => {
+    const randomToad = randomizeToadCharacteristics(generateLootboxToad());
+
+    addNotification({
+      type: "success",
+      content: `На склад добавлена новая жаба ${randomToad.name}!`,
+    });
+
+    createToad(randomToad);
+  };
+
   // Предметы на складе
   const storageItems: StorageItem[] = [
     {
@@ -58,6 +72,18 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
       description: "Основной корм для жаб",
       type: "food",
       rarity: "common",
+      key: "food",
+    },
+    {
+      id: "2",
+      name: "Лутбокс",
+      icon: "🎁",
+      quantity: account?.storage?.lootbox || 0,
+      description: "Открой!",
+      type: "tool",
+      rarity: "rare",
+      key: "lootbox",
+      onClick: handleOpenLootbox,
     },
     // {
     //   id: "2",
@@ -149,7 +175,7 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
     //   type: "tool",
     //   rarity: "uncommon",
     // },
-  ];
+  ].filter((t) => t.quantity);
 
   // Функция для получения цвета редкости предмета
   const getItemRarityColor = (rarity: StorageItem["rarity"]): string => {
@@ -258,7 +284,7 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
                 className={`relative rounded-xl p-3 border transition-all cursor-pointer group ${getItemRarityBg(
                   item.rarity
                 )} border-gray-600/50 hover:border-blue-500/50`}
-                onClick={() => handleUseItem(item)}
+                onClick={item.onClick}
               >
                 {/* Количество */}
                 <div className="absolute -top-2 -right-2 bg-blue-600 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">

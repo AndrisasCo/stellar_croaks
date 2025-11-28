@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { SortByType, FilterByType } from "../components/shared/Filters";
 import { calculateSellPrice, Toad } from "../models/toad";
+import { useToads } from "../components/ToadContext";
 
 export const useFilters = (toads: Toad[]) => {
+  const { currentScene } = useToads();
   const [sortBy, setSortBy] = useState<SortByType>("rarity");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [filterBy, setFilterBy] = useState<FilterByType>("all");
@@ -70,7 +72,7 @@ export const useFilters = (toads: Toad[]) => {
       case "toadpoles":
         return toads.filter((t) => t.stage === "toadpole");
       case "enclosure":
-        return toads.filter((t) => t.scene_id != null);
+        return toads.filter((t) => t.scene_id == currentScene.id);
       case "storage":
         return toads.filter((t) => t.scene_id === null);
       case "all":

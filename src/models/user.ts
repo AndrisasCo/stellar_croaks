@@ -6,5 +6,6 @@ export type User = {
   astro_quax: number;
   storage: {
     food: number;
+    lootbox?: number;
   };
 };
