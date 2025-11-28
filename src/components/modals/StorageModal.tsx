@@ -11,6 +11,7 @@ import { ToadItem } from "../shared/ToadItem";
 import { useFilters } from "../../hooks/use-filters";
 import { Filters } from "../shared/Filters";
 import { randomizeToadCharacteristics } from "../../utils/randomize-toad-characteristics";
+import { getGameState } from "../../backend/localStorage";
 
 interface StorageModalProps {
   isOpen: boolean;
@@ -37,7 +38,6 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
   const { addNotification } = useNotifications();
   const { allToads = [], account, currentScene, toads } = useToads();
   const { playClick } = useSoundEffects();
-  const { lootbox } = account.storage || 0;
   // Жабы на складе (без сцены)
   const storedToads = allToads?.filter((toad) => toad.scene_id === null) || [];
 
@@ -52,11 +52,7 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
   } = useFilters(storedToads);
 
   const handleOpenLootbox = () => {
-    addNotification({
-      type: "success",
-      content: `Извините, починю завтра!`,
-    });
-    return;
+    const account = getGameState().user;
     if (!account.storage.lootbox) {
       return;
     }
