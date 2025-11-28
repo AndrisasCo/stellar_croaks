@@ -9,7 +9,7 @@ import {
 import { TYPE_ICONS } from "../../utils/constants";
 import Modal from "../shared/Modal";
 import { InfoIcons, PregnancyIcon, ToadpoleIcon } from "../../assets/icons";
-import { updateToadById } from "../../backend";
+import { updateToadById, updateToadsByIds } from "../../backend";
 import { useSoundEffects } from "../../hooks/use-sound-effects";
 import { ToadGender } from "../shared/ToadGender";
 import { useToads } from "../ToadContext";
@@ -165,7 +165,7 @@ const getToadRelatives = (toad: Toad, allToads: Toad[]) => {
     // Если у обоих есть родители и есть общие родители
     if (toad.parents && otherToad.parents) {
       return toad.parents.some((parentId) =>
-        otherToad.parents.includes(parentId)
+        otherToad.parents?.includes(parentId)
       );
     }
     return false;
@@ -419,9 +419,7 @@ const ToadListModal: React.FC<ToadListModalProps> = ({
       }
     }
 
-    selectedToads.forEach((toadId) => {
-      updateToadById(toadId, { scene_id: sceneId });
-    });
+    updateToadsByIds(Array.from(selectedToads), { scene_id: sceneId });
 
     setSelectedToads(new Set());
     setShowMoveTooltip(false);
