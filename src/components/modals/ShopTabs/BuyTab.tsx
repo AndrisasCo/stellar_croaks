@@ -284,7 +284,7 @@ const BuyTab: React.FC = () => {
               </div>
             </div>
             <button
-              onClick={handleBuyItem({ food: 100 }, { token: 90 })}
+              onClick={handleBuyItem({ food: 100 }, { tokens: 90 })}
               disabled={tokens < 90}
               className={`px-3 min-w-[64px] py-1.5 rounded-lg bg-gray-600 text-sm font-medium text-white whitespace-nowrap transition-colors ${
                 tokens >= 90 &&
