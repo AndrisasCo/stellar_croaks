@@ -793,11 +793,11 @@ interface RarityWeight {
 
 // Веса для разных уровней редкости - теперь 10-20 самая распространенная
 const RARITY_WEIGHTS: RarityWeight[] = [
-  { minRarity: 1, maxRarity: 5, weight: 15, name: "Обычная" },
-  { minRarity: 6, maxRarity: 10, weight: 35, name: "Необычная" },
-  { minRarity: 11, maxRarity: 20, weight: 40, name: "Редкая" },
-  { minRarity: 21, maxRarity: 35, weight: 10, name: "Эпическая" },
-  { minRarity: 36, maxRarity: 50, weight: 5, name: "Легендарная" },
+  { minRarity: 1, maxRarity: 5, weight: 49.99, name: "Обычная" },
+  { minRarity: 6, maxRarity: 10, weight: 39.9, name: "Необычная" },
+  { minRarity: 11, maxRarity: 20, weight: 10, name: "Редкая" },
+  { minRarity: 21, maxRarity: 35, weight: 0.1, name: "Эпическая" },
+  { minRarity: 36, maxRarity: 50, weight: 0.01, name: "Легендарная" },
 ];
 
 // База данных уникальных жаб с разной редкостью

@@ -19,10 +19,20 @@ import { ToadItem } from "../../shared/ToadItem";
 import { useState, useEffect } from "react";
 
 const refreshShop = (): ShopState => {
+  const allToads = getGameState().toads;
+
+  const newToads = getNewToads();
+  const averageLevel = Math.max(
+    0,
+    allToads.reduce((acc, t) => acc + t.genes.rarity, 0) / allToads.length - 3
+  );
+
   const now = Date.now();
   const newState = getShopState();
-  newState.availableToads = getNewToads();
-  newState.availableToads = getNewToads();
+  newState.availableToads = newToads.map((t) => ({
+    ...t,
+    genes: { ...t.genes, rarity: averageLevel + t.genes?.rarity },
+  }));
   newState.items = { lootbox: 1 };
   newState.lastRefresh = now;
   newState.nextRefresh = now + REFRESH_COOLDOWN;
@@ -223,7 +233,7 @@ const BuyTab: React.FC = () => {
 
       {/* Корм */}
       <div>
-        <h3 className="text-white font-semibold mb-3 px-2 text-lg">Корм</h3>
+        <h3 className="text-white font-semibold mb-3 px-2 text-lg">Предметы</h3>
 
         {/* Вариант 1: 10 корма */}
         <div className="bg-gray-800 rounded-2xl py-4 px-2 border border-gray-700 mb-3">
