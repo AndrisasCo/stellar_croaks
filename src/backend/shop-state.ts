@@ -439,4 +439,41 @@ export const eliteOrders = [
     reward: BASE_PRICE * 20,
     difficulty: "extreme",
   },
+  {
+    id: "elite_24",
+    title: "Причуды эволюции",
+    description:
+      "Жаба с незначительными генетическими отклонениями (уровень мутации 15-35)",
+    requirement: (toad: Toad) =>
+      toad.state.genetic_fault !== undefined &&
+      toad.state.genetic_fault >= 15 &&
+      toad.state.genetic_fault <= 35,
+    reward: BASE_PRICE * 7, // 35 токенов
+    difficulty: "medium",
+  },
+  {
+    id: "elite_25",
+    title: "Продукт распада",
+    description:
+      "Жаба с серьезными генетическими повреждениями (уровень мутации 50+) и редкостью 5+",
+    requirement: (toad: Toad) =>
+      toad.state.genetic_fault !== undefined &&
+      toad.state.genetic_fault >= 50 &&
+      toad.genes.rarity >= 5,
+    reward: BASE_PRICE * 16, // 80 токенов (редкое и опасное сочетание)
+    difficulty: "hard",
+  },
+  {
+    id: "elite_26",
+    title: "Искаженная натура",
+    description:
+      "Жаба-мутант (уровень мутации 80+) с характером Отшельник или Аскет",
+    requirement: (toad: Toad) =>
+      toad.state.genetic_fault !== undefined &&
+      toad.state.genetic_fault >= 80 &&
+      (toad.genes.personality === "hermit" ||
+        toad.genes.personality === "ascetic"),
+    reward: BASE_PRICE * 25, // 125 токенов (экстремально редкий мутант)
+    difficulty: "extreme",
+  },
 ];
