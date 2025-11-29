@@ -60,8 +60,6 @@ export const getGameState = (): GameState => {
     // Если нет сохраненного состояния, создаем новое
     const defaultState = getDefaultGameState();
     localStorage.setItem(LS_KEY, JSON.stringify(defaultState));
-    createLeaderbord();
-
     return defaultState;
   } catch (error) {
     console.error("Error loading game state:", error);
