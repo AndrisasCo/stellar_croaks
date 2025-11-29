@@ -560,16 +560,15 @@ const ToadListModal: React.FC<ToadListModalProps> = ({
 
                 {showMoveTooltip && (
                   <Tooltip
-                    revert
                     title="Куда"
                     isOpen={true}
                     onClose={() => setShowMoveTooltip(false)}
-                    className="right-0"
+                    className="right-0 "
                   >
-                    <div className="space-y-1">
+                    <div className="space-y-1 h-40 overflow-auto">
                       <button
                         onClick={() => moveSelected(null)}
-                        className="w-full text-left p-2 hover:bg-gray-600 truncate rounded text-xs"
+                        className="w-full text-left p-2 truncate  text-xs border-b-[1px] border-gray-500/10"
                       >
                         📦 На склад
                       </button>
@@ -579,7 +578,7 @@ const ToadListModal: React.FC<ToadListModalProps> = ({
                           <button
                             key={s.id}
                             onClick={() => moveSelected(s.id)}
-                            className="w-full text-left p-2 rounded text-xs hover:bg-gray-600"
+                            className="w-full text-left p-2  text-xs truncate border-b-[1px] border-gray-500/10"
                           >
                             🏠 {s.name}
                           </button>
