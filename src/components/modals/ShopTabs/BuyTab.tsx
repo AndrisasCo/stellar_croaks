@@ -8,6 +8,7 @@ import {
   INSTANT_REFRESH_COST,
   REFRESH_COOLDOWN,
   getNewToads,
+  initialItemsAmount,
 } from "../../../backend/shop-state";
 import { useNotifications } from "../../../hooks/use-notification";
 
@@ -24,18 +25,21 @@ const refreshShop = (): ShopState => {
   const newToads = getNewToads();
   const averageLevel = Math.max(
     0,
-    allToads.reduce((acc, t) => acc + t.genes.rarity, 0) / allToads.length - 3
+    allToads.reduce((acc, t) => acc + t.genes.rarity, 0) /
+      (allToads.length || 1) -
+      3
   );
 
   const now = Date.now();
   const newState = getShopState();
   newState.availableToads = newToads.map((t) => ({
     ...t,
-    genes: { ...t.genes, rarity: averageLevel + t.genes?.rarity },
+    genes: { ...t.genes, rarity: averageLevel + t.genes?.rarity || 1 },
   }));
-  newState.items = { lootbox: 1 };
+  newState.items = { ...initialItemsAmount };
   newState.lastRefresh = now;
   newState.nextRefresh = now + REFRESH_COOLDOWN;
+
   return newState;
 };
 
@@ -111,8 +115,21 @@ const BuyTab: React.FC = () => {
     saveShopState(newShopState);
   };
 
+  const updateShopStateAmount = (keyString: string) => {
+    const newShopState = { ...shopState };
+    newShopState.items[keyString] = newShopState.items[keyString] - 1;
+
+    setShopState(newShopState);
+    saveShopState(newShopState);
+  };
+
   const handleBuyItem =
-    (item: Record<string, number>, price: Record<string, number>) => () => {
+    (
+      item: Record<string, number>,
+      price: Record<string, number>,
+      noAmount?: boolean
+    ) =>
+    () => {
       const currency = Object.keys(price)[0];
       const itemName = Object.keys(item)[0];
 
@@ -120,7 +137,7 @@ const BuyTab: React.FC = () => {
         return;
       }
 
-      if (itemName === "lootbox" && shopState.items.lootbox === 0) {
+      if (!shopState.items[itemName] && !noAmount) {
         return;
       }
 
@@ -143,13 +160,20 @@ const BuyTab: React.FC = () => {
           content: "Лутбокс куплен! Откройте склад и активируйте его!",
           type: "success",
         });
-
-        const newShopState = { ...shopState };
-        newShopState.items.lootbox = newShopState.items.lootbox - 1;
-
-        setShopState(newShopState);
-        saveShopState(newShopState);
       }
+
+      if (itemName === "battery") {
+        // completeAchivement("buy-lootbox");
+        addNotification({
+          content: "Батарейки куплены! На складе можно зарядить их в инкубатор",
+          type: "success",
+        });
+      }
+
+      if (noAmount) {
+        return;
+      }
+      updateShopStateAmount(itemName);
     };
 
   const calculateBuyPrice = (toad: Toad) =>
@@ -192,6 +216,17 @@ const BuyTab: React.FC = () => {
 
   const canRefresh = Date.now() >= shopState.nextRefresh;
   const allToadsPurchased = shopState.availableToads.length === 0;
+
+  const BuyButton = ({ onClick, disabled, children }) => (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={`px-3 min-w-[64px] py-1.5 rounded-lg disabled:bg-gray-600 disabled:bg-none text-sm font-medium text-white whitespace-nowrap transition-colors bg-gradient-to-r from-emerald-600 to-emerald-800 text-white"
+              }`}
+    >
+      {children}
+    </button>
+  );
 
   return (
     <div className="space-y-4 pb-4">
@@ -248,16 +283,16 @@ const BuyTab: React.FC = () => {
                 <p className="text-green-400 text-xs mt-1">∞ доступно</p>
               </div>
             </div>
-            <button
-              onClick={handleBuyItem({ food: 10 }, { tokens: FOOD_PRICE })}
+            <BuyButton
+              onClick={handleBuyItem(
+                { food: 10 },
+                { tokens: FOOD_PRICE },
+                true
+              )}
               disabled={tokens < FOOD_PRICE}
-              className={`px-3 min-w-[64px] py-1.5 rounded-lg bg-gray-600 text-sm font-medium text-white whitespace-nowrap transition-colors ${
-                tokens >= FOOD_PRICE &&
-                "bg-gradient-to-r from-green-600 to-emerald-800 text-white"
-              }`}
             >
               {FOOD_PRICE} {CURRENCY_CONFIG.tokens.icon}
-            </button>
+            </BuyButton>
           </div>
         </div>
 
@@ -290,19 +325,67 @@ const BuyTab: React.FC = () => {
                     -10%
                   </span>
                 </div>
-                <p className="text-green-400 text-xs mt-1">∞ доступно</p>
+                <p
+                  className={`text-xs mt-1 ${
+                    !shopState.items.food ? "text-red-400" : "text-green-400"
+                  }`}
+                >
+                  {!shopState.items.food
+                    ? "❌ Куплено"
+                    : `✅ ${shopState.items.food} доступно`}
+                </p>
               </div>
             </div>
-            <button
+            <BuyButton
               onClick={handleBuyItem({ food: 100 }, { tokens: 90 })}
-              disabled={tokens < 90}
-              className={`px-3 min-w-[64px] py-1.5 rounded-lg bg-gray-600 text-sm font-medium text-white whitespace-nowrap transition-colors ${
-                tokens >= 90 &&
-                "bg-gradient-to-r from-blue-600 to-blue-800 text-white"
-              }`}
+              disabled={tokens < 90 || !shopState.items.food}
             >
               90 {CURRENCY_CONFIG.tokens.icon}
-            </button>
+            </BuyButton>
+          </div>
+        </div>
+
+        <div className="bg-gray-800 rounded-2xl py-4 px-2 border border-gray-700 mb-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 flex items-center justify-center rounded-full border-2 border-blue-400 bg-gray-900">
+                <div className="w-10 h-10 flex items-center justify-center rounded-full border-2 border-blue-400 bg-gray-900 relative">
+                  <span className="text-xl absolute transform  -translate-y-1 -translate-x-1">
+                    🔋
+                  </span>
+                  <span className="text-xl absolute ">🔋</span>
+                  <span className="text-xl absolute transform  translate-y-1 translate-x-1 ">
+                    🔋
+                  </span>
+                </div>
+              </div>
+              <div>
+                <p className="text-white font-medium text-base">
+                  Упаковка батареек
+                </p>
+                <p className="text-gray-400 text-sm mt-1">
+                  х3 батарейки, можно ускорить инкубацию
+                </p>
+
+                <p
+                  className={`text-xs mt-1 ${
+                    shopState.items.battery === 0
+                      ? "text-red-400"
+                      : "text-green-400"
+                  }`}
+                >
+                  {shopState.items.battery === 0
+                    ? "❌ Куплено"
+                    : `✅ ${shopState.items.battery} доступно`}
+                </p>
+              </div>
+            </div>
+            <BuyButton
+              onClick={handleBuyItem({ battery: 3 }, { astro_quax: 5 })}
+              disabled={astro_quax < 5 || !shopState.items.battery}
+            >
+              5 {CURRENCY_CONFIG.astro_quax.icon}
+            </BuyButton>
           </div>
         </div>
 
@@ -332,21 +415,16 @@ const BuyTab: React.FC = () => {
                 >
                   {shopState.items.lootbox === 0
                     ? "❌ Куплено"
-                    : "✅ 1 доступно"}
+                    : `✅ ${shopState.items.lootbox} доступно`}
                 </p>
               </div>
             </div>
-            <button
+            <BuyButton
               onClick={handleBuyItem({ lootbox: 1 }, { astro_quax: 50 })}
-              disabled={astro_quax < 50 || shopState.items.lootbox === 0}
-              className={`px-3 min-w-[64px] py-1.5 rounded-lg bg-gray-600 text-sm font-medium text-white whitespace-nowrap transition-colors ${
-                astro_quax >= 50 &&
-                shopState.items.lootbox &&
-                "bg-gradient-to-r from-purple-600 to-purple-800 text-white"
-              }`}
+              disabled={astro_quax < 50 || !shopState.items.lootbox}
             >
               50 {CURRENCY_CONFIG.astro_quax.icon}
-            </button>
+            </BuyButton>
           </div>
         </div>
       </div>

@@ -157,11 +157,16 @@ export const ToadProvider: React.FC<ToadProviderProps> = ({ children }) => {
     ) {
       addNotification({
         type: "warn",
-        content: "Превышена вместимость вольера, гибрид помещен на склад.",
+        content: `Превышена вместимость вольера, гибрид ${slot.child.name} помещен на склад.`,
       });
       createToad({ ...slot.child, scene_id: null });
     } else {
       createToad(slot.child);
+
+      addNotification({
+        type: "success",
+        content: `Гибрид ${slot.child.name} помещен в ${currentSceneToCollect?.name}`,
+      });
     }
 
     setColliderState((prev) => {

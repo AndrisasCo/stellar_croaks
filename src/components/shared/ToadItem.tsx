@@ -99,7 +99,7 @@ export const ToadItem = ({
             <span className="text-gray-500">Редкость:</span>{" "}
             {getRarityConfig(toad.genes?.rarity).icon}{" "}
             <span className="font-semibold">
-              {toad.genes?.rarity.toFixed(1)}
+              {toad.genes?.rarity?.toFixed(1)}
             </span>
           </div>
 

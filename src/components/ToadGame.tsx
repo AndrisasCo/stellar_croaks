@@ -130,6 +130,20 @@ export default function ToadGame() {
         }
       }
 
+      {
+        // нотификейшн при заходе в игру
+        const updateDeployTime = 1764447475961;
+        const lastSaveTime = new Date(getGameState().lastSaved).getTime();
+
+        if (updateDeployTime > lastSaveTime) {
+          addNotification({
+            type: "info",
+            content: "В магазин добавлены батарейки! Попробуйте... ",
+            timeout: 15000,
+          });
+        }
+      }
+
       if (!localStorage.getItem("tutorial_read")) {
         localStorage.setItem("tutorial_read", "true");
         setIsTutorialOpen(true);

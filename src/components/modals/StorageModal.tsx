@@ -4,14 +4,16 @@ import Modal from "../shared/Modal";
 import { useToads } from "../ToadContext";
 import { useSoundEffects } from "../../hooks/use-sound-effects";
 import { createToad, updateToadById, updateUser } from "../../backend";
-import { ToadGender } from "../shared/ToadGender";
-import { PregnancyIcon } from "../../assets/icons";
 import { useNotifications } from "../../hooks/use-notification";
 import { ToadItem } from "../shared/ToadItem";
 import { useFilters } from "../../hooks/use-filters";
 import { Filters } from "../shared/Filters";
 import { randomizeToadCharacteristics } from "../../utils/randomize-toad-characteristics";
 import { getGameState } from "../../backend/localStorage";
+import {
+  loadColliderState,
+  saveColliderState,
+} from "../../backend/collider-manager";
 
 interface StorageModalProps {
   isOpen: boolean;
@@ -70,6 +72,41 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
     createToad(randomToad);
   };
 
+  const handleClickBattery = () => {
+    const account = getGameState().user;
+    if (!account.storage.battery) {
+      return;
+    }
+
+    const collider = loadColliderState();
+    const activeSlot = collider.slots.find((s) => s.child);
+
+    if (!activeSlot) {
+      addNotification({
+        type: "danger",
+        content: `В инкубаторе пусто`,
+      });
+      return;
+    }
+
+    if (activeSlot.isReady) {
+      addNotification({
+        type: "warn",
+        content: `Инкубация уже завершена!`,
+      });
+      return;
+    }
+
+    activeSlot.startTime = activeSlot.startTime - 10 * 60 * 1000; // +10 мин
+    saveColliderState(collider);
+    window.dispatchEvent(new Event("colliderChanged"));
+
+    addNotification({
+      type: "success",
+      content: `Инкубация ускорена`,
+    });
+  };
+
   // Предметы на складе
   const storageItems: StorageItem[] = [
     {
@@ -93,15 +130,17 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
       key: "lootbox",
       onClick: handleOpenLootbox,
     },
-    // {
-    //   id: "2",
-    //   name: "Волшебные черви",
-    //   icon: "🪱",
-    //   quantity: 15,
-    //   description: "Повышает плодовитость",
-    //   type: "food",
-    //   rarity: "uncommon",
-    // },
+    {
+      id: "3",
+      name: "Батарейка",
+      icon: "🔋",
+      quantity: account?.storage?.battery || 0,
+      description: "Ускоряет созревание жабы в инкубаторе на 10 минут",
+      type: "tool",
+      rarity: "common",
+      key: "battery",
+      onClick: handleClickBattery,
+    },
     // {
     //   id: "3",
     //   name: "Сияющие мушки",
@@ -111,6 +150,16 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
     //   type: "food",
     //   rarity: "rare",
     // },
+    // {
+    //   id: "2",
+    //   name: "Волшебные черви",
+    //   icon: "🪱",
+    //   quantity: 15,
+    //   description: "Повышает плодовитость",
+    //   type: "food",
+    //   rarity: "uncommon",
+    // },
+
     // {
     //   id: "4",
     //   name: "Лунные камни",
@@ -147,15 +196,7 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
     //   type: "tool",
     //   rarity: "epic",
     // },
-    // {
-    //   id: "9",
-    //   name: "Энергетический концентрат",
-    //   icon: "⚡",
-    //   quantity: 12,
-    //   description: "Восстанавливает энергию жаб",
-    //   type: "food",
-    //   rarity: "common",
-    // },
+
     // {
     //   id: "10",
     //   name: "Радужные брызги",
@@ -288,7 +329,7 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
                 onClick={item.onClick}
               >
                 {/* Количество */}
-                <div className="absolute -top-2 -right-2 bg-blue-600 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">
+                <div className="absolute top-0 right-0 bg-blue-600 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">
                   {item.quantity}
                 </div>
 

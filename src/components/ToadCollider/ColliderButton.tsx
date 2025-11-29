@@ -42,7 +42,7 @@ export default function ColliderButton() {
   };
 
   const activeSlot = colliderState.slots.find((slot) => slot.child);
-  const freeSlots = colliderState.slots.filter((slot) => slot.child);
+  const freeSlots = colliderState.slots.filter((slot) => !slot.child);
 
   useEffect(() => {
     if (activeSlot) {

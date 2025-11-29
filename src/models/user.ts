@@ -5,6 +5,7 @@ export type User = {
   tokens: number;
   astro_quax: number;
   storage: {
+    battery?: number;
     food: number;
     lootbox?: number;
   };
