@@ -218,7 +218,7 @@ export const ToadProvider: React.FC<ToadProviderProps> = ({ children }) => {
     }
     updateToadStateByIds(toadsId, { hunger: 100 });
     updateUser({
-      storage: { food: newFood },
+      storage: { ...account.storage, food: newFood },
     });
   };
 
