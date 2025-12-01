@@ -20,6 +20,9 @@ import { useFilters } from "../../hooks/use-filters";
 import { Tooltip } from "../shared/Tooltip";
 import { getGameState } from "../../backend/localStorage";
 import { useNotifications } from "../../hooks/use-notification";
+import { ClickButton } from "../shared/ClickButton";
+import { ArrowLeftButtonCompact } from "../shared/ArrowLeft";
+import { ArrowRightButtonCompact } from "../shared/ArrowRight";
 
 interface ToadListModalProps {
   isOpen: boolean;
@@ -329,7 +332,13 @@ const ToadListModal: React.FC<ToadListModalProps> = ({
   onToadSelect,
 }) => {
   const { playCrunchShort } = useSoundEffects();
-  const { handleFeedToads, ownedScenes, currentScene } = useToads();
+  const {
+    handleFeedToads,
+    ownedScenes,
+    currentScene,
+    currentSceneIndex,
+    setCurrentSceneId,
+  } = useToads();
   const { addNotification } = useNotifications();
   const {
     filteredAndSortedToads,
@@ -341,7 +350,7 @@ const ToadListModal: React.FC<ToadListModalProps> = ({
     setFilterBy,
   } = useFilters(toads);
 
-  const [viewMode, setViewMode] = useState<"detailed" | "compact">("compact");
+  const [viewMode, setViewMode] = useState<"detailed" | "compact">("detailed");
   const [selectedToads, setSelectedToads] = useState<Set<number>>(new Set());
   const [showMoveTooltip, setShowMoveTooltip] = useState(false);
   const [familyGroups, setFamilyGroups] = useState<Map<number, number>>(
@@ -472,6 +481,17 @@ const ToadListModal: React.FC<ToadListModalProps> = ({
     starving: toads.filter((t) => t.state.hunger < 50).length,
   };
 
+  const isFirstScene = currentSceneIndex === 0;
+  const isLastScene = currentSceneIndex === ownedScenes.length - 1;
+
+  const onNextScene = () => {
+    setCurrentSceneId(currentSceneIndex + 1);
+  };
+
+  const onPrevScene = () => {
+    setCurrentSceneId(currentSceneIndex - 1);
+  };
+
   return (
     <Modal onClose={onClose} isOpen={isOpen} icon={icon} title={"Все жабы"}>
       <Filters
@@ -486,10 +506,10 @@ const ToadListModal: React.FC<ToadListModalProps> = ({
       />
 
       {/* Кнопки переключения режима просмотра */}
-      <div className="px-1 pb-3 flex gap-2">
-        <button
+      <div className="px-1 pb-3 flex gap-2 ">
+        <ClickButton
           onClick={() => setViewMode("detailed")}
-          className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${
+          className={`px-3 py-1 rounded-md h-min text-xs font-medium transition-all ${
             viewMode === "detailed"
               ? "bg-green-500 text-white"
               : "bg-gray-700 text-gray-300 hover:text-white"
@@ -497,10 +517,10 @@ const ToadListModal: React.FC<ToadListModalProps> = ({
           title="Подробный вид"
         >
           Подробно
-        </button>
-        <button
+        </ClickButton>
+        <ClickButton
           onClick={() => setViewMode("compact")}
-          className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${
+          className={`px-3 py-1 rounded-md h-min text-xs font-medium transition-all ${
             viewMode === "compact"
               ? "bg-blue-500 text-white"
               : "bg-gray-700 text-gray-300 hover:text-white"
@@ -508,9 +528,23 @@ const ToadListModal: React.FC<ToadListModalProps> = ({
           title="Компактный вид"
         >
           Сетка
-        </button>
-      </div>
+        </ClickButton>
 
+        <div className="flex items-center justify-center gap-2 ml-auto">
+          <ArrowLeftButtonCompact
+            className="w-6 h-6"
+            disabled={isFirstScene}
+            onClick={onPrevScene}
+          />
+          <span className="text-sm truncate w-[90px]">{currentScene.name}</span>
+
+          <ArrowRightButtonCompact
+            className="w-6 h-6"
+            onClick={onNextScene}
+            disabled={isLastScene}
+          />
+        </div>
+      </div>
       {/* Панель управления выделением (только для компактного режима) */}
       {viewMode === "compact" && (
         <div className="bg-gray-800/50 rounded-lg p-3 mb-4 border border-gray-600/50">

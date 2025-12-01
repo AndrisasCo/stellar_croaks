@@ -190,7 +190,7 @@ export const getShopState = (): ShopState => {
 export const saveShopState = (state: ShopState) => {
   localStorage.setItem(SHOP_STATE_KEY, JSON.stringify(state));
 };
-export const initialItemsAmount = { lootbox: 1, battery: 2, food: 2 };
+export const initialItemsAmount = { lootbox: 1, battery: 2, food: 5 };
 // Инициализация магазина со случайным набором жаб
 export const initializeShop = (): ShopState => {
   const now = Date.now();

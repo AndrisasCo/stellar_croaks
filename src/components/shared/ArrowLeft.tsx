@@ -1,18 +1,20 @@
 interface ArrowLeftButtonCompactProps {
   onClick: () => void;
   disabled: boolean;
+  className?: string;
 }
 
 export const ArrowLeftButtonCompact = ({
   onClick,
   disabled = false,
+  className = "w-10 h-10",
 }: ArrowLeftButtonCompactProps) => (
   <button
     onClick={onClick}
     disabled={disabled}
     className={`
       flex items-center justify-center 
-      w-10 h-10 rounded-lg 
+      ${className} rounded-lg 
       transition-all duration-300 transform
       border-2 backdrop-blur-sm
       ${
