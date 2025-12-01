@@ -105,6 +105,10 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
       type: "success",
       content: `Инкубация ускорена`,
     });
+
+    updateUser({
+      storage: { ...account.storage, battery: account.storage.battery - 1 },
+    });
   };
 
   // Предметы на складе
