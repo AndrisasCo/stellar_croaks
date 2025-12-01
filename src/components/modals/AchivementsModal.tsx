@@ -7,10 +7,7 @@ import {
   getAchievementState,
 } from "../../backend/achivements-manager";
 import { createToad } from "../../backend";
-import {
-  triggerNotification,
-  useNotifications,
-} from "../../hooks/use-notification";
+import { useNotifications } from "../../hooks/use-notification";
 
 interface AchievementModalProps {
   isOpen: boolean;

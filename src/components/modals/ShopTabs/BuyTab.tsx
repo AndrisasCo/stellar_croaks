@@ -1,5 +1,8 @@
 import { createToad, updateUser } from "../../../backend";
-import { completeAchivement } from "../../../backend/achivements-manager";
+import {
+  completeAchivement,
+  completeAchivementCounter,
+} from "../../../backend/achivements-manager";
 import { getGameState } from "../../../backend/localStorage";
 import {
   ShopState,
@@ -86,6 +89,7 @@ const BuyTab: React.FC = () => {
   const handleBuyToad = async (toad: Toad) => {
     playBuy();
     completeAchivement("buy-toad");
+    completeAchivementCounter("buyToad", 1);
 
     const allToadsOnScene =
       getGameState().toads.filter((t) => t.scene_id === currentScene.id)

@@ -93,9 +93,6 @@ export const achievementGroups = [
           stage: "adult",
           scene_id: null,
           created_at: new Date().toISOString(),
-          description:
-            "Награда за освоение основ жабьей науки. Кажется, знает о вас больше, чем вы сами",
-          owner: 0,
           parents: null,
           state: {
             hunger: 100,
@@ -115,58 +112,83 @@ export const achievementGroups = [
       },
     },
   },
-  // {
-  //   id: "market-domination",
-  //   title: "💼 Жабный магнат",
-  //   description: "Станьте мастером торговли и экономики",
-  //   color: "blue",
-  //   achievements: [
-  //     {
-  //       id: "earn-100",
-  //       icon: "💵",
-  //       name: "Стартовый капитал",
-  //       description: "Заработать 100 кваксов",
-  //       completed: false,
-  //       task: { earn: 100 },
-  //     },
-  //     {
-  //       id: "earn-300",
-  //       icon: "💴",
-  //       name: "Растущий бизнес",
-  //       description: "Заработать 300 кваксов",
-  //       completed: false,
-  //       task: { earn: 300 },
-  //     },
-  //     {
-  //       id: "earn-1000",
-  //       icon: "💶",
-  //       name: "Жабный олигарх",
-  //       description: "Заработать 1000 кваксов",
-  //       completed: false,
-  //       task: { earn: 1000 },
-  //     },
-  //     {
-  //       id: "buy-10-toads",
-  //       icon: "🐸",
-  //       name: "Коллекционер",
-  //       description: "Купить 10 жаб",
-  //       completed: false,
-  //       task: { buyToad: 1000 },
-  //     },
-  //     {
-  //       id: "sell-10-toads",
-  //       icon: "📊",
-  //       name: "Опытный торговец",
-  //       description: "Продать 10 жаб",
-  //       completed: false,
-  //     },
-  //   ],
-  //   groupReward: {
-  //     icon: "🏆",
-  //     name: "Трофей магната",
-  //     description: "За освоение торговли",
-  //   },
-  // },
+  {
+    id: "market-domination",
+    title: "💼 Жабный магнат",
+    description: "Станьте мастером торговли и экономики",
+    color: "blue",
+    achievements: [
+      {
+        id: "earn-100",
+        icon: "💵",
+        name: "Стартовый капитал",
+        description: "Заработать 100 кваксов",
+        completed: false,
+        taskType: "earn",
+        taskValue: 100,
+      },
+      {
+        id: "earn-300",
+        icon: "💴",
+        name: "Растущий бизнес",
+        description: "Заработать 1 000 кваксов",
+        completed: false,
+        taskType: "earn",
+        taskValue: 300,
+      },
+      {
+        id: "earn-1000",
+        icon: "💶",
+        name: "Жабный олигарх",
+        description: "Заработать 10 000 кваксов",
+        completed: false,
+        taskType: "earn",
+        taskValue: 10000,
+      },
+      {
+        id: "buy-12-toads",
+        icon: "🐸",
+        name: "Коллекционер",
+        description: "Купить 12 жаб",
+        completed: false,
+        taskType: "buyToad",
+        taskValue: 12,
+      },
+    ],
+    groupReward: {
+      icon: "👑",
+      name: "Королевский инвестор",
+      description: "Награда за экономическое господство",
+      reward: {
+        type: "toad",
+        content: {
+          id: Math.round(Date.now() * Math.random()),
+          name: "Барон Квак-Ротшильд",
+          type: "market_reward",
+          generation: 0,
+          sex: "male",
+          stage: "adult",
+          scene_id: null,
+          created_at: new Date().toISOString(),
+          parents: null,
+          state: {
+            hunger: 100,
+          },
+          pregnancy: null,
+          genes: {
+            colors: ["#FFD700", "#C0C0C0", "#000000"], // золото, серебро, черный
+            pattern: "imperial_stripes", // императорские полосы
+            weight: 22.5,
+            speed: 0.8,
+            rarity: 25, // Легендарная редкость
+            hungerRate: 0.3, // Ест мало
+            fertility: 0.5,
+            personality: "imperial",
+          },
+        },
+      },
+    },
+  },
   // {
   //   id: "genetic-engineer",
   //   title: "🧬 Генный алхимик",
@@ -234,22 +256,23 @@ export type DynamicAchievementId =
   | "buy-food"
   | "read-tutorial"
   | "collider-hybrid"
-  | "first-offspring";
-// | "earn-100"
-// | "earn-300"
-// | "earn-1000"
-// | "buy-10-toads"
-// | "sell-10-toads"
-// | "rarity-3"
-// | "rarity-10"
-// | "size-30"
-// | "speed-slow"
-// | "speed-fast"
-// | "size-small";
+  | "first-offspring"
+  | "earn-100"
+  | "earn-300"
+  | "earn-1000"
+  | "buy-10-toads"
+  | "sell-10-toads"
+  | "rarity-3"
+  | "rarity-10"
+  | "size-30"
+  | "speed-slow"
+  | "speed-fast"
+  | "size-small";
 
-export type DynamicGroupId = "first-steps";
-// | "market-domination"
-// | "genetic-engineer";
+export type DynamicGroupId =
+  | "first-steps"
+  | "market-domination"
+  | "genetic-engineer";
 
 export const completeAchivement = (id: DynamicAchievementId) => {
   const currentState = getAchievementState().completed;
@@ -271,6 +294,37 @@ export const completeAchivement = (id: DynamicAchievementId) => {
 
   // Отправляем событие
   window.dispatchEvent(event);
+};
+
+export const completeAchivementCounter = (
+  action: "earn" | "buyToad",
+  value: number
+) => {
+  achievementGroups;
+  const currentState = getAchievementState();
+  if (!currentState.counter) {
+    currentState.counter = {};
+    return;
+  }
+
+  currentState.counter[action] = currentState.counter[action]
+    ? currentState.counter[action] + value
+    : value;
+
+  updateAchivementsState({ counter: { ...currentState.counter } });
+
+  const achivements = achievementGroups
+    .flatMap((a) => a.achievements)
+    .filter((a) => a.taskType === action)
+    .filter(
+      (a) =>
+        currentState.counter[action] &&
+        currentState.counter[action] >= (a.taskValue || 0)
+    );
+
+  achivements.forEach((achivement) => {
+    completeAchivement(achivement.id as DynamicAchievementId);
+  });
 };
 
 export const claimReward = (id: DynamicGroupId) => {

@@ -16,7 +16,10 @@ import {
   ShopState,
 } from "../../../backend/shop-state";
 import { ToadItem } from "../../shared/ToadItem";
-import { completeAchivement } from "../../../backend/achivements-manager";
+import {
+  completeAchivement,
+  completeAchivementCounter,
+} from "../../../backend/achivements-manager";
 import { useFilters } from "../../../hooks/use-filters";
 import { Filters } from "../../shared/Filters";
 
@@ -47,8 +50,11 @@ const SellTab: React.FC = () => {
   }, 0);
 
   const handleSellToads = async () => {
-    if (selectedFilteredToads.length === 0) return;
+    if (selectedFilteredToads.length === 0) {
+      return;
+    }
     completeAchivement("sell-toad");
+    completeAchivementCounter("earn", totalSellPrice);
 
     playCell();
     deleteToadsByIds(selectedFilteredToads);
@@ -69,22 +75,27 @@ const SellTab: React.FC = () => {
   };
 
   const handleSellSingleToad = async (toadId: number) => {
-    completeAchivement("sell-toad");
-    playCell();
     const toad = activeToads.find((t) => t.id === toadId);
-    if (toad) {
-      const price = calculateSellPrice(toad);
-      deleteToadsByIds([toadId]);
-      updateUser({ tokens: tokens + price });
-      setSelectedToads(selectedToads.filter((id) => id !== toadId));
 
-      const shopState = getShopState();
-      const newShopState: ShopState = {
-        ...shopState,
-        availableToads: [...shopState.availableToads, toad],
-      };
-      saveShopState(newShopState);
+    if (!toad) {
+      return;
     }
+    completeAchivement("sell-toad");
+
+    playCell();
+    const price = calculateSellPrice(toad);
+    completeAchivementCounter("earn", price);
+
+    deleteToadsByIds([toadId]);
+    updateUser({ tokens: tokens + price });
+    setSelectedToads(selectedToads.filter((id) => id !== toadId));
+
+    const shopState = getShopState();
+    const newShopState: ShopState = {
+      ...shopState,
+      availableToads: [...shopState.availableToads, toad],
+    };
+    saveShopState(newShopState);
   };
 
   const handleSelectAllFiltered = () => {
