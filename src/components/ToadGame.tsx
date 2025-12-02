@@ -146,13 +146,13 @@ export default function ToadGame() {
 
       {
         // нотификейшн при заходе в игру
-        const updateDeployTime = 1764606360390;
+        const updateDeployTime = 1764691777865;
         const lastSaveTime = new Date(getGameState().lastSaved).getTime();
 
         if (updateDeployTime > lastSaveTime) {
           addNotification({
             type: "info",
-            content: "Добавлены новые достижения! Проверьте их в меню!",
+            content: "Добавлены ЕЩЕ достижения! 🥇",
             timeout: 15000,
           });
         }

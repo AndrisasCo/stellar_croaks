@@ -1,6 +1,7 @@
 import { Scene } from "../models/scene";
 import { Toad } from "../models/toad";
 import { User } from "../models/user";
+import { checkGeneticAchievements } from "./achivements-manager";
 import { getGameState, updateGameState, webAppData } from "./localStorage";
 
 export const createScene = (sceneData: Partial<Scene>): Scene[] => {
@@ -28,12 +29,13 @@ export const createToad = (toadData: Partial<Toad>): Toad[] => {
   const newToad: Toad = {
     id: Math.round(Date.now() * Math.random()),
     created_at: new Date().toISOString(),
-    owner: state.user.id,
     ...toadData,
   } as Toad;
 
   const newToads = [...state.toads, newToad];
   updateGameState({ toads: newToads });
+
+  checkGeneticAchievements(newToad);
 
   return [newToad];
 };
@@ -43,15 +45,14 @@ export const createToads = (
   syntetic?: boolean
 ): Toad[] => {
   const state = getGameState();
-  const newToads: Toad[] = toadsData.map(
-    (toadData) =>
-      ({
-        id: Math.round(Math.random() * Date.now()),
-        created_at: new Date().toISOString(),
-        owner: state.user.id,
-        ...toadData,
-      } as Toad)
-  );
+  const newToads: Toad[] = toadsData.map((toadData) => {
+    checkGeneticAchievements(toadData);
+    return {
+      id: Math.round(Math.random() * Date.now()),
+      created_at: new Date().toISOString(),
+      ...toadData,
+    } as Toad;
+  });
 
   const allToads = [...state.toads, ...newToads];
   updateGameState({ toads: allToads }, syntetic);

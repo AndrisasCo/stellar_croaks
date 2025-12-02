@@ -6,8 +6,9 @@ import {
   claimReward,
   getAchievementState,
 } from "../../backend/achivements-manager";
-import { createToad } from "../../backend";
+import { createToad, updateUser } from "../../backend";
 import { useNotifications } from "../../hooks/use-notification";
+import { getGameState } from "../../backend/localStorage";
 
 interface AchievementModalProps {
   isOpen: boolean;
@@ -82,19 +83,39 @@ const AchievementModal: React.FC<AchievementModalProps> = ({
     if (!group.groupReward) {
       return;
     }
+    playClick();
 
-    if (group.groupReward.reward.type === "toad") {
-      createToad({
-        ...group.groupReward.reward.content,
-        created_at: new Date().toISOString(),
-      });
-      playClick();
-      claimReward(group.id);
-      addNotification({
-        type: "success",
-        content: `На склад добавлена новая жаба: ${group.groupReward.reward.content.name}`,
-      });
-    }
+    const userStorage = getGameState().user.storage;
+
+    group.groupReward.reward.forEach((reward) => {
+      if (reward.type === "toad") {
+        createToad({
+          ...reward.content,
+          created_at: new Date().toISOString(),
+        });
+
+        addNotification({
+          type: "success",
+          content: `На склад добавлена новая жаба: ${reward.content.name}`,
+        });
+      }
+
+      if (reward.type === "lootbox") {
+        updateUser({
+          storage: {
+            ...userStorage,
+            lootbox: (userStorage.lootbox || 0) + reward.content,
+          },
+        });
+
+        addNotification({
+          type: "success",
+          content: `На склад добавлены лутбоксы: ${reward.content}`,
+        });
+      }
+    });
+
+    claimReward(group.id);
   };
 
   return (
