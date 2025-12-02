@@ -9,6 +9,7 @@ import {
 import { createToad, updateUser } from "../../backend";
 import { useNotifications } from "../../hooks/use-notification";
 import { getGameState } from "../../backend/localStorage";
+import { CURRENCY_CONFIG } from "../../utils/constants";
 
 interface AchievementModalProps {
   isOpen: boolean;
@@ -23,6 +24,7 @@ const AchievementModal: React.FC<AchievementModalProps> = ({
   const { addNotification } = useNotifications();
 
   const achivements = getAchievementState();
+  const gameState = getGameState();
 
   const icon = (
     <svg
@@ -42,6 +44,28 @@ const AchievementModal: React.FC<AchievementModalProps> = ({
 
   const getIsCompleted = (achievementId: string) => {
     return achivements.completed.includes(achievementId);
+  };
+
+  // Функция для получения прогресса ачивки
+  const getAchievementProgress = (achievement: any) => {
+    if (!achievement.taskType || !achievement.taskValue) {
+      return { current: 0, target: 0, percentage: 0 };
+    }
+
+    const counter = achivements.counter[achievement.taskType] || 0;
+    const target = achievement.taskValue;
+    const current = Math.min(counter, target); // Не превышаем цель
+    const percentage = Math.min((current / target) * 100, 100);
+
+    return { current, target, percentage };
+  };
+
+  // Функция для форматирования чисел
+  const formatNumber = (num: number) => {
+    if (num >= 1000) {
+      return `${(num / 1000).toFixed(1)}k`;
+    }
+    return num.toString();
   };
 
   const getColorClasses = (color: string) => {
@@ -85,7 +109,7 @@ const AchievementModal: React.FC<AchievementModalProps> = ({
     }
     playClick();
 
-    const userStorage = getGameState().user.storage;
+    const userStorage = gameState.user.storage;
 
     group.groupReward.reward.forEach((reward) => {
       if (reward.type === "toad") {
@@ -146,6 +170,36 @@ const AchievementModal: React.FC<AchievementModalProps> = ({
         </div>
       </div>
 
+      {/* Счетчики прогресса */}
+      {Object.keys(achivements.counter || {}).length > 0 && (
+        <div className="mb-6 p-3 bg-gray-800/30 rounded-xl border border-gray-600/30">
+          <h4 className="text-white font-semibold mb-3 text-sm">
+            Прогресс по категориям:
+          </h4>
+          <div className="grid grid-cols-2 gap-2">
+            {Object.entries(achivements.counter || {}).map(([key, value]) => (
+              <div
+                key={key}
+                className="flex items-center justify-between p-2 bg-gray-700/30 rounded"
+              >
+                <span className="text-gray-300 text-xs capitalize">
+                  {key === "earn"
+                    ? `Заработано ${CURRENCY_CONFIG.tokens.icon}`
+                    : key === "buyToad"
+                    ? "Куплено жаб"
+                    : key === "sellToad"
+                    ? "Продано жаб"
+                    : key}
+                </span>
+                <span className="text-yellow-400 font-bold text-sm">
+                  {value}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Группы достижений */}
       <div className="space-y-4">
         {achievementGroups.map((group) => {
@@ -188,7 +242,7 @@ const AchievementModal: React.FC<AchievementModalProps> = ({
                 </div>
               </div>
 
-              {/* Прогресс бар */}
+              {/* Прогресс бар группы */}
               <div className="w-full bg-gray-700/50 rounded-full h-2 mb-4">
                 <div
                   className={`h-2 rounded-full transition-all duration-500 ${getProgressColor(
@@ -200,59 +254,114 @@ const AchievementModal: React.FC<AchievementModalProps> = ({
 
               {/* Достижения группы */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
-                {group.achievements.map((achievement) => (
-                  <div
-                    key={achievement.id}
-                    className={`
-                        flex items-center gap-3 p-2 rounded-lg border transition-all
-                        ${
-                          getIsCompleted(achievement.id)
-                            ? "bg-gray-700/30  border-green-500/30 "
-                            : "bg-gray-800/20 border-gray-600/30 opacity-60"
-                        }
-                      `}
-                  >
-                    <div className="text-xl">{achievement.icon}</div>
-                    <div className="flex-1 min-w-0">
-                      <div
-                        className={`text-sm font-medium ${
-                          getIsCompleted(achievement.id)
-                            ? "text-white"
-                            : "text-gray-400"
-                        }`}
-                      >
-                        {achievement.name}
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        {achievement.description}
-                      </div>
-                    </div>
+                {group.achievements.map((achievement) => {
+                  const isCompleted = getIsCompleted(achievement.id);
+                  const hasProgress =
+                    achievement.taskType && achievement.taskValue;
+                  const progress = hasProgress
+                    ? getAchievementProgress(achievement)
+                    : null;
+
+                  return (
                     <div
+                      key={achievement.id}
                       className={`
-                        w-5 h-5 rounded border-2 flex items-center justify-center
-                        ${
-                          getIsCompleted(achievement.id)
-                            ? "bg-green-500 border-green-500"
-                            : "bg-gray-700 border-gray-500"
-                        }
-                      `}
+                          flex flex-col gap-2 p-3 rounded-lg border transition-all
+                          ${
+                            isCompleted
+                              ? "bg-gray-700/30 border-green-500/30"
+                              : "bg-gray-800/20 border-gray-600/30"
+                          }
+                        `}
                     >
-                      {getIsCompleted(achievement.id) && (
-                        <svg
-                          className="w-3 h-3 text-white"
-                          fill="currentColor"
-                          viewBox="0 0 20 20"
+                      <div className="flex items-center gap-3">
+                        <div className="text-xl">{achievement.icon}</div>
+                        <div className="flex-1 min-w-0">
+                          <div
+                            className={`text-sm font-medium ${
+                              isCompleted ? "text-white" : "text-gray-400"
+                            }`}
+                          >
+                            {achievement.name}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {achievement.description}
+                          </div>
+                        </div>
+                        <div
+                          className={`
+                            w-6 h-6 rounded-full border-2 flex items-center justify-center
+                            ${
+                              isCompleted
+                                ? "bg-green-500 border-green-500"
+                                : "bg-gray-700 border-gray-500"
+                            }
+                          `}
                         >
-                          <path
-                            fillRule="evenodd"
-                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
+                          {isCompleted ? (
+                            <svg
+                              className="w-3 h-3 text-white"
+                              fill="currentColor"
+                              viewBox="0 0 20 20"
+                            >
+                              <path
+                                fillRule="evenodd"
+                                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                clipRule="evenodd"
+                              />
+                            </svg>
+                          ) : (
+                            <span className="text-xs text-gray-300">
+                              {hasProgress ? "" : "?"}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Прогресс бар для достижений с taskValue */}
+                      {hasProgress && progress && (
+                        <div className="mt-2">
+                          <div className="flex justify-between text-xs mb-1">
+                            <span
+                              className={`${
+                                isCompleted ? "text-green-300" : "text-gray-400"
+                              }`}
+                            >
+                              {isCompleted ? "Выполнено!" : "Прогресс:"}
+                            </span>
+                            <span
+                              className={`font-bold ${
+                                isCompleted
+                                  ? "text-green-300"
+                                  : "text-yellow-300"
+                              }`}
+                            >
+                              {formatNumber(progress.current)} /{" "}
+                              {formatNumber(progress.target)}
+                            </span>
+                          </div>
+                          <div className="w-full bg-gray-700/50 rounded-full h-1.5">
+                            <div
+                              className={`h-1.5 rounded-full transition-all duration-300 ${
+                                isCompleted
+                                  ? "bg-green-500"
+                                  : getProgressColor(group.color)
+                              }`}
+                              style={{ width: `${progress.percentage}%` }}
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Статус выполнения */}
+                      {!hasProgress && !isCompleted && (
+                        <div className="text-xs text-gray-500 text-center italic">
+                          Ещё не выполнено
+                        </div>
                       )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               {/* Награда за группу */}
@@ -288,11 +397,13 @@ const AchievementModal: React.FC<AchievementModalProps> = ({
                           : "text-gray-400"
                       }`}
                     >
-                      {isGroupCompleted ? "" : "Секретная награда"}
+                      {isGroupCompleted
+                        ? group.groupReward.name
+                        : "Секретная награда"}
                     </div>
                     <div className="text-sm text-gray-500">
                       {isGroupCompleted
-                        ? ""
+                        ? group.groupReward.description
                         : "Завершите все достижения группы чтобы открыть"}
                     </div>
                   </div>
@@ -317,16 +428,30 @@ const AchievementModal: React.FC<AchievementModalProps> = ({
         })}
       </div>
 
-      {/* Информация о системе достижений */}
+      {/* Подсказка о прогрессивных ачивках */}
       <div className="mt-6 p-4 bg-gray-800/30 rounded-xl border border-gray-600/30">
         <div className="flex items-center gap-2 mb-2">
-          <div className="text-blue-400">💡</div>
-          <h4 className="text-white font-semibold">О системе достижений</h4>
+          <div className="text-yellow-400">📈</div>
+          <h4 className="text-white font-semibold">О прогрессе достижений</h4>
         </div>
-        <p className="text-gray-400 text-sm">
-          Выполняйте достижения, чтобы отслеживать свой прогресс в игре.
-          Завершите все достижения в группе, чтобы получить специальную награду!
+        <p className="text-gray-400 text-sm mb-2">
+          Некоторые достижения требуют выполнения нескольких действий. Прогресс
+          сохраняется автоматически.
         </p>
+        <div className="text-xs text-gray-500 space-y-1">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-green-500"></div>
+            <span>Завершённое достижение</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+            <span>Достижение с прогрессом</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-gray-500"></div>
+            <span>Ещё не начато</span>
+          </div>
+        </div>
       </div>
 
       {/* Кнопка закрытия */}
