@@ -158,21 +158,11 @@ const BuyTab: React.FC = () => {
         completeAchivement("buy-food");
       }
 
-      if (itemName === "lootbox") {
-        // completeAchivement("buy-lootbox");
-        addNotification({
-          content: "Лутбокс куплен! Откройте склад и активируйте его!",
-          type: "success",
-        });
-      }
-
-      if (itemName === "battery") {
-        // completeAchivement("buy-lootbox");
-        addNotification({
-          content: "Батарейки куплены! На складе можно зарядить их в инкубатор",
-          type: "success",
-        });
-      }
+      addNotification({
+        content: "Предмет куплен!",
+        type: "success",
+        timeout: 3000,
+      });
 
       if (noAmount) {
         return;
@@ -389,6 +379,79 @@ const BuyTab: React.FC = () => {
               disabled={astro_quax < 5 || !shopState.items.battery}
             >
               5 {CURRENCY_CONFIG.astro_quax.icon}
+            </BuyButton>
+          </div>
+        </div>
+
+        <div className="bg-gray-800 rounded-2xl py-4 px-2 border border-blue-700 mb-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 flex items-center justify-center rounded-full border-2 border-blue-400 bg-gray-900">
+                <span className="text-xl">✨</span>
+              </div>
+              <div>
+                <p className="text-white font-medium text-base">
+                  Сияющие мушки
+                </p>
+
+                <p className="text-gray-400 text-sm mt-1">
+                  Ускоряют беременность жабы на 100%
+                </p>
+                <p
+                  className={`text-xs mt-1 ${
+                    shopState.items.sparkleFlys === 0
+                      ? "text-red-400"
+                      : "text-green-400"
+                  }`}
+                >
+                  {shopState.items.sparkleFlys === 0
+                    ? "❌ Куплено"
+                    : `✅ ${shopState.items.sparkleFlys} доступно`}
+                </p>
+              </div>
+            </div>
+            <BuyButton
+              onClick={handleBuyItem({ sparkleFlys: 1 }, { astro_quax: 20 })}
+              disabled={astro_quax < 20 || !shopState.items.sparkleFlys}
+            >
+              20 {CURRENCY_CONFIG.astro_quax.icon}
+            </BuyButton>
+          </div>
+        </div>
+
+        {/* Вариант 3: Лутбокс */}
+        <div className="bg-gray-800 rounded-2xl py-4 px-2 border border-blue-700 mb-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 flex items-center justify-center rounded-full border-2 border-blue-400 bg-gray-900">
+                <span className="text-xl">🪱</span>
+              </div>
+              <div>
+                <p className="text-white font-medium text-base">
+                  Белковые черви
+                </p>
+
+                <p className="text-gray-400 text-sm mt-1">
+                  Ускоряют рост головастика на 100%
+                </p>
+                <p
+                  className={`text-xs mt-1 ${
+                    shopState.items.worms === 0
+                      ? "text-red-400"
+                      : "text-green-400"
+                  }`}
+                >
+                  {shopState.items.worms === 0
+                    ? "❌ Куплено"
+                    : `✅ ${shopState.items.worms} доступно`}
+                </p>
+              </div>
+            </div>
+            <BuyButton
+              onClick={handleBuyItem({ worms: 1 }, { astro_quax: 10 })}
+              disabled={astro_quax < 10 || !shopState.items.worms}
+            >
+              10 {CURRENCY_CONFIG.astro_quax.icon}
             </BuyButton>
           </div>
         </div>

@@ -49,25 +49,25 @@ export const bonuses = [
     type: "grow" as BonusType,
     name: "Ускоренный рост",
     levels: [
-      { level: 1, bonus: 3, cost: 15 },
-      { level: 2, bonus: 5, cost: 30 },
-      { level: 3, bonus: 10, cost: 70 },
+      { level: 1, bonus: 5, cost: 30 },
+      { level: 2, bonus: 10, cost: 70 },
+      { level: 3, bonus: 20, cost: 150 },
     ],
   },
   {
     type: "pregnancy" as BonusType,
     name: "Ускоренная беременность",
     levels: [
-      { level: 1, bonus: 3, cost: 30 },
-      { level: 2, bonus: 5, cost: 50 },
-      { level: 3, bonus: 10, cost: 100 },
+      { level: 1, bonus: 5, cost: 50 },
+      { level: 2, bonus: 10, cost: 100 },
+      { level: 3, bonus: 20, cost: 200 },
     ],
   },
 ];
 
 const bonusMap = {
-  pregnancy: [3, 5, 10],
-  grow: [3, 5, 10],
+  pregnancy: [5, 10, 20],
+  grow: [5, 10, 20],
 };
 
 export const getBoostByScene = (
@@ -79,10 +79,11 @@ export const getBoostByScene = (
   }
   const currentScene = getGameState().scenes.find((s) => s.id === scene_id);
 
-  if (!currentScene || !currentScene.bonuses) {
+  if (!currentScene || !currentScene.bonuses?.[bonusType]) {
     return 1;
   }
 
   const boost = currentScene.bonuses[bonusType];
+
   return bonusMap[bonusType][boost - 1] / 100 + 1;
 };

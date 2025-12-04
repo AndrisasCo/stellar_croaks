@@ -13,13 +13,14 @@ import { InfoIcons } from "../../assets/icons";
 import Modal from "../shared/Modal";
 import { useState, useMemo } from "react";
 import { useSoundEffects } from "../../hooks/use-sound-effects";
-import { updateToadById } from "../../backend";
+import { updateToadById, updateUser, updateUserStorage } from "../../backend";
 import { completeAchivement } from "../../backend/achivements-manager";
 import { getBoostByScene } from "../../models/scene";
 import { nameGenerator } from "../../utils/name-generator";
 import { Tooltip } from "../shared/Tooltip";
 import { getGameState } from "../../backend/localStorage";
 import { useNotifications } from "../../hooks/use-notification";
+import { endPregnancy } from "../../utils/breeding-manager";
 
 interface ToadInfoProps {
   onClose: () => void;
@@ -35,6 +36,7 @@ export default function ToadInfo({ onClose }: ToadInfoProps) {
     ownedScenes,
     currentScene,
     setCurrentSceneId,
+    account,
   } = useToads();
   const [isEditingName, setIsEditingName] = useState(false);
   const [editedName, setEditedName] = useState(toad?.name || "");
@@ -284,6 +286,35 @@ export default function ToadInfo({ onClose }: ToadInfoProps) {
     }
     updateToadById(toad.id, { scene_id });
     handleNextToad();
+  };
+
+  const handleAcceleratePregnancy = () => {
+    if (account.storage.sparkleFlys && account.storage.sparkleFlys > 0) {
+      updateUserStorage({ sparkleFlys: account.storage.sparkleFlys - 1 });
+      updateToadById(toad.id, { stage: "adult" });
+      endPregnancy(toad, addNotification);
+    } else {
+      addNotification({
+        type: "warn",
+        content:
+          "У вас нет Сияющих Мушек ✨ для ускорения, приобретите их на рынке",
+      });
+    }
+  };
+
+  const handleAccelerateGrowth = () => {
+    if (account.storage.worms && account.storage.worms > 0) {
+      updateUserStorage({ worms: account.storage.worms - 1 });
+      updateToadById(toad.id, { stage: "adult" });
+
+      addNotification({ type: "success", content: "Успех!" });
+    } else {
+      addNotification({
+        type: "warn",
+        content:
+          "У вас нет Протеиновых Червей 🪱 для ускорения, приобретите их на рынке",
+      });
+    }
   };
 
   return (
@@ -726,8 +757,17 @@ export default function ToadInfo({ onClose }: ToadInfoProps) {
           {/* РОСТ */}
           {growInfo && (
             <div className="bg-purple-900/20 rounded-xl p-2 mb-3 border border-purple-500/50">
-              <div className="flex items-center gap-2 mb-2">
-                <p className="text-purple-400 text-xs font-medium">РОСТ</p>
+              <div className="flex justify-between items-center mb-2">
+                <div className="flex items-center gap-2">
+                  <p className="text-purple-400 text-xs font-medium">РОСТ</p>
+                </div>
+                <button
+                  onClick={handleAccelerateGrowth}
+                  className="flex items-center gap-1 px-3 py-1 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 rounded-lg transition-all text-xs font-semibold shadow-lg hover:shadow-purple-500/20 active:scale-95"
+                >
+                  <span className="text-white">⚡</span>
+                  <span className="text-white">Ускорить</span>
+                </button>
               </div>
               <div className="space-y-2">
                 <p className="text-purple-300 text-sm">
@@ -746,10 +786,19 @@ export default function ToadInfo({ onClose }: ToadInfoProps) {
           {/* БЕРЕМЕННОСТЬ */}
           {toad.pregnancy?.isPregnant && pregnancyInfo && (
             <div className="bg-pink-900/20 rounded-xl p-2 mb-3 border border-pink-500/50">
-              <div className="flex items-center gap-2 mb-2">
-                <p className="text-pink-400 text-xs font-medium">
-                  БЕРЕМЕННОСТЬ
-                </p>
+              <div className="flex justify-between items-center mb-2">
+                <div className="flex items-center gap-2">
+                  <p className="text-pink-400 text-xs font-medium">
+                    БЕРЕМЕННОСТЬ
+                  </p>
+                </div>
+                <button
+                  onClick={handleAcceleratePregnancy}
+                  className="flex items-center gap-1 px-3 py-1 bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-700 hover:to-rose-700 rounded-lg transition-all text-xs font-semibold shadow-lg hover:shadow-pink-500/20 active:scale-95"
+                >
+                  <span className="text-white">⚡</span>
+                  <span className="text-white">Ускорить</span>
+                </button>
               </div>
               <div className="space-y-2">
                 <p className="text-pink-300 text-sm">

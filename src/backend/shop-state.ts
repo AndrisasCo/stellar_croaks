@@ -171,7 +171,7 @@ export const ALL_TOADS: Partial<Toad>[] = [
 ];
 
 // Ключ для localStorage
-export const SHOP_STATE_KEY = "toad_shop_state6";
+export const SHOP_STATE_KEY = "toad_shop_state7";
 export const REFRESH_COOLDOWN = 3 * 60 * 60 * 1000; // 3 часа в миллисекундах
 export const INSTANT_REFRESH_COST = 20; // Стоимость мгновенного обновления
 export const INSTANT_REFRESH_ELITE_COST = 50; // Стоимость мгновенного обновления
@@ -190,7 +190,13 @@ export const getShopState = (): ShopState => {
 export const saveShopState = (state: ShopState) => {
   localStorage.setItem(SHOP_STATE_KEY, JSON.stringify(state));
 };
-export const initialItemsAmount = { lootbox: 1, battery: 2, food: 5 };
+export const initialItemsAmount = {
+  lootbox: 1,
+  battery: 2,
+  food: 5,
+  worms: 10,
+  sparkleFlys: 10,
+};
 // Инициализация магазина со случайным набором жаб
 export const initializeShop = (): ShopState => {
   const now = Date.now();

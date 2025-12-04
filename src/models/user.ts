@@ -8,5 +8,7 @@ export type User = {
     battery?: number;
     food: number;
     lootbox?: number;
+    sparkleFlys?: number;
+    worms?: number;
   };
 };

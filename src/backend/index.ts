@@ -84,6 +84,13 @@ export const updateUser = (userData: Partial<User>): User => {
   return updatedUser;
 };
 
+export const updateUserStorage = (userData: Record<string, number>) => {
+  const state = getGameState();
+  const updatedUserStorage = { ...state.user.storage, ...userData };
+
+  updateGameState({ user: { ...state.user, storage: updatedUserStorage } });
+};
+
 // Toad update operations
 export const updateToadById = (
   toadId: number,

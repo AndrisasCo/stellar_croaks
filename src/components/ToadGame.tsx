@@ -132,13 +132,13 @@ export default function ToadGame() {
 
       {
         // нотификейшн при заходе в игру
-        const updateDeployTime = 1764447475961;
+        const updateDeployTime = 1764864100220;
         const lastSaveTime = new Date(getGameState().lastSaved).getTime();
 
         if (updateDeployTime > lastSaveTime) {
           addNotification({
             type: "info",
-            content: "В магазин добавлены батарейки! Попробуйте... ",
+            content: "В магазин добавлены новые предметы! ",
             timeout: 15000,
           });
         }

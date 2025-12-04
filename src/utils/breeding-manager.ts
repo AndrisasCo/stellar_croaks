@@ -161,9 +161,6 @@ const calculatePregnancyChance = (
 ): number => {
   let baseChance = (female.genes?.fertility || 1) * 0.8;
 
-  const rarityFactor = 1 / female.genes.rarity;
-  baseChance *= Math.max(rarityFactor, 0.1);
-
   const timeFactor = Math.min(hoursPassed / 2, 1);
   baseChance *= 0.6 + timeFactor * 0.4;
 
@@ -209,7 +206,7 @@ export const startPregnancy = async (toad: Toad, father: Toad) => {
     isPregnant: true,
     pregnancyStart: Date.now(),
     pregnancyDuration:
-      Math.min(getPregnancyDuration() + toad.genes.rarity / 2, 12) / boost,
+      Math.min(getPregnancyDuration() + toad.genes.rarity / 2, 8) / boost,
     fatherId: father.id,
     father,
     offspringCount: calculateOffspringCount(toad),
@@ -265,12 +262,11 @@ export const endPregnancy = async (toad: Toad, addNotification: any) => {
     });
     addNotification({
       type: "warn",
-      content:
-        "Ваши жабы родили, но не все дети поместились в вольер! Часть была перемещена на склад.",
+      content: `${toad.name} родила головастиков, но они не поместились в вольер! Часть была перемещена на склад.`,
     });
   } else {
     addNotification({
-      content: `Ваши жабы родили головастиков: ${children.length} `,
+      content: `${toad.name} родила  головастиков: ${children.length} `,
       type: "success",
     });
   }
