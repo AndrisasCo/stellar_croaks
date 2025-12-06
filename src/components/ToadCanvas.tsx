@@ -6,11 +6,9 @@ import {
   Graphics,
   Sprite,
   Texture,
-  AlphaFilter,
   BlurFilter,
   FillGradient,
   ContainerChild,
-  Rectangle,
 } from "pixi.js";
 import type { Toad } from "../models/toad";
 import { getWindowDimensions, getSceneSettings } from "../utils/ui";
@@ -40,7 +38,7 @@ const preloadTextures = async () => {
       Assets.load("/assets/eye.png"),
       Assets.load("/assets/eye-closed.png"),
       Assets.load("/assets/toadpole.svg"),
-      Assets.load("/assets/apple.png"),
+      Assets.load("/assets/apple.svg"),
     ]);
 
     // Создаем массивы текстур один раз для жабы
@@ -224,19 +222,10 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
     const foodSprite = new Sprite(texturesRef.current.foodTexture);
 
     foodSprite.anchor.set(0.5);
-    foodSprite.width = 40;
-    foodSprite.height = 40;
-    foodSprite.tint = 0xffd700;
+    foodSprite.width = 35;
+    foodSprite.height = 35;
 
-    const glow = new Sprite(texturesRef.current.foodTexture);
-    glow.anchor.set(0.5);
-    glow.width = 50;
-    glow.height = 50;
-    glow.tint = 0xffff00;
-    glow.alpha = 0.3;
-    glow.filters = [new BlurFilter({ strength: 5 })];
-
-    foodContainer.addChild(glow, foodSprite);
+    foodContainer.addChild(foodSprite);
     foodContainer.x = x;
     foodContainer.y = y;
     foodContainer.userData = {

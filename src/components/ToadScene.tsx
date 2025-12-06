@@ -1,7 +1,5 @@
 import { useRef, useState } from "react";
-
 import { useToads } from "./ToadContext";
-import { SceneIcons } from "../assets/icons";
 import ToadInfo from "./modals/ToadInfoModal";
 import { ArrowLeftButtonCompact } from "./shared/ArrowLeft";
 import { ArrowRightButtonCompact } from "./shared/ArrowRight";
