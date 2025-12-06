@@ -336,6 +336,7 @@ const EliteOrderTooltip: React.FC<EliteOrderTooltipProps> = ({
                     <span>Редкость: {toad.genes.rarity.toFixed(1)}</span>
                   </div>
                 </div>
+                <div>{toad.scene_id ? "" : "📦"}</div>
               </div>
             </div>
           ))}
