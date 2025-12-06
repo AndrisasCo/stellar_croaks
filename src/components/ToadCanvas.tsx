@@ -10,6 +10,7 @@ import {
   BlurFilter,
   FillGradient,
   ContainerChild,
+  Rectangle,
 } from "pixi.js";
 import type { Toad } from "../models/toad";
 import { getWindowDimensions, getSceneSettings } from "../utils/ui";
@@ -20,41 +21,85 @@ import { useGameState } from "../hooks/use-game-state";
 
 type ContainerChildCustom = ContainerChild & { userData?: any };
 
-// Предзагружаем текстуры только для жаб
+// Константы для анимации
+const TOAD_FRAMES_COUNT = 4; // Количество кадров анимации жабы
+const TOADPOLE_FRAMES_COUNT = 4; // Количество кадров анимации головастика
+const ANIMATION_SPEED = 0.06; // Базовая скорость анимации
+
+// Предзагружаем текстуры и создаем текстуры для анимации один раз
 const preloadTextures = async () => {
   try {
     const [
-      toadTexture,
-      toadTextureExited,
+      toadSpriteSheet,
       eyeOpenTexture,
       eyeClosedTexture,
-      toadpoleTexture,
+      toadpoleSpriteSheet,
       foodTexture,
     ] = await Promise.all([
-      Assets.load("/assets/toad.png"),
-      Assets.load("/assets/toad3.png"),
+      Assets.load("/assets/toad-move.svg"),
       Assets.load("/assets/eye.png"),
       Assets.load("/assets/eye-closed.png"),
-      Assets.load("/assets/toadpole.png"),
-      Assets.load("/assets/apple.png"), // Добавляем текстуру корма
+      Assets.load("/assets/toadpole.svg"),
+      Assets.load("/assets/apple.png"),
     ]);
 
+    // Создаем массивы текстур один раз для жабы
+    const toadTextures: Texture[] = [];
+    const toadFrameWidth = toadSpriteSheet.width / TOAD_FRAMES_COUNT;
+
+    for (let i = 0; i < TOAD_FRAMES_COUNT; i++) {
+      const texture = new Texture({
+        source: toadSpriteSheet.source,
+        frame: {
+          x: i * toadFrameWidth,
+          y: 0,
+          width: toadFrameWidth - 1,
+          height: toadSpriteSheet.height,
+        },
+      });
+      toadTextures.push(texture);
+    }
+
+    // Создаем массивы текстур один раз для головастика
+    const toadpoleTextures: Texture[] = [];
+    const toadpoleFrameWidth =
+      toadpoleSpriteSheet.width / TOADPOLE_FRAMES_COUNT;
+
+    for (let i = 0; i < TOADPOLE_FRAMES_COUNT; i++) {
+      const texture = new Texture({
+        source: toadpoleSpriteSheet.source,
+        frame: {
+          x: i * toadpoleFrameWidth,
+          y: 0,
+          width: toadpoleFrameWidth - 2,
+          height: toadpoleSpriteSheet.height,
+        },
+      });
+      toadpoleTextures.push(texture);
+    }
+
     return {
-      toadTexture,
-      toadTextureExited,
+      toadSpriteSheet,
       eyeOpenTexture,
       eyeClosedTexture,
-      toadpoleTexture,
+      toadpoleSpriteSheet,
       foodTexture,
+      toadTextures, // Готовый массив текстур для жабы
+      toadpoleTextures, // Готовый массив текстур для головастика
     };
   } catch (error) {
     console.warn("Some textures not found, using fallbacks");
+    const whiteTexture = Texture.WHITE;
+    const fallbackTextures = Array(TOAD_FRAMES_COUNT).fill(whiteTexture);
+
     return {
-      toadTexture: Texture.WHITE,
-      toadTextureExited: Texture.WHITE,
-      eyeOpenTexture: Texture.WHITE,
-      eyeClosedTexture: Texture.WHITE,
-      foodTexture: Texture.WHITE,
+      toadSpriteSheet: whiteTexture,
+      eyeOpenTexture: whiteTexture,
+      eyeClosedTexture: whiteTexture,
+      toadpoleSpriteSheet: whiteTexture,
+      foodTexture: whiteTexture,
+      toadTextures: fallbackTextures,
+      toadpoleTextures: fallbackTextures,
     };
   }
 };
@@ -75,10 +120,7 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
 
   const { lastSaved } = useGameState();
 
-  // Состояние для управления кормом
   const foodTimerRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Состояние для управления переходом между сценами
   const [isTransitioning, setIsTransitioning] = useState(false);
   const previousSceneRef = useRef(currentScene?.id);
 
@@ -88,97 +130,59 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
     state: string,
     bounce: number = 0
   ) => {
-    // ... существующий код updateToadAppearance без изменений ...
-    const shadowSprite = container.getChildAt(0) as Sprite;
-    const toadSprite = container.getChildAt(1) as Sprite;
-    const toadSpriteExited = container.getChildAt(2) as Sprite;
-    const leftEyeOpenSprite = container.getChildAt(3) as Sprite;
-    const rightEyeOpenSprite = container.getChildAt(4) as Sprite;
-    const leftEyeClosedSprite = container.getChildAt(5) as Sprite;
-    const rightEyeClosedSprite = container.getChildAt(6) as Sprite;
+    const toadSprite = container.getChildAt(0) as Sprite;
 
-    if (!toadSprite) return;
+    if (!toadSprite || !texturesRef.current) return;
+
     const isToadpole = toad.stage === "toadpole";
+    const data = container.userData;
 
-    const size = isToadpole ? toad.genes.weight / 1.5 : toad.genes.weight;
-    const bodyY = -bounce * 2;
+    // Выбираем массив текстур в зависимости от типа
+    const textures = isToadpole
+      ? texturesRef.current.toadpoleTextures
+      : texturesRef.current.toadTextures;
+    const framesCount = isToadpole ? TOADPOLE_FRAMES_COUNT : TOAD_FRAMES_COUNT;
 
-    const eyePosition = 0.5;
+    if (textures && textures.length > 0) {
+      if (state === "walking" && data) {
+        // Плавная анимация движения
+        data.animationProgress += data.animationSpeed;
 
-    // Обновляем позиции для анимации прыжка
+        // Рассчитываем кадр с плавным переходом
+        const frameIndex =
+          (Math.floor(data.animationProgress) % (framesCount - 1)) + 1;
+
+        // Устанавливаем текстуру из заранее созданного массива
+        toadSprite.texture = textures[frameIndex];
+      } else {
+        // В покое используем первый кадр
+        toadSprite.texture = textures[0];
+        data.animationProgress = 0;
+      }
+    }
+
+    const size =
+      (isToadpole ? toad.genes.weight / 1.5 : toad.genes.weight) * 1.5;
+    const bodyY = (-bounce * size) / 10;
+
     toadSprite.y = bodyY;
-    toadSpriteExited.y = bodyY;
-    shadowSprite.y = bodyY;
-    const eyeY = bodyY - size * eyePosition;
-    leftEyeOpenSprite.y = eyeY;
-    rightEyeOpenSprite.y = eyeY;
-    leftEyeClosedSprite.y = eyeY;
-    rightEyeClosedSprite.y = eyeY;
-
-    // Размеры
     toadSprite.width = size * 2;
-    toadSpriteExited.width = size * 2;
-    shadowSprite.width = size * 2.2;
-    toadSprite.height = size * 1.4;
-    toadSpriteExited.height = size * 1.4;
-    shadowSprite.height = size * 1.43;
+    toadSprite.height = size * 1.5;
 
-    // Глаза
-    const eyeSize = size * 0.15;
-    leftEyeOpenSprite.width = eyeSize * 2;
-    leftEyeOpenSprite.height = eyeSize * 2;
-    rightEyeOpenSprite.width = eyeSize * 2;
-    rightEyeOpenSprite.height = eyeSize * 2;
-
-    // Закрытые глаза (меньше по высоте)
-    leftEyeClosedSprite.width = eyeSize * 2;
-    leftEyeClosedSprite.height = eyeSize * 1;
-    rightEyeClosedSprite.width = eyeSize * 2;
-    rightEyeClosedSprite.height = eyeSize * 1;
-
-    if (state === "dragging" || state === "jumping") {
-      toadSpriteExited.visible = true;
-      toadSprite.visible = false;
-    } else {
-      toadSpriteExited.visible = false;
-      toadSprite.visible = true;
-    }
-
-    // Анимация состояния сна
-    if (state === "sleeping") {
-      // Показываем закрытые глаза, скрываем открытые
-      leftEyeOpenSprite.visible = false;
-      rightEyeOpenSprite.visible = false;
-      leftEyeClosedSprite.visible = true;
-      rightEyeClosedSprite.visible = true;
-    } else {
-      // Показываем открытые глаза, скрываем закрытые
-      leftEyeOpenSprite.visible = true;
-      rightEyeOpenSprite.visible = true;
-      leftEyeClosedSprite.visible = false;
-      rightEyeClosedSprite.visible = false;
-    }
-
-    // Анимация свечения для новых жаб (светлая тень)
+    // Анимация свечения для новых жаб
     const isNew = Date.now() - new Date(toad.created_at).getTime() < 10000;
-
     if (isNew) {
       const pulse = (Math.sin(Date.now() * 0.01) + 1) * 0.5;
-      shadowSprite.alpha = 0.4 * pulse;
-      shadowSprite.width = size * 2 + 10 * pulse;
-      shadowSprite.height = size * 1.4 + 10 * pulse;
-      shadowSprite.tint = "#ffffff";
+      toadSprite.tint = `hsl(${pulse * 60}, 100%, 70%)`;
     } else {
-      shadowSprite.alpha = 1;
-      shadowSprite.tint = "#000000";
+      toadSprite.tint = toad.genes.colors[0];
     }
   };
 
   // Функция для создания корма
   const createFood = (x: number, y: number) => {
     if (!appRef.current?.stage || !texturesRef.current) return;
-    // todo добавить логику голода!
-    // Удаляем старый корм если есть
+
     if (foodRef.current) {
       appRef.current.stage.removeChild(foodRef.current);
       foodRef.current.destroy({ children: true });
@@ -196,9 +200,8 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
     foodSprite.anchor.set(0.5);
     foodSprite.width = 40;
     foodSprite.height = 40;
-    foodSprite.tint = 0xffd700; // Золотистый цвет
+    foodSprite.tint = 0xffd700;
 
-    // Добавляем свечение
     const glow = new Sprite(texturesRef.current.foodTexture);
     glow.anchor.set(0.5);
     glow.width = 50;
@@ -218,7 +221,6 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
     appRef.current.stage.addChild(foodContainer);
     foodRef.current = foodContainer;
 
-    // Устанавливаем таймер на удаление корма через 10 секунд
     if (foodTimerRef.current) {
       clearTimeout(foodTimerRef.current);
     }
@@ -228,7 +230,6 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
     }, 12000);
   };
 
-  // Функция для удаления корма
   const removeFood = () => {
     if (foodRef.current && appRef.current?.stage) {
       appRef.current.stage.removeChild(foodRef.current);
@@ -243,7 +244,6 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
     }
   };
 
-  // Функция для обработки движения жаб к корму
   const moveToadsToFood = () => {
     if (!foodRef.current) return;
 
@@ -254,12 +254,10 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
       const data = container.userData;
       if (!data || data.isDragging || data.state === "dragging") return;
 
-      // Вычисляем направление к корму
       const dx = foodX - container.x;
       const dy = foodY - container.y;
       const distance = Math.sqrt(dx * dx + dy * dy);
 
-      // Если жабка уже близко к корму, останавливаем ее
       if (distance < 60) {
         data.vx = 0;
         data.vy = 0;
@@ -269,34 +267,25 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
         return;
       }
 
-      // Двигаем жабу в направлении корма
-      const speed = data.speed * 1.5; // Увеличиваем скорость при движении к корму
+      const speed = data.speed * 1.3;
       data.vx = (dx / distance) * speed;
       data.vy = (dy / distance) * speed;
 
-      // Устанавливаем состояние "walking" и анимацию прыжков
       data.state = "walking";
       data.stateTimer = 120;
       data.bounceDirection = 1;
-
-      // Поворачиваем жабу в направлении движения
-
       data.needsRedraw = true;
     });
   };
 
-  // Обработчик клика по кнопке корма
   const handleFeedToads = () => {
     if (!appRef.current) return;
 
-    // Случайная позиция для корма (в пределах видимой области)
     const padding = 50;
     const foodX = padding + Math.random() * (width - padding * 2);
     const foodY = padding + Math.random() * (height - padding * 2);
 
     createFood(foodX, foodY);
-
-    // Запускаем движение жаб к корму
     moveToadsToFood();
   };
 
@@ -310,75 +299,27 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
   const createToad =
     (width: number, height: number, onToadSelect: (toadId: number) => void) =>
     (toadData: Toad) => {
-      if (
-        initializedRef.current === false ||
-        !appRef.current?.stage ||
-        !texturesRef.current
-      ) {
+      if (!appRef.current?.stage || !texturesRef.current) {
         return;
       }
 
       const container: ContainerChildCustom = new Container();
+      const isToadpole = toadData.stage === "toadpole";
 
-      const currentTexture =
-        toadData.stage === "adult"
-          ? texturesRef.current.toadTexture
-          : texturesRef.current.toadpoleTexture;
+      // Выбираем начальную текстуру из заранее созданного массива
+      const initialTextures = isToadpole
+        ? texturesRef.current.toadpoleTextures
+        : texturesRef.current.toadTextures;
 
-      // Основной спрайт жабы
-      const toadSprite = new Sprite(currentTexture);
+      const initialTexture = initialTextures
+        ? initialTextures[0]
+        : Texture.WHITE;
+
+      const toadSprite = new Sprite(initialTexture);
       toadSprite.anchor.set(0.5);
       toadSprite.tint = toadData.genes.colors[0];
 
-      // Возбужденный спрайт жабы
-      const toadSpriteExited = new Sprite(currentTexture);
-      toadSpriteExited.anchor.set(0.5);
-      toadSpriteExited.tint = toadData.genes.colors[0];
-      toadSpriteExited.visible = false;
-
-      const shadowSprite = new Sprite(currentTexture);
-      shadowSprite.filters = [
-        new BlurFilter({ strength: 2 }),
-        new AlphaFilter({ alpha: 0.4 }),
-      ];
-      shadowSprite.anchor.set(0.5);
-      shadowSprite.tint = "#000000";
-
-      // Открытые глаза (отдельные спрайты для каждого глаза)
-      const leftEyeOpenSprite = new Sprite(texturesRef.current.eyeOpenTexture);
-      leftEyeOpenSprite.anchor.set(0.5);
-      leftEyeOpenSprite.tint = 0xffffff;
-      leftEyeOpenSprite.x = -toadData.genes.weight * 0.3;
-
-      const rightEyeOpenSprite = new Sprite(texturesRef.current.eyeOpenTexture);
-      rightEyeOpenSprite.anchor.set(0.5);
-      rightEyeOpenSprite.x = toadData.genes.weight * 0.3;
-
-      // Закрытые глаза (отдельные спрайты для каждого глаза)
-      const leftEyeClosedSprite = new Sprite(
-        texturesRef.current.eyeClosedTexture
-      );
-      leftEyeClosedSprite.anchor.set(0.5);
-      leftEyeClosedSprite.x = -toadData.genes.weight * 0.3;
-      leftEyeClosedSprite.visible = false;
-
-      const rightEyeClosedSprite = new Sprite(
-        texturesRef.current.eyeClosedTexture
-      );
-      rightEyeClosedSprite.anchor.set(0.5);
-      rightEyeClosedSprite.x = toadData.genes.weight * 0.3;
-      rightEyeClosedSprite.visible = false;
-
-      // Добавляем все спрайты в контейнер
-      container.addChild(
-        shadowSprite,
-        toadSprite, // [0] Основное тело с тенью
-        toadSpriteExited,
-        leftEyeOpenSprite, // [1] Левый открытый глаз
-        rightEyeOpenSprite, // [2] Правый открытый глаз
-        leftEyeClosedSprite, // [3] Левый закрытый глаз
-        rightEyeClosedSprite // [4] Правый закрытый глаз
-      );
+      container.addChild(toadSprite);
 
       const padding = 15;
       const penWidth = width - padding * 2;
@@ -391,13 +332,12 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
       const data = {
         vx: 0,
         vy: 0,
-        speed: toadData.genes.speed,
+        speed: (toadData.genes.speed * toadData.genes.weight) / 22,
         size: toadData.genes.weight,
         id: toadData.id,
         toadData,
         state: "idle",
         stateTimer: 60 + Math.random() * 120,
-        walkTimer: 0,
         bounce: 0,
         bounceDirection: 1,
         isDragging: false,
@@ -414,11 +354,14 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
         lastState: "idle",
         lastBounce: 0,
         needsRedraw: false,
+        // Свойства для плавной анимации
+        animationProgress: 0,
+        animationSpeed: ANIMATION_SPEED,
+        movementSpeedFactor: 1,
       };
 
       container.userData = data;
 
-      // Инициализируем внешний вид
       updateToadAppearance(container, toadData, data.state, data.bounce);
 
       container.eventMode = "static";
@@ -426,7 +369,7 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
 
       // Обработчик тапа
       container.on("pointerdown", () => {
-        if (data.toadData.stage === "toadpole" || data.size < 15) {
+        if (toadData.stage === "toadpole" || data.size < 15) {
           playCroakSmall();
         } else {
           data.size > 20 && playCroakBig();
@@ -438,15 +381,10 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
         data.state = "jumping";
         data.bounce = 4;
 
-        if (data.state === "sleeping") {
-          data.state = "idle";
-        }
-
         updateToadAppearance(container, toadData, data.state, data.bounce);
         onToadSelect(toadData.id);
       });
 
-      // Обработчик перетаскивания
       let dragTimeout: NodeJS.Timeout;
       container.on("pointerdown", (event) => {
         dragTimeout = setTimeout(() => {
@@ -514,30 +452,23 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
       toadsRef.current.push(container);
     };
 
-  // Функция для плавной смены сцены
   const transitionToNewScene = async () => {
     if (!appRef.current || isTransitioning) return;
 
     setIsTransitioning(true);
-
-    // Удаляем корм при смене сцены
     removeFood();
 
-    // Фаза 1: Затемнение текущей сцены
     const stage = appRef.current.stage;
-
-    // Создаем черный оверлей для fade out
     const fadeOverlay = new Graphics();
     fadeOverlay
       .roundRect(0, 0, width, height, 20)
       .fill({ color: "rgb(17 24 39)", alpha: 1 });
     stage.addChild(fadeOverlay);
 
-    // Анимация затемнения
     await new Promise<void>((resolve) => {
       let alpha = 0;
       const fadeOut = () => {
-        alpha += 0.032; // ~60 FPS
+        alpha += 0.032;
         fadeOverlay.alpha = alpha;
 
         if (alpha < 0.8) {
@@ -549,7 +480,6 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
       fadeOut();
     });
 
-    // Фаза 3: Обновление фона и появление новой сцены
     const ground = stage.getChildAt(0) as Graphics;
     if (ground) {
       ground.clear();
@@ -560,11 +490,10 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
       ground.roundRect(0, 0, width, height, 20).fill(gradient);
     }
 
-    // Фаза 4: Появление новой сцены
     await new Promise<void>((resolve) => {
       let alpha = 0.8;
       const fadeIn = () => {
-        alpha -= 0.02; // Медленное появление
+        alpha -= 0.02;
         fadeOverlay.alpha = alpha;
 
         if (alpha > 0) {
@@ -588,7 +517,6 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
     }
 
     const initPixi = async () => {
-      // Предзагружаем текстуры
       texturesRef.current = await preloadTextures();
 
       const app = new Application();
@@ -605,7 +533,6 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
       canvasRef.current?.appendChild(app.canvas);
       (appRef as any).current = app;
 
-      // Создаем фон графикой
       const ground = new Graphics();
       const gradient = new FillGradient({
         end: { x: 0, y: 1 },
@@ -613,13 +540,10 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
       });
 
       ground.roundRect(0, 0, width, height, 20).fill(gradient);
-
       app.stage.addChild(ground);
 
-      // Создаем жаб
       toads.forEach(createToad(width, height, onToadSelect));
 
-      // ОРИГИНАЛЬНАЯ ЛОГИКА АНИМАЦИИ ПРЫЖКОВ
       app.ticker.add(() => {
         // Анимация пульсации корма
         if (foodRef.current) {
@@ -633,11 +557,21 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
           const data = container.userData;
           if (!data) return;
 
+          // Плавное управление скоростью анимации
+          const targetSpeedFactor =
+            data.state === "walking" && Math.abs(data.vx) > 0.1
+              ? Math.min(Math.abs(data.vx) * 2, 2.5)
+              : 1;
+
+          // Плавная интерполяция скорости
+          data.movementSpeedFactor +=
+            (targetSpeedFactor - data.movementSpeedFactor) * 0.1;
+          data.animationSpeed = ANIMATION_SPEED * 1;
+
           const isNew = data.toadData.spawnTime
             ? Date.now() - data.toadData.spawnTime < 10000
             : false;
 
-          // Перерисовываем ТОЛЬКО при необходимости
           const stateChanged = data.state !== data.lastState || isNew;
           const bounceChanged = Math.abs(data.bounce - data.lastBounce) > 0.1;
 
@@ -700,7 +634,7 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
             moveToadsToFood();
           }
 
-          // Смена состояний (реже)
+          // Смена состояний
           data.stateTimer -= app.ticker.deltaTime;
           if (data.stateTimer <= 0 && Math.random() < 0.05) {
             if (data.state === "sleeping") {
@@ -723,19 +657,18 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
 
           // Движение (только для walking состояния)
           if (data.state === "walking") {
-            data.walkTimer += app.ticker.deltaTime;
-
             // Анимация подпрыгивания при ходьбе
-            data.bounce += 0.1 * data.bounceDirection;
-            if (data.bounce >= 2) data.bounceDirection = -1;
-            if (data.bounce <= 0) data.bounceDirection = 1;
+            data.bounce += 0.01 * data.bounceDirection;
+            if (data.bounce >= 4) data.bounceDirection = -10;
+            if (data.bounce <= 0) data.bounceDirection = 10;
             data.needsRedraw = true;
 
             container.x += data.vx;
             container.y += data.vy;
 
+            // Разворот жабы в направлении движения
             if (data.vx !== 0) {
-              container.scale.x = data.vx > 0 ? 1 : -1;
+              container.scale.x = data.vx > 0 ? -1 : 1;
             }
 
             // Проверка границ
@@ -762,6 +695,7 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
               );
               data.state = "idle";
               data.stateTimer = 30;
+              data.animationProgress = 0;
               data.needsRedraw = true;
             }
           }
@@ -776,7 +710,6 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
     initializedRef.current = true;
 
     return () => {
-      // Очищаем таймер при размонтировании
       if (foodTimerRef.current) {
         clearTimeout(foodTimerRef.current);
       }
@@ -785,7 +718,6 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
     };
   }, []);
 
-  // Отдельный эффект для обработки смены сцены
   useEffect(() => {
     if (
       initializedRef.current &&
