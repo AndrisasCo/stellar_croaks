@@ -130,6 +130,26 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
   const [isTransitioning, setIsTransitioning] = useState(false);
   const previousSceneRef = useRef(currentScene?.id);
 
+  const sortToadsByDepth = () => {
+    if (!appRef.current) return;
+
+    const stage = appRef.current.stage;
+    const toadContainers = stage.children.filter(
+      (child: ContainerChildCustom) => child.userData?.toadData
+    );
+
+    // Сортируем по Y-координате
+    toadContainers.sort((a: ContainerChildCustom, b: ContainerChildCustom) => {
+      return a.y - b.y;
+    });
+
+    // Применяем сортировку
+    toadContainers.forEach((container, index) => {
+      // Учитываем что первый элемент (индекс 0) - это фон
+      stage.setChildIndex(container, index + 1);
+    });
+  };
+
   const updateToadAppearance = (
     container: Container,
     toad: Toad,
@@ -561,6 +581,11 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
           foodData.pulse += 0.1;
           const scale = 1 + Math.sin(foodData.pulse) * 0.1;
           foodRef.current.scale.set(scale);
+        }
+
+        if (app.ticker.lastTime % 10 === 0) {
+          // Каждые 10 кадров
+          sortToadsByDepth();
         }
 
         toadsRef.current.forEach((container: ContainerChildCustom) => {
