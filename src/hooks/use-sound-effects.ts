@@ -14,6 +14,7 @@ import { useSettings } from "../components/SettingsContext";
 import clickSound from "../assets/click.mp3";
 import crunchShort from "../assets/crunch-short.mp3";
 import bubble2 from "../assets/bubble2.mp3";
+import beep from "../assets/beep.mp3";
 
 export const useSoundEffects = () => {
   const { settings } = useSettings();
@@ -113,11 +114,15 @@ export const useSoundEffects = () => {
   const playCrunchShort = () => {
     playAudio(crunchShort);
   };
+  const playBeep = () => {
+    playAudio(beep);
+  };
   const playBubble2 = () => {
     playAudio(bubble2);
   };
 
   return {
+    playBeep,
     playClick,
     playCrunch,
     playExited,

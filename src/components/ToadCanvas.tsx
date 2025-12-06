@@ -113,8 +113,14 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
   const initializedRef = useRef(false);
   const texturesRef = useRef<any>(null);
   const { penWidth, penHeight } = getSceneSettings();
-  const { playCroak, playCroakSmall, playCroakBig, playCrunch, playExited } =
-    useSoundEffects();
+  const {
+    playCroak,
+    playBeep,
+    playCroakBig,
+    playCroakSmall,
+    playCrunch,
+    playExited,
+  } = useSoundEffects();
   const { width, height } = getWindowDimensions();
   const [isReady, setIsReady] = useState(false);
 
@@ -369,11 +375,15 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
 
       // Обработчик тапа
       container.on("pointerdown", () => {
-        if (toadData.stage === "toadpole" || data.size < 15) {
-          playCroakSmall();
+        if (toadData.stage === "toadpole") {
+          playBeep();
         } else {
-          data.size > 20 && playCroakBig();
-          20 >= data.size && data.size >= 15 && playCroak();
+          if (data.size < 15) {
+            playCroakSmall();
+          } else {
+            data.size > 20 && playCroakBig();
+            20 >= data.size && data.size >= 15 && playCroak();
+          }
         }
 
         data.isTapped = true;
