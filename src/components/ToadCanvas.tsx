@@ -583,8 +583,7 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
           foodRef.current.scale.set(scale);
         }
 
-        if (app.ticker.lastTime % 10 === 0) {
-          // Каждые 10 кадров
+        if (app.ticker.lastTime % 2 === 0) {
           sortToadsByDepth();
         }
 
