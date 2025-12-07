@@ -520,7 +520,7 @@ export default function ToadInfo({ onClose }: ToadInfoProps) {
                 <p className="text-gray-400 text-xs font-medium">РАЗМЕР</p>
               </div>
               <p className="text-blue-400 text-sm font-semibold">
-                {toad.genes?.weight?.toFixed(1) || "0.0"}
+                {toad.genes?.weight?.toFixed(2) || "0.0"}
               </p>
             </div>
 
@@ -530,7 +530,7 @@ export default function ToadInfo({ onClose }: ToadInfoProps) {
                 <p className="text-gray-400 text-xs font-medium">СКОРОСТЬ</p>
               </div>
               <p className="text-blue-400 text-sm font-semibold">
-                {toad.genes?.speed?.toFixed(1) || "0.0"}
+                {toad.genes?.speed?.toFixed(2) || "0.0"}
               </p>
             </div>
           </div>

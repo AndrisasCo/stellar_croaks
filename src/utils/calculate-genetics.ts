@@ -170,6 +170,26 @@ const calculateGeneticFault = (
   }
 };
 
+const getType = (parents: Toad[]) => {
+  const isType = parents.reduce(
+    (_, curr) => curr.type === parents[0].type,
+    true
+  );
+
+  if (isType) {
+    return parents[0].type;
+  }
+
+  const breedToad = parents.find(
+    (p) => p.type && [ToadTypes.camouflage].includes(p.type)
+  );
+
+  if (breedToad) {
+    return Math.random() < 0.25 ? breedToad.type : ToadTypes.hybrid;
+  }
+  return ToadTypes.hybrid;
+};
+
 export const generateChildToad = (
   parents: Toad[],
   isCollider: boolean,
@@ -222,14 +242,9 @@ export const generateChildToad = (
     calculateGeneticFault(parents, isCollider, inbreedingLevel)
   );
 
-  const isType = parents.reduce(
-    (_, curr) => curr.type === parents[0].type,
-    true
-  );
-
   return {
     name: `Жаб-${generation}-${Math.floor(Math.random() * 1000)}`,
-    type: isType ? parents[0].type : ToadTypes.hybrid,
+    type: getType(parents),
     generation,
     parents: parents.map((p) => p.id),
     sex:
@@ -245,7 +260,7 @@ export const generateChildToad = (
     genes: {
       colors: [childColor, childColor2],
       pattern: childPattern,
-      weight: Math.round(childSize * 10) / 10,
+      weight: Math.round(childSize * 100) / 100,
       speed: Math.round(childSpeed * 100) / 100,
       rarity: childRarity,
       hungerRate,
