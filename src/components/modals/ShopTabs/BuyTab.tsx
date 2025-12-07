@@ -17,7 +17,7 @@ import { useNotifications } from "../../../hooks/use-notification";
 
 import { useSoundEffects } from "../../../hooks/use-sound-effects";
 import { calculateSellPrice, Toad } from "../../../models/toad";
-import { CURRENCY_CONFIG, TYPE_ICONS } from "../../../utils/constants";
+import { CURRENCY_CONFIG } from "../../../utils/constants";
 import { useToads } from "../../ToadContext";
 import { ToadItem } from "../../shared/ToadItem";
 import { useState, useEffect } from "react";

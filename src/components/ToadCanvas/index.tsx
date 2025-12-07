@@ -19,7 +19,7 @@ import {
   TOADPOLE_FRAMES_COUNT,
   ANIMATION_SPEED,
 } from "./constants";
-import { Toad } from "../../models/toad";
+import { Toad, ToadTypes } from "../../models/toad";
 
 export type ContainerChildCustom = ContainerChild & { userData?: any };
 
@@ -32,12 +32,14 @@ const preloadTextures = async () => {
       eyeClosedTexture,
       toadpoleSpriteSheet,
       foodTexture,
+      toadSpriteSheetCamouflage,
     ] = await Promise.all([
       Assets.load("/assets/toad-move.svg"),
       Assets.load("/assets/eye.png"),
       Assets.load("/assets/eye-closed.png"),
       Assets.load("/assets/toadpole.svg"),
       Assets.load("/assets/apple.svg"),
+      Assets.load("/assets/toad-move2.svg"),
     ]);
 
     // Создаем массивы текстур один раз для жабы
@@ -55,6 +57,21 @@ const preloadTextures = async () => {
         },
       });
       toadTextures.push(texture);
+    }
+
+    const toadTexturesCamouflage: Texture[] = [];
+
+    for (let i = 0; i < TOAD_FRAMES_COUNT; i++) {
+      const texture = new Texture({
+        source: toadSpriteSheetCamouflage.source,
+        frame: {
+          x: i * toadFrameWidth,
+          y: 0,
+          width: toadFrameWidth - 1,
+          height: toadSpriteSheetCamouflage.height,
+        },
+      });
+      toadTexturesCamouflage.push(texture);
     }
 
     // Создаем массивы текстур один раз для головастика
@@ -76,28 +93,15 @@ const preloadTextures = async () => {
     }
 
     return {
-      toadSpriteSheet,
       eyeOpenTexture,
       eyeClosedTexture,
-      toadpoleSpriteSheet,
       foodTexture,
       toadTextures, // Готовый массив текстур для жабы
       toadpoleTextures, // Готовый массив текстур для головастика
+      toadTexturesCamouflage,
     };
   } catch (error) {
-    console.warn("Some textures not found, using fallbacks");
-    const whiteTexture = Texture.WHITE;
-    const fallbackTextures = Array(TOAD_FRAMES_COUNT).fill(whiteTexture);
-
-    return {
-      toadSpriteSheet: whiteTexture,
-      eyeOpenTexture: whiteTexture,
-      eyeClosedTexture: whiteTexture,
-      toadpoleSpriteSheet: whiteTexture,
-      foodTexture: whiteTexture,
-      toadTextures: fallbackTextures,
-      toadpoleTextures: fallbackTextures,
-    };
+    return {};
   }
 };
 
@@ -163,7 +167,7 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
     // Выбираем массив текстур в зависимости от типа
     const textures = isToadpole
       ? texturesRef.current.toadpoleTextures
-      : texturesRef.current.toadTextures;
+      : getTextureByType(toad.type);
     const framesCount = isToadpole ? TOADPOLE_FRAMES_COUNT : TOAD_FRAMES_COUNT;
 
     if (textures && textures.length > 0) {
@@ -303,12 +307,16 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
     moveToadsToFood();
   };
 
-  useEffect(() => {
-    if (!isFoodActive) {
-      return;
-    }
-    handleFeedToads();
-  }, [isFoodActive]);
+  const getTextureByType = (type: ToadTypes | null) => {
+    const map = {
+      [ToadTypes.hybrid]: texturesRef.current.toadTextures,
+      [ToadTypes.camouflage]: texturesRef.current.toadTexturesCamouflage,
+    };
+
+    return type
+      ? map[type] || texturesRef.current.toadTextures
+      : texturesRef.current.toadTextures;
+  };
 
   const createToad =
     (width: number, height: number, onToadSelect: (toadId: number) => void) =>
@@ -321,9 +329,10 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
       const isToadpole = toadData.stage === "toadpole";
 
       // Выбираем начальную текстуру из заранее созданного массива
+
       const initialTextures = isToadpole
         ? texturesRef.current.toadpoleTextures
-        : texturesRef.current.toadTextures;
+        : getTextureByType(toadData.type);
 
       const initialTexture = initialTextures
         ? initialTextures[0]
@@ -528,6 +537,13 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
     setIsTransitioning(false);
     previousSceneRef.current = currentScene?.id;
   };
+
+  useEffect(() => {
+    if (!isFoodActive) {
+      return;
+    }
+    handleFeedToads();
+  }, [isFoodActive]);
 
   useEffect(() => {
     if (!canvasRef.current || initializedRef.current === true) {

@@ -9,7 +9,7 @@ export interface Toad {
   parents: number[] | null; // ?
   scene_id: number | null; //  null это в инвентаре
   sex: string; // 'male' 'female' 'neuter'
-  type: string | null; // пока не используется, мб тут будут варианты окраса
+  type: ToadTypes | null; // пока не используется, мб тут будут варианты окраса
   state: {
     hunger: number; // 0 to 100
     genetic_fault?: number; // 0 to 100
@@ -33,6 +33,11 @@ export interface Toad {
     pattern: string;
     personality: null | string;
   };
+}
+
+export enum ToadTypes {
+  camouflage = "camouflage",
+  hybrid = "hybrid",
 }
 
 export const DEFAULT_TOADS: Toad[] = [
@@ -730,6 +735,10 @@ export const calculateSellPrice = (toad: Toad): number => {
     basePrice *= (100 - (toad.state.genetic_fault || 0)) / 100;
   }
 
+  if (toad.type === ToadTypes.camouflage) {
+    basePrice *= 1.5;
+  }
+
   basePrice += toad.genes.fertility || 1;
   basePrice += toad.state.hunger / 100;
   basePrice -= toad.genes.hungerRate;
@@ -806,7 +815,7 @@ const UNIQUE_TOADS_BY_RARITY: { [key: number]: Partial<Toad>[] } = {
   1: [
     {
       name: "Лесной странник",
-      type: "common",
+      type: ToadTypes.camouflage,
       genes: {
         colors: ["#8FBC8F", "#556B2F"], // Темно-зеленый и светло-зеленый
         pattern: "smooth",
@@ -896,7 +905,7 @@ const UNIQUE_TOADS_BY_RARITY: { [key: number]: Partial<Toad>[] } = {
     },
     {
       name: "Аметистовый мудрец",
-      type: "rare",
+      type: ToadTypes.camouflage,
       genes: {
         colors: ["#9370DB", "#D8BFD8"], // Пурпурный и чертополох
         pattern: "crystal",
@@ -941,7 +950,7 @@ const UNIQUE_TOADS_BY_RARITY: { [key: number]: Partial<Toad>[] } = {
     },
     {
       name: "Лунный сильфид",
-      type: "epic",
+      type: ToadTypes.camouflage,
       genes: {
         colors: ["#F5F5F5", "#D3D3D3"], // Белый дым и светло-серый
         pattern: "moonlight",

@@ -1,4 +1,4 @@
-import { Toad } from "../models/toad";
+import { Toad, ToadTypes } from "../models/toad";
 import { randomizeToadCharacteristics } from "../utils/randomize-toad-characteristics";
 
 // Интерфейс для состояния магазина
@@ -60,9 +60,31 @@ export const ALL_TOADS: Partial<Toad>[] = [
   },
   {
     name: "Пятнистая жаба",
-    type: "common",
+    type: ToadTypes.camouflage,
     generation: 1,
     sex: "female",
+    stage: "adult",
+    scene_id: null,
+    state: {
+      hunger: 35,
+    },
+    pregnancy: null,
+    genes: {
+      colors: ["#5D8C59", "#4A4A4A"],
+      pattern: "spotted",
+      weight: 17,
+      speed: 0.45,
+      rarity: 1.2,
+      hungerRate: 1.1,
+      fertility: 1.3,
+      personality: null,
+    },
+  },
+  {
+    name: "Пятнистая жаба",
+    type: ToadTypes.camouflage,
+    generation: 1,
+    sex: "male",
     stage: "adult",
     scene_id: null,
     state: {

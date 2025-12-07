@@ -1,4 +1,4 @@
-import { personalities, Toad } from "../models/toad";
+import { personalities, Toad, ToadTypes } from "../models/toad";
 
 const getSum = (arr: number[]) => arr.reduce((a, b) => a + b, 0);
 
@@ -222,9 +222,14 @@ export const generateChildToad = (
     calculateGeneticFault(parents, isCollider, inbreedingLevel)
   );
 
+  const isType = parents.reduce(
+    (_, curr) => curr.type === parents[0].type,
+    true
+  );
+
   return {
     name: `Жаб-${generation}-${Math.floor(Math.random() * 1000)}`,
-    type: "hybrid",
+    type: isType ? parents[0].type : ToadTypes.hybrid,
     generation,
     parents: parents.map((p) => p.id),
     sex:
