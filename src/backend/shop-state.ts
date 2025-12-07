@@ -193,7 +193,7 @@ export const ALL_TOADS: Partial<Toad>[] = [
 ];
 
 // Ключ для localStorage
-export const SHOP_STATE_KEY = "toad_shop_state7";
+export const SHOP_STATE_KEY = "toad_shop_state8";
 export const REFRESH_COOLDOWN = 3 * 60 * 60 * 1000; // 3 часа в миллисекундах
 export const INSTANT_REFRESH_COST = 20; // Стоимость мгновенного обновления
 export const INSTANT_REFRESH_ELITE_COST = 50; // Стоимость мгновенного обновления
