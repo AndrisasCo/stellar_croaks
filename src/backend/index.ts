@@ -1,6 +1,7 @@
 import { Scene } from "../models/scene";
 import { Toad } from "../models/toad";
 import { User } from "../models/user";
+import { getHunger } from "../utils/state-manager";
 import { checkGeneticAchievements } from "./achivements-manager";
 import { getGameState, updateGameState, webAppData } from "./localStorage";
 
@@ -140,6 +141,30 @@ export const updateToadStateByIds = (
   const updatedToadsList = updatedToads.filter((t) => toadIds.includes(t.id));
 
   return updatedToadsList;
+};
+
+export const updateToadsBulkHunger = (
+  hoursPassed: number,
+  syntetic?: boolean
+) => {
+  const state = getGameState();
+  const updatedToads = state.toads.map((toad) =>
+    toad.scene_id && toad.state.hunger
+      ? {
+          ...toad,
+          state: {
+            ...toad.state,
+            hunger: getHunger(
+              toad.state.hunger,
+              toad.genes.hungerRate,
+              hoursPassed
+            ),
+          },
+        }
+      : toad
+  );
+
+  updateGameState({ toads: updatedToads }, syntetic);
 };
 
 export const deleteToadsByIds = (toadIds: number[]): Toad[] => {

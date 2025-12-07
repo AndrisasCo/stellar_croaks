@@ -6,23 +6,22 @@ import {
   Graphics,
   Sprite,
   Texture,
-  BlurFilter,
   FillGradient,
   ContainerChild,
 } from "pixi.js";
-import type { Toad } from "../models/toad";
-import { getWindowDimensions, getSceneSettings } from "../utils/ui";
-import { useSoundEffects } from "../hooks/use-sound-effects";
-import { useToads } from "./ToadContext";
-import { GRADIENTS } from "../models/scene";
-import { useGameState } from "../hooks/use-game-state";
+import { getWindowDimensions, getSceneSettings } from "../../utils/ui";
+import { useSoundEffects } from "../../hooks/use-sound-effects";
+import { useToads } from "../ToadContext";
+import { GRADIENTS } from "../../models/scene";
+import { useGameState } from "../../hooks/use-game-state";
+import {
+  TOAD_FRAMES_COUNT,
+  TOADPOLE_FRAMES_COUNT,
+  ANIMATION_SPEED,
+} from "./constants";
+import { Toad } from "../../models/toad";
 
-type ContainerChildCustom = ContainerChild & { userData?: any };
-
-// Константы для анимации
-const TOAD_FRAMES_COUNT = 4; // Количество кадров анимации жабы
-const TOADPOLE_FRAMES_COUNT = 4; // Количество кадров анимации головастика
-const ANIMATION_SPEED = 0.06; // Базовая скорость анимации
+export type ContainerChildCustom = ContainerChild & { userData?: any };
 
 // Предзагружаем текстуры и создаем текстуры для анимации один раз
 const preloadTextures = async () => {
@@ -138,7 +137,7 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
 
     // Сортируем по Y-координате
     toadContainers.sort((a: ContainerChildCustom, b: ContainerChildCustom) => {
-      return a.y - b.y;
+      return a.y + a.userData.size / 2 - b.y - b.userData.size / 2;
     });
 
     // Применяем сортировку
@@ -589,7 +588,7 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
           // Плавная интерполяция скорости
           data.movementSpeedFactor +=
             (targetSpeedFactor - data.movementSpeedFactor) * 0.1;
-          data.animationSpeed = ANIMATION_SPEED * 1;
+          data.animationSpeed = ANIMATION_SPEED * data.movementSpeedFactor;
 
           const isNew = data.toadData.spawnTime
             ? Date.now() - data.toadData.spawnTime < 10000

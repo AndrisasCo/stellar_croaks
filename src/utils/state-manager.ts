@@ -1,4 +1,8 @@
-import { updateToadById } from "../backend";
+import {
+  updateToadById,
+  updateToadsBulkHunger,
+  updateToadsByIds,
+} from "../backend";
 import { getGameState } from "../backend/localStorage";
 
 export const getHunger = (
@@ -18,21 +22,5 @@ export const getHunger = (
 };
 
 export const processHunger = (hoursPassed: number) => {
-  const toads = getGameState().toads.filter((t) => t.scene_id !== null);
-
-  toads.forEach((t) => {
-    const hunger = getHunger(t.state.hunger, t.genes.hungerRate, hoursPassed);
-    console.log(`Toad ${t.name} hunger ${t.state.hunger} to ${hunger}`);
-
-    updateToadById(
-      t.id,
-      {
-        state: {
-          ...t.state,
-          hunger,
-        },
-      },
-      true
-    );
-  });
+  updateToadsBulkHunger(hoursPassed, true);
 };
