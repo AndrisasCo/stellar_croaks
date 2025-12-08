@@ -190,6 +190,28 @@ export const ALL_TOADS: Partial<Toad>[] = [
       personality: null,
     },
   },
+  {
+    name: "Хищная жаба",
+    type: ToadTypes.tiger,
+    generation: 1,
+    sex: "male",
+    stage: "adult",
+    scene_id: null,
+    state: {
+      hunger: 15,
+    },
+    pregnancy: null,
+    genes: {
+      colors: ["#E6E6FA", "#F0F8FF"],
+      pattern: "crystalline",
+      weight: 20,
+      speed: 1,
+      rarity: 3.0,
+      hungerRate: 1.5,
+      fertility: 1.0,
+      personality: null,
+    },
+  },
 ];
 
 // Ключ для localStorage

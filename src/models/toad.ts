@@ -38,6 +38,7 @@ export interface Toad {
 export enum ToadTypes {
   camouflage = "camouflage",
   hybrid = "hybrid",
+  tiger = "tiger",
 }
 
 export const DEFAULT_TOADS: Toad[] = [
