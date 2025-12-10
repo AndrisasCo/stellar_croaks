@@ -16,7 +16,7 @@ export interface ShopState {
 export const ALL_TOADS: Partial<Toad>[] = [
   {
     name: "Зеленая жаба",
-    type: "common",
+    type: ToadTypes.hybrid,
     generation: 1,
     sex: "male",
     stage: "adult",
@@ -38,7 +38,7 @@ export const ALL_TOADS: Partial<Toad>[] = [
   },
   {
     name: "Коричневая жаба",
-    type: "common",
+    type: ToadTypes.hybrid,
     generation: 1,
     sex: "female",
     stage: "adult",
@@ -104,7 +104,7 @@ export const ALL_TOADS: Partial<Toad>[] = [
   },
   {
     name: "Лесная жаба",
-    type: "common",
+    type: ToadTypes.hybrid,
     generation: 1,
     sex: "male",
     stage: "toadpole",
@@ -126,7 +126,7 @@ export const ALL_TOADS: Partial<Toad>[] = [
   },
   {
     name: "Болотная жаба",
-    type: "common",
+    type: ToadTypes.hybrid,
     generation: 1,
     sex: "male",
     stage: "toadpole",
@@ -148,7 +148,7 @@ export const ALL_TOADS: Partial<Toad>[] = [
   },
   {
     name: "Золотая жаба",
-    type: "rare",
+    type: ToadTypes.hybrid,
     generation: 1,
     sex: "female",
     stage: "adult",
@@ -170,7 +170,7 @@ export const ALL_TOADS: Partial<Toad>[] = [
   },
   {
     name: "Хрустальная жаба",
-    type: "epic",
+    type: ToadTypes.hybrid,
     generation: 1,
     sex: "male",
     stage: "adult",

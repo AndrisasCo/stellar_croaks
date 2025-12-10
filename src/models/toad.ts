@@ -39,13 +39,37 @@ export enum ToadTypes {
   camouflage = "camouflage",
   hybrid = "hybrid",
   tiger = "tiger",
+  mutant = "mutant",
+  money = "money",
+  stone = "stone",
+  chaos = "chaos",
+  crystall = "crystall",
+  crystallPink = "crystall_pink",
+  forest = "forest",
 }
+
+export const toadTypeMap: Record<ToadTypes, string> = {
+  [ToadTypes.camouflage]: "Пятнистая",
+  [ToadTypes.hybrid]: "Смешанный",
+  [ToadTypes.tiger]: "Тигровая",
+  [ToadTypes.mutant]: "Мутант",
+  [ToadTypes.money]: "Денежная",
+  [ToadTypes.stone]: "Каменная",
+  [ToadTypes.chaos]: "Хаос",
+  [ToadTypes.crystall]: "Кристальная",
+  [ToadTypes.crystallPink]: "Розовая кристальная",
+  [ToadTypes.forest]: "Лесная",
+};
+
+export const getToadTypeLabel = (type: ToadTypes | null) => {
+  return toadTypeMap[type || ToadTypes.hybrid] || toadTypeMap[ToadTypes.hybrid];
+};
 
 export const DEFAULT_TOADS: Toad[] = [
   {
     id: 0,
     name: "Дикая жаба 1",
-    type: "common",
+    type: ToadTypes.hybrid,
     generation: 1,
     sex: "male",
     stage: "adult",
@@ -71,7 +95,7 @@ export const DEFAULT_TOADS: Toad[] = [
   {
     id: 1,
     name: "Дикая жаба 2",
-    type: "common",
+    type: ToadTypes.hybrid,
     generation: 1,
     sex: "female",
     stage: "adult",
@@ -97,7 +121,7 @@ export const DEFAULT_TOADS: Toad[] = [
   {
     id: 2,
     name: "Дикая жаба 3",
-    type: "common",
+    type: ToadTypes.hybrid,
     generation: 1,
     sex: "female",
     stage: "adult",
@@ -123,7 +147,7 @@ export const DEFAULT_TOADS: Toad[] = [
   {
     id: 3,
     name: "Дикая жаба 4",
-    type: "common",
+    type: ToadTypes.hybrid,
     generation: 1,
     sex: "male",
     stage: "adult",
@@ -149,7 +173,7 @@ export const DEFAULT_TOADS: Toad[] = [
   {
     id: 4,
     name: "Дикая жаба 5",
-    type: "common",
+    type: ToadTypes.hybrid,
     generation: 1,
     sex: "female",
     stage: "adult",
@@ -830,7 +854,7 @@ const UNIQUE_TOADS_BY_RARITY: { [key: number]: Partial<Toad>[] } = {
     },
     {
       name: "Болотный житель",
-      type: "common",
+      type: ToadTypes.hybrid,
       genes: {
         colors: ["#6B8E23", "#9ACD32"], // Оливковый и желто-зеленый
         pattern: "spots",
@@ -847,7 +871,7 @@ const UNIQUE_TOADS_BY_RARITY: { [key: number]: Partial<Toad>[] } = {
   6: [
     {
       name: "Изумрудный прыгун",
-      type: "uncommon",
+      type: ToadTypes.camouflage,
       genes: {
         colors: ["#228B22", "#32CD32"], // Лесной зеленый и лаймовый
         pattern: "stripes",
@@ -861,7 +885,7 @@ const UNIQUE_TOADS_BY_RARITY: { [key: number]: Partial<Toad>[] } = {
     },
     {
       name: "Золотистый охотник",
-      type: "uncommon",
+      type: ToadTypes.tiger,
       genes: {
         colors: ["#DAA520", "#F0E68C"], // Золотистый и хаки
         pattern: "marbled",
@@ -878,7 +902,7 @@ const UNIQUE_TOADS_BY_RARITY: { [key: number]: Partial<Toad>[] } = {
   11: [
     {
       name: "Сапфировый призрак",
-      type: "rare",
+      type: ToadTypes.crystall,
       genes: {
         colors: ["#4682B4", "#87CEEB"], // Стальной синий и небесно-голубой
         pattern: "glowing",
@@ -891,8 +915,8 @@ const UNIQUE_TOADS_BY_RARITY: { [key: number]: Partial<Toad>[] } = {
       },
     },
     {
-      name: "Огненный спринтер",
-      type: "rare",
+      name: "Камнелап",
+      type: ToadTypes.stone,
       genes: {
         colors: ["#CD5C5C", "#F08080"], // Коралловый и светло-коралловый
         pattern: "flames",
@@ -906,7 +930,7 @@ const UNIQUE_TOADS_BY_RARITY: { [key: number]: Partial<Toad>[] } = {
     },
     {
       name: "Аметистовый мудрец",
-      type: ToadTypes.camouflage,
+      type: ToadTypes.crystallPink,
       genes: {
         colors: ["#9370DB", "#D8BFD8"], // Пурпурный и чертополох
         pattern: "crystal",
@@ -919,8 +943,8 @@ const UNIQUE_TOADS_BY_RARITY: { [key: number]: Partial<Toad>[] } = {
       },
     },
     {
-      name: "Изумрудный исследователь",
-      type: "rare",
+      name: "Леший",
+      type: ToadTypes.forest,
       genes: {
         colors: ["#2E8B57", "#66CDAA"], // Морской зеленый и бирюзовый
         pattern: "swirls",
@@ -936,8 +960,8 @@ const UNIQUE_TOADS_BY_RARITY: { [key: number]: Partial<Toad>[] } = {
   // Редкость 21-35 (Эпические) - ОЧЕНЬ РЕДКИЕ
   21: [
     {
-      name: "Драконий воин",
-      type: "epic",
+      name: "Кваккон",
+      type: "dragon",
       genes: {
         colors: ["#B22222", "#DC143C"], // Кирпичный и малиновый
         pattern: "scales",
@@ -951,7 +975,7 @@ const UNIQUE_TOADS_BY_RARITY: { [key: number]: Partial<Toad>[] } = {
     },
     {
       name: "Лунный сильфид",
-      type: ToadTypes.camouflage,
+      type: "moon",
       genes: {
         colors: ["#F5F5F5", "#D3D3D3"], // Белый дым и светло-серый
         pattern: "moonlight",
@@ -964,8 +988,8 @@ const UNIQUE_TOADS_BY_RARITY: { [key: number]: Partial<Toad>[] } = {
       },
     },
     {
-      name: "Вихревой скакун",
-      type: "epic",
+      name: "Эфир",
+      type: "wind",
       genes: {
         colors: ["#20B2AA", "#48D1CC"], // Светло-морской и бирюзовый
         pattern: "vortex",
@@ -981,8 +1005,8 @@ const UNIQUE_TOADS_BY_RARITY: { [key: number]: Partial<Toad>[] } = {
   // Редкость 36-50 (Легендарные) - СУПЕР РЕДКИЕ
   36: [
     {
-      name: "Звездный император",
-      type: "legendary",
+      name: "Галактрон",
+      type: "star",
       genes: {
         colors: ["#4B0082", "#8A2BE2"], // Индиго и сине-фиолетовый
         pattern: "galaxy",
@@ -996,7 +1020,7 @@ const UNIQUE_TOADS_BY_RARITY: { [key: number]: Partial<Toad>[] } = {
     },
     {
       name: "Хаос-прыгун",
-      type: "legendary",
+      type: ToadTypes.chaos,
       genes: {
         colors: ["#2F4F4F", "#708090"], // Темный грифельно-серый и грифельно-серый
         pattern: "chaos",
@@ -1009,8 +1033,8 @@ const UNIQUE_TOADS_BY_RARITY: { [key: number]: Partial<Toad>[] } = {
       },
     },
     {
-      name: "Феникс-возрожденец",
-      type: "legendary",
+      name: "Белгарион",
+      type: "phenix",
       genes: {
         colors: ["#FF8C00", "#FFA500"], // Темно-оранжевый и оранжевый
         pattern: "phoenix",
@@ -1045,15 +1069,6 @@ const getRandomRarity = (): number => {
   return 12; // fallback в среднюю редкость
 };
 
-// Функция для получения типа на основе редкости
-const getTypeByRarity = (rarity: number): string => {
-  if (rarity >= 36) return "legendary";
-  if (rarity >= 21) return "epic";
-  if (rarity >= 11) return "rare";
-  if (rarity >= 6) return "uncommon";
-  return "common";
-};
-
 // Функция для поиска подходящего шаблона жабы по редкости
 const findToadTemplate = (rarity: number): Partial<Toad> => {
   const roundedRarity = Math.floor(rarity);
@@ -1073,7 +1088,6 @@ const findToadTemplate = (rarity: number): Partial<Toad> => {
 // Основная функция генерации жабы из лутбокса
 export const generateLootboxToad = (): Toad => {
   const rarity = getRandomRarity();
-  const type = getTypeByRarity(rarity);
   const template = findToadTemplate(rarity);
 
   // Генерация уникального ID
@@ -1087,7 +1101,7 @@ export const generateLootboxToad = (): Toad => {
     id,
     name:
       template.name || `Таинственная жаба ${Math.floor(Math.random() * 1000)}`,
-    type,
+    type: template.type,
     generation: 1,
     sex,
     stage: "adult",
@@ -1133,22 +1147,4 @@ export const getLootboxRarityChances = () => {
     maxRarity: Math.floor(rarity.maxRarity),
     description: getRarityDescription(rarity.name),
   }));
-};
-
-// Функция для описания редкости
-const getRarityDescription = (rarityName: string): string => {
-  switch (rarityName) {
-    case "Обычная":
-      return "Базовые жабы, отличный старт";
-    case "Необычная":
-      return "Улучшенные характеристики, хороший прогресс";
-    case "Редкая":
-      return "Самые распространенные в лутбоксах - отличный баланс";
-    case "Эпическая":
-      return "Мощные жабы с уникальными способностями";
-    case "Легендарная":
-      return "Невероятно редкие - большая удача!";
-    default:
-      return "Особая жаба";
-  }
 };

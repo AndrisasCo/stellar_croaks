@@ -14,13 +14,9 @@ import { useSoundEffects } from "../../hooks/use-sound-effects";
 import { useToads } from "../ToadContext";
 import { GRADIENTS } from "../../models/scene";
 import { useGameState } from "../../hooks/use-game-state";
-import {
-  TOAD_FRAMES_COUNT,
-  TOADPOLE_FRAMES_COUNT,
-  ANIMATION_SPEED,
-  makeColorWhiter,
-} from "./constants";
+import { TOAD_FRAMES_COUNT, ANIMATION_SPEED } from "./constants";
 import { Toad, ToadTypes } from "../../models/toad";
+import { createTextures, getTextureByType, makeColorWhiter } from "./utils";
 
 export type ContainerChildCustom = ContainerChild & { userData?: any };
 
@@ -29,95 +25,71 @@ const preloadTextures = async () => {
   try {
     const [
       toadSpriteSheet,
-      eyeOpenTexture,
-      eyeClosedTexture,
+      toadTigerSpriteSheet,
+      toadMutantSpriteSheet,
+      toadSpottedSpriteSheet,
+      toadSpriteSheet1,
+      toadSpriteSheet2,
+      toadSpriteSheet3,
+      toadSpriteSheetCrystall2,
+      toadSpriteSheet4,
+      toadSpriteSheet5,
       toadpoleSpriteSheet,
       foodTexture,
-      toadSpriteSheetCamouflage,
-      toadSpriteSheetTiger,
     ] = await Promise.all([
-      Assets.load("/assets/toad-move.png"),
-      Assets.load("/assets/eye.png"),
-      Assets.load("/assets/eye-closed.png"),
-      Assets.load("/assets/toadpole.svg"),
+      Assets.load("/sprites/hybrid.png"),
+      Assets.load("/sprites/tiger.png"),
+      Assets.load("/sprites/mutant.png"),
+      Assets.load("/sprites/camouflage.png"),
+      Assets.load("/sprites/forest.png"),
+      Assets.load("/sprites/money.png"),
+      Assets.load("/sprites/crystall.png"),
+      Assets.load("/sprites/crystall_pink.png"),
+      Assets.load("/sprites/stone.png"),
+      Assets.load("/sprites/chaos.png"),
+      Assets.load("/sprites/toadpole.png"),
       Assets.load("/assets/apple.svg"),
-      Assets.load("/assets/toad-move2.png"),
-      Assets.load("/assets/toad-move3.png"),
     ]);
 
-    // Создаем массивы текстур один раз для жабы
-    const toadTextures: Texture[] = [];
-    const toadFrameWidth = toadSpriteSheet.width / TOAD_FRAMES_COUNT;
-
-    for (let i = 0; i < TOAD_FRAMES_COUNT; i++) {
-      const texture = new Texture({
-        source: toadSpriteSheet.source,
-        frame: {
-          x: i * toadFrameWidth,
-          y: 0,
-          width: toadFrameWidth - 1,
-          height: toadSpriteSheet.height,
-        },
-      });
-      toadTextures.push(texture);
-    }
-
-    const toadTexturesCamouflage: Texture[] = [];
-
-    for (let i = 0; i < TOAD_FRAMES_COUNT; i++) {
-      const texture = new Texture({
-        source: toadSpriteSheetCamouflage.source,
-        frame: {
-          x: i * toadFrameWidth,
-          y: 0,
-          width: toadFrameWidth - 1,
-          height: toadSpriteSheetCamouflage.height,
-        },
-      });
-      toadTexturesCamouflage.push(texture);
-    }
-
-    const toadTextures2: Texture[] = [];
-
-    for (let i = 0; i < TOAD_FRAMES_COUNT; i++) {
-      const texture = new Texture({
-        source: toadSpriteSheetTiger.source,
-        frame: {
-          x: i * toadFrameWidth,
-          y: 0,
-          width: toadFrameWidth - 1,
-          height: toadSpriteSheetTiger.height,
-        },
-      });
-      toadTextures2.push(texture);
-    }
-
-    // Создаем массивы текстур один раз для головастика
-    const toadpoleTextures: Texture[] = [];
-    const toadpoleFrameWidth =
-      toadpoleSpriteSheet.width / TOADPOLE_FRAMES_COUNT;
-
-    for (let i = 0; i < TOADPOLE_FRAMES_COUNT; i++) {
-      const texture = new Texture({
-        source: toadpoleSpriteSheet.source,
-        frame: {
-          x: i * toadpoleFrameWidth,
-          y: 0,
-          width: toadpoleFrameWidth - 2,
-          height: toadpoleSpriteSheet.height,
-        },
-      });
-      toadpoleTextures.push(texture);
-    }
+    const [
+      toadTextures,
+      toadTexturesTiger,
+      toadTexturesCamouflage,
+      toadTexturesMutant,
+      toadTexturesForest,
+      toadTexturesMoney,
+      toadTexturesCrystall,
+      toadTexturesCrystallPink,
+      toadTexturesStone,
+      toadTexturesChaos,
+      toadpoleTextures,
+    ] = [
+      createTextures(toadSpriteSheet.source),
+      createTextures(toadTigerSpriteSheet.source),
+      createTextures(toadSpottedSpriteSheet.source),
+      createTextures(toadMutantSpriteSheet.source),
+      createTextures(toadSpriteSheet1.source),
+      createTextures(toadSpriteSheet2.source),
+      createTextures(toadSpriteSheet3.source),
+      createTextures(toadSpriteSheetCrystall2.source),
+      createTextures(toadSpriteSheet4.source),
+      createTextures(toadSpriteSheet5.source),
+      createTextures(toadpoleSpriteSheet.source),
+    ];
 
     return {
-      eyeOpenTexture,
-      eyeClosedTexture,
+      toadTexturesMoney,
+      toadTexturesCrystall,
+      toadTexturesCrystallPink,
+      toadTexturesStone,
+      toadTexturesChaos,
+      toadTexturesForest,
       foodTexture,
       toadTextures, // Готовый массив текстур для жабы
       toadpoleTextures, // Готовый массив текстур для головастика
       toadTexturesCamouflage,
-      toadTextures2,
+      toadTexturesMutant,
+      toadTexturesTiger,
     };
   } catch (error) {
     return {};
@@ -186,8 +158,7 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
     // Выбираем массив текстур в зависимости от типа
     const textures = isToadpole
       ? texturesRef.current.toadpoleTextures
-      : getTextureByType(toad.type);
-    const framesCount = isToadpole ? TOADPOLE_FRAMES_COUNT : TOAD_FRAMES_COUNT;
+      : getTextureByType(texturesRef, toad.type);
 
     if (textures && textures.length > 0) {
       if (state === "walking" && data) {
@@ -196,7 +167,7 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
 
         // Рассчитываем кадр с плавным переходом
         const frameIndex =
-          (Math.floor(data.animationProgress) % (framesCount - 1)) + 1;
+          (Math.floor(data.animationProgress) % (TOAD_FRAMES_COUNT - 1)) + 1;
 
         // Устанавливаем текстуру из заранее созданного массива
         toadSprite.texture = textures[frameIndex];
@@ -207,26 +178,22 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
       }
     }
 
-    const size =
-      (isToadpole ? toad.genes.weight / 1.5 : toad.genes.weight) * 1.5;
+    const size = toad.genes.weight * 1.5;
     const bodyY = (-bounce * size) / 10;
 
     toadSprite.y = bodyY;
-    toadSprite.width = size * 2;
-    toadSprite.height = size * 1.5;
+    const aspectRatio = toadSprite.height / toadSprite.width;
+    toadSprite.setSize(size * 2, size * 2 * aspectRatio);
 
-    // Анимация свечения для новых жаб
-    const isNew = Date.now() - new Date(toad.created_at).getTime() < 10000;
-    if (isNew) {
-      const pulse = (Math.sin(Date.now() * 0.01) + 1) * 0.5;
-      toadSprite.tint = `hsl(${pulse * 60}, 100%, 70%)`;
+    if (
+      toad.stage === "adult" &&
+      (toad.type === ToadTypes.hybrid || toad.type === ToadTypes.camouflage)
+    ) {
+      toadSprite.tint = makeColorWhiter(toad.genes.colors[0], 20);
     } else {
-      if (toad.type === ToadTypes.tiger) {
-        toadSprite.tint = makeColorWhiter(toad.genes.colors[0], 70);
-      } else {
-        toadSprite.tint = toad.genes.colors[0];
-      }
+      // toadSprite.tint = makeColorWhiter(toad.genes.colors[0], 90);
     }
+    // }
   };
 
   // Функция для создания корма
@@ -330,18 +297,6 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
     moveToadsToFood();
   };
 
-  const getTextureByType = (type: ToadTypes | null) => {
-    const map = {
-      [ToadTypes.hybrid]: texturesRef.current.toadTextures,
-      [ToadTypes.camouflage]: texturesRef.current.toadTexturesCamouflage,
-      [ToadTypes.tiger]: texturesRef.current.toadTextures2,
-    };
-
-    return type
-      ? map[type] || texturesRef.current.toadTextures
-      : texturesRef.current.toadTextures;
-  };
-
   const createToad =
     (width: number, height: number, onToadSelect: (toadId: number) => void) =>
     (toadData: Toad) => {
@@ -356,7 +311,7 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
 
       const initialTextures = isToadpole
         ? texturesRef.current.toadpoleTextures
-        : getTextureByType(toadData.type);
+        : getTextureByType(texturesRef, toadData.type);
 
       const initialTexture = initialTextures
         ? initialTextures[0]
@@ -364,7 +319,6 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
 
       const toadSprite = new Sprite(initialTexture);
       toadSprite.anchor.set(0.5);
-      // toadSprite.tint = toadData.genes.colors[0];
 
       container.addChild(toadSprite);
 
@@ -619,16 +573,7 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
           const data = container.userData;
           if (!data) return;
 
-          // Плавное управление скоростью анимации
-          const targetSpeedFactor =
-            data.state === "walking" && Math.abs(data.vx) > 0.1
-              ? Math.min(Math.abs(data.vx) * 2, 2.5)
-              : 1;
-
-          // Плавная интерполяция скорости
-          data.movementSpeedFactor +=
-            (targetSpeedFactor - data.movementSpeedFactor) * 0.1;
-          data.animationSpeed = ANIMATION_SPEED * data.movementSpeedFactor;
+          data.animationSpeed = ANIMATION_SPEED;
 
           const isNew = data.toadData.spawnTime
             ? Date.now() - data.toadData.spawnTime < 10000

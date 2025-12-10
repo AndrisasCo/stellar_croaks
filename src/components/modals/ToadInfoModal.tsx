@@ -7,6 +7,7 @@ import {
   getPersonalityDescription,
   getPersonalityLabel,
   getGeneticFaultConfig,
+  getToadTypeLabel,
 } from "../../models/toad";
 import { useToads } from "../ToadContext";
 import { InfoIcons } from "../../assets/icons";
@@ -21,6 +22,7 @@ import { Tooltip } from "../shared/Tooltip";
 import { getGameState } from "../../backend/localStorage";
 import { useNotifications } from "../../hooks/use-notification";
 import { endPregnancy } from "../../utils/breeding-manager";
+import { ToadAvatar } from "../shared/ToadAvatar";
 
 interface ToadInfoProps {
   onClose: () => void;
@@ -319,7 +321,7 @@ export default function ToadInfo({ onClose }: ToadInfoProps) {
 
   return (
     <Modal isOpen onClose={onClose}>
-      <div className="flex w-full items-center pb-4 px-10 ">
+      <div className="flex w-full items-center pb-1 px-10 ">
         {isEditingName ? (
           <div className="flex w-full text-white bg-none items-center gap-2 max-w-full">
             <button className="text-xl" onClick={generateRandomName}>
@@ -394,13 +396,19 @@ export default function ToadInfo({ onClose }: ToadInfoProps) {
         )}
       </div>
 
-      <div className="flex gap-2 items-center mb-4 px-10">
+      <div className="flex gap-4 items-start mb-4 px-10">
+        <ToadAvatar toad={toad} size={20} />
+        <div className="flex flex-col gap-1 mr-auto">
+          <p className="text-gray-400 text-sm">
+            Вид {getToadTypeLabel(toad.type)}
+          </p>
+          <p className="text-gray-400 text-sm">Поколение {toad.generation}</p>
+          <p className="text-gray-400 text-sm ml-auto">
+            {toad.stage === "adult" ? "Взрослый" : "Детеныш"}: {calculateAge()}{" "}
+            дней
+          </p>
+        </div>
         {icon}
-        <p className="text-gray-400 text-xs">Поколение {toad.generation}</p>
-        <p className="text-gray-400 text-xs ml-auto">
-          {toad.stage === "adult" ? "Взрослый" : "Детеныш"}: {calculateAge()}{" "}
-          дней
-        </p>
       </div>
 
       <div className="flex">
