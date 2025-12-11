@@ -1,8 +1,12 @@
 import { Toad, ToadTypes } from "../../../models/toad";
 import { makeColorWhiter } from "../../ToadCanvas/utils";
 
-export const ToadAvatar = (props: { toad: Toad; size?: number }) => {
-  const { toad, size = 10 } = props;
+export const ToadAvatar = (props: {
+  toad: Toad;
+  size?: number;
+  onClick: any;
+}) => {
+  const { toad, size = 10, onClick } = props;
   const type = Object.values(ToadTypes).includes(toad.type)
     ? toad.type
     : ToadTypes.hybrid;
@@ -14,7 +18,12 @@ export const ToadAvatar = (props: { toad: Toad; size?: number }) => {
 
   return (
     <div
-      className={`w-${size} h-${size}  relative rounded-[12px] overflow-hidden`}
+      onClick={onClick}
+      style={{
+        width: size * 4,
+        height: size * 4,
+      }}
+      className={`relative rounded-[12px] overflow-hidden`}
     >
       <div
         className="absolute inset-0"
@@ -26,16 +35,15 @@ export const ToadAvatar = (props: { toad: Toad; size?: number }) => {
       />
       <div
         style={{
+          width: size * 4,
           color: toad.genes?.colors[0],
           background: `url(${imageSrc}) ${
             isColoredToad ? "5% 50%" : "0% 0%"
-          }  / ${isColoredToad ? 4 * size : 13 * size}px no-repeat #1C2229`,
+          }  / ${isColoredToad ? 4.5 * size : 13 * size}px no-repeat #1C2229`,
         }}
         className={`absolute
           ${isColoredToad ? "mt-[0%]" : "mt-[7%]  ml-[2%]"}
-          w-${size} h-[${size * 0.8}px]   inset-0 ${
-          isColoredToad && "mix-blend-multiply"
-        }`}
+          inset-0 ${isColoredToad && "mix-blend-multiply"}`}
       />
     </div>
   );

@@ -164,8 +164,21 @@ export const ToadInfo = ({ onClose }: { onClose: () => void }) => {
       </div>
 
       {/* AVATAR & BASIC INFO */}
-      <div className="flex gap-4 items-start mb-4 px-10">
-        <ToadAvatar toad={toad} size={20} />
+      <div className="flex gap-4 items-start mb-4 px-10 relative">
+        <ToadAvatar
+          toad={toad}
+          size={20}
+          onClick={() => toggleTooltip("avatar")}
+        />
+
+        {tooltips["avatar"] && (
+          <div
+            onClick={() => toggleTooltip("avatar")}
+            className={`absolute top-full z-10 bg-gray-800 border border-purple-500/50 rounded-xl p-2  shadow-lg`}
+          >
+            <ToadAvatar toad={toad} size={75} />
+          </div>
+        )}
         <div className="flex flex-col gap-1 mr-auto text-sm text-gray-400">
           <p>{getToadTypeLabel(toad.type)}</p>
           <p>Поколение {toad.generation}</p>
