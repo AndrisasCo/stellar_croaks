@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { useToads } from "./ToadContext";
-import ToadInfo from "./modals/ToadInfoModal";
+import { ToadInfo } from "./modals/ToadInfoModal";
 import { ArrowLeftButtonCompact } from "./shared/ArrowLeft";
 import { ArrowRightButtonCompact } from "./shared/ArrowRight";
 import ToadCanvas from "./ToadCanvas";
