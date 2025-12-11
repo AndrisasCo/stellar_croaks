@@ -59,8 +59,8 @@ export const createTextures = (spritesheet: any) => {
 export const preloadTextures = async () => {
   try {
     const [
-      // toadSpriteSheetZebra,
-      // toadSpriteSheetTurtle,
+      toadSpriteSheetZebra,
+      toadSpriteSheetTurtle,
       toadSpriteSheetFire,
       toadSpriteSheetLeopard,
       toadSpriteSheet,
@@ -77,8 +77,8 @@ export const preloadTextures = async () => {
       toadpoleSpriteSheet,
       foodTexture,
     ] = await Promise.all([
-      // Assets.load("/sprites/co.png"),
-      // Assets.load("/sprites/zebra.png"),
+      // Assets.load("/sprites/cosmos.png"),
+      // Assets.load("/sprites/topaz.png"),
       Assets.load("/sprites/zebra.png"),
       Assets.load("/sprites/turtle.png"),
       Assets.load("/sprites/fire.png"),
