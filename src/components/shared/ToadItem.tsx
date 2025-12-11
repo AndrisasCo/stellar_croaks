@@ -48,6 +48,7 @@ export const ToadItem = ({
   onClick,
   isSelected,
   showHunger,
+  ...rest
 }: {
   toad: Toad;
   button: ReactElement;
@@ -63,6 +64,7 @@ export const ToadItem = ({
           ? "border-yellow-400 bg-yellow-500/10 shadow-sm shadow-yellow-500/20"
           : "border-gray-600/30 hover:border-gray-500/50"
       } `}
+      {...rest}
     >
       <div className="flex flex-col gap-3">
         {/* Верхняя часть с аватаркой и кнопкой */}

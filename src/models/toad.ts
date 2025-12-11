@@ -776,7 +776,11 @@ export const calculateSellPrice = (toad: Toad): number => {
     basePrice *= (100 - (toad.state.genetic_fault || 0)) / 100;
   }
 
-  if (toad.type === ToadTypes.camouflage) {
+  if (toad.type === ToadTypes.mutant) {
+    basePrice *= 0.5;
+  }
+
+  if (toad.type !== ToadTypes.mutant && toad.type !== ToadTypes.hybrid) {
     basePrice *= 1.5;
   }
 

@@ -21,6 +21,7 @@ import { deleteToadsByIds, updateToadsByIds } from "../../backend";
 import { ToadGender } from "../shared/ToadGender";
 import { nameGenerator } from "../../utils/name-generator";
 import { getGeneticFaultConfig } from "../../models/toad";
+import { ToadAvatar } from "../shared/ToadAvatar";
 
 interface ToadColliderProps {
   isOpen: boolean;
@@ -342,11 +343,7 @@ export default function ToadCollider({
                               )} hover:bg-gray-600/30`
                         }`}
                       >
-                        {/* Аватар и имя */}
-                        <div
-                          className="w-6 h-6 rounded-full mb-1 border-2 border-white/80 shadow-sm"
-                          style={{ backgroundColor: toad.genes.colors[0] }}
-                        />
+                        <ToadAvatar size={6} toad={toad} />
 
                         {toad.pregnancy && (
                           <span className="absolute -top-1 -right-1">
@@ -455,12 +452,7 @@ export default function ToadCollider({
                 </div>
               </div>
 
-              <div
-                className="w-[38px] h-[38px] mb-auto rounded-full border-2 border-white/80 shadow-lg"
-                style={{
-                  backgroundColor: breedingResult.child!.genes.colors[0],
-                }}
-              />
+              <ToadAvatar size={10} toad={breedingResult.child} />
             </div>
             {/* Пол и поколение */}
             <div className="flex items-center justify-center gap-3 text-sm text-gray-400">

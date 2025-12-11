@@ -1,14 +1,12 @@
 import React, { useState, useRef, useEffect } from "react";
 import {
-  RARITY_CONFIG,
   RARITY_GROUPS_TRESHOLD,
   Toad,
   getGeneticFaultConfig,
   getRarityConfig,
 } from "../../models/toad";
-import { TYPE_ICONS } from "../../utils/constants";
 import Modal from "../shared/Modal";
-import { InfoIcons, PregnancyIcon, ToadpoleIcon } from "../../assets/icons";
+import { PregnancyIcon, ToadpoleIcon } from "../../assets/icons";
 import { updateToadById, updateToadsByIds } from "../../backend";
 import { useSoundEffects } from "../../hooks/use-sound-effects";
 import { ToadGender } from "../shared/ToadGender";
@@ -330,6 +328,8 @@ const ToadListModal: React.FC<ToadListModalProps> = ({
   onClose,
   toads,
   onToadSelect,
+  setLastToadId,
+  lastToadId,
 }) => {
   const { playCrunchShort } = useSoundEffects();
   const {
@@ -357,6 +357,17 @@ const ToadListModal: React.FC<ToadListModalProps> = ({
     new Map()
   );
 
+  useEffect(() => {
+    if (!lastToadId) {
+      return;
+    }
+    const element = document.getElementById(lastToadId);
+
+    if (element) {
+      element.scrollIntoView();
+    }
+  }, [lastToadId, isOpen]);
+
   // Вычисляем родственные группы при изменении списка жаб
   useEffect(() => {
     if (toads.length > 0) {
@@ -367,6 +378,7 @@ const ToadListModal: React.FC<ToadListModalProps> = ({
 
   const handleToadClick = (toad: Toad) => {
     onToadSelect(toad.id);
+    setLastToadId(toad.id);
     onClose();
   };
 
@@ -427,7 +439,6 @@ const ToadListModal: React.FC<ToadListModalProps> = ({
   // Перейти в профиль жабы
   const handleProfileClick = (toadId: number) => {
     onToadSelect(toadId);
-    onClose();
   };
 
   if (!isOpen) return null;
@@ -662,6 +673,7 @@ const ToadListModal: React.FC<ToadListModalProps> = ({
                   className="rounded-2xl relative"
                 >
                   <ToadItem
+                    id={toad.id}
                     showHunger
                     isSelected={false}
                     onClick={() => handleToadClick(toad)}

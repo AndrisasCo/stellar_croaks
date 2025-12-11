@@ -41,7 +41,9 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
     const id = Math.random().toString(36).substr(2, 9);
     const newNotification = { ...notification, id, isExiting: false };
 
-    setNotifications((prev) => [newNotification, ...prev]);
+    setNotifications((prev) =>
+      prev.length > 10 ? prev : [newNotification, ...prev]
+    );
 
     // Автоматическое удаление через timeout
     if (notification.timeout !== 0) {

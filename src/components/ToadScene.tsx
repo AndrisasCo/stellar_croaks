@@ -32,10 +32,19 @@ export default function ToadScene() {
   const [isSceneInfoOpen, setIsSceneInfoOpen] = useState(false);
   const [isFoodActive, setIsFoodActive] = useState(false);
   const [showFoodTooltip, setShowFoodTooltip] = useState(false);
+  const [lastToadId, setLastToadId] = useState(null);
 
   const onToadSelect = (toadId: number) => {
     selectToad(toadId);
     setIsInfoOpen(true);
+  };
+
+  const onInfoClose = () => {
+    setIsInfoOpen(false);
+
+    if (lastToadId) {
+      setIsListOpen(true);
+    }
   };
 
   const isFirstScene = currentSceneIndex === 0;
@@ -292,13 +301,15 @@ export default function ToadScene() {
       </div>
 
       {/* Модальные окна */}
-      {isInfoOpen && <ToadInfo onClose={() => setIsInfoOpen(false)} />}
+      {isInfoOpen && <ToadInfo onClose={onInfoClose} />}
 
       <ToadListModal
         toads={toads}
         isOpen={isListOpen}
         onClose={() => setIsListOpen(false)}
         onToadSelect={onToadSelect}
+        lastToadId={lastToadId}
+        setLastToadId={setLastToadId}
       />
 
       {/* Модальное окно информации о сцене */}
