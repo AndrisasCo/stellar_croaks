@@ -9,7 +9,8 @@ import { ColliderIcons } from "../../assets/icons";
 let interval;
 
 export default function ColliderButton() {
-  const { colliderState, collectChild, setSlotReady, toads } = useToads();
+  const { colliderState, collectChild, setSlotReady, toads, allToads } =
+    useToads();
   const [isColliderOpen, setIsColliderOpen] = useState(false);
   const { playClickCollider } = useSoundEffects();
 
@@ -61,27 +62,52 @@ export default function ColliderButton() {
     return () => clearInterval(interval);
   }, [activeSlot]);
 
-  // SVG иконки для коллайдера
+  const isColliderDisabled = allToads.length < 10;
 
   return (
     <div className="text-center my-6">
       {!activeSlot ? (
         // Кнопка для начала скрещивания
         <button
+          disabled={isColliderDisabled}
           onClick={openCollider}
-          className="bg-gradient-to-r from-purple-600 to-green-600 hover:from-purple-500 hover:to-green-500 text-white font-bold py-5 px-6 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:scale-105 w-full max-w-md border-2 border-white/20"
+          className={`bg-gradient-to-r from-purple-600 to-green-600 hover:from-purple-500 hover:to-green-500 text-white font-bold py-5 px-6 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:scale-105 w-full max-w-md border-2 border-white/20
+    ${
+      isColliderDisabled
+        ? "opacity-80 cursor-not-allowed grayscale-50"
+        : "cursor-pointer hover:shadow-2xl hover:scale-105"
+    }`}
         >
           <div className="flex items-center justify-center gap-4">
-            <div className="text-green-300">{ColliderIcons.dna}</div>
+            <div
+              className={`${
+                isColliderDisabled ? "text-white" : "text-green-300"
+              }`}
+            >
+              {ColliderIcons.dna}
+            </div>
             <div className="text-left">
-              <div className="text-lg font-bold text-white">
+              <div className={`text-lg font-bold text-white`}>
                 ГЕНЕТИЧЕСКИЙ КОЛЛАЙДЕР
               </div>
-              <div className="text-green-200 text-xs font-medium mt-1">
-                Свободно: {freeSlots.length}/{colliderState.slots.length} слотов
-              </div>
+              {isColliderDisabled ? (
+                <div className="text-white text-sm font-medium mt-1">
+                  Необходимо хотя бы 10 жаб для разблокирования коллайдера
+                </div>
+              ) : (
+                <div className="text-green-200 text-xs font-medium mt-1">
+                  Свободно: {freeSlots.length}/{colliderState.slots.length}{" "}
+                  слотов
+                </div>
+              )}
             </div>
-            <div className="text-green-300">{ColliderIcons.flask}</div>
+            <div
+              className={`${
+                isColliderDisabled ? "text-gray-400" : "text-green-300"
+              }`}
+            >
+              {ColliderIcons.flask}
+            </div>
           </div>
         </button>
       ) : (
