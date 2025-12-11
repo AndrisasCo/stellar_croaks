@@ -219,9 +219,9 @@ const calculateOffspringCount = (female: Toad): number => {
   // Базовое количество + влияние fertility
   const baseCount = Math.ceil(female.genes.fertility / female.genes.rarity);
   const bonusCount = Math.floor(
-    Math.random() * 2 + female.genes.fertility / 10
+    Math.random() * 1 + female.genes.fertility / 10
   );
-  return Math.min(baseCount + bonusCount, 10);
+  return Math.min(baseCount + bonusCount, 5);
 };
 
 export const endPregnancy = async (toad: Toad, addNotification: any) => {

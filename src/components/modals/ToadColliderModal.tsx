@@ -7,7 +7,12 @@ import {
   calculateRarityBonus,
 } from "../../utils/calculate-genetics";
 import { MIXING_DURATION, TYPE_ICONS } from "../../utils/constants";
-import { getRarityConfig, getRarityGroup, Toad } from "../../models/toad";
+import {
+  getRarityConfig,
+  getRarityGroup,
+  Toad,
+  ToadTypes,
+} from "../../models/toad";
 import { useSoundEffects } from "../../hooks/use-sound-effects";
 import { BreedingResult } from "../../models/types";
 import { ColliderIcons, PregnancyIcon } from "../../assets/icons";
@@ -104,10 +109,12 @@ export default function ToadCollider({
     // Мутация - шанс на повышенную редкость
     const mutationChance = Math.random() < 0.1;
     const genesBreakChance = Math.random() < 0.1;
+    const isMutant = Math.random() < 0.3;
 
     const child = generateChildToad(currentToads, true, {
       mutationChance,
       genesBreakChance,
+      isMutant,
     }) as Toad;
 
     await new Promise<void>((resolve) =>
@@ -121,7 +128,11 @@ export default function ToadCollider({
     }
 
     if (mutationChance) {
-      message += " Жаба мутировала! Ее редкость повышена";
+      message += " Идельное смешивание генов! Ее редкость повышена";
+    }
+
+    if (isMutant) {
+      message += " Жаба мутировала! Ее облик изменен...";
     }
 
     setBreedingResult({
@@ -409,7 +420,8 @@ export default function ToadCollider({
             <div className="flex items-center justify-center gap-3">
               <div className="text-left">
                 <div className="font-bold text-sm mb-1">
-                  {breedingResult.success
+                  {breedingResult.success &&
+                  breedingResult.child.type !== ToadTypes.mutant
                     ? "Успешное скрещивание!"
                     : "Особый результат"}
                 </div>

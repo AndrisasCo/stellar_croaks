@@ -1,4 +1,4 @@
-import { Toad } from "../models/toad";
+import { Toad, ToadTypes } from "../models/toad";
 
 // Интерфейс для состояния магазина
 export interface AchivementsState {
@@ -11,7 +11,7 @@ export const STATE_KEY = "achivements";
 
 export const achievementGroups = [
   {
-    id: "first-steps",
+    id: "first-steps2",
     title: "🫡 Первые шаги жабовода",
     description: "Освойте базовые механики игры",
     color: "green",
@@ -90,7 +90,7 @@ export const achievementGroups = [
           content: {
             id: Math.round(Date.now() * Math.random()),
             name: "Профессор Пузырь",
-            type: "tutorial_reward",
+            type: ToadTypes.turtle,
             generation: 0,
             sex: "male",
             stage: "adult",
@@ -105,7 +105,7 @@ export const achievementGroups = [
               colors: ["#4B0082", "#32CD32", "#FFD700"], // индиго, лайм, золотой
               pattern: "holographic",
               weight: 15,
-              speed: 2.0,
+              speed: 0.3,
               rarity: 10,
               hungerRate: 0.5,
               fertility: 1,
@@ -117,7 +117,7 @@ export const achievementGroups = [
     },
   },
   {
-    id: "market-domination",
+    id: "market-domination2",
     title: "💼 Жабный магнат",
     description: "Станьте мастером торговли и экономики",
     color: "blue",
@@ -170,7 +170,7 @@ export const achievementGroups = [
           content: {
             id: Math.round(Date.now() * Math.random()),
             name: "Барон Квак-Ротшильд",
-            type: "market_reward",
+            type: ToadTypes.crystall,
             generation: 0,
             sex: "male",
             stage: "adult",

@@ -1,4 +1,4 @@
-import { Texture } from "pixi.js";
+import { Assets, Texture } from "pixi.js";
 import { ToadTypes } from "../../models/toad";
 
 export function makeColorWhiter(hexColor, percent) {
@@ -31,10 +31,10 @@ export const createTextures = (spritesheet: any) => {
           new Texture({
             source: spritesheet,
             frame: {
-              x: i * 341,
-              y: j * 272,
-              width: 337,
-              height: 272,
+              x: (i * spritesheet.width) / 3,
+              y: (j * spritesheet.height) / 2,
+              width: spritesheet.width / 3,
+              height: spritesheet.height / 2,
             },
           })
         );
@@ -43,16 +43,117 @@ export const createTextures = (spritesheet: any) => {
         new Texture({
           source: spritesheet,
           frame: {
-            x: i * 341,
-            y: j * 272,
-            width: 337,
-            height: 272,
+            x: (i * spritesheet.width) / 3,
+            y: (j * spritesheet.height) / 2,
+            width: spritesheet.width / 3,
+            height: spritesheet.height / 2,
           },
         })
       );
     }
   }
   return result;
+};
+
+// Предзагружаем текстуры и создаем текстуры для анимации один раз
+export const preloadTextures = async () => {
+  try {
+    const [
+      toadSpriteSheetZebra,
+      toadSpriteSheetTurtle,
+      toadSpriteSheetFire,
+      toadSpriteSheetLeopard,
+      toadSpriteSheet,
+      toadDragonSpriteSheet,
+      toadTigerSpriteSheet,
+      toadMutantSpriteSheet,
+      toadSpottedSpriteSheet,
+      toadSpriteSheet1,
+      toadSpriteSheet2,
+      toadSpriteSheet3,
+      toadSpriteSheetCrystall2,
+      toadSpriteSheet4,
+      toadSpriteSheet5,
+      toadpoleSpriteSheet,
+      foodTexture,
+    ] = await Promise.all([
+      Assets.load("/sprites/zebra.png"),
+      Assets.load("/sprites/turtle.png"),
+      Assets.load("/sprites/fire.png"),
+      Assets.load("/sprites/leopard.png"),
+      Assets.load("/sprites/topaz.png"), //
+      Assets.load("/sprites/dragon.png"),
+      Assets.load("/sprites/tiger.png"),
+      Assets.load("/sprites/mutant.png"),
+      Assets.load("/sprites/camouflage.png"),
+      Assets.load("/sprites/forest.png"),
+      Assets.load("/sprites/money.png"),
+      Assets.load("/sprites/crystall.png"),
+      Assets.load("/sprites/crystall_pink.png"),
+      Assets.load("/sprites/stone.png"),
+      Assets.load("/sprites/chaos.png"),
+      Assets.load("/sprites/toadpole.png"),
+      Assets.load("/assets/apple.svg"),
+    ]);
+
+    const [
+      toadTexturesZebra,
+      toadTexturesTurtle,
+      toadTexturesFire,
+      toadTexturesLeopard,
+      toadTextures,
+      toadTexturesDragon,
+      toadTexturesTiger,
+      toadTexturesCamouflage,
+      toadTexturesMutant,
+      toadTexturesForest,
+      toadTexturesMoney,
+      toadTexturesCrystall,
+      toadTexturesCrystallPink,
+      toadTexturesStone,
+      toadTexturesChaos,
+      toadpoleTextures,
+    ] = [
+      createTextures(toadSpriteSheetZebra.source),
+      createTextures(toadSpriteSheetTurtle.source),
+      createTextures(toadSpriteSheetFire.source),
+      createTextures(toadSpriteSheetLeopard.source),
+      createTextures(toadSpriteSheet.source),
+      createTextures(toadDragonSpriteSheet.source),
+      createTextures(toadTigerSpriteSheet.source),
+      createTextures(toadSpottedSpriteSheet.source),
+      createTextures(toadMutantSpriteSheet.source),
+      createTextures(toadSpriteSheet1.source),
+      createTextures(toadSpriteSheet2.source),
+      createTextures(toadSpriteSheet3.source),
+      createTextures(toadSpriteSheetCrystall2.source),
+      createTextures(toadSpriteSheet4.source),
+      createTextures(toadSpriteSheet5.source),
+      createTextures(toadpoleSpriteSheet.source),
+    ];
+
+    return {
+      toadTexturesZebra,
+      toadTexturesTurtle,
+      toadTexturesFire,
+      toadTexturesLeopard,
+      toadTexturesDragon,
+      toadTexturesMoney,
+      toadTexturesCrystall,
+      toadTexturesCrystallPink,
+      toadTexturesStone,
+      toadTexturesChaos,
+      toadTexturesForest,
+      foodTexture,
+      toadTextures, // Готовый массив текстур для жабы
+      toadpoleTextures, // Готовый массив текстур для головастика
+      toadTexturesCamouflage,
+      toadTexturesMutant,
+      toadTexturesTiger,
+    };
+  } catch (error) {
+    return {};
+  }
 };
 
 export const getTextureByType = (texturesRef: any, type: ToadTypes | null) => {
@@ -67,6 +168,11 @@ export const getTextureByType = (texturesRef: any, type: ToadTypes | null) => {
     [ToadTypes.crystallPink]: texturesRef.current.toadTexturesCrystallPink,
     [ToadTypes.forest]: texturesRef.current.toadTexturesForest,
     [ToadTypes.chaos]: texturesRef.current.toadTexturesChaos,
+    [ToadTypes.dragon]: texturesRef.current.toadTexturesDragon,
+    [ToadTypes.leopard]: texturesRef.current.toadTexturesLeopard,
+    [ToadTypes.fire]: texturesRef.current.toadTexturesFire,
+    [ToadTypes.zebra]: texturesRef.current.toadTexturesZebra,
+    [ToadTypes.turtle]: texturesRef.current.toadTexturesTurtle,
   };
 
   return type

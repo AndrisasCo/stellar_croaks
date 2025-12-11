@@ -187,13 +187,17 @@ const getType = (parents: Toad[]) => {
   if (breedToad) {
     return Math.random() < 0.25 ? breedToad.type : ToadTypes.hybrid;
   }
-  return ToadTypes.hybrid;
+  return parents.map((p) => p.type)[Math.floor(Math.random() * parents.length)];
 };
 
 export const generateChildToad = (
   parents: Toad[],
   isCollider: boolean,
-  chances?: { mutationChance: boolean; genesBreakChance: boolean }
+  chances?: {
+    mutationChance: boolean;
+    genesBreakChance: boolean;
+    isMutant: boolean;
+  }
 ): Partial<Toad> => {
   const childColor = mixColors(parents.map((p) => p.genes.colors[0]));
   const childColor2 = mixColors(
@@ -244,7 +248,7 @@ export const generateChildToad = (
 
   return {
     name: `Жаб-${generation}-${Math.floor(Math.random() * 1000)}`,
-    type: getType(parents),
+    type: chances?.isMutant ? ToadTypes.mutant : getType(parents),
     generation,
     parents: parents.map((p) => p.id),
     sex:

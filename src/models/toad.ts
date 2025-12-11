@@ -46,6 +46,11 @@ export enum ToadTypes {
   crystall = "crystall",
   crystallPink = "crystall_pink",
   forest = "forest",
+  dragon = "dragon",
+  leopard = "leopard",
+  fire = "fire",
+  zebra = "zebra",
+  turtle = "turtle",
 }
 
 export const toadTypeMap: Record<ToadTypes, string> = {
@@ -59,6 +64,11 @@ export const toadTypeMap: Record<ToadTypes, string> = {
   [ToadTypes.crystall]: "Кристальная",
   [ToadTypes.crystallPink]: "Розовая кристальная",
   [ToadTypes.forest]: "Лесная",
+  [ToadTypes.dragon]: "Дракон",
+  [ToadTypes.leopard]: "Леопардовая",
+  [ToadTypes.fire]: "Огненная",
+  [ToadTypes.zebra]: "Зебровая",
+  [ToadTypes.turtle]: "Черепаховая",
 };
 
 export const getToadTypeLabel = (type: ToadTypes | null) => {
@@ -901,6 +911,20 @@ const UNIQUE_TOADS_BY_RARITY: { [key: number]: Partial<Toad>[] } = {
   // Редкость 11-20 (Редкие) - САМАЯ РАСПРОСТРАНЕННАЯ
   11: [
     {
+      name: "Саванна",
+      type: ToadTypes.leopard,
+      genes: {
+        colors: ["#4682B4", "#87CEEB"], // Стальной синий и небесно-голубой
+        pattern: "glowing",
+        weight: 15,
+        speed: 1.6,
+        rarity: 14.5,
+        hungerRate: 0.9,
+        fertility: 1.4,
+        personality: "mysterious",
+      },
+    },
+    {
       name: "Сапфировый призрак",
       type: ToadTypes.crystall,
       genes: {
@@ -961,7 +985,7 @@ const UNIQUE_TOADS_BY_RARITY: { [key: number]: Partial<Toad>[] } = {
   21: [
     {
       name: "Кваккон",
-      type: "dragon",
+      type: ToadTypes.dragon,
       genes: {
         colors: ["#B22222", "#DC143C"], // Кирпичный и малиновый
         pattern: "scales",
@@ -988,8 +1012,8 @@ const UNIQUE_TOADS_BY_RARITY: { [key: number]: Partial<Toad>[] } = {
       },
     },
     {
-      name: "Эфир",
-      type: "wind",
+      name: "Игнис",
+      type: ToadTypes.fire,
       genes: {
         colors: ["#20B2AA", "#48D1CC"], // Светло-морской и бирюзовый
         pattern: "vortex",

@@ -16,85 +16,9 @@ import { GRADIENTS } from "../../models/scene";
 import { useGameState } from "../../hooks/use-game-state";
 import { TOAD_FRAMES_COUNT, ANIMATION_SPEED } from "./constants";
 import { Toad, ToadTypes } from "../../models/toad";
-import { createTextures, getTextureByType, makeColorWhiter } from "./utils";
+import { getTextureByType, makeColorWhiter, preloadTextures } from "./utils";
 
 export type ContainerChildCustom = ContainerChild & { userData?: any };
-
-// Предзагружаем текстуры и создаем текстуры для анимации один раз
-const preloadTextures = async () => {
-  try {
-    const [
-      toadSpriteSheet,
-      toadTigerSpriteSheet,
-      toadMutantSpriteSheet,
-      toadSpottedSpriteSheet,
-      toadSpriteSheet1,
-      toadSpriteSheet2,
-      toadSpriteSheet3,
-      toadSpriteSheetCrystall2,
-      toadSpriteSheet4,
-      toadSpriteSheet5,
-      toadpoleSpriteSheet,
-      foodTexture,
-    ] = await Promise.all([
-      Assets.load("/sprites/hybrid.png"),
-      Assets.load("/sprites/tiger.png"),
-      Assets.load("/sprites/mutant.png"),
-      Assets.load("/sprites/camouflage.png"),
-      Assets.load("/sprites/forest.png"),
-      Assets.load("/sprites/money.png"),
-      Assets.load("/sprites/crystall.png"),
-      Assets.load("/sprites/crystall_pink.png"),
-      Assets.load("/sprites/stone.png"),
-      Assets.load("/sprites/chaos.png"),
-      Assets.load("/sprites/toadpole.png"),
-      Assets.load("/assets/apple.svg"),
-    ]);
-
-    const [
-      toadTextures,
-      toadTexturesTiger,
-      toadTexturesCamouflage,
-      toadTexturesMutant,
-      toadTexturesForest,
-      toadTexturesMoney,
-      toadTexturesCrystall,
-      toadTexturesCrystallPink,
-      toadTexturesStone,
-      toadTexturesChaos,
-      toadpoleTextures,
-    ] = [
-      createTextures(toadSpriteSheet.source),
-      createTextures(toadTigerSpriteSheet.source),
-      createTextures(toadSpottedSpriteSheet.source),
-      createTextures(toadMutantSpriteSheet.source),
-      createTextures(toadSpriteSheet1.source),
-      createTextures(toadSpriteSheet2.source),
-      createTextures(toadSpriteSheet3.source),
-      createTextures(toadSpriteSheetCrystall2.source),
-      createTextures(toadSpriteSheet4.source),
-      createTextures(toadSpriteSheet5.source),
-      createTextures(toadpoleSpriteSheet.source),
-    ];
-
-    return {
-      toadTexturesMoney,
-      toadTexturesCrystall,
-      toadTexturesCrystallPink,
-      toadTexturesStone,
-      toadTexturesChaos,
-      toadTexturesForest,
-      foodTexture,
-      toadTextures, // Готовый массив текстур для жабы
-      toadpoleTextures, // Готовый массив текстур для головастика
-      toadTexturesCamouflage,
-      toadTexturesMutant,
-      toadTexturesTiger,
-    };
-  } catch (error) {
-    return {};
-  }
-};
 
 export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
   const { toads, selectToad: onToadSelect, currentScene } = useToads();
@@ -113,7 +37,10 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
     playCrunch,
     playExited,
   } = useSoundEffects();
-  const { width, height } = getWindowDimensions();
+
+  // 1. Используем стейт для размеров, чтобы компонент знал об обновлениях
+  const [dimensions, setDimensions] = useState(getWindowDimensions());
+
   const [isReady, setIsReady] = useState(false);
 
   const { lastSaved } = useGameState();
@@ -124,20 +51,14 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
 
   const sortToadsByDepth = () => {
     if (!appRef.current) return;
-
     const stage = appRef.current.stage;
     const toadContainers = stage.children.filter(
       (child: ContainerChildCustom) => child.userData?.toadData
     );
-
-    // Сортируем по Y-координате
     toadContainers.sort((a: ContainerChildCustom, b: ContainerChildCustom) => {
       return a.y + a.userData.size / 2 - b.y - b.userData.size / 2;
     });
-
-    // Применяем сортировку
     toadContainers.forEach((container, index) => {
-      // Учитываем что первый элемент (индекс 0) - это фон
       stage.setChildIndex(container, index + 1);
     });
   };
@@ -149,75 +70,52 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
     bounce: number = 0
   ) => {
     const toadSprite = container.getChildAt(0) as Sprite;
-
     if (!toadSprite || !texturesRef.current) return;
-
     const isToadpole = toad.stage === "toadpole";
     const data = container.userData;
-
-    // Выбираем массив текстур в зависимости от типа
     const textures = isToadpole
       ? texturesRef.current.toadpoleTextures
       : getTextureByType(texturesRef, toad.type);
 
     if (textures && textures.length > 0) {
       if (state === "walking" && data) {
-        // Плавная анимация движения
         data.animationProgress += data.animationSpeed;
-
-        // Рассчитываем кадр с плавным переходом
         const frameIndex =
           (Math.floor(data.animationProgress) % (TOAD_FRAMES_COUNT - 1)) + 1;
-
-        // Устанавливаем текстуру из заранее созданного массива
         toadSprite.texture = textures[frameIndex];
       } else {
-        // В покое используем первый кадр
         toadSprite.texture = textures[0];
         data.animationProgress = 0;
       }
     }
-
     const size = toad.genes.weight * 1.5;
     const bodyY = (-bounce * size) / 10;
-
     toadSprite.y = bodyY;
     const aspectRatio = toadSprite.height / toadSprite.width;
     toadSprite.setSize(size * 2, size * 2 * aspectRatio);
-
     if (
       toad.stage === "adult" &&
       (toad.type === ToadTypes.hybrid || toad.type === ToadTypes.camouflage)
     ) {
       toadSprite.tint = makeColorWhiter(toad.genes.colors[0], 20);
-    } else {
-      // toadSprite.tint = makeColorWhiter(toad.genes.colors[0], 90);
     }
-    // }
   };
 
-  // Функция для создания корма
   const createFood = (x: number, y: number) => {
     if (!appRef.current?.stage || !texturesRef.current) return;
-
     if (foodRef.current) {
       appRef.current.stage.removeChild(foodRef.current);
       foodRef.current.destroy({ children: true });
     }
-
     playExited();
-
     setTimeout(() => {
       playCrunch();
     }, 500);
-
     const foodContainer: ContainerChildCustom = new Container();
     const foodSprite = new Sprite(texturesRef.current.foodTexture);
-
     foodSprite.anchor.set(0.5);
     foodSprite.width = 35;
     foodSprite.height = 35;
-
     foodContainer.addChild(foodSprite);
     foodContainer.x = x;
     foodContainer.y = y;
@@ -225,14 +123,11 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
       createdAt: Date.now(),
       pulse: 0,
     };
-
     appRef.current.stage.addChild(foodContainer);
     foodRef.current = foodContainer;
-
     if (foodTimerRef.current) {
       clearTimeout(foodTimerRef.current);
     }
-
     foodTimerRef.current = setTimeout(() => {
       removeFood();
     }, 12000);
@@ -245,7 +140,6 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
       foodRef.current = null;
       setIsFoodActive(false);
     }
-
     if (foodTimerRef.current) {
       clearTimeout(foodTimerRef.current);
       foodTimerRef.current = null;
@@ -254,18 +148,14 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
 
   const moveToadsToFood = () => {
     if (!foodRef.current) return;
-
     const foodX = foodRef.current.x;
     const foodY = foodRef.current.y;
-
     toadsRef.current.forEach((container: ContainerChildCustom) => {
       const data = container.userData;
       if (!data || data.isDragging || data.state === "dragging") return;
-
       const dx = foodX - container.x;
       const dy = foodY - container.y;
       const distance = Math.sqrt(dx * dx + dy * dy);
-
       if (distance < 60) {
         data.vx = 0;
         data.vy = 0;
@@ -274,11 +164,9 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
         data.needsRedraw = true;
         return;
       }
-
       const speed = data.speed * 1.3;
       data.vx = (dx / distance) * speed;
       data.vy = (dy / distance) * speed;
-
       data.state = "walking";
       data.stateTimer = 120;
       data.bounceDirection = 1;
@@ -286,19 +174,11 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
     });
   };
 
-  const handleFeedToads = () => {
-    if (!appRef.current) return;
-
-    const padding = 50;
-    const foodX = padding + Math.random() * (width - padding * 2);
-    const foodY = padding + Math.random() * (height - padding * 2);
-
-    createFood(foodX, foodY);
-    moveToadsToFood();
-  };
-
+  // ВНИМАНИЕ: createToad больше не должен замыкать ширину/высоту из пропсов,
+  // так как они нужны только для начального спавна (рандом).
+  // Логика границ перенесена в handlePointerUp с использованием app.screen
   const createToad =
-    (width: number, height: number, onToadSelect: (toadId: number) => void) =>
+    (spawnW: number, spawnH: number, onToadSelect: (toadId: number) => void) =>
     (toadData: Toad) => {
       if (!appRef.current?.stage || !texturesRef.current) {
         return;
@@ -306,25 +186,19 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
 
       const container: ContainerChildCustom = new Container();
       const isToadpole = toadData.stage === "toadpole";
-
-      // Выбираем начальную текстуру из заранее созданного массива
-
       const initialTextures = isToadpole
         ? texturesRef.current.toadpoleTextures
         : getTextureByType(texturesRef, toadData.type);
-
       const initialTexture = initialTextures
         ? initialTextures[0]
         : Texture.WHITE;
-
       const toadSprite = new Sprite(initialTexture);
       toadSprite.anchor.set(0.5);
-
       container.addChild(toadSprite);
 
       const padding = 15;
-      const penWidth = width - padding * 2;
-      const penHeight = height - padding * 2;
+      const penWidth = spawnW - padding * 2;
+      const penHeight = spawnH - padding * 2;
 
       container.x = padding + 25 + Math.random() * (penWidth - 50);
       container.y = padding + 25 + Math.random() * (penHeight - 50);
@@ -355,20 +229,16 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
         lastState: "idle",
         lastBounce: 0,
         needsRedraw: false,
-        // Свойства для плавной анимации
         animationProgress: 0,
         animationSpeed: ANIMATION_SPEED,
         movementSpeedFactor: 1,
       };
 
       container.userData = data;
-
       updateToadAppearance(container, toadData, data.state, data.bounce);
-
       container.eventMode = "static";
       container.cursor = "pointer";
 
-      // Обработчик тапа
       container.on("pointerdown", () => {
         if (toadData.stage === "toadpole") {
           playBeep();
@@ -380,12 +250,10 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
             20 >= data.size && data.size >= 15 && playCroak();
           }
         }
-
         data.isTapped = true;
         data.tapTimer = 0;
         data.state = "jumping";
         data.bounce = 4;
-
         updateToadAppearance(container, toadData, data.state, data.bounce);
         onToadSelect(toadData.id);
       });
@@ -422,10 +290,14 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
           container.alpha = 1;
           container.scale.set(1.0);
 
+          // ИСПОЛЬЗУЕМ app.screen ДЛЯ АКТУАЛЬНЫХ ГРАНИЦ
+          const currentW = appRef.current?.screen.width || spawnW;
+          const currentH = appRef.current?.screen.height || spawnH;
+
           const leftBound = 15 + data.size;
-          const rightBound = width - 15 - data.size;
+          const rightBound = currentW - 15 - data.size;
           const topBound = 15 + data.size;
-          const bottomBound = height - 15 - data.size;
+          const bottomBound = currentH - 15 - data.size;
 
           const targetX = Math.max(
             leftBound,
@@ -457,8 +329,32 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
       toadsRef.current.push(container);
     };
 
+  // Функция перерисовки фона (вынесли отдельно, чтобы вызывать при ресайзе)
+  const drawBackground = (w: number, h: number) => {
+    if (!appRef.current) return;
+    const stage = appRef.current.stage;
+    // Фон всегда первый элемент
+    let ground = stage.getChildAt(0) as Graphics;
+
+    // Если по какой-то причине первого элемента нет или это не графика (редкий кейс)
+    if (!ground || !(ground instanceof Graphics)) {
+      return;
+    }
+
+    ground.clear();
+    const gradient = new FillGradient({
+      end: { x: 0, y: 1 },
+      colorStops: GRADIENTS[currentScene?.gradient || 0],
+    });
+    ground.roundRect(0, 0, w, h, 20).fill(gradient);
+  };
+
   const transitionToNewScene = async () => {
     if (!appRef.current || isTransitioning) return;
+
+    // Берем актуальные размеры
+    const curW = appRef.current.screen.width;
+    const curH = appRef.current.screen.height;
 
     setIsTransitioning(true);
     removeFood();
@@ -466,7 +362,7 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
     const stage = appRef.current.stage;
     const fadeOverlay = new Graphics();
     fadeOverlay
-      .roundRect(0, 0, width, height, 20)
+      .roundRect(0, 0, curW, curH, 20)
       .fill({ color: "rgb(17 24 39)", alpha: 1 });
     stage.addChild(fadeOverlay);
 
@@ -475,7 +371,6 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
       const fadeOut = () => {
         alpha += 0.032;
         fadeOverlay.alpha = alpha;
-
         if (alpha < 0.8) {
           requestAnimationFrame(fadeOut);
         } else {
@@ -485,22 +380,14 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
       fadeOut();
     });
 
-    const ground = stage.getChildAt(0) as Graphics;
-    if (ground) {
-      ground.clear();
-      const gradient = new FillGradient({
-        end: { x: 0, y: 1 },
-        colorStops: GRADIENTS[currentScene?.gradient || 0],
-      });
-      ground.roundRect(0, 0, width, height, 20).fill(gradient);
-    }
+    // Перерисовываем фон с новым градиентом
+    drawBackground(curW, curH);
 
     await new Promise<void>((resolve) => {
       let alpha = 0.8;
       const fadeIn = () => {
         alpha -= 0.02;
         fadeOverlay.alpha = alpha;
-
         if (alpha > 0) {
           requestAnimationFrame(fadeIn);
         } else {
@@ -517,11 +404,37 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
   };
 
   useEffect(() => {
-    if (!isFoodActive) {
-      return;
-    }
-    handleFeedToads();
+    if (!isFoodActive) return;
+    const currentW = appRef.current?.screen.width || dimensions.width;
+    const currentH = appRef.current?.screen.height || dimensions.height;
+
+    const padding = 50;
+    const foodX = padding + Math.random() * (currentW - padding * 2);
+    const foodY = padding + Math.random() * (currentH - padding * 2);
+
+    createFood(foodX, foodY);
+    moveToadsToFood();
   }, [isFoodActive]);
+
+  // 2. Обработчик ресайза окна
+  useEffect(() => {
+    const handleResize = () => {
+      const { width: newW, height: newH } = getWindowDimensions();
+      setDimensions({ width: newW, height: newH });
+
+      if (appRef.current) {
+        // Ресайзим Pixi Renderer
+        appRef.current.renderer.resize(newW, newH);
+        // Перерисовываем фон под новые размеры
+        drawBackground(newW, newH);
+      }
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
+  }, [currentScene]); // Зависимость от сцены нужна, чтобы фон перерисовался с правильным градиентом
 
   useEffect(() => {
     if (!canvasRef.current || initializedRef.current === true) {
@@ -530,12 +443,15 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
 
     const initPixi = async () => {
       texturesRef.current = await preloadTextures();
+      // Используем начальные размеры из стейта
+      const initialW = dimensions.width;
+      const initialH = dimensions.height;
 
       const app = new Application();
 
       await app.init({
-        width,
-        height,
+        width: initialW,
+        height: initialH,
         backgroundColor: "#111827",
         antialias: true,
         resolution: window.devicePixelRatio || 1,
@@ -546,18 +462,12 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
       (appRef as any).current = app;
 
       const ground = new Graphics();
-      const gradient = new FillGradient({
-        end: { x: 0, y: 1 },
-        colorStops: GRADIENTS[currentScene?.gradient || 0],
-      });
+      app.stage.addChild(ground); // Сначала добавляем, потом рисуем helper-ом
+      drawBackground(initialW, initialH);
 
-      ground.roundRect(0, 0, width, height, 20).fill(gradient);
-      app.stage.addChild(ground);
-
-      toads.forEach(createToad(width, height, onToadSelect));
+      toads.forEach(createToad(initialW, initialH, onToadSelect));
 
       app.ticker.add(() => {
-        // Анимация пульсации корма
         if (foodRef.current) {
           const foodData = (foodRef as any).current.userData;
           foodData.pulse += 0.1;
@@ -574,11 +484,9 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
           if (!data) return;
 
           data.animationSpeed = ANIMATION_SPEED;
-
           const isNew = data.toadData.spawnTime
             ? Date.now() - data.toadData.spawnTime < 10000
             : false;
-
           const stateChanged = data.state !== data.lastState || isNew;
           const bounceChanged = Math.abs(data.bounce - data.lastBounce) > 0.1;
 
@@ -594,7 +502,6 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
             data.lastBounce = data.bounce;
           }
 
-          // Обработка анимации падения
           if (data.dropAnimation.isDropping) {
             data.dropAnimation.progress += app.ticker.deltaTime;
             const progress = Math.min(
@@ -616,7 +523,6 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
 
           if (data.isDragging) return;
 
-          // Обработка прыжка
           if (data.state === "jumping") {
             data.bounce -= 0.4;
             if (data.bounce <= 0) {
@@ -628,7 +534,6 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
             return;
           }
 
-          // Обработка таймера тапа
           if (data.isTapped) {
             data.tapTimer += app.ticker.deltaTime;
             if (data.tapTimer > 5) {
@@ -636,12 +541,10 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
             }
           }
 
-          // Если есть корм, периодически двигаем жаб к нему
           if (foodRef.current && Math.random() < 0.02) {
             moveToadsToFood();
           }
 
-          // Смена состояний
           data.stateTimer -= app.ticker.deltaTime;
           if (data.stateTimer <= 0 && Math.random() < 0.05) {
             if (data.state === "sleeping") {
@@ -662,9 +565,7 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
             data.needsRedraw = true;
           }
 
-          // Движение (только для walking состояния)
           if (data.state === "walking") {
-            // Анимация подпрыгивания при ходьбе
             data.bounce += 0.01 * data.bounceDirection;
             if (data.bounce >= 4) data.bounceDirection = -10;
             if (data.bounce <= 0) data.bounceDirection = 10;
@@ -673,16 +574,19 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
             container.x += data.vx;
             container.y += data.vy;
 
-            // Разворот жабы в направлении движения
             if (data.vx !== 0) {
               container.scale.x = data.vx > 0 ? -1 : 1;
             }
 
-            // Проверка границ
+            // ВАЖНО: Используем app.screen для проверки границ, а не статические width/height
+            // Это позволяет жабам реагировать на изменение размера окна
+            const currentScreenW = app.screen.width;
+            const currentScreenH = app.screen.height;
+
             const leftBound = 15 + data.size;
-            const rightBound = width - 15 - data.size;
+            const rightBound = currentScreenW - 15 - data.size;
             const topBound = 15 + data.size;
-            const bottomBound = height - 15 - data.size;
+            const bottomBound = currentScreenH - 15 - data.size;
 
             if (
               container.x < leftBound ||
@@ -743,13 +647,17 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
       return;
     }
 
+    // Используем актуальные размеры для новых жаб
+    const currentW = appRef.current.screen.width;
+    const currentH = appRef.current.screen.height;
+
     const existingIds = toadsRef.current.map(
       (c: ContainerChildCustom) => c.userData?.toadData.id
     );
     const newToads = toads.filter((t) => !existingIds.includes(t.id));
 
     newToads.forEach((toadData) => {
-      createToad(penWidth, penHeight, onToadSelect)(toadData);
+      createToad(currentW, currentH, onToadSelect)(toadData);
     });
 
     toadsRef.current = toadsRef.current.filter(
@@ -790,6 +698,7 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
   }, [
     currentScene.id,
     lastSaved,
+    toads, // Добавил toads в зависимости, чтобы отслеживать новых
     initializedRef.current,
     appRef.current,
     texturesRef.current,
@@ -799,7 +708,12 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
     <div className="relative">
       <div
         className="rounded-2xl duration-200"
-        style={{ width, height, opacity: isReady ? 1 : 0 }}
+        // Размеры DIV теперь берутся из стейта
+        style={{
+          width: dimensions.width,
+          height: dimensions.height,
+          opacity: isReady ? 1 : 0,
+        }}
         ref={canvasRef}
       />
     </div>
