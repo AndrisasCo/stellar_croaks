@@ -399,9 +399,7 @@ export default function ToadInfo({ onClose }: ToadInfoProps) {
       <div className="flex gap-4 items-start mb-4 px-10">
         <ToadAvatar toad={toad} size={20} />
         <div className="flex flex-col gap-1 mr-auto">
-          <p className="text-gray-400 text-sm">
-            Вид {getToadTypeLabel(toad.type)}
-          </p>
+          <p className="text-gray-400 text-sm">{getToadTypeLabel(toad.type)}</p>
           <p className="text-gray-400 text-sm">Поколение {toad.generation}</p>
           <p className="text-gray-400 text-sm ml-auto">
             {toad.stage === "adult" ? "Взрослый" : "Детеныш"}: {calculateAge()}{" "}

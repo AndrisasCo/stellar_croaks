@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Toad, getRarityConfig } from "../../models/toad";
+import { getRarityConfig } from "../../models/toad";
 import { CURRENCY_CONFIG } from "../../utils/constants";
 import Modal from "../shared/Modal";
 import { useSoundEffects } from "../../hooks/use-sound-effects";
@@ -11,7 +11,7 @@ import {
 import useSWR from "swr";
 import { useToads } from "../ToadContext";
 import { getGameState, updateGameState } from "../../backend/localStorage";
-import { InfoIcons } from "../../assets/icons";
+import { ToadAvatar } from "../shared/ToadAvatar";
 
 interface LeaderboardModalProps {
   isOpen: boolean;
@@ -195,21 +195,6 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
     return (
       <div className="space-y-2">
         <div className="flex items-start gap-2">
-          {/* Аватар жабы */}
-          <div
-            className="w-8 h-8 rounded-full border-2 flex-shrink-0 mt-1"
-            style={{
-              backgroundColor: player.rarest_toad.genes.colors[0],
-              borderColor: isUser
-                ? "#60A5FA"
-                : rarityConfig?.borderColor
-                    .replace("border-", "")
-                    .replace("/50", ""),
-              boxShadow: isUser ? "0 0 8px rgba(96, 165, 250, 0.5)" : "none",
-            }}
-          />
-
-          {/* Информация о жабе - компактно */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1 mb-1 flex-wrap">
               <span
@@ -218,13 +203,6 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                 }`}
               >
                 {player.rarest_toad.name}
-              </span>
-              <span
-                className={`text-xs px-1.5 py-0.5 rounded-full border ${
-                  rarityConfig?.color || "text-gray-400"
-                } ${rarityConfig?.borderColor || "border-gray-500"}`}
-              >
-                {rarityConfig?.label || "Обычная"}
               </span>
             </div>
 
@@ -237,11 +215,13 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                 <span>{player.rarest_toad.genes.rarity.toFixed(1)}</span>
               </div>
 
-              {player.rarest_toad.stage === "toadpole" && (
-                <span className="text-blue-300 text-sm bg-blue-500/20 px-1 rounded">
-                  Головастик
-                </span>
-              )}
+              <span
+                className={`text-xs px-1.5 py-0.5 rounded-full border ${
+                  rarityConfig?.color || "text-gray-400"
+                } ${rarityConfig?.borderColor || "border-gray-500"}`}
+              >
+                {rarityConfig?.label || "Обычная"}
+              </span>
             </div>
           </div>
         </div>
@@ -416,7 +396,7 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                   <div className="flex items-center gap-2 flex-1 min-w-0">
                     <div
                       className={`
-                        text-sm font-bold flex-shrink-0
+                        text-md font-bold flex-shrink-0 mb-auto
                         ${
                           isUser
                             ? "text-blue-400"
@@ -452,7 +432,9 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
 
                       {/* Информация в зависимости от вкладки */}
                       {activeTab === "rarest_toad" && (
-                        <RarestToadInfo player={player} isUser={isUser} />
+                        <>
+                          <RarestToadInfo player={player} isUser={isUser} />
+                        </>
                       )}
 
                       {activeTab === "tokens" && (
@@ -501,24 +483,8 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                       isUser ? "text-blue-200" : "text-gray-400"
                     }`}
                   >
-                    {activeTab !== "tokens" && player.tokens && (
-                      <div className="flex items-center justify-end gap-0.5">
-                        <span>
-                          {player.tokens > 1000
-                            ? `${(player.tokens / 1000).toFixed(1)}k`
-                            : player.tokens.toLocaleString()}
-                        </span>
-                        <span
-                          className={
-                            isUser ? "text-yellow-300" : "text-yellow-400"
-                          }
-                        >
-                          {CURRENCY_CONFIG.tokens.icon}
-                        </span>
-                      </div>
-                    )}
-                    {activeTab !== "total_toads" && (
-                      <div>{player.total_toads} жаб</div>
+                    {activeTab === "rarest_toad" && (
+                      <ToadAvatar toad={player.rarest_toad} size={20} />
                     )}
                   </div>
                 </div>

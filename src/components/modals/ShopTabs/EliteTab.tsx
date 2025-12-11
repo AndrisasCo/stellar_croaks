@@ -15,6 +15,7 @@ import {
   ShopState,
 } from "../../../backend/shop-state";
 import { useNotifications } from "../../../hooks/use-notification";
+import { ToadAvatar } from "../../shared/ToadAvatar";
 
 const refreshShop = (): ShopState => {
   const now = Date.now();
@@ -321,10 +322,7 @@ const EliteOrderTooltip: React.FC<EliteOrderTooltipProps> = ({
               }`}
             >
               <div className="flex items-center gap-2">
-                <div
-                  className="w-8 h-8 rounded-full border border-white/80 flex-shrink-0"
-                  style={{ backgroundColor: toad.genes.colors[0] }}
-                />
+                <ToadAvatar toad={toad} size={8} />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1 mb-1">
                     <span className="text-white font-medium text-xs truncate">
