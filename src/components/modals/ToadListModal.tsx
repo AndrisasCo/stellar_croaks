@@ -217,7 +217,7 @@ const CompactToadItem = ({
   isSelected: boolean;
   onSelect: (toadId: number) => void;
   familyColor?: string;
-  onProfileClick: (toadId: number) => void;
+  onProfileClick: (toad: Toad) => void;
   allToads: Toad[];
 }) => {
   const rarityConfig = getRarityConfig(toad.genes.rarity);
@@ -235,6 +235,7 @@ const CompactToadItem = ({
 
   return (
     <div
+      id={toad.id}
       onClick={() => onSelect(toad.id)}
       className={`bg-gray-800 flex flex-col gap-1.5 rounded-xl p-1 border transition-colors cursor-pointer ${
         isSelected
@@ -299,7 +300,7 @@ const CompactToadItem = ({
         <button
           onClick={(e) => {
             e.stopPropagation();
-            onProfileClick(toad.id);
+            onProfileClick(toad);
           }}
           className="flex-shrink-0 p-1 text-gray-400 hover:text-white transition-colors"
           title="Перейти в профиль"
@@ -434,11 +435,6 @@ const ToadListModal: React.FC<ToadListModalProps> = ({
 
     setSelectedToads(new Set());
     setShowMoveTooltip(false);
-  };
-
-  // Перейти в профиль жабы
-  const handleProfileClick = (toadId: number) => {
-    onToadSelect(toadId);
   };
 
   if (!isOpen) return null;
@@ -724,7 +720,7 @@ const ToadListModal: React.FC<ToadListModalProps> = ({
                   isSelected={selectedToads.has(toad.id)}
                   onSelect={handleSelectToad}
                   familyColor={familyColor}
-                  onProfileClick={handleProfileClick}
+                  onProfileClick={handleToadClick}
                   allToads={toads}
                 />
               );
