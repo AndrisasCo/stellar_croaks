@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { SortByType, FilterByType } from "../components/shared/Filters";
-import { calculateSellPrice, Toad } from "../models/toad";
+import { calculateSellPrice, Toad, ToadTypes } from "../models/toad";
 import { useToads } from "../components/ToadContext";
 
 export const useFilters = (toads: Toad[]) => {
@@ -14,6 +14,14 @@ export const useFilters = (toads: Toad[]) => {
       let aValue: any, bValue: any;
 
       switch (sortBy) {
+        case "type":
+          aValue = Object.values(ToadTypes).includes(a.type)
+            ? a.type
+            : ToadTypes.hybrid;
+          bValue = Object.values(ToadTypes).includes(b.type)
+            ? b.type
+            : ToadTypes.hybrid;
+          break;
         case "price":
           aValue = calculateSellPrice(a);
           bValue = calculateSellPrice(b);

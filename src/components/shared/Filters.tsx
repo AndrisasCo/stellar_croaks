@@ -10,6 +10,7 @@ export type SortByType =
   | "rarity"
   | "name"
   | "hunger"
+  | "type"
   | "size"
   | "speed"
   | "fertility"
@@ -53,6 +54,7 @@ export const Filters = ({
       | "rarity"
       | "name"
       | "price"
+      | "type"
       | "size"
       | "speed"
       | "fertility"
@@ -110,6 +112,7 @@ export const Filters = ({
                 { key: "rarity", label: "Редкость" },
                 addPrice ? { key: "price", label: "Цена" } : {},
                 { key: "name", label: "Имя" },
+                { key: "type", label: "Вид" },
                 { key: "fertility", label: "Плодовитость" },
                 { key: "appetite", label: "Аппетит" },
                 { key: "size", label: "Размер" },
