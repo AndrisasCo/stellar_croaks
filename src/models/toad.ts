@@ -51,6 +51,9 @@ export enum ToadTypes {
   fire = "fire",
   zebra = "zebra",
   turtle = "turtle",
+  cosmos = "cosmos",
+  topaz = "topaz",
+  phoenix = "phoenix",
 }
 
 export const toadTypeMap: Record<ToadTypes, string> = {
@@ -69,6 +72,9 @@ export const toadTypeMap: Record<ToadTypes, string> = {
   [ToadTypes.fire]: "Огненная",
   [ToadTypes.zebra]: "Зебровая",
   [ToadTypes.turtle]: "Черепаховая",
+  [ToadTypes.cosmos]: "Космическая",
+  [ToadTypes.topaz]: "Топаз",
+  [ToadTypes.phoenix]: "Феникс",
 };
 
 export const getToadTypeLabel = (type: ToadTypes | null) => {
@@ -997,20 +1003,20 @@ const UNIQUE_TOADS_BY_RARITY: { [key: number]: Partial<Toad>[] } = {
         personality: "dominant",
       },
     },
-    {
-      name: "Лунный сильфид",
-      type: "moon",
-      genes: {
-        colors: ["#F5F5F5", "#D3D3D3"], // Белый дым и светло-серый
-        pattern: "moonlight",
-        weight: 12,
-        speed: 0.8,
-        rarity: 32.1,
-        hungerRate: 0.6,
-        fertility: 1.7,
-        personality: "graceful",
-      },
-    },
+    // {
+    //   name: "Лунный сильфид",
+    //   type: "moon",
+    //   genes: {
+    //     colors: ["#F5F5F5", "#D3D3D3"], // Белый дым и светло-серый
+    //     pattern: "moonlight",
+    //     weight: 12,
+    //     speed: 0.8,
+    //     rarity: 32.1,
+    //     hungerRate: 0.6,
+    //     fertility: 1.7,
+    //     personality: "graceful",
+    //   },
+    // },
     {
       name: "Игнис",
       type: ToadTypes.fire,
@@ -1030,7 +1036,7 @@ const UNIQUE_TOADS_BY_RARITY: { [key: number]: Partial<Toad>[] } = {
   36: [
     {
       name: "Галактрон",
-      type: "star",
+      type: ToadTypes.cosmos,
       genes: {
         colors: ["#4B0082", "#8A2BE2"], // Индиго и сине-фиолетовый
         pattern: "galaxy",
@@ -1058,10 +1064,10 @@ const UNIQUE_TOADS_BY_RARITY: { [key: number]: Partial<Toad>[] } = {
     },
     {
       name: "Белгарион",
-      type: "phenix",
+      type: ToadTypes.phoenix,
       genes: {
         colors: ["#FF8C00", "#FFA500"], // Темно-оранжевый и оранжевый
-        pattern: "phoenix",
+        pattern: ToadTypes.phoenix,
         weight: 22,
         speed: 0.85,
         rarity: 45.2,

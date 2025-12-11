@@ -170,7 +170,7 @@ export const achievementGroups = [
           content: {
             id: Math.round(Date.now() * Math.random()),
             name: "Барон Квак-Ротшильд",
-            type: ToadTypes.crystall,
+            type: ToadTypes.topaz,
             generation: 0,
             sex: "male",
             stage: "adult",

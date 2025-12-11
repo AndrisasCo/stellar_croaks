@@ -59,6 +59,10 @@ export const createTextures = (spritesheet: any) => {
 export const preloadTextures = async () => {
   try {
     const [
+      toadSpriteSheet_Phoenix,
+      toadSpriteSheet_Cosmos,
+      toadSpriteSheet_Topaz,
+
       toadSpriteSheetZebra,
       toadSpriteSheetTurtle,
       toadSpriteSheetFire,
@@ -77,8 +81,9 @@ export const preloadTextures = async () => {
       toadpoleSpriteSheet,
       foodTexture,
     ] = await Promise.all([
-      // Assets.load("/sprites/cosmos.png"),
-      // Assets.load("/sprites/topaz.png"),
+      Assets.load("/sprites/phoenix.png"),
+      Assets.load("/sprites/cosmos.png"),
+      Assets.load("/sprites/topaz.png"),
       Assets.load("/sprites/zebra.png"),
       Assets.load("/sprites/turtle.png"),
       Assets.load("/sprites/fire.png"),
@@ -99,6 +104,9 @@ export const preloadTextures = async () => {
     ]);
 
     const [
+      toadTextures_Phoenix,
+      toadTextures_Cosmos,
+      toadTextures_Topaz,
       toadTexturesZebra,
       toadTexturesTurtle,
       toadTexturesFire,
@@ -116,6 +124,9 @@ export const preloadTextures = async () => {
       toadTexturesChaos,
       toadpoleTextures,
     ] = [
+      createTextures(toadSpriteSheet_Phoenix.source),
+      createTextures(toadSpriteSheet_Cosmos.source),
+      createTextures(toadSpriteSheet_Topaz.source),
       createTextures(toadSpriteSheetZebra.source),
       createTextures(toadSpriteSheetTurtle.source),
       createTextures(toadSpriteSheetFire.source),
@@ -135,6 +146,9 @@ export const preloadTextures = async () => {
     ];
 
     return {
+      toadTextures_Phoenix,
+      toadTextures_Cosmos,
+      toadTextures_Topaz,
       toadTexturesZebra,
       toadTexturesTurtle,
       toadTexturesFire,
@@ -175,6 +189,9 @@ export const getTextureByType = (texturesRef: any, type: ToadTypes | null) => {
     [ToadTypes.fire]: texturesRef.current.toadTexturesFire,
     [ToadTypes.zebra]: texturesRef.current.toadTexturesZebra,
     [ToadTypes.turtle]: texturesRef.current.toadTexturesTurtle,
+    [ToadTypes.cosmos]: texturesRef.current.toadTextures_Cosmos,
+    [ToadTypes.topaz]: texturesRef.current.toadTextures_Topaz,
+    [ToadTypes.phoenix]: texturesRef.current.toadTextures_Phoenix,
   };
 
   return type
