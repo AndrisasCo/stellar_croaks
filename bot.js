@@ -5,8 +5,7 @@ const bot = new Telegraf(BOT_TOKEN);
 
 bot.start((ctx) => {
   return ctx.reply(
-    "🐸 Добро пожаловать в Stellar Croak!\n\nНажмите кнопку ниже чтобы начать играть:",
-    keyboard
+    "🐸 Добро пожаловать в Stellar Croak!\n\nНажмите кнопку ниже чтобы начать играть:"
   );
 });
 
