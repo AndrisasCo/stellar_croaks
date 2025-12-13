@@ -321,8 +321,8 @@ export const ToadGalleryModal: React.FC<ToadGalleryModalProps> = ({
       closeButton={false}
       isOpen={isOpen}
       onClose={hadleClose}
-      icon={icon}
-      title="Жабопедия"
+      icon={!selectedItem?.name && icon}
+      title={selectedItem?.name || "Жабопедия"}
     >
       {!detailedView && (
         <>
@@ -524,7 +524,7 @@ export const ToadGalleryModal: React.FC<ToadGalleryModalProps> = ({
 
       {/* --- DETAIL OVERLAY (Полное описание) --- */}
       {detailedView && (
-        <div className="relative">
+        <div className="relative flex flex-col">
           <button
             onClick={() => setSelectedItem(null)}
             className="absolute top-[-48px] right-0 text-gray-400 hover:text-white p-1 rounded-full bg-black/30 w-7 h-7 flex items-center justify-center"
@@ -533,7 +533,7 @@ export const ToadGalleryModal: React.FC<ToadGalleryModalProps> = ({
           </button>
 
           {/* Большой Аватар */}
-          <div className="mb-6 flex gap-6 px-4">
+          <div className="mb-6 flex mx-auto self-center">
             {selectedItem.isUnlocked && selectedItem.exampleToad ? (
               <GlowWrapper
                 className="rounded-xl "
@@ -558,28 +558,6 @@ export const ToadGalleryModal: React.FC<ToadGalleryModalProps> = ({
             ) : (
               <div className="text-8xl w-[200px] text-center opacity-40">?</div>
             )}
-
-            <div>
-              {/* Заголовок с редкостью */}
-              <div className="flex  gap-3 mb-4">
-                <h3 className={`text-2xl font-bold ${detailStyles.titleColor}`}>
-                  {selectedItem.isUnlocked
-                    ? selectedItem.name
-                    : "Неизвестный вид"}
-                </h3>
-              </div>
-
-              {/* Способ получения */}
-              {selectedItem.obtainedBy && (
-                <div className="flex  gap-2 mb-4 text-sm">
-                  <span className={detailStyles.text}>
-                    Способ получения:{" "}
-                    {getObtainedByIcon(selectedItem.obtainedBy).label}
-                  </span>
-                  <span>{getObtainedByIcon(selectedItem.obtainedBy).icon}</span>
-                </div>
-              )}
-            </div>
           </div>
 
           {/* Информационный блок */}
@@ -640,6 +618,19 @@ export const ToadGalleryModal: React.FC<ToadGalleryModalProps> = ({
                   {selectedItem.isUnlocked ? "✓ В коллекции" : "✗ Не найдена"}
                 </div>
               </div>
+            </div>
+
+            <div>
+              {/* Способ получения */}
+              {selectedItem.obtainedBy && (
+                <div className="flex  gap-2 mb-4 text-sm">
+                  <span className={detailStyles.text}>
+                    Способ получения:{" "}
+                    {getObtainedByIcon(selectedItem.obtainedBy).label}
+                  </span>
+                  <span>{getObtainedByIcon(selectedItem.obtainedBy).icon}</span>
+                </div>
+              )}
             </div>
           </div>
 
