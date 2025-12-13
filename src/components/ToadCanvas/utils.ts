@@ -1,7 +1,7 @@
-import { Assets, Texture } from "pixi.js";
-import { ToadTypes } from "../../models/toad";
+import { Assets, Texture, TextureSource } from "pixi.js";
+import { ToadTypes } from "../../models/Toad/toad-species";
 
-export function makeColorWhiter(hexColor, percent) {
+export function makeColorWhiter(hexColor: string, percent: number) {
   // Убедимся, что процент от 0 до 100
   percent = Math.min(100, Math.max(0, percent)) / 100;
 
@@ -58,143 +58,36 @@ export const createTextures = (spritesheet: any) => {
 // Предзагружаем текстуры и создаем текстуры для анимации один раз
 export const preloadTextures = async () => {
   try {
-    const [
-      toadSpriteSheet_Phoenix,
-      toadSpriteSheet_Cosmos,
-      toadSpriteSheet_Topaz,
-
-      toadSpriteSheetZebra,
-      toadSpriteSheetTurtle,
-      toadSpriteSheetFire,
-      toadSpriteSheetLeopard,
-      toadSpriteSheet,
-      toadDragonSpriteSheet,
-      toadTigerSpriteSheet,
-      toadMutantSpriteSheet,
-      toadSpottedSpriteSheet,
-      toadSpriteSheet1,
-      toadSpriteSheet2,
-      toadSpriteSheet3,
-      toadSpriteSheetCrystall2,
-      toadSpriteSheet4,
-      toadSpriteSheet5,
-      toadpoleSpriteSheet,
-      foodTexture,
-    ] = await Promise.all([
-      Assets.load("/sprites/phoenix.png"),
-      Assets.load("/sprites/cosmos.png"),
-      Assets.load("/sprites/topaz.png"),
-      Assets.load("/sprites/zebra.png"),
-      Assets.load("/sprites/turtle.png"),
-      Assets.load("/sprites/fire.png"),
-      Assets.load("/sprites/leopard.png"),
-      Assets.load("/sprites/hybrid.png"), //
-      Assets.load("/sprites/dragon.png"),
-      Assets.load("/sprites/tiger.png"),
-      Assets.load("/sprites/mutant.png"),
-      Assets.load("/sprites/camouflage.png"),
-      Assets.load("/sprites/forest.png"),
-      Assets.load("/sprites/money.png"),
-      Assets.load("/sprites/crystall.png"),
-      Assets.load("/sprites/crystall_pink.png"),
-      Assets.load("/sprites/stone.png"),
-      Assets.load("/sprites/chaos.png"),
+    const [toadpoleSpriteSheet, foodTexture] = await Promise.all([
       Assets.load("/sprites/toadpole.png"),
       Assets.load("/assets/apple.svg"),
     ]);
-
-    const [
-      toadTextures_Phoenix,
-      toadTextures_Cosmos,
-      toadTextures_Topaz,
-      toadTexturesZebra,
-      toadTexturesTurtle,
-      toadTexturesFire,
-      toadTexturesLeopard,
-      toadTextures,
-      toadTexturesDragon,
-      toadTexturesTiger,
-      toadTexturesCamouflage,
-      toadTexturesMutant,
-      toadTexturesForest,
-      toadTexturesMoney,
-      toadTexturesCrystall,
-      toadTexturesCrystallPink,
-      toadTexturesStone,
-      toadTexturesChaos,
+    const toadpoleTextures = createTextures(toadpoleSpriteSheet.source);
+    const res: Record<string, Texture<TextureSource<any>>[]> = {
       toadpoleTextures,
-    ] = [
-      createTextures(toadSpriteSheet_Phoenix.source),
-      createTextures(toadSpriteSheet_Cosmos.source),
-      createTextures(toadSpriteSheet_Topaz.source),
-      createTextures(toadSpriteSheetZebra.source),
-      createTextures(toadSpriteSheetTurtle.source),
-      createTextures(toadSpriteSheetFire.source),
-      createTextures(toadSpriteSheetLeopard.source),
-      createTextures(toadSpriteSheet.source),
-      createTextures(toadDragonSpriteSheet.source),
-      createTextures(toadTigerSpriteSheet.source),
-      createTextures(toadSpottedSpriteSheet.source),
-      createTextures(toadMutantSpriteSheet.source),
-      createTextures(toadSpriteSheet1.source),
-      createTextures(toadSpriteSheet2.source),
-      createTextures(toadSpriteSheet3.source),
-      createTextures(toadSpriteSheetCrystall2.source),
-      createTextures(toadSpriteSheet4.source),
-      createTextures(toadSpriteSheet5.source),
-      createTextures(toadpoleSpriteSheet.source),
-    ];
-
-    return {
-      toadTextures_Phoenix,
-      toadTextures_Cosmos,
-      toadTextures_Topaz,
-      toadTexturesZebra,
-      toadTexturesTurtle,
-      toadTexturesFire,
-      toadTexturesLeopard,
-      toadTexturesDragon,
-      toadTexturesMoney,
-      toadTexturesCrystall,
-      toadTexturesCrystallPink,
-      toadTexturesStone,
-      toadTexturesChaos,
-      toadTexturesForest,
       foodTexture,
-      toadTextures, // Готовый массив текстур для жабы
-      toadpoleTextures, // Готовый массив текстур для головастика
-      toadTexturesCamouflage,
-      toadTexturesMutant,
-      toadTexturesTiger,
     };
+
+    const typeArray = Object.values(ToadTypes);
+
+    const promises = typeArray.map((type) =>
+      Assets.load(`/sprites/${type}.png`)
+    );
+
+    const allSpriteshits = await Promise.all(promises);
+
+    allSpriteshits.forEach((s, index) => {
+      res[typeArray[index]] = createTextures(s.source);
+    });
+
+    return res;
   } catch (error) {
     return {};
   }
 };
 
 export const getTextureByType = (texturesRef: any, type: ToadTypes | null) => {
-  const map = {
-    [ToadTypes.hybrid]: texturesRef.current.toadTextures,
-    [ToadTypes.camouflage]: texturesRef.current.toadTexturesCamouflage,
-    [ToadTypes.tiger]: texturesRef.current.toadTexturesTiger,
-    [ToadTypes.mutant]: texturesRef.current.toadTexturesMutant,
-    [ToadTypes.money]: texturesRef.current.toadTexturesMoney,
-    [ToadTypes.stone]: texturesRef.current.toadTexturesStone,
-    [ToadTypes.crystall]: texturesRef.current.toadTexturesCrystall,
-    [ToadTypes.crystallPink]: texturesRef.current.toadTexturesCrystallPink,
-    [ToadTypes.forest]: texturesRef.current.toadTexturesForest,
-    [ToadTypes.chaos]: texturesRef.current.toadTexturesChaos,
-    [ToadTypes.dragon]: texturesRef.current.toadTexturesDragon,
-    [ToadTypes.leopard]: texturesRef.current.toadTexturesLeopard,
-    [ToadTypes.fire]: texturesRef.current.toadTexturesFire,
-    [ToadTypes.zebra]: texturesRef.current.toadTexturesZebra,
-    [ToadTypes.turtle]: texturesRef.current.toadTexturesTurtle,
-    [ToadTypes.cosmos]: texturesRef.current.toadTextures_Cosmos,
-    [ToadTypes.topaz]: texturesRef.current.toadTextures_Topaz,
-    [ToadTypes.phoenix]: texturesRef.current.toadTextures_Phoenix,
-  };
-
   return type
-    ? map[type] || texturesRef.current.toadTextures
-    : texturesRef.current.toadTextures;
+    ? texturesRef.current[type] || texturesRef.current.hybrid
+    : texturesRef.current.hybrid;
 };

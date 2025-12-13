@@ -1,4 +1,5 @@
 import { varyColor } from "../utils/randomize-toad-characteristics";
+import { toadTypeMap, ToadTypes } from "./Toad/toad-species";
 
 export interface Toad {
   id: number;
@@ -34,48 +35,6 @@ export interface Toad {
     personality: null | string;
   };
 }
-
-export enum ToadTypes {
-  camouflage = "camouflage",
-  hybrid = "hybrid",
-  tiger = "tiger",
-  mutant = "mutant",
-  money = "money",
-  stone = "stone",
-  chaos = "chaos",
-  crystall = "crystall",
-  crystallPink = "crystall_pink",
-  forest = "forest",
-  dragon = "dragon",
-  leopard = "leopard",
-  fire = "fire",
-  zebra = "zebra",
-  turtle = "turtle",
-  cosmos = "cosmos",
-  topaz = "topaz",
-  phoenix = "phoenix",
-}
-
-export const toadTypeMap: Record<ToadTypes, string> = {
-  [ToadTypes.camouflage]: "Пятнистая",
-  [ToadTypes.hybrid]: "Смешанный",
-  [ToadTypes.tiger]: "Тигровая",
-  [ToadTypes.mutant]: "Мутант",
-  [ToadTypes.money]: "Денежная",
-  [ToadTypes.stone]: "Каменная",
-  [ToadTypes.chaos]: "Хаос",
-  [ToadTypes.crystall]: "Кристальная",
-  [ToadTypes.crystallPink]: "Розовая кристальная",
-  [ToadTypes.forest]: "Лесная",
-  [ToadTypes.dragon]: "Дракон",
-  [ToadTypes.leopard]: "Леопардовая",
-  [ToadTypes.fire]: "Огненная",
-  [ToadTypes.zebra]: "Зебровая",
-  [ToadTypes.turtle]: "Черепаховая",
-  [ToadTypes.cosmos]: "Космическая",
-  [ToadTypes.topaz]: "Топаз",
-  [ToadTypes.phoenix]: "Феникс",
-};
 
 export const getToadTypeLabel = (type: ToadTypes | null) => {
   return toadTypeMap[type || ToadTypes.hybrid] || toadTypeMap[ToadTypes.hybrid];
@@ -682,11 +641,11 @@ export const getPersonalityDescription = (
 };
 
 export const RARITY_GROUPS_TRESHOLD = {
-  common: 0, // Обычные - базовые жабы, часто встречаются
-  uncommon: 3, // Необычные - улучшенные характеристики
-  rare: 10, // Редкие - уникальные цвета/узоры
-  epic: 30, // Эпические - особые способности
-  legendary: 50, // Легендарные - уникальные экземпляры
+  common: 0,
+  uncommon: 3,
+  rare: 10,
+  epic: 30,
+  legendary: 50,
 };
 
 export const RARITY_CONFIG = {
@@ -762,10 +721,10 @@ export const getRarityConfig = (rarity: number) => {
 };
 
 export const calculateSellPrice = (toad: Toad): number => {
-  let basePrice = toad.genes.rarity * 1.5 + 3;
+  let basePrice = Math.max(toad.genes.rarity, 10) / 3 + 3;
 
   if (toad.stage !== "adult") {
-    basePrice /= 1.5;
+    basePrice /= 3;
   }
 
   if (toad.sex === "neuter") {
@@ -788,7 +747,7 @@ export const calculateSellPrice = (toad: Toad): number => {
   basePrice += toad.state.hunger / 100;
   basePrice -= toad.genes.hungerRate;
 
-  return Math.max(0, Math.round(basePrice));
+  return Math.max(1, Math.round(basePrice));
 };
 
 // Функция для получения конфигурации генетической поломки
@@ -847,11 +806,11 @@ interface RarityWeight {
 
 // Веса для разных уровней редкости - теперь 10-20 самая распространенная
 const RARITY_WEIGHTS: RarityWeight[] = [
-  { minRarity: 1, maxRarity: 5, weight: 49.99, name: "Обычная" },
-  { minRarity: 6, maxRarity: 10, weight: 39.9, name: "Необычная" },
+  { minRarity: 1, maxRarity: 5, weight: 49.9, name: "Обычная" },
+  { minRarity: 6, maxRarity: 10, weight: 39, name: "Необычная" },
   { minRarity: 11, maxRarity: 20, weight: 10, name: "Редкая" },
-  { minRarity: 21, maxRarity: 35, weight: 0.1, name: "Эпическая" },
-  { minRarity: 36, maxRarity: 50, weight: 0.01, name: "Легендарная" },
+  { minRarity: 21, maxRarity: 35, weight: 1, name: "Эпическая" },
+  { minRarity: 36, maxRarity: 50, weight: 0.1, name: "Легендарная" },
 ];
 
 // База данных уникальных жаб с разной редкостью
@@ -1001,26 +960,26 @@ const UNIQUE_TOADS_BY_RARITY: { [key: number]: Partial<Toad>[] } = {
         pattern: "scales",
         weight: 25,
         speed: 0.7,
-        rarity: 28.5,
+        rarity: 18.5,
         hungerRate: 0.7,
         fertility: 1.8,
         personality: "dominant",
       },
     },
-    // {
-    //   name: "Лунный сильфид",
-    //   type: "moon",
-    //   genes: {
-    //     colors: ["#F5F5F5", "#D3D3D3"], // Белый дым и светло-серый
-    //     pattern: "moonlight",
-    //     weight: 12,
-    //     speed: 0.8,
-    //     rarity: 32.1,
-    //     hungerRate: 0.6,
-    //     fertility: 1.7,
-    //     personality: "graceful",
-    //   },
-    // },
+    {
+      name: "Монохром",
+      type: ToadTypes.zebra,
+      genes: {
+        colors: ["#F5F5F5", "#D3D3D3"], // Белый дым и светло-серый
+        pattern: "moonlight",
+        weight: 12,
+        speed: 0.8,
+        rarity: 22.1,
+        hungerRate: 0.6,
+        fertility: 1.7,
+        personality: "graceful",
+      },
+    },
     {
       name: "Игнис",
       type: ToadTypes.fire,
@@ -1029,7 +988,7 @@ const UNIQUE_TOADS_BY_RARITY: { [key: number]: Partial<Toad>[] } = {
         pattern: "vortex",
         weight: 14,
         speed: 0.9,
-        rarity: 25.8,
+        rarity: 20.8,
         hungerRate: 1.1,
         fertility: 1.6,
         personality: "berserk",
@@ -1046,7 +1005,7 @@ const UNIQUE_TOADS_BY_RARITY: { [key: number]: Partial<Toad>[] } = {
         pattern: "galaxy",
         weight: 30,
         speed: 0.75,
-        rarity: 42.7,
+        rarity: 22.7,
         hungerRate: 0.5,
         fertility: 2.2,
         personality: "imperial",
@@ -1060,7 +1019,7 @@ const UNIQUE_TOADS_BY_RARITY: { [key: number]: Partial<Toad>[] } = {
         pattern: "chaos",
         weight: 20,
         speed: 1.0,
-        rarity: 47.9,
+        rarity: 27.9,
         hungerRate: 1.3,
         fertility: 2.5,
         personality: "chaotic",
@@ -1074,7 +1033,7 @@ const UNIQUE_TOADS_BY_RARITY: { [key: number]: Partial<Toad>[] } = {
         pattern: ToadTypes.phoenix,
         weight: 22,
         speed: 0.85,
-        rarity: 45.2,
+        rarity: 25.2,
         hungerRate: 0.6,
         fertility: 2.8,
         personality: "lucky",

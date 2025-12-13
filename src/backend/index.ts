@@ -2,7 +2,10 @@ import { Scene } from "../models/scene";
 import { Toad } from "../models/toad";
 import { User } from "../models/user";
 import { getHunger } from "../utils/state-manager";
-import { checkGeneticAchievements } from "./achivements-manager";
+import {
+  addToadToCollection,
+  checkGeneticAchievements,
+} from "./achivements-manager";
 import { getGameState, updateGameState, webAppData } from "./localStorage";
 
 export const createScene = (sceneData: Partial<Scene>): Scene[] => {
@@ -37,6 +40,7 @@ export const createToad = (toadData: Partial<Toad>): Toad[] => {
   updateGameState({ toads: newToads });
 
   checkGeneticAchievements(newToad);
+  addToadToCollection(newToad.type);
 
   return [newToad];
 };
@@ -48,6 +52,7 @@ export const createToads = (
   const state = getGameState();
   const newToads: Toad[] = toadsData.map((toadData) => {
     checkGeneticAchievements(toadData);
+    addToadToCollection(toadData.type);
     return {
       id: Math.round(Math.random() * Date.now()),
       created_at: new Date().toISOString(),

@@ -1,4 +1,5 @@
-import { Toad, ToadTypes } from "../models/toad";
+import { Toad } from "../models/toad";
+import { ToadTypes } from "../models/Toad/toad-species";
 import { randomizeToadCharacteristics } from "../utils/randomize-toad-characteristics";
 
 // Интерфейс для состояния магазина

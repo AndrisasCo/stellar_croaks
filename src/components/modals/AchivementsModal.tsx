@@ -2,10 +2,10 @@ import React from "react";
 import Modal from "../shared/Modal";
 import { useSoundEffects } from "../../hooks/use-sound-effects";
 import {
-  achievementGroups,
   claimReward,
   getAchievementState,
 } from "../../backend/achivements-manager";
+import { achievementGroups } from "../../backend/achivements-manager/achivements-list";
 import { createToad, updateUser } from "../../backend";
 import { useNotifications } from "../../hooks/use-notification";
 import { getGameState } from "../../backend/localStorage";

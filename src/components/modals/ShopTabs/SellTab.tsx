@@ -1,15 +1,9 @@
 import { useState } from "react";
 import { updateUser, deleteToadsByIds } from "../../../backend";
 import { useSoundEffects } from "../../../hooks/use-sound-effects";
-import {
-  Toad,
-  getRarityConfig,
-  getPersonalityLabel,
-  calculateSellPrice,
-} from "../../../models/toad";
-import { CURRENCY_CONFIG, TYPE_ICONS } from "../../../utils/constants";
+import { calculateSellPrice } from "../../../models/toad";
+import { CURRENCY_CONFIG } from "../../../utils/constants";
 import { useToads } from "../../ToadContext";
-import { PregnancyIcon } from "../../../assets/icons";
 import {
   getShopState,
   saveShopState,

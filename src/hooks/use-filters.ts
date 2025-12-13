@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { SortByType, FilterByType } from "../components/shared/Filters";
-import { calculateSellPrice, Toad, ToadTypes } from "../models/toad";
+import { calculateSellPrice, Toad } from "../models/toad";
+import { ToadTypes } from "../models/Toad/toad-species";
 import { useToads } from "../components/ToadContext";
 
 export const useFilters = (toads: Toad[]) => {

@@ -152,6 +152,7 @@ export const ToadInfo = ({ onClose }: { onClose: () => void }) => {
           <h2 className="font-bold flex gap-2 text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-purple-500">
             <span className="text-lg">{toad.name}</span>
             <button
+              className="text-gray-400"
               onClick={() => {
                 setEditedName(toad.name);
                 setIsEditingName(true);

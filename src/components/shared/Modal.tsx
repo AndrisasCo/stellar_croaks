@@ -6,6 +6,7 @@ interface ToadListModalProps {
   isOpen: boolean;
   onClose: () => void;
   title?: string | ReactNode;
+  closeButton?: boolean;
 }
 
 const Modal: React.FC<ToadListModalProps> = ({
@@ -14,6 +15,7 @@ const Modal: React.FC<ToadListModalProps> = ({
   onClose,
   icon,
   title,
+  closeButton = true,
 }) => {
   const [modalIsOpen, setModalIsOpen] = useState(isOpen);
 
@@ -50,12 +52,14 @@ const Modal: React.FC<ToadListModalProps> = ({
                 </h2>
               </div>
             )}
-            <button
-              onClick={onClose}
-              className="text-gray-400 absolute right-2 top-[-8px] hover:text-green-400 text-2xl transition-colors duration-300 p-1 hover:scale-110"
-            >
-              ×
-            </button>
+            {closeButton && (
+              <button
+                onClick={onClose}
+                className="text-gray-400 absolute right-2 top-[-8px] hover:text-green-400 text-2xl transition-colors duration-300 p-1 hover:scale-110"
+              >
+                ×
+              </button>
+            )}
           </div>
 
           {children}

@@ -15,7 +15,8 @@ import { useToads } from "../ToadContext";
 import { GRADIENTS } from "../../models/scene";
 import { useGameState } from "../../hooks/use-game-state";
 import { TOAD_FRAMES_COUNT, ANIMATION_SPEED } from "./constants";
-import { Toad, ToadTypes } from "../../models/toad";
+import { Toad } from "../../models/toad";
+import { ToadTypes } from "../../models/Toad/toad-species";
 import { getTextureByType, makeColorWhiter, preloadTextures } from "./utils";
 
 export type ContainerChildCustom = ContainerChild & { userData?: any };
@@ -95,9 +96,9 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
     toadSprite.setSize(size * 2, size * 2 * aspectRatio);
     if (
       toad.stage === "adult" &&
-      (toad.type === ToadTypes.hybrid || toad.type === ToadTypes.camouflage)
+      [ToadTypes.hybrid, ToadTypes.camouflage].includes(toad.type)
     ) {
-      toadSprite.tint = makeColorWhiter(toad.genes.colors[0], 20);
+      toadSprite.tint = makeColorWhiter(toad.genes.colors[0], 10);
     }
   };
 

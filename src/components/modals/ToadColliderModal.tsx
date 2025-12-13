@@ -7,12 +7,8 @@ import {
   calculateRarityBonus,
 } from "../../utils/calculate-genetics";
 import { MIXING_DURATION, TYPE_ICONS } from "../../utils/constants";
-import {
-  getRarityConfig,
-  getRarityGroup,
-  Toad,
-  ToadTypes,
-} from "../../models/toad";
+import { getRarityConfig, getRarityGroup, Toad } from "../../models/toad";
+import { ToadTypes } from "../../models/Toad/toad-species";
 import { useSoundEffects } from "../../hooks/use-sound-effects";
 import { BreedingResult } from "../../models/types";
 import { ColliderIcons, PregnancyIcon } from "../../assets/icons";
@@ -110,7 +106,7 @@ export default function ToadCollider({
     // Мутация - шанс на повышенную редкость
     const mutationChance = Math.random() < 0.1;
     const genesBreakChance = Math.random() < 0.1;
-    const isMutant = Math.random() < 0.3;
+    const isMutant = Math.random() < 0.1;
 
     const child = generateChildToad(currentToads, true, {
       mutationChance,

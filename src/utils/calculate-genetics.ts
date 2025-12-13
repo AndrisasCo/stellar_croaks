@@ -1,4 +1,5 @@
-import { personalities, Toad, ToadTypes } from "../models/toad";
+import { personalities, Toad } from "../models/toad";
+import { ToadTypes } from "../models/Toad/toad-species";
 
 const getSum = (arr: number[]) => arr.reduce((a, b) => a + b, 0);
 

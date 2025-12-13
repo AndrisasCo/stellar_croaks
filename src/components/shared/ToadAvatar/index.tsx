@@ -1,10 +1,11 @@
-import { Toad, ToadTypes } from "../../../models/toad";
+import { Toad } from "../../../models/toad";
+import { ToadTypes } from "../../../models/Toad/toad-species";
 import { makeColorWhiter } from "../../ToadCanvas/utils";
 
 export const ToadAvatar = (props: {
   toad: Toad;
   size?: number;
-  onClick: any;
+  onClick?: () => void;
 }) => {
   const { toad, size = 10, onClick } = props;
   const type = Object.values(ToadTypes).includes(toad.type)
@@ -36,6 +37,7 @@ export const ToadAvatar = (props: {
       <div
         style={{
           width: size * 4,
+          height: size * 4,
           color: toad.genes?.colors[0],
           background: `url(${imageSrc}) ${
             isColoredToad ? "5% 50%" : "0% 0%"
