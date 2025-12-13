@@ -422,11 +422,7 @@ export const ToadGalleryModal: React.FC<ToadGalleryModalProps> = ({
                 relative rounded-xl p-2 flex flex-col items-center justify-between
                 border transition-all duration-300 group cursor-pointer
                  ${styles.bgLight} ${styles.border}
-                ${
-                  item.isUnlocked && item.rarity !== "common"
-                    ? styles.glow
-                    : "opacity-80"
-                }
+
                 ${
                   item.isUnlocked
                     ? "hover:scale-[1.02] active:scale-95"
