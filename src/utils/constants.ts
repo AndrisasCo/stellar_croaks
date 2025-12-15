@@ -2,12 +2,10 @@ export const TYPE_ICONS = {
   male: "♂",
   female: "♀",
   neuter: "○",
-  golden: "⭐",
 };
 
 export const MIXING_DURATION = 5000;
 
-// Типы валют
 export type CurrencyType = "tokens" | "astro_quax";
 
 export const CURRENCY_CONFIG = {
@@ -24,3 +22,6 @@ export const CURRENCY_CONFIG = {
     description: "Космическая валюта для элитных сделок",
   },
 };
+
+export const MAX_OWNED_SCENES = 10;
+export const MAX_STORED_TOADS = 1000;

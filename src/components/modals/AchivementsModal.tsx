@@ -9,7 +9,7 @@ import { achievementGroups } from "../../backend/achivements-manager/achivements
 import { createToad, updateUser } from "../../backend";
 import { useNotifications } from "../../hooks/use-notification";
 import { getGameState } from "../../backend/localStorage";
-import { CURRENCY_CONFIG } from "../../utils/constants";
+import { CURRENCY_CONFIG, MAX_STORED_TOADS } from "../../utils/constants";
 
 interface AchievementModalProps {
   isOpen: boolean;
@@ -113,6 +113,17 @@ const AchievementModal: React.FC<AchievementModalProps> = ({
 
     group.groupReward.reward.forEach((reward) => {
       if (reward.type === "toad") {
+        if (
+          getGameState().toads.filter((t) => t.scene_id === null).length + 1 >
+          MAX_STORED_TOADS
+        ) {
+          addNotification({
+            type: "danger",
+            content: `Все хранилища переполнены`,
+          });
+          return;
+        }
+
         createToad({
           ...reward.content,
           created_at: new Date().toISOString(),

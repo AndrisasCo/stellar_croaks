@@ -23,6 +23,7 @@ import {
   loadColliderState,
   saveColliderState,
 } from "../backend/collider-manager";
+import { MAX_STORED_TOADS } from "../utils/constants";
 
 interface ToadContextType {
   toads: Toad[];
@@ -148,6 +149,9 @@ export const ToadProvider: React.FC<ToadProviderProps> = ({ children }) => {
       (s) => s.id === currentSceneIdToCollect
     );
 
+    const allToadsAtStorage =
+      allToads.filter((t) => t.scene_id === null).length + 1;
+
     const allToadsOnScene =
       allToads.filter((t) => t.scene_id === currentSceneIdToCollect).length + 1;
 
@@ -155,6 +159,14 @@ export const ToadProvider: React.FC<ToadProviderProps> = ({ children }) => {
       !currentSceneToCollect ||
       currentSceneToCollect.capacity < allToadsOnScene
     ) {
+      if (allToadsAtStorage > MAX_STORED_TOADS) {
+        addNotification({
+          type: "danger",
+          content: `Все хранилища переполнены`,
+        });
+        return;
+      }
+
       addNotification({
         type: "warn",
         content: `Превышена вместимость вольера, гибрид ${slot.child.name} помещен на склад.`,

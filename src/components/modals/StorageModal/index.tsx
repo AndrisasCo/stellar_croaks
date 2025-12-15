@@ -1,19 +1,26 @@
 import React, { useState } from "react";
-import { Toad, generateLootboxToad } from "../../models/toad";
-import Modal from "../shared/Modal";
-import { useToads } from "../ToadContext";
-import { useSoundEffects } from "../../hooks/use-sound-effects";
-import { createToad, updateToadById, updateUser } from "../../backend";
-import { useNotifications } from "../../hooks/use-notification";
-import { ToadItem } from "../shared/ToadItem";
-import { useFilters } from "../../hooks/use-filters";
-import { Filters } from "../shared/Filters";
-import { randomizeToadCharacteristics } from "../../utils/randomize-toad-characteristics";
-import { getGameState } from "../../backend/localStorage";
+import { Toad, generateLootboxToad } from "../../../models/toad";
+import Modal from "../../shared/Modal";
+import { useToads } from "../../ToadContext";
+import { useSoundEffects } from "../../../hooks/use-sound-effects";
+import {
+  createToad,
+  updateToadById,
+  updateToadsByIds,
+  updateUser,
+} from "../../../backend";
+import { useNotifications } from "../../../hooks/use-notification";
+import { ToadItem } from "../../shared/ToadItem";
+import { useFilters } from "../../../hooks/use-filters";
+import { Filters } from "../../shared/Filters";
+import { randomizeToadCharacteristics } from "../../../utils/randomize-toad-characteristics";
+import { getGameState } from "../../../backend/localStorage";
 import {
   loadColliderState,
   saveColliderState,
-} from "../../backend/collider-manager";
+} from "../../../backend/collider-manager";
+import { MAX_STORED_TOADS } from "../../../utils/constants";
+import { usePagination } from "../../../hooks/use-pagination";
 
 interface StorageModalProps {
   isOpen: boolean;
@@ -40,6 +47,8 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
   const { addNotification } = useNotifications();
   const { allToads = [], account, currentScene, toads } = useToads();
   const { playClick } = useSoundEffects();
+  const [selectedToads, setSelectedToads] = useState<number[]>([]);
+
   // Жабы на складе (без сцены)
   const storedToads = allToads?.filter((toad) => toad.scene_id === null) || [];
 
@@ -52,6 +61,36 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
     filterBy,
     setFilterBy,
   } = useFilters(storedToads);
+
+  const {
+    visibleItems: visibleToads,
+    hasMore,
+    loadMoreRef,
+  } = usePagination<Toad>(filteredAndSortedToads, 5);
+
+  const handleSelectAllFiltered = () => {
+    const filteredToadIds = filteredAndSortedToads.map((toad) => toad.id);
+    const allSelected = filteredToadIds.every((id) =>
+      selectedToads.includes(id)
+    );
+
+    if (allSelected) {
+      setSelectedToads(
+        selectedToads.filter((id) => !filteredToadIds.includes(id))
+      );
+    } else {
+      const newSelected = [...new Set([...selectedToads, ...filteredToadIds])];
+      setSelectedToads(newSelected);
+    }
+  };
+
+  const selectedFilteredToads = selectedToads.filter((id) =>
+    filteredAndSortedToads.some((toad) => toad.id === id)
+  );
+
+  const isAllFilteredSelected =
+    filteredAndSortedToads.length > 0 &&
+    filteredAndSortedToads.every((toad) => selectedToads.includes(toad.id));
 
   const handleOpenLootbox = () => {
     const account = getGameState().user;
@@ -111,7 +150,6 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
     });
   };
 
-  // Предметы на складе
   const storageItems: StorageItem[] = [
     {
       id: "1",
@@ -165,70 +203,6 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
       rarity: "uncommon",
       key: "worms",
     },
-    // {
-    //   id: "4",
-    //   name: "Лунные камни",
-    //   icon: "🌕",
-    //   quantity: 3,
-    //   description: "Для элитных жаб",
-    //   type: "material",
-    //   rarity: "epic",
-    // },
-    // {
-    //   id: "5",
-    //   name: "Золотые водоросли",
-    //   icon: "🌿",
-    //   quantity: 25,
-    //   description: "Улучшает здоровье",
-    //   type: "material",
-    //   rarity: "uncommon",
-    // },
-    // {
-    //   id: "6",
-    //   name: "Хрустальные икринки",
-    //   icon: "🔮",
-    //   quantity: 5,
-    //   description: "Редкий материал для скрещивания",
-    //   type: "material",
-    //   rarity: "rare",
-    // },
-    // {
-    //   id: "8",
-    //   name: "Усилитель генов",
-    //   icon: "🧬",
-    //   quantity: 1,
-    //   description: "Улучшает характеристики потомства",
-    //   type: "tool",
-    //   rarity: "epic",
-    // },
-
-    // {
-    //   id: "10",
-    //   name: "Радужные брызги",
-    //   icon: "🌈",
-    //   quantity: 7,
-    //   description: "Временно увеличивает редкость",
-    //   type: "tool",
-    //   rarity: "rare",
-    // },
-    // {
-    //   id: "11",
-    //   name: "Легендарная эссенция",
-    //   icon: "⭐",
-    //   quantity: 1,
-    //   description: "Шанс создать легендарную жабу",
-    //   type: "material",
-    //   rarity: "legendary",
-    // },
-    // {
-    //   id: "12",
-    //   name: "Защитный амулет",
-    //   icon: "🛡️",
-    //   quantity: 4,
-    //   description: "Защищает от болезней",
-    //   type: "tool",
-    //   rarity: "uncommon",
-    // },
   ].filter((t) => t.quantity);
 
   // Функция для получения цвета редкости предмета
@@ -263,6 +237,23 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
       return;
     }
     updateToadById(toad.id, { scene_id: currentScene.id });
+  };
+
+  const handleMoveToadsToScene = () => {
+    playClick();
+
+    if (currentScene.capacity >= toads.length + selectedFilteredToads.length) {
+      updateToadsByIds(selectedFilteredToads, { scene_id: currentScene.id });
+      setSelectedToads([]);
+      return;
+    }
+    const maxCapacity = currentScene.capacity - toads.length;
+    updateToadsByIds(selectedFilteredToads.slice(0, maxCapacity), {
+      scene_id: currentScene.id,
+    });
+    setSelectedToads([]);
+
+    addNotification({ type: "warn", content: "Данный вольер переполнен!" });
   };
 
   const icon = (
@@ -391,7 +382,7 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
           <div className="flex justify-between items-center mb-3">
             <h3 className="text-white px-2 font-semibold">Жабы на складе</h3>
             <div className="text-gray-400 text-sm">
-              {storedToads.length} из ∞
+              {storedToads.length} из {MAX_STORED_TOADS}
             </div>
           </div>
 
@@ -405,6 +396,28 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
             sortDirection={sortDirection}
           />
 
+          <div className="flex gap-2">
+            {selectedFilteredToads.length > 0 && (
+              <button
+                onClick={handleMoveToadsToScene}
+                className="px-3 py-1.5 bg-gradient-to-r from-yellow-600 to-amber-600 hover:from-yellow-500 hover:to-amber-500 text-white rounded-lg text-xs font-bold transition-all shadow-sm border border-yellow-500/30"
+              >
+                В вольер
+              </button>
+            )}
+            <button
+              onClick={handleSelectAllFiltered}
+              className={`w-8 h-8 flex items-center justify-center rounded-lg border transition-all ${
+                isAllFilteredSelected
+                  ? "bg-red-500/20 text-red-400 border-red-500/40"
+                  : "bg-green-500/10 text-green-400 border-green-500/30 hover:bg-green-500/20"
+              }`}
+              title={isAllFilteredSelected ? "Снять выделение" : "Выбрать все"}
+            >
+              {isAllFilteredSelected ? "✕" : "▼"}
+            </button>
+          </div>
+
           {filteredAndSortedToads.length === 0 ? (
             <div className="text-center py-8">
               <div className="text-gray-400 text-4xl mb-3">🐸</div>
@@ -414,9 +427,19 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
               </p>
             </div>
           ) : (
-            filteredAndSortedToads.map((toad) => {
+            visibleToads.map((toad) => {
               return (
                 <ToadItem
+                  isSelected={selectedToads.includes(toad.id)}
+                  onClick={() => {
+                    if (selectedToads.includes(toad.id)) {
+                      setSelectedToads(
+                        selectedToads.filter((id) => id !== toad.id)
+                      );
+                    } else {
+                      setSelectedToads([...selectedToads, toad.id]);
+                    }
+                  }}
                   key={toad.id}
                   button={
                     <button
@@ -431,34 +454,20 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
               );
             })
           )}
+          {/* Индикатор загрузки для бесконечного скролла */}
+          {hasMore && (
+            <div
+              ref={loadMoreRef}
+              className="flex justify-center py-4"
+              key="load-more"
+            >
+              <div className="animate-pulse text-gray-400 text-sm">
+                Загрузка жаб...
+              </div>
+            </div>
+          )}
         </div>
       )}
-
-      {/* Статистика в подвале
-      <div className="border-t border-gray-700/50 py-4 px-2 bg-gray-900/50 mt-5">
-        <div className="grid grid-cols-3 gap-4 text-center text-xs">
-          <div>
-            <div className="text-blue-400 font-bold">
-              {storageItems
-                .filter((item) => item.type === "food")
-                .reduce((sum, item) => sum + item.quantity, 0)}
-            </div>
-            <div className="text-gray-400 text-[10px]">Корм</div>
-          </div>
-          <div>
-            <div className="text-yellow-400 font-bold">
-              {storageItems
-                .filter((item) => item.type === "material")
-                .reduce((sum, item) => sum + item.quantity, 0)}
-            </div>
-            <div className="text-gray-400 text-[10px]">Материалы</div>
-          </div>
-          <div>
-            <div className="text-green-400 font-bold">{storedToads.length}</div>
-            <div className="text-gray-400 text-[10px]">Жабы</div>
-          </div>
-        </div>
-      </div> */}
     </Modal>
   );
 };

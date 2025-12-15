@@ -1,19 +1,19 @@
 import React from "react";
 import { useSoundEffects } from "../../../hooks/use-sound-effects";
-import { CURRENCY_CONFIG } from "../../../utils/constants";
+import { CURRENCY_CONFIG, MAX_OWNED_SCENES } from "../../../utils/constants";
 import { useToads } from "../../ToadContext";
 import { getGameState, updateGameState } from "../../../backend/localStorage";
 import { DEFAULT_SCENE } from "../../../models/scene";
 import { completeAchivement } from "../../../backend/achivements-manager";
 
 const EnclosureTab: React.FC = () => {
-  const { allToads: activeToads, account, ownedScenes } = useToads();
+  const { account, ownedScenes } = useToads();
   const { playBuy } = useSoundEffects();
   const { tokens = 0 } = account || {};
   const scenePrice = ownedScenes.length * 100;
 
   const handleBuyEnclosure = () => {
-    if (tokens - scenePrice < 0) {
+    if (tokens - scenePrice < 0 || ownedScenes.length >= MAX_OWNED_SCENES) {
       return;
     }
     playBuy();
@@ -45,17 +45,23 @@ const EnclosureTab: React.FC = () => {
             {scenePrice} {CURRENCY_CONFIG.tokens.icon}
           </div>
         </div>
-        <button
-          onClick={handleBuyEnclosure}
-          disabled={tokens < scenePrice}
-          className={`w-full py-2 rounded-lg text-sm font-medium transition-colors ${
-            tokens >= scenePrice
-              ? "bg-blue-600 hover:bg-blue-500 text-white"
-              : "bg-gray-600 text-gray-400 cursor-not-allowed"
-          }`}
-        >
-          {tokens >= scenePrice ? "Купить вольер" : "Недостаточно средств"}
-        </button>
+        {ownedScenes.length >= MAX_OWNED_SCENES ? (
+          <span>Достигнуто максимальное количество вольеров</span>
+        ) : (
+          <button
+            onClick={handleBuyEnclosure}
+            disabled={
+              tokens < scenePrice || ownedScenes.length >= MAX_OWNED_SCENES
+            }
+            className={`w-full py-2 rounded-lg text-sm font-medium transition-colors ${
+              tokens >= scenePrice
+                ? "bg-blue-600 hover:bg-blue-500 text-white"
+                : "bg-gray-600 text-gray-400 cursor-not-allowed"
+            }`}
+          >
+            {tokens >= scenePrice ? "Купить вольер" : "Недостаточно средств"}
+          </button>
+        )}
       </div>
     </div>
   );

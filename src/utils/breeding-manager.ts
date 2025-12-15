@@ -6,6 +6,7 @@ import { getGameState } from "../backend/localStorage";
 import { getHunger } from "./state-manager";
 import { completeAchivement } from "../backend/achivements-manager";
 import { getBoostByScene } from "../models/scene";
+import { MAX_STORED_TOADS } from "./constants";
 
 export class TimeManager {
   lastPlayTime: string | number;
@@ -252,6 +253,9 @@ export const endPregnancy = async (toad: Toad, addNotification: any) => {
     throw Error("Scene for toads birth not found!");
   }
 
+  const allToadsAtStorage = getGameState().toads.filter(
+    (t) => !t.scene_id
+  ).length;
   const allToadsOnScene =
     getGameState().toads.filter((t) => t.scene_id === currentSceneId).length +
     children.length;
@@ -260,6 +264,18 @@ export const endPregnancy = async (toad: Toad, addNotification: any) => {
     children.slice(0, allToadsOnScene - currentScene.capacity).forEach((c) => {
       c.scene_id = null;
     });
+
+    if (
+      allToadsAtStorage + children.filter((c) => c.scene_id === null).length >
+      MAX_STORED_TOADS
+    ) {
+      addNotification({
+        type: "danger",
+        content: `${toad.name} не смогла родить, все хранилища переполнены`,
+      });
+      return;
+    }
+
     addNotification({
       type: "warn",
       content: `${toad.name} родила головастиков, но они не поместились в вольер! Часть была перемещена на склад.`,

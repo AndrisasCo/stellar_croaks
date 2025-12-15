@@ -14,13 +14,16 @@ import {
   initialItemsAmount,
 } from "../../../backend/shop-state";
 import { useNotifications } from "../../../hooks/use-notification";
+import { usePagination } from "../../../hooks/use-pagination";
 
 import { useSoundEffects } from "../../../hooks/use-sound-effects";
 import { calculateSellPrice, Toad } from "../../../models/toad";
-import { CURRENCY_CONFIG } from "../../../utils/constants";
+import { CURRENCY_CONFIG, MAX_STORED_TOADS } from "../../../utils/constants";
 import { useToads } from "../../ToadContext";
 import { ToadItem } from "../../shared/ToadItem";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
+
+const FOOD_PRICE = 10;
 
 const refreshShop = (): ShopState => {
   const allToads = getGameState().toads;
@@ -53,8 +56,11 @@ const BuyTab: React.FC = () => {
   const { addNotification } = useNotifications();
   const [shopState, setShopState] = useState<ShopState>(getShopState());
   const [timeLeft, setTimeLeft] = useState<string>("");
-
-  const FOOD_PRICE = 10;
+  const {
+    visibleItems: visibleToads,
+    hasMore,
+    loadMoreRef,
+  } = usePagination<Toad>(shopState.availableToads, 5);
 
   // Таймер обратного отсчета
   useEffect(() => {
@@ -98,6 +104,16 @@ const BuyTab: React.FC = () => {
     let scene_id: number | null = currentScene?.id;
 
     if (currentScene.capacity < allToadsOnScene) {
+      if (
+        getGameState().toads.filter((t) => t.scene_id === null).length + 1 >
+        MAX_STORED_TOADS
+      ) {
+        addNotification({
+          type: "danger",
+          content: `Все хранилища переполнены`,
+        });
+        return;
+      }
       scene_id = null;
       addNotification({
         type: "warn",
@@ -500,6 +516,11 @@ const BuyTab: React.FC = () => {
       <div>
         <h3 className="text-white px-2 font-semibold mb-3 text-lg">
           Доступные жабы
+          {visibleToads.length > 0 && (
+            <span className="text-gray-400 text-sm ml-2">
+              ({visibleToads.length} из {shopState.availableToads.length})
+            </span>
+          )}
         </h3>
 
         {allToadsPurchased ? (
@@ -512,11 +533,11 @@ const BuyTab: React.FC = () => {
           </div>
         ) : (
           <div className="space-y-3">
-            {shopState.availableToads.map((toad, index) => {
+            {visibleToads.map((toad, index) => {
               return (
                 <ToadItem
                   toad={toad as Toad}
-                  key={index}
+                  key={`${toad.id}-${index}`}
                   button={
                     <button
                       onClick={() => handleBuyToad(toad as Toad)}
@@ -533,6 +554,19 @@ const BuyTab: React.FC = () => {
                 />
               );
             })}
+
+            {/* Индикатор загрузки для бесконечного скролла */}
+            {hasMore && (
+              <div
+                ref={loadMoreRef}
+                className="flex justify-center py-4"
+                key="load-more"
+              >
+                <div className="animate-pulse text-gray-400 text-sm">
+                  Загрузка жаб...
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

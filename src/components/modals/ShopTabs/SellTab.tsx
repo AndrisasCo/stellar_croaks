@@ -16,9 +16,10 @@ import {
 } from "../../../backend/achivements-manager";
 import { useFilters } from "../../../hooks/use-filters";
 import { Filters } from "../../shared/Filters";
+import { usePagination } from "../../../hooks/use-pagination";
 
 const SellTab: React.FC = () => {
-  const { allToads: activeToads, account, currentScene } = useToads();
+  const { allToads: activeToads, account } = useToads();
   const { playCell } = useSoundEffects();
   const [selectedToads, setSelectedToads] = useState<number[]>([]);
 
@@ -37,6 +38,12 @@ const SellTab: React.FC = () => {
   const selectedFilteredToads = selectedToads.filter((id) =>
     filteredToads.some((toad) => toad.id === id)
   );
+
+  const {
+    visibleItems: visibleToads,
+    hasMore,
+    loadMoreRef,
+  } = usePagination<Toad>(filteredToads, 5);
 
   const totalSellPrice = selectedFilteredToads.reduce((total, toadId) => {
     const toad = activeToads.find((t) => t.id === toadId);
@@ -178,7 +185,7 @@ const SellTab: React.FC = () => {
         </div>
       ) : (
         <div className="space-y-2">
-          {filteredToads.map((toad) => {
+          {visibleToads.map((toad) => {
             const price = calculateSellPrice(toad);
             const isSelected = selectedToads.includes(toad.id);
             return (
@@ -209,6 +216,18 @@ const SellTab: React.FC = () => {
               />
             );
           })}
+
+          {hasMore && (
+            <div
+              ref={loadMoreRef}
+              className="flex justify-center py-4"
+              key="load-more"
+            >
+              <div className="animate-pulse text-gray-400 text-sm">
+                Загрузка жаб...
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
