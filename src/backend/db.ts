@@ -4,7 +4,6 @@ import { getGameState, updateGameState } from "./localStorage";
 import {
   getAchievementState,
   saveAchievementState,
-  updateAchivementsState,
 } from "./achivements-manager";
 import { loadColliderState, saveColliderState } from "./collider-manager";
 

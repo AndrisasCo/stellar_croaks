@@ -165,16 +165,16 @@ export const checkGeneticAchievements = (toad: Toad) => {
       }
     }
 
-    if (conditions.geneticFault && toad.state.genetic_fault !== undefined) {
+    if (conditions.genetic_fault && toad.state.genetic_fault !== undefined) {
       if (
-        conditions.geneticFault.min !== undefined &&
-        toad.state.genetic_fault < conditions.geneticFault.min
+        conditions.genetic_fault.min !== undefined &&
+        toad.state.genetic_fault < conditions.genetic_fault.min
       ) {
         matches = false;
       }
       if (
-        conditions.geneticFault.max !== undefined &&
-        toad.state.genetic_fault > conditions.geneticFault.max
+        conditions.genetic_fault.max !== undefined &&
+        toad.state.genetic_fault > conditions.genetic_fault.max
       ) {
         matches = false;
       }

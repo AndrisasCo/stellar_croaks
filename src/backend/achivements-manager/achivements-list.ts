@@ -248,7 +248,7 @@ export const achievementGroups = [
         name: "Хаос в ДНК",
         description: "Вывести жабу с поломками ДНК 80+",
         completed: false,
-        task: { geneticFault: { min: 80 } },
+        task: { genetic_fault: { min: 80 } },
       },
       {
         id: "perfect-genome",
@@ -256,7 +256,7 @@ export const achievementGroups = [
         name: "Совершенный геном",
         description: "Вывести жабу с генетикой 0 и поколением 10",
         completed: false,
-        task: { geneticFault: { max: 10 }, generation: { min: 0 } },
+        task: { genetic_fault: { max: 10 }, generation: { min: 0 } },
       },
     ],
     groupReward: {
