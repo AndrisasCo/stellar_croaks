@@ -79,7 +79,7 @@ export const randomizeToadCharacteristics = (
           colors: ["#5D8C59", "#6B8C42"],
           pattern: "smooth",
           weight: 15,
-          speed: 0.4,
+          speed: 1.0,
           rarity: 1.0,
           hungerRate: 1.0,
           fertility: 1.0,

@@ -21,7 +21,7 @@ const UNIQUE_TOADS_BY_RARITY: Record<LootboxRarity, Partial<Toad>[]> = {
         colors: ["#8FBC8F", "#556B2F"], // Темно-зеленый и светло-зеленый
         pattern: "smooth",
         weight: 18,
-        speed: 0.3,
+        speed: 0.8,
         rarity: 2.5,
         hungerRate: 1.2,
         fertility: 0.8,
@@ -35,7 +35,7 @@ const UNIQUE_TOADS_BY_RARITY: Record<LootboxRarity, Partial<Toad>[]> = {
         colors: ["#6B8E23", "#9ACD32"], // Оливковый и желто-зеленый
         pattern: "spots",
         weight: 16,
-        speed: 0.25,
+        speed: 0.95,
         rarity: 3.8,
         hungerRate: 1.0,
         fertility: 1.0,
@@ -52,7 +52,7 @@ const UNIQUE_TOADS_BY_RARITY: Record<LootboxRarity, Partial<Toad>[]> = {
         colors: ["#228B22", "#32CD32"], // Лесной зеленый и лаймовый
         pattern: "stripes",
         weight: 20,
-        speed: 0.4,
+        speed: 1.4,
         rarity: 5,
         hungerRate: 1.0,
         fertility: 1.2,
@@ -66,7 +66,7 @@ const UNIQUE_TOADS_BY_RARITY: Record<LootboxRarity, Partial<Toad>[]> = {
         colors: ["#DAA520", "#F0E68C"], // Золотистый и хаки
         pattern: "marbled",
         weight: 17,
-        speed: 0.5,
+        speed: 1,
         rarity: 5,
         hungerRate: 1.1,
         fertility: 1.1,
@@ -125,8 +125,8 @@ const UNIQUE_TOADS_BY_RARITY: Record<LootboxRarity, Partial<Toad>[]> = {
         colors: ["#9370DB", "#D8BFD8"], // Пурпурный и чертополох
         pattern: "crystal",
         weight: 21,
-        speed: 0.4,
-        rarity: 12.3,
+        speed: 0.74,
+        rarity: 5,
         hungerRate: 0.8,
         fertility: 1.5,
         personality: "wise",
@@ -139,8 +139,8 @@ const UNIQUE_TOADS_BY_RARITY: Record<LootboxRarity, Partial<Toad>[]> = {
         colors: ["#2E8B57", "#66CDAA"], // Морской зеленый и бирюзовый
         pattern: "swirls",
         weight: 15,
-        speed: 0.65,
-        rarity: 18.2,
+        speed: 1.15,
+        rarity: 5,
         hungerRate: 1.0,
         fertility: 1.4,
         personality: "explorer",
@@ -231,7 +231,7 @@ const UNIQUE_TOADS_BY_RARITY: Record<LootboxRarity, Partial<Toad>[]> = {
         weight: 22,
         speed: 0.85,
         rarity: 5,
-        hungerRate: 0.6,
+        hungerRate: 0.9,
         fertility: 2.8,
         personality: "lucky",
       },
