@@ -11,7 +11,11 @@ import { processBreeding, TimeManager } from "../utils/breeding-manager";
 import ShopMenu from "./modals/ShopMenuModal";
 import StorageModal from "./modals/StorageModal";
 import { processHunger } from "../utils/state-manager";
-import { syncGameState, updateGameStateDB } from "../backend/db";
+import {
+  syncGameState,
+  updateGameStateDB,
+  updateLeaderbord,
+} from "../backend/db";
 import LeaderboardModal from "./modals/LeaderboardModal";
 import TutorialModal from "./modals/TutorialModal";
 import { useTelegram } from "../hooks/use-tg";
@@ -110,6 +114,8 @@ export default function ToadGame() {
       if (offlineHours > 0.09) {
         processHunger(offlineHours);
       }
+
+      updateLeaderbord();
 
       // Костыль для первого рендера
       setTimeout(() => {

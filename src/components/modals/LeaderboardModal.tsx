@@ -1,31 +1,44 @@
 import React, { useState } from "react";
-import { getRarityConfig } from "../../models/toad";
+import { getRarityConfig, Toad } from "../../models/toad";
 import { CURRENCY_CONFIG } from "../../utils/constants";
 import Modal from "../shared/Modal";
 import { useSoundEffects } from "../../hooks/use-sound-effects";
 import {
   getAllLeaderboards,
   LeaderboardItemType,
+  ToadCollection,
   updateLeaderbord,
 } from "../../backend/db";
 import useSWR from "swr";
 import { useToads } from "../ToadContext";
 import { getGameState, updateGameState } from "../../backend/localStorage";
 import { ToadAvatar } from "../shared/ToadAvatar";
+import { ToadTypes } from "../../models/Toad/toad-species";
 
 interface LeaderboardModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-type LeaderboardTabType = "rarest_toad" | "tokens" | "total_toads";
+type LeaderboardTabType =
+  | "rarity" // Самая редкая жаба
+  | "weight_max" // Самая большая жаба (макс вес)
+  | "weight_min" // Самая маленькая жаба (мин вес)
+  | "fertility_max" // Самая плодовитая жаба (макс фертильность)
+  | "fertility_min" // Самая стерильная жаба (мин фертильность)
+  | "speed_max" // Самая быстрая жаба (макс скорость)
+  | "speed_min" // Самая медленная жаба (мин скорость)
+  | "hunger_max" // Самая прожорливая жаба (макс голод)
+  | "hunger_min" // Самая неголодная жаба (мин голод)
+  | "tokens" // Богатство (кваксы)
+  | "species"; // Разнообразие видов
 
 const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
   isOpen,
   onClose,
 }) => {
   const { account, allToads } = useToads();
-  const [activeTab, setActiveTab] = useState<LeaderboardTabType>("rarest_toad");
+  const [activeTab, setActiveTab] = useState<LeaderboardTabType>("rarity");
   const [editingUsername, setEditingUsername] = useState(false);
   const [newUsername, setNewUsername] = useState(account?.username || "");
   const { playClick } = useSoundEffects();
@@ -36,7 +49,7 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
 
   const { data: players, mutate } = useSWR(
     "leaderbord" + isOpen + account.username,
-    getAllLeaderboards,
+    () => getAllLeaderboards(),
     {
       dedupingInterval: 30000,
       keepPreviousData: true,
@@ -46,15 +59,38 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
               username: account.username,
               tg_id: account.tg_id,
               user_id: account.id,
-              rarest_toad: allToads.sort(
-                (a, b) => b.genes.rarity - a.genes.rarity
-              )[0],
-              biggest_toad: allToads.sort(
-                (a, b) => b.genes.weight - a.genes.weight
-              )[0],
               tokens: account.tokens,
-              astro_quax: account.astro_quax,
               total_toads: allToads.length,
+              total_species: new Set(allToads.map((t) => t.type)).size,
+              toads_collection: {
+                rarest_toad: allToads.sort(
+                  (a, b) => b.genes.rarity - a.genes.rarity
+                )[0],
+                weight_max_toad: allToads.sort(
+                  (a, b) => b.genes.weight - a.genes.weight
+                )[0],
+                weight_min_toad: allToads.sort(
+                  (a, b) => a.genes.weight - b.genes.weight
+                )[0],
+                fertility_max_toad: allToads.sort(
+                  (a, b) => b.genes.fertility - a.genes.fertility
+                )[0],
+                fertility_min_toad: allToads.sort(
+                  (a, b) => a.genes.fertility - b.genes.fertility
+                )[0],
+                speed_max_toad: allToads.sort(
+                  (a, b) => b.genes.speed - a.genes.speed
+                )[0],
+                speed_min_toad: allToads.sort(
+                  (a, b) => a.genes.speed - b.genes.speed
+                )[0],
+                hunger_max_toad: allToads.sort(
+                  (a, b) => b.genes.hungerRate - a.genes.hungerRate
+                )[0],
+                hunger_min_toad: allToads.sort(
+                  (a, b) => a.genes.hungerRate - b.genes.hungerRate
+                )[0],
+              },
             },
           ]
         : [],
@@ -75,7 +111,6 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
         });
         updateLeaderbord();
         setEditingUsername(false);
-        // Обновляем данные лидерборда
         mutate();
       } catch (error) {
         console.error("Error updating username:", error);
@@ -85,7 +120,6 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
     }
   };
 
-  // Функция для отмены редактирования
   const handleCancelEdit = () => {
     setNewUsername(account?.username || "");
     setEditingUsername(false);
@@ -93,27 +127,95 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
 
   // Функция для получения данных в зависимости от активной вкладки
   const getSortedPlayers = (): LeaderboardItemType[] => {
-    switch (activeTab) {
-      case "rarest_toad":
-        return [...players].sort(
-          (a, b) =>
-            (b.rarest_toad?.genes.rarity || 0) -
-            (a.rarest_toad?.genes.rarity || 0)
-        );
-      case "tokens":
-        return [...players].sort((a, b) => (b.tokens || 0) - (a.tokens || 0));
-      case "total_toads":
-        return [...players].sort(
-          (a, b) => (b.total_toads || 0) - (a.total_toads || 0)
-        );
-      default:
-        return players;
-    }
+    const playersWithData = players.filter((player) => {
+      switch (activeTab) {
+        case "rarity":
+          return player.toads_collection.rarest_toad;
+        case "weight_max":
+          return player.toads_collection.weight_max_toad;
+        case "weight_min":
+          return player.toads_collection.weight_min_toad;
+        case "fertility_max":
+          return player.toads_collection.fertility_max_toad;
+        case "fertility_min":
+          return player.toads_collection.fertility_min_toad;
+        case "speed_max":
+          return player.toads_collection.speed_max_toad;
+        case "speed_min":
+          return player.toads_collection.speed_min_toad;
+        case "hunger_max":
+          return player.toads_collection.hunger_max_toad;
+        case "hunger_min":
+          return player.toads_collection.hunger_min_toad;
+        case "tokens":
+          return player.tokens > 0;
+        case "species":
+          return player.total_species > 0;
+        default:
+          return true;
+      }
+    });
+
+    return [...playersWithData].sort((a, b) => {
+      switch (activeTab) {
+        case "rarity":
+          return (
+            (b.toads_collection.rarest_toad?.genes.rarity || 0) -
+            (a.toads_collection.rarest_toad?.genes.rarity || 0)
+          );
+        case "weight_max":
+          return (
+            (b.toads_collection.weight_max_toad?.genes.weight || 0) -
+            (a.toads_collection.weight_max_toad?.genes.weight || 0)
+          );
+        case "weight_min":
+          return (
+            (a.toads_collection.weight_min_toad?.genes.weight || Infinity) -
+            (b.toads_collection.weight_min_toad?.genes.weight || Infinity)
+          );
+        case "fertility_max":
+          return (
+            (b.toads_collection.fertility_max_toad?.genes.fertility || 0) -
+            (a.toads_collection.fertility_max_toad?.genes.fertility || 0)
+          );
+        case "fertility_min":
+          return (
+            (a.toads_collection.fertility_min_toad?.genes.fertility ||
+              Infinity) -
+            (b.toads_collection.fertility_min_toad?.genes.fertility || Infinity)
+          );
+        case "speed_max":
+          return (
+            (b.toads_collection.speed_max_toad?.genes.speed || 0) -
+            (a.toads_collection.speed_max_toad?.genes.speed || 0)
+          );
+        case "speed_min":
+          return (
+            (a.toads_collection.speed_min_toad?.genes.speed || Infinity) -
+            (b.toads_collection.speed_min_toad?.genes.speed || Infinity)
+          );
+        case "hunger_max":
+          return (
+            (b.toads_collection.hunger_max_toad?.genes.hungerRate || 0) -
+            (a.toads_collection.hunger_max_toad?.genes.hungerRate || 0)
+          );
+        case "hunger_min":
+          return (
+            (a.toads_collection.hunger_min_toad?.genes.hungerRate || Infinity) -
+            (b.toads_collection.hunger_min_toad?.genes.hungerRate || Infinity)
+          );
+        case "tokens":
+          return (b.tokens || 0) - (a.tokens || 0);
+        case "species":
+          return (b.total_species || 0) - (a.total_species || 0);
+        default:
+          return 0;
+      }
+    });
   };
 
   const sortedPlayers = getSortedPlayers();
 
-  // Проверка, является ли игрок текущим пользователем
   const isCurrentUser = (player: LeaderboardItemType): boolean => {
     return account?.tg_id === player.tg_id;
   };
@@ -121,12 +223,28 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
   // Функция для получения заголовка вкладки
   const getTabTitle = (): string => {
     switch (activeTab) {
-      case "rarest_toad":
+      case "rarity":
         return "Самые редкие жабы";
+      case "weight_max":
+        return "Самые большие жабы";
+      case "weight_min":
+        return "Самые маленькие жабы";
+      case "fertility_max":
+        return "Самые плодовитые жабы";
+      case "fertility_min":
+        return "Самые стерильные жабы";
+      case "speed_max":
+        return "Самые быстрые жабы";
+      case "speed_min":
+        return "Самые медленные жабы";
+      case "hunger_max":
+        return "Самые прожорливые жабы";
+      case "hunger_min":
+        return "Самые неголодные жабы";
       case "tokens":
         return "Богатейшие игроки";
-      case "total_toads":
-        return "Коллекционеры жаб";
+      case "species":
+        return "Разнообразие видов";
       default:
         return "Лидерборд";
     }
@@ -135,12 +253,28 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
   // Функция для получения описания вкладки
   const getTabDescription = (): string => {
     switch (activeTab) {
-      case "rarest_toad":
+      case "rarity":
         return "Игроки с самыми редкими жабами";
+      case "weight_max":
+        return "Игроки с самыми большими жабами";
+      case "weight_min":
+        return "Игроки с самыми маленькими жабами";
+      case "fertility_max":
+        return "Игроки с самыми плодовитыми жабами";
+      case "fertility_min":
+        return "Игроки с самыми скромными жабами";
+      case "speed_max":
+        return "Игроки с самыми быстрыми жабами";
+      case "speed_min":
+        return "Игроки с самыми медленными жабами";
+      case "hunger_max":
+        return "Игроки с самыми прожорливыми жабами";
+      case "hunger_min":
+        return "Игроки с самыми экономными жабами";
       case "tokens":
         return `Игроки с наибольшим количеством ${CURRENCY_CONFIG.tokens.icon}`;
-      case "total_toads":
-        return "Игроки с самой большой коллекцией жаб";
+      case "species":
+        return "Игроки с наибольшим разнообразием видов жаб";
       default:
         return "";
     }
@@ -157,6 +291,35 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
         return "🥉";
       default:
         return `#${rank + 1}`;
+    }
+  };
+
+  const getTabIcon = (tab: LeaderboardTabType): string => {
+    switch (tab) {
+      case "rarity":
+        return "⭐️";
+      case "weight_max":
+        return "🐘";
+      case "weight_min":
+        return "🐭";
+      case "fertility_max":
+        return "🐣";
+      case "fertility_min":
+        return "🚫";
+      case "speed_max":
+        return "⚡";
+      case "speed_min":
+        return "🐌";
+      case "hunger_max":
+        return "🍽️";
+      case "hunger_min":
+        return "🫠";
+      case "tokens":
+        return "💰";
+      case "species":
+        return "🌈";
+      default:
+        return "🏆";
     }
   };
 
@@ -180,17 +343,81 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
     return 1 + sortedPlayers.findIndex((p) => p.tg_id === account.tg_id);
   };
 
-  // Компонент для отображения информации о редкой жабе (оптимизированный для мобилок)
-  const RarestToadInfo = ({
+  // Компонент для отображения информации о жабе по параметру
+  const ParameterInfo = ({
     player,
     isUser,
+    parameter,
   }: {
-    player: LeaderboardItemType;
+    player: ToadCollection;
     isUser: boolean;
+    parameter: LeaderboardTabType;
   }) => {
-    if (!player.rarest_toad) return null;
+    let toad: Toad | undefined;
+    let value: number = 0;
+    let label: string = "";
+    let color: string = isUser ? "text-blue-300" : "text-white";
 
-    const rarityConfig = getRarityConfig(player.rarest_toad.genes.rarity);
+    console.log({ player });
+
+    switch (parameter) {
+      case "rarity":
+        toad = player.rarest_toad;
+        value = toad?.genes.rarity || 0;
+        label = "Редкость";
+        color = isUser ? "text-purple-300" : "text-purple-400";
+        break;
+      case "weight_max":
+        toad = player.weight_max_toad;
+        value = toad?.genes.weight || 0;
+        label = "Размер";
+        color = isUser ? "text-yellow-300" : "text-yellow-400";
+        break;
+      case "weight_min":
+        toad = player.weight_min_toad;
+        value = toad?.genes.weight || 0;
+        label = "Размер";
+        color = isUser ? "text-gray-300" : "text-gray-400";
+        break;
+      case "fertility_max":
+        toad = player.fertility_max_toad;
+        value = toad?.genes.fertility || 0;
+        label = "Фертильность";
+        color = isUser ? "text-pink-300" : "text-pink-400";
+        break;
+      case "fertility_min":
+        toad = player.fertility_min_toad;
+        value = toad?.genes.fertility || 0;
+        label = "Фертильность";
+        color = isUser ? "text-gray-300" : "text-gray-400";
+        break;
+      case "speed_max":
+        toad = player.speed_max_toad;
+        value = toad?.genes.speed || 0;
+        label = "Скорость";
+        color = isUser ? "text-blue-300" : "text-blue-400";
+        break;
+      case "speed_min":
+        toad = player.speed_min_toad;
+        value = toad?.genes.speed || 0;
+        label = "Скорость";
+        color = isUser ? "text-gray-300" : "text-gray-400";
+        break;
+      case "hunger_max":
+        toad = player.hunger_max_toad;
+        value = toad?.genes.hungerRate || 0;
+        label = "Аппетит";
+        color = isUser ? "text-red-300" : "text-red-400";
+        break;
+      case "hunger_min":
+        toad = player.hunger_min_toad;
+        value = toad?.genes.hungerRate || 0;
+        label = "Аппетит";
+        color = isUser ? "text-green-300" : "text-green-400";
+        break;
+    }
+
+    if (!toad) return null;
 
     return (
       <div className="space-y-2">
@@ -198,34 +425,51 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1 mb-1 flex-wrap">
               <span
-                className={`text-sm font-medium truncate max-w-[180px] ${
-                  isUser ? "text-blue-200" : "text-white"
-                }`}
+                className={`text-sm font-medium truncate max-w-[150px] ${color}`}
               >
-                {player.rarest_toad.name}
+                {toad.name}
               </span>
             </div>
 
-            {/* Компактные характеристики */}
-            <div className="flex items-center gap-3 text-sm text-gray-400">
+            <div className="flex items-center gap-3 text-sm">
               <div className="flex items-center gap-1">
-                <span className="text-purple-400">
-                  {getRarityConfig(player.rarest_toad.genes.rarity).icon}
-                </span>
-                <span>{player.rarest_toad.genes.rarity.toFixed(1)}</span>
+                <span className={`font-bold ${color}`}>{value.toFixed(1)}</span>
               </div>
 
-              <span
-                className={`text-xs px-1.5 py-0.5 rounded-full border ${
-                  rarityConfig?.color || "text-gray-400"
-                } ${rarityConfig?.borderColor || "border-gray-500"}`}
-              >
-                {rarityConfig?.label || "Обычная"}
-              </span>
+              <span className="text-gray-400 text-sm">{label}</span>
             </div>
           </div>
         </div>
       </div>
+    );
+  };
+
+  const TabButton = ({
+    tab,
+    label,
+  }: {
+    tab: LeaderboardTabType;
+    label: string;
+  }) => {
+    const isActive = activeTab === tab;
+    const tabIcon = getTabIcon(tab);
+
+    return (
+      <button
+        onClick={() => {
+          playClick();
+          setActiveTab(tab);
+        }}
+        className={`flex flex-col items-center py-2 text-xs font-medium transition-all ${
+          isActive
+            ? "text-white border-t-2 border-white"
+            : "text-gray-400 hover:text-gray-300"
+        }`}
+        style={{ minWidth: "70px" }}
+      >
+        <span className="text-base mb-1">{tabIcon}</span>
+        <span className="text-xs">{label}</span>
+      </button>
     );
   };
 
@@ -238,7 +482,6 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
             Рейтинг: {getRank()}
           </div>
 
-          {/* Поле редактирования никнейма */}
           <div className="flex items-center gap-1">
             {editingUsername ? (
               <div className="flex items-center gap-1">
@@ -308,63 +551,38 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
         </div>
       </div>
 
-      {/* Табы */}
-      <div className="flex border-b border-gray-700 bg-gray-800">
-        <button
-          onClick={() => {
-            playClick();
-            setActiveTab("rarest_toad");
-          }}
-          className={`flex-1 py-3 text-sm font-medium transition-colors  ${
-            activeTab === "rarest_toad"
-              ? "text-purple-400 border-b-2 border-purple-400"
-              : "text-gray-400 hover:text-gray-300"
-          }`}
-        >
-          Редкие
-        </button>
-        <button
-          onClick={() => {
-            playClick();
-            setActiveTab("tokens");
-          }}
-          className={`fflex-1 py-3 text-sm font-medium transition-colors ${
-            activeTab === "tokens"
-              ? "text-yellow-400 border-b-2 border-yellow-400"
-              : "text-gray-400 hover:text-gray-300"
-          }`}
-        >
-          Богатство
-        </button>
-        <button
-          onClick={() => {
-            playClick();
-            setActiveTab("total_toads");
-          }}
-          className={`flex-1 py-3 text-sm font-medium transition-colors  ${
-            activeTab === "total_toads"
-              ? "text-green-400 border-b-2 border-green-400"
-              : "text-gray-400 hover:text-gray-300"
-          }`}
-        >
-          Коллекции
-        </button>
+      {/* Горизонтальные табы с прокруткой */}
+      <div className="border-b border-gray-700 bg-gray-800 ">
+        <div className="flex overflow-auto gap-2">
+          <TabButton tab="tokens" label="Богатство" />
+          <TabButton tab="species" label="Виды" />
+          <TabButton tab="rarity" label="Редкие" />
+          <TabButton tab="weight_max" label="Большие" />
+          <TabButton tab="weight_min" label="Маленькие" />
+          <TabButton tab="fertility_max" label="Плодовитые" />
+          <TabButton tab="fertility_min" label="Стерильные" />
+          <TabButton tab="speed_max" label="Быстрые" />
+          <TabButton tab="speed_min" label="Медленные" />
+          <TabButton tab="hunger_max" label="Прожорливые" />
+          <TabButton tab="hunger_min" label="Экономные" />
+        </div>
       </div>
 
       {/* Контент */}
       <div className="px-1">
-        {/* Заголовок и описание вкладки */}
-        <div className="text-center my-4">
+        <div className="text-center my-3">
           <h3 className="text-white px-2 font-semibold text-sm mb-1">
             {getTabTitle()}
           </h3>
-          <p className="text-gray-400 text-sm">{getTabDescription()}</p>
+          <p className="text-gray-400 text-xs">{getTabDescription()}</p>
         </div>
 
         {/* Список лидеров */}
-        <div className="space-y-2">
+        <div className="space-y-2 ">
           {sortedPlayers.map((player, index) => {
             const isUser = isCurrentUser(player);
+
+            console.log(1, { player });
 
             return (
               <div
@@ -383,7 +601,6 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                   }
                 `}
               >
-                {/* Эффект свечения для текущего пользователя */}
                 {isUser && (
                   <>
                     <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-purple-500/10" />
@@ -392,11 +609,10 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                 )}
 
                 <div className="flex items-center justify-between relative z-10">
-                  {/* Место и имя игрока */}
                   <div className="flex items-center gap-2 flex-1 min-w-0">
                     <div
                       className={`
-                        text-md font-bold flex-shrink-0 mb-auto
+                        text-md font-bold flex-shrink-0
                         ${
                           isUser
                             ? "text-blue-400"
@@ -417,24 +633,36 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                       <div className="flex items-center gap-1 mb-1">
                         <p
                           className={`
-                            font-semibold text-sm truncate max-w-[180px]
+                            font-semibold text-sm truncate max-w-[150px]
                             ${isUser ? "text-blue-300" : "text-white"}
                           `}
                         >
                           {player.username}
                         </p>
                         {isUser && (
-                          <span className="bg-blue-500/20 text-blue-300 px-1.5 py-0.5 rounded-full text-sm font-medium">
+                          <span className="bg-blue-500/20 text-blue-300 px-1.5 py-0.5 rounded-full text-xs font-medium">
                             ВЫ
                           </span>
                         )}
                       </div>
 
                       {/* Информация в зависимости от вкладки */}
-                      {activeTab === "rarest_toad" && (
-                        <>
-                          <RarestToadInfo player={player} isUser={isUser} />
-                        </>
+                      {[
+                        "rarity",
+                        "weight_max",
+                        "weight_min",
+                        "fertility_max",
+                        "fertility_min",
+                        "speed_max",
+                        "speed_min",
+                        "hunger_max",
+                        "hunger_min",
+                      ].includes(activeTab) && (
+                        <ParameterInfo
+                          player={player.toads_collection}
+                          isUser={isUser}
+                          parameter={activeTab}
+                        />
                       )}
 
                       {activeTab === "tokens" && (
@@ -453,38 +681,62 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                           >
                             {CURRENCY_CONFIG.tokens.icon}
                           </span>
+                          <span className="text-gray-400 text-sm ml-2">
+                            {player.total_toads} жаб
+                          </span>
                         </div>
                       )}
 
-                      {activeTab === "total_toads" && (
+                      {activeTab === "species" && (
                         <div className="flex items-center gap-1">
+                          Открыто
                           <span
                             className={`text-sm font-bold ${
                               isUser ? "text-green-300" : "text-green-400"
                             }`}
                           >
-                            {player.total_toads}
+                            {player.total_species}
                           </span>
                           <span
                             className={`text-sm ${
                               isUser ? "text-green-200" : "text-gray-400"
                             }`}
                           >
-                            жаб
+                            / {Object.values(ToadTypes).length}
                           </span>
                         </div>
                       )}
                     </div>
                   </div>
 
-                  {/* Дополнительная информация - только для неактивных вкладок */}
                   <div
                     className={`text-right text-sm space-y-0.5 flex-shrink-0 ${
                       isUser ? "text-blue-200" : "text-gray-400"
                     }`}
                   >
-                    {activeTab === "rarest_toad" && (
-                      <ToadAvatar toad={player.rarest_toad} size={20} />
+                    {activeTab !== "tokens" && activeTab !== "species" && (
+                      <ToadAvatar
+                        toad={
+                          activeTab === "rarity"
+                            ? player.toads_collection.rarest_toad
+                            : activeTab === "weight_max"
+                            ? player.toads_collection.weight_max_toad
+                            : activeTab === "weight_min"
+                            ? player.toads_collection.weight_min_toad
+                            : activeTab === "fertility_max"
+                            ? player.toads_collection.fertility_max_toad
+                            : activeTab === "fertility_min"
+                            ? player.toads_collection.fertility_min_toad
+                            : activeTab === "speed_max"
+                            ? player.toads_collection.speed_max_toad
+                            : activeTab === "speed_min"
+                            ? player.toads_collection.speed_min_toad
+                            : activeTab === "hunger_max"
+                            ? player.toads_collection.hunger_max_toad
+                            : player.toads_collection.hunger_min_toad
+                        }
+                        size={20}
+                      />
                     )}
                   </div>
                 </div>

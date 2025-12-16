@@ -17,15 +17,26 @@ export const supabase = createClient<any>(
   REACT_APP_SUPABASE_ANON_KEY
 );
 
+export type ToadCollection = {
+  rarest_toad: Toad;
+  weight_max_toad: Toad;
+  weight_min_toad: Toad;
+  fertility_max_toad: Toad;
+  fertility_min_toad: Toad;
+  speed_max_toad: Toad;
+  speed_min_toad: Toad;
+  hunger_max_toad: Toad;
+  hunger_min_toad: Toad;
+};
+
 export type LeaderboardItemType = {
   tg_id: number;
-  user_id: string;
   username: string;
-  rarest_toad: Toad;
-  biggest_toad: Toad;
   tokens: number;
-  astro_quax: number;
   total_toads: number;
+  total_species: number;
+  user_id: string;
+  toads_collection: ToadCollection;
 };
 
 export const createLeaderbord = async () => {
@@ -38,15 +49,33 @@ export const createLeaderbord = async () => {
   if (ldData?.data) {
     return;
   }
+
   const leaderbordData = {
     username: user.username,
-    tg_id: user.tg_id,
-    user_id: user.id,
-    rarest_toad: toads.sort((a, b) => b.genes.rarity - a.genes.rarity)[0],
-    biggest_toad: toads.sort((a, b) => b.genes.weight - a.genes.weight)[0],
     tokens: user.tokens,
-    astro_quax: user.astro_quax,
     total_toads: toads.length,
+    user_id: user.id,
+    tg_id: user.tg_id,
+    total_species: new Set(toads.map((t) => t.type)).size,
+    toads_collection: {
+      rarest_toad: toads.sort((a, b) => b.genes.rarity - a.genes.rarity)[0],
+      weight_max_toad: toads.sort((a, b) => b.genes.weight - a.genes.weight)[0],
+      weight_min_toad: toads.sort((a, b) => a.genes.weight - b.genes.weight)[0],
+      fertility_max_toad: toads.sort(
+        (a, b) => b.genes.fertility - a.genes.fertility
+      )[0],
+      fertility_min_toad: toads.sort(
+        (a, b) => a.genes.fertility - b.genes.fertility
+      )[0],
+      speed_max_toad: toads.sort((a, b) => b.genes.speed - a.genes.speed)[0],
+      speed_min_toad: toads.sort((a, b) => a.genes.speed - b.genes.speed)[0],
+      hunger_max_toad: toads.sort(
+        (a, b) => b.genes.hungerRate - a.genes.hungerRate
+      )[0],
+      hunger_min_toad: toads.sort(
+        (a, b) => a.genes.hungerRate - b.genes.hungerRate
+      )[0],
+    },
   };
 
   const { data, error } = await supabase
@@ -72,11 +101,30 @@ export const updateLeaderbord = async () => {
 
   const leaderbordData = {
     username: user.username,
-    rarest_toad: toads.sort((a, b) => b.genes.rarity - a.genes.rarity)[0],
-    biggest_toad: toads.sort((a, b) => b.genes.weight - a.genes.weight)[0],
     tokens: user.tokens,
-    astro_quax: user.astro_quax,
     total_toads: toads.length,
+    user_id: user.id,
+    tg_id: user.tg_id,
+    total_species: new Set(toads.map((t) => t.type)).size,
+    toads_collection: {
+      rarest_toad: toads.sort((a, b) => b.genes.rarity - a.genes.rarity)[0],
+      weight_max_toad: toads.sort((a, b) => b.genes.weight - a.genes.weight)[0],
+      weight_min_toad: toads.sort((a, b) => a.genes.weight - b.genes.weight)[0],
+      fertility_max_toad: toads.sort(
+        (a, b) => b.genes.fertility - a.genes.fertility
+      )[0],
+      fertility_min_toad: toads.sort(
+        (a, b) => a.genes.fertility - b.genes.fertility
+      )[0],
+      speed_max_toad: toads.sort((a, b) => b.genes.speed - a.genes.speed)[0],
+      speed_min_toad: toads.sort((a, b) => a.genes.speed - b.genes.speed)[0],
+      hunger_max_toad: toads.sort(
+        (a, b) => b.genes.hungerRate - a.genes.hungerRate
+      )[0],
+      hunger_min_toad: toads.sort(
+        (a, b) => a.genes.hungerRate - b.genes.hungerRate
+      )[0],
+    },
   };
 
   await supabase
