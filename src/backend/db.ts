@@ -107,7 +107,7 @@ export const updateLeaderbord = async () => {
     total_toads: toads.length,
     user_id: user.id,
     tg_id: user.tg_id,
-    total_species: new Set(toads.map((t) => t.type)).size,
+    total_species: getAchievementState().toads_collection?.length || 0,
     toads_collection: {
       rarest_toad: toads.sort((a, b) => b.genes.rarity - a.genes.rarity)[0],
       weight_max_toad: toads.sort((a, b) => b.genes.weight - a.genes.weight)[0],
