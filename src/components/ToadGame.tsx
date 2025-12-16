@@ -263,10 +263,12 @@ export default function ToadGame() {
           onClose={() => toggleModal("isTutorialOpen", false)}
         />
 
-        <LeaderboardModal
-          isOpen={ui.isLeaderboardOpen}
-          onClose={() => toggleModal("isLeaderboardOpen", false)}
-        />
+        {ui.isLeaderboardOpen && (
+          <LeaderboardModal
+            isOpen={ui.isLeaderboardOpen}
+            onClose={() => toggleModal("isLeaderboardOpen", false)}
+          />
+        )}
 
         <AchivementsModal
           isOpen={ui.isAchievementsOpen}

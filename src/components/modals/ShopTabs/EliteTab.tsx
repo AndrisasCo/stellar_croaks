@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { deleteToadsByIds, updateUser } from "../../../backend";
 import { useSoundEffects } from "../../../hooks/use-sound-effects";
-import { Toad } from "../../../models/toad";
+import { Toad } from "../../../models/Toad";
 import { useToads } from "../../ToadContext";
 import { CURRENCY_CONFIG } from "../../../utils/constants";
 import { ToadGender } from "../../shared/ToadGender";

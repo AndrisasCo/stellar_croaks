@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Toad } from "../../models/toad";
+import { Toad } from "../../models/Toad";
 import { CURRENCY_CONFIG } from "../../utils/constants";
 import Modal from "../shared/Modal";
 import { useToads } from "../ToadContext";

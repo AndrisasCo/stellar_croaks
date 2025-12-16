@@ -17,7 +17,7 @@ import { useNotifications } from "../../../hooks/use-notification";
 import { usePagination } from "../../../hooks/use-pagination";
 
 import { useSoundEffects } from "../../../hooks/use-sound-effects";
-import { calculateSellPrice, Toad } from "../../../models/toad";
+import { calculateSellPrice, Toad } from "../../../models/Toad";
 import { CURRENCY_CONFIG, MAX_STORED_TOADS } from "../../../utils/constants";
 import { useToads } from "../../ToadContext";
 import { ToadItem } from "../../shared/ToadItem";

@@ -1,5 +1,5 @@
 import { Scene } from "../models/scene";
-import { Toad } from "../models/toad";
+import { Toad } from "../models/Toad";
 import { User } from "../models/user";
 import { getHunger } from "../utils/state-manager";
 import {

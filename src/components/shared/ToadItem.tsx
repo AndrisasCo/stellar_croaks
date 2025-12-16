@@ -3,7 +3,7 @@ import {
   getRarityConfig,
   getGeneticFaultConfig,
   Toad,
-} from "../../models/toad";
+} from "../../models/Toad";
 import { ToadGender } from "./ToadGender";
 import { PregnancyIcon } from "../../assets/icons";
 import { ToadAvatar } from "./ToadAvatar";

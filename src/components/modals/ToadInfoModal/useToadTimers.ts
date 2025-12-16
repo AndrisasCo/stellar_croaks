@@ -1,4 +1,4 @@
-import { HOURS_TO_GROW_UP } from "../../../models/toad";
+import { HOURS_TO_GROW_UP } from "../../../models/Toad";
 import { getBoostByScene } from "../../../models/scene";
 
 export const useToadTimers = (toad: any) => {

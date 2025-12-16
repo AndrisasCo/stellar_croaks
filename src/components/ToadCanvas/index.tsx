@@ -15,7 +15,7 @@ import { useToads } from "../ToadContext";
 import { GRADIENTS } from "../../models/scene";
 import { useGameState } from "../../hooks/use-game-state";
 import { TOAD_FRAMES_COUNT, ANIMATION_SPEED } from "./constants";
-import { Toad } from "../../models/toad";
+import { Toad } from "../../models/Toad";
 import { ToadTypes } from "../../models/Toad/toad-species";
 import { getTextureByType, makeColorWhiter, preloadTextures } from "./utils";
 

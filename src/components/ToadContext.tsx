@@ -5,7 +5,7 @@ import React, {
   ReactNode,
   useEffect,
 } from "react";
-import { Toad } from "../models/toad";
+import { Toad } from "../models/Toad";
 import { calculateBreedingTime } from "../utils/calculate-genetics";
 import { ColliderState } from "../models/types";
 import { Scene } from "../models/scene";

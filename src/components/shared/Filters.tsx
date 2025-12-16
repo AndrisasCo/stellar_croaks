@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { SortArrowIcon } from "./SortArrowIcon";
 import React from "react";
-import { Toad } from "../../models/toad";
+import { Toad } from "../../models/Toad";
 import { useToads } from "../ToadContext";
 
 export type SortDirection = "asc" | "desc";

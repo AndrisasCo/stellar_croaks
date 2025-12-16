@@ -4,7 +4,7 @@ import {
   Toad,
   getGeneticFaultConfig,
   getRarityConfig,
-} from "../../models/toad";
+} from "../../models/Toad";
 import Modal from "../shared/Modal";
 import { PregnancyIcon, ToadpoleIcon } from "../../assets/icons";
 import { updateToadById, updateToadsByIds } from "../../backend";

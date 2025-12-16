@@ -1,0 +1,332 @@
+import { Toad } from ".";
+import { varyColor } from "../../utils/randomize-toad-characteristics";
+import { ToadTypes } from "./toad-species";
+
+export enum LootboxRarity {
+  legendary = "legendary",
+  epic = "epic",
+  rare = "rare",
+  uncommon = "uncommon",
+  common = "common",
+}
+
+// База данных уникальных жаб с разной редкостью
+const UNIQUE_TOADS_BY_RARITY: Record<LootboxRarity, Partial<Toad>[]> = {
+  // Редкость 1-5 (Обычные)
+  [LootboxRarity.common]: [
+    {
+      name: "Лесной странник",
+      type: ToadTypes.camouflage,
+      genes: {
+        colors: ["#8FBC8F", "#556B2F"], // Темно-зеленый и светло-зеленый
+        pattern: "smooth",
+        weight: 18,
+        speed: 0.3,
+        rarity: 2.5,
+        hungerRate: 1.2,
+        fertility: 0.8,
+        personality: "calm",
+      },
+    },
+    {
+      name: "Болотный житель",
+      type: ToadTypes.hybrid,
+      genes: {
+        colors: ["#6B8E23", "#9ACD32"], // Оливковый и желто-зеленый
+        pattern: "spots",
+        weight: 16,
+        speed: 0.25,
+        rarity: 3.8,
+        hungerRate: 1.0,
+        fertility: 1.0,
+        personality: "lazy",
+      },
+    },
+  ],
+  // Редкость 6-10 (Необычные)
+  [LootboxRarity.uncommon]: [
+    {
+      name: "Изумрудный прыгун",
+      type: ToadTypes.camouflage,
+      genes: {
+        colors: ["#228B22", "#32CD32"], // Лесной зеленый и лаймовый
+        pattern: "stripes",
+        weight: 20,
+        speed: 0.4,
+        rarity: 5,
+        hungerRate: 1.0,
+        fertility: 1.2,
+        personality: "active",
+      },
+    },
+    {
+      name: "Золотистый охотник",
+      type: ToadTypes.tiger,
+      genes: {
+        colors: ["#DAA520", "#F0E68C"], // Золотистый и хаки
+        pattern: "marbled",
+        weight: 17,
+        speed: 0.5,
+        rarity: 5,
+        hungerRate: 1.1,
+        fertility: 1.1,
+        personality: "hunter",
+      },
+    },
+  ],
+  // Редкость 11-20 (Редкие) - САМАЯ РАСПРОСТРАНЕННАЯ
+  [LootboxRarity.rare]: [
+    {
+      name: "Саванна",
+      type: ToadTypes.leopard,
+      genes: {
+        colors: ["#4682B4", "#87CEEB"], // Стальной синий и небесно-голубой
+        pattern: "glowing",
+        weight: 15,
+        speed: 1.6,
+        rarity: 5,
+        hungerRate: 0.9,
+        fertility: 1.4,
+        personality: "mysterious",
+      },
+    },
+    {
+      name: "Сапфировый призрак",
+      type: ToadTypes.crystall,
+      genes: {
+        colors: ["#4682B4", "#87CEEB"], // Стальной синий и небесно-голубой
+        pattern: "glowing",
+        weight: 19,
+        speed: 0.6,
+        rarity: 5,
+        hungerRate: 0.9,
+        fertility: 1.4,
+        personality: "mysterious",
+      },
+    },
+    {
+      name: "Камнелап",
+      type: ToadTypes.stone,
+      genes: {
+        colors: ["#CD5C5C", "#F08080"], // Коралловый и светло-коралловый
+        pattern: "flames",
+        weight: 16,
+        speed: 0.7,
+        rarity: 5,
+        hungerRate: 1.2,
+        fertility: 1.3,
+        personality: "energetic",
+      },
+    },
+    {
+      name: "Аметистовый мудрец",
+      type: ToadTypes.crystallPink,
+      genes: {
+        colors: ["#9370DB", "#D8BFD8"], // Пурпурный и чертополох
+        pattern: "crystal",
+        weight: 21,
+        speed: 0.4,
+        rarity: 12.3,
+        hungerRate: 0.8,
+        fertility: 1.5,
+        personality: "wise",
+      },
+    },
+    {
+      name: "Леший",
+      type: ToadTypes.forest,
+      genes: {
+        colors: ["#2E8B57", "#66CDAA"], // Морской зеленый и бирюзовый
+        pattern: "swirls",
+        weight: 15,
+        speed: 0.65,
+        rarity: 18.2,
+        hungerRate: 1.0,
+        fertility: 1.4,
+        personality: "explorer",
+      },
+    },
+  ],
+  // Редкость 21-35 (Эпические) - ОЧЕНЬ РЕДКИЕ
+  [LootboxRarity.epic]: [
+    {
+      name: "Кваккон",
+      type: ToadTypes.dragon,
+      genes: {
+        colors: ["#B22222", "#DC143C"], // Кирпичный и малиновый
+        pattern: "scales",
+        weight: 25,
+        speed: 0.7,
+        rarity: 5,
+        hungerRate: 0.7,
+        fertility: 1.8,
+        personality: "dominant",
+      },
+    },
+    {
+      name: "Монохром",
+      type: ToadTypes.zebra,
+      genes: {
+        colors: ["#F5F5F5", "#D3D3D3"], // Белый дым и светло-серый
+        pattern: "moonlight",
+        weight: 12,
+        speed: 0.8,
+        rarity: 5,
+        hungerRate: 0.6,
+        fertility: 1.7,
+        personality: "graceful",
+      },
+    },
+    {
+      name: "Игнис",
+      type: ToadTypes.fire,
+      genes: {
+        colors: ["#20B2AA", "#48D1CC"], // Светло-морской и бирюзовый
+        pattern: "vortex",
+        weight: 14,
+        speed: 0.9,
+        rarity: 5,
+        hungerRate: 1.1,
+        fertility: 1.6,
+        personality: "berserk",
+      },
+    },
+  ],
+  // Редкость 36-50 (Легендарные) - СУПЕР РЕДКИЕ
+  [LootboxRarity.legendary]: [
+    {
+      name: "Галактрон",
+      type: ToadTypes.cosmos,
+      genes: {
+        colors: ["#4B0082", "#8A2BE2"], // Индиго и сине-фиолетовый
+        pattern: "galaxy",
+        weight: 30,
+        speed: 0.75,
+        rarity: 5,
+        hungerRate: 0.5,
+        fertility: 2.2,
+        personality: "imperial",
+      },
+    },
+    {
+      name: "Хаос-прыгун",
+      type: ToadTypes.chaos,
+      genes: {
+        colors: ["#2F4F4F", "#708090"], // Темный грифельно-серый и грифельно-серый
+        pattern: "chaos",
+        weight: 20,
+        speed: 1.0,
+        rarity: 5,
+        hungerRate: 1.3,
+        fertility: 2.5,
+        personality: "chaotic",
+      },
+    },
+    {
+      name: "Белгарион",
+      type: ToadTypes.phoenix,
+      genes: {
+        colors: ["#FF8C00", "#FFA500"], // Темно-оранжевый и оранжевый
+        pattern: ToadTypes.phoenix,
+        weight: 22,
+        speed: 0.85,
+        rarity: 5,
+        hungerRate: 0.6,
+        fertility: 2.8,
+        personality: "lucky",
+      },
+    },
+  ],
+};
+
+let pityCounter = 0;
+const getToadRarity = () => {
+  pityCounter++;
+  console.log({ pityCounter });
+
+  const percent = Math.random() * 100; // [0, 100)
+
+  if (pityCounter >= 50) {
+    pityCounter = 0;
+    return LootboxRarity.epic;
+  }
+
+  // Гарантированная редкая каждые 10 попыток
+  if (pityCounter % 10 === 0) {
+    return LootboxRarity.rare;
+  }
+
+  if (percent < 0.5) {
+    pityCounter = 0;
+    return LootboxRarity.legendary;
+  }
+  if (percent < 3) {
+    pityCounter = 0;
+    return LootboxRarity.epic;
+  }
+  if (percent < 15) {
+    return LootboxRarity.rare;
+  }
+  if (percent < 39) {
+    return LootboxRarity.uncommon;
+  }
+  return LootboxRarity.common;
+};
+
+const findToadTemplate = (rarity: LootboxRarity) => {
+  const group = UNIQUE_TOADS_BY_RARITY[rarity];
+  const roll = Math.floor(Math.random() * group.length);
+
+  return group[roll];
+};
+
+// Основная функция генерации жабы из лутбокса
+export const generateLootboxToad = (): {
+  baseToad: Toad;
+  rarity: LootboxRarity;
+} => {
+  const rarity = getToadRarity();
+  const template = findToadTemplate(rarity);
+
+  // Генерация уникального ID
+  const id = Date.now() + Math.floor(Math.random() * 1000);
+
+  // Случайный пол
+  const sex = Math.random() > 0.5 ? "male" : "female";
+
+  // Базовые характеристики
+  const baseToad: Toad = {
+    id,
+    name:
+      template.name || `Таинственная жаба ${Math.floor(Math.random() * 1000)}`,
+    type: template.type as ToadTypes,
+    generation: 1,
+    sex,
+    stage: "adult",
+    scene_id: null,
+    created_at: new Date().toISOString(),
+    parents: null,
+    state: {
+      hunger: 30 + Math.floor(Math.random() * 20),
+      genetic_fault: 0,
+    },
+    pregnancy: null,
+    genes: {
+      colors: template.genes?.colors
+        ? [
+            varyColor(template.genes?.colors[0]),
+            varyColor(template.genes?.colors[1]),
+          ]
+        : ["#5D8C59", "#6B8C42"],
+      pattern: template.genes?.pattern || "smooth",
+      weight: template.genes?.weight || 18 + Math.floor(Math.random() * 8),
+      speed: template.genes?.speed || 0.3 + Math.random() * 0.4,
+      rarity: template.genes?.rarity || 1,
+      hungerRate: template.genes?.hungerRate || 0.8 + Math.random() * 0.6,
+      fertility: template.genes?.fertility || 0.8 + Math.random() * 0.8,
+      personality: template.genes?.personality || null,
+    },
+  };
+
+  return { baseToad, rarity };
+};

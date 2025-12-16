@@ -1,4 +1,4 @@
-import { getPregnancyDuration, HOURS_TO_GROW_UP, Toad } from "../models/toad";
+import { getPregnancyDuration, HOURS_TO_GROW_UP, Toad } from "../models/Toad";
 import { createToads, updateToadById, updateToadsByIds } from "../backend";
 import { generateChildToad } from "./calculate-genetics";
 import { getHoursFromNow } from "./date";

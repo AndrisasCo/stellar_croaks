@@ -15,6 +15,8 @@ import clickSound from "../assets/click.mp3";
 import crunchShort from "../assets/crunch-short.mp3";
 import bubble2 from "../assets/bubble2.mp3";
 import beep from "../assets/beep.mp3";
+import ok from "../assets/ok.mp3";
+import legendary from "../assets/legendary.mp3";
 
 export const useSoundEffects = () => {
   const { settings } = useSettings();
@@ -120,8 +122,16 @@ export const useSoundEffects = () => {
   const playBubble2 = () => {
     playAudio(bubble2);
   };
+  const playLegendary = () => {
+    playAudio(legendary);
+  };
+  const playOk = () => {
+    playAudio(ok);
+  };
 
   return {
+    playLegendary,
+    playOk,
     playBeep,
     playClick,
     playCrunch,

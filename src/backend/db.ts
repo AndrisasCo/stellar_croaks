@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { Toad } from "../models/toad";
+import { Toad } from "../models/Toad";
 import { getGameState, updateGameState } from "./localStorage";
 import {
   getAchievementState,
@@ -94,6 +94,8 @@ export const updateLeaderbord = async () => {
   }
 
   const ldData = await getLeaderboardByTg();
+  console.log({ ldData });
+
   if (!ldData?.data) {
     await createLeaderbord();
     return;

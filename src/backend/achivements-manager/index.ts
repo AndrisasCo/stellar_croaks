@@ -1,4 +1,4 @@
-import { Toad } from "../../models/toad";
+import { Toad } from "../../models/Toad";
 import { ToadTypes } from "../../models/Toad/toad-species";
 import {
   achievementGroups,

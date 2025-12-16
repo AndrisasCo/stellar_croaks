@@ -1,4 +1,4 @@
-import { Toad } from "../models/toad";
+import { Toad } from "../models/Toad";
 import { ColliderState } from "../models/types";
 
 interface ColliderSlot {

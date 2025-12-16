@@ -7,7 +7,7 @@ import {
   getPersonalityLabel,
   getGeneticFaultConfig,
   getToadTypeLabel,
-} from "../../../models/toad";
+} from "../../../models/Toad";
 import { useToads } from "../../ToadContext";
 import { InfoIcons } from "../../../assets/icons";
 import Modal from "../../shared/Modal";

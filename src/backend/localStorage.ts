@@ -1,8 +1,6 @@
-import { createScene, createToads, updateUser } from ".";
 import { DEFAULT_SCENE, Scene } from "../models/scene";
-import { DEFAULT_TOADS, Toad } from "../models/toad";
+import { DEFAULT_TOADS, Toad } from "../models/Toad";
 import { User } from "../models/user";
-import { createLeaderbord } from "./db";
 
 // Интерфейс для всего состояния игры
 export interface GameState {

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Toad, generateLootboxToad } from "../../../models/toad";
+import { Toad } from "../../../models/Toad";
 import Modal from "../../shared/Modal";
 import { useToads } from "../../ToadContext";
 import { useSoundEffects } from "../../../hooks/use-sound-effects";
@@ -21,6 +21,11 @@ import {
 } from "../../../backend/collider-manager";
 import { MAX_STORED_TOADS } from "../../../utils/constants";
 import { usePagination } from "../../../hooks/use-pagination";
+import {
+  generateLootboxToad,
+  LootboxRarity,
+} from "../../../models/Toad/lootbox";
+import { FireworksAnimation, ConfettiAnimation } from "./animations";
 
 interface StorageModalProps {
   isOpen: boolean;
@@ -46,9 +51,9 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
   const [activeTab, setActiveTab] = useState<StorageTabType>("toads");
   const { addNotification } = useNotifications();
   const { allToads = [], account, currentScene, toads } = useToads();
-  const { playClick } = useSoundEffects();
+  const { playClick, playOk, playLegendary } = useSoundEffects();
   const [selectedToads, setSelectedToads] = useState<number[]>([]);
-
+  const [showConfetti, setShowConfetti] = useState(0);
   // Жабы на складе (без сцены)
   const storedToads = allToads?.filter((toad) => toad.scene_id === null) || [];
 
@@ -94,14 +99,35 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
 
   const handleOpenLootbox = () => {
     const account = getGameState().user;
+
+    if (storedToads.length + 1 > MAX_STORED_TOADS) {
+      addNotification({
+        type: "danger",
+        content: `На складе нет места`,
+      });
+      return;
+    }
     if (!account.storage.lootbox) {
       return;
     }
-    const randomToad = randomizeToadCharacteristics(generateLootboxToad());
+    setShowConfetti(showConfetti + 1);
+
+    const { baseToad, rarity } = generateLootboxToad();
+    const randomToad = randomizeToadCharacteristics(baseToad);
+    let toadLabel = "";
+
+    if ([LootboxRarity.epic, LootboxRarity.legendary].includes(rarity)) {
+      toadLabel =
+        rarity === LootboxRarity.epic ? "☄️ Эпическая" : "🐲 Легендарная ";
+      playLegendary();
+    } else {
+      playOk();
+      toadLabel = rarity === LootboxRarity.rare ? "✨ Редкая" : "Обычная";
+    }
 
     addNotification({
       type: "success",
-      content: `На склад добавлена новая жаба ${randomToad.name}!`,
+      content: `${toadLabel} жаба ${randomToad.name} добавлена на склад!`,
     });
 
     updateUser({
@@ -274,6 +300,7 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} icon={icon} title="Склад">
+      <ConfettiAnimation trigger={showConfetti} intensity={5} />
       {/* Табы */}
       <div className="flex border-b border-gray-700 bg-gray-800 mb-3">
         <button
