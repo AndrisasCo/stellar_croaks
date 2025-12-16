@@ -97,7 +97,7 @@ export const achievementGroups = [
               pattern: "holographic",
               weight: 15,
               speed: 0.3,
-              rarity: 10,
+              rarity: 5,
               hungerRate: 0.5,
               fertility: 1,
               personality: "energetic",
@@ -177,7 +177,7 @@ export const achievementGroups = [
               pattern: "imperial_stripes", // императорские полосы
               weight: 22.5,
               speed: 0.8,
-              rarity: 25, // Легендарная редкость
+              rarity: 5, // Легендарная редкость
               hungerRate: 0.3, // Ест мало
               fertility: 0.5,
               personality: "imperial",
@@ -282,7 +282,7 @@ export const achievementGroups = [
               pattern: "fractal_geometric",
               weight: 20,
               speed: 1.2,
-              rarity: 20,
+              rarity: 5,
               hungerRate: 0.7, // Экономичный метаболизм
               fertility: 1.5,
               personality: "innovator", // Новатор
@@ -306,7 +306,7 @@ export const achievementGroups = [
               colors: ["#228B22", "#90EE90", "#006400"], // лесная зелень, светло-зеленый, темно-зеленый
               weight: 28,
               speed: 0.3, // Очень медленная из-за паразита
-              rarity: 25,
+              rarity: 5,
               hungerRate: 1.8,
               fertility: 0,
               personality: "calm", // Спокойный
