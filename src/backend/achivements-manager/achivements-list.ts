@@ -256,7 +256,7 @@ export const achievementGroups = [
         name: "Совершенный геном",
         description: "Вывести жабу с генетикой 0 и поколением 10",
         completed: false,
-        task: { genetic_fault: { max: 10 }, generation: { min: 0 } },
+        task: { genetic_fault: { max: 0.9 }, generation: { min: 10 } },
       },
     ],
     groupReward: {
