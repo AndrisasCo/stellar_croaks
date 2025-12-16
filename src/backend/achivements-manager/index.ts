@@ -115,6 +115,8 @@ export const checkGeneticAchievements = (toad: Toad) => {
     return;
   }
 
+  console.log({ toad }, toad.state.genetic_fault);
+
   achievements.forEach((achievement) => {
     const conditions = achievement.task;
     let matches = true;
@@ -165,18 +167,22 @@ export const checkGeneticAchievements = (toad: Toad) => {
       }
     }
 
-    if (conditions.genetic_fault && toad.state.genetic_fault !== undefined) {
-      if (
-        conditions.genetic_fault.min !== undefined &&
-        toad.state.genetic_fault < conditions.genetic_fault.min
-      ) {
+    if (conditions.genetic_fault) {
+      if (toad.state.genetic_fault === undefined) {
         matches = false;
-      }
-      if (
-        conditions.genetic_fault.max !== undefined &&
-        toad.state.genetic_fault > conditions.genetic_fault.max
-      ) {
-        matches = false;
+      } else {
+        if (
+          conditions.genetic_fault.min !== undefined &&
+          toad.state.genetic_fault < conditions.genetic_fault.min
+        ) {
+          matches = false;
+        }
+        if (
+          conditions.genetic_fault.max !== undefined &&
+          toad.state.genetic_fault > conditions.genetic_fault.max
+        ) {
+          matches = false;
+        }
       }
     }
 
