@@ -1,5 +1,5 @@
 export const getWindowDimensions = () => {
-  const width = Math.min(window.innerWidth - 16, 448);
+  const width = Math.min(window.innerWidth - 16, 672);
   const height = width;
   return {
     width,

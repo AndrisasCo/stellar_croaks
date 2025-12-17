@@ -71,7 +71,7 @@ export default function ColliderButton() {
         <button
           disabled={isColliderDisabled}
           onClick={openCollider}
-          className={`bg-gradient-to-r from-purple-600 to-green-600 hover:from-purple-500 hover:to-green-500 text-white font-bold py-5 px-6 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:scale-105 w-full max-w-md border-2 border-white/20
+          className={`bg-gradient-to-r from-purple-600 to-green-600 hover:from-purple-500 hover:to-green-500 text-white font-bold py-5 px-6 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:scale-105 w-full max-w-2xl border-2 border-white/20
     ${
       isColliderDisabled
         ? "opacity-80 cursor-not-allowed grayscale-50"
@@ -112,7 +112,7 @@ export default function ColliderButton() {
         </button>
       ) : (
         // Колба с процессом скрещивания
-        <div className="bg-gray-800/90 rounded-2xl p-2 border-2 border-green-500/50 shadow-2xl max-w-md mx-auto backdrop-blur-sm">
+        <div className="bg-gray-800/90 rounded-2xl p-2 border-2 border-green-500/50 shadow-2xl max-w-2xl mx-auto backdrop-blur-sm">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <div className="text-green-400">{ColliderIcons.dna}</div>

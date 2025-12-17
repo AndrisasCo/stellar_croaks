@@ -25,7 +25,7 @@ import {
   generateLootboxToad,
   LootboxRarity,
 } from "../../../models/Toad/lootbox";
-import { FireworksAnimation, ConfettiAnimation } from "./animations";
+import { ConfettiAnimation } from "./animations";
 
 interface StorageModalProps {
   isOpen: boolean;

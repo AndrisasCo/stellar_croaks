@@ -89,7 +89,7 @@ const LoadingScreen = () => {
         </div>
 
         {/* Прогресс бар */}
-        <div className="max-w-md mx-auto mb-6">
+        <div className="max-w-2xl mx-auto mb-6">
           <div className="bg-gray-700/50 rounded-full h-3 overflow-hidden border border-gray-600/50 mb-2">
             <div
               className="h-full bg-gradient-to-r from-green-400 to-purple-500 rounded-full transition-all duration-300 ease-out shadow-lg shadow-green-500/30"

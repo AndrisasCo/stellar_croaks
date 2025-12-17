@@ -3,6 +3,7 @@ import { SortArrowIcon } from "./SortArrowIcon";
 import React from "react";
 import { Toad } from "../../models/Toad";
 import { useToads } from "../ToadContext";
+import { HorizontalScroll } from "./HorizontalScroll";
 
 export type SortDirection = "asc" | "desc";
 
@@ -107,7 +108,7 @@ export const Filters = ({
                 />
               </svg>
             </span>
-            <div className="flex bg-gray-700/50 rounded-lg p-1 border border-cyan-500/10 overflow-x-auto">
+            <HorizontalScroll className="flex bg-gray-700/50 rounded-lg p-1 border border-cyan-500/10">
               {[
                 { key: "rarity", label: "Редкость" },
                 addPrice ? { key: "price", label: "Цена" } : {},
@@ -141,7 +142,7 @@ export const Filters = ({
                     </button>
                   </React.Fragment>
                 ))}
-            </div>
+            </HorizontalScroll>
           </div>
 
           {/* Селектор фильтрации */}
@@ -164,7 +165,7 @@ export const Filters = ({
                   />
                 </svg>
               </span>
-              <div className="flex bg-gray-700/50 rounded-lg p-1 border text-nowrap border-purple-500/10 overflow-x-auto">
+              <HorizontalScroll className="flex bg-gray-700/50 rounded-lg p-1 border text-nowrap border-purple-500/10">
                 <button
                   onClick={() => setFilterBy("all")}
                   className={`px-2 py-1 text-nowrap rounded text-xs font-medium transition-all ${
@@ -208,7 +209,7 @@ export const Filters = ({
                 >
                   Головастики ({toadPolesCount})
                 </button>
-              </div>
+              </HorizontalScroll>
             </div>
           )}
 
@@ -232,7 +233,7 @@ export const Filters = ({
                   />
                 </svg>
               </span>
-              <div className="flex bg-gray-700/50 rounded-lg p-1 border text-nowrap border-purple-500/10 overflow-x-auto">
+              <HorizontalScroll className="flex bg-gray-700/50 rounded-lg p-1 border text-nowrap border-purple-500/10">
                 <button
                   onClick={() => setFilterBy("all")}
                   className={`px-2 py-1 text-nowrap rounded text-xs font-medium transition-all ${
@@ -265,7 +266,7 @@ export const Filters = ({
                 >
                   Склад ({storageToads})
                 </button>
-              </div>
+              </HorizontalScroll>
             </div>
           )}
         </div>

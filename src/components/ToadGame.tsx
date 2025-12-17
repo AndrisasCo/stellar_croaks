@@ -189,7 +189,7 @@ export default function ToadGame() {
     <div className="min-h-[100dvh] safe-area-bottom flex mb-9 pb-4 flex-col items-center p-2 bg-gradient-to-br from-gray-900 via-purple-900/20 to-green-900/20">
       {showLoadingScreen && <LoadingScreen />}
 
-      <div className="w-full flex flex-col max-w-md relative mx-auto">
+      <div className="w-full flex flex-col max-w-2xl relative mx-auto">
         {/* Кнопка Меню (Бургер) */}
         <div className="mb-4 text-center absolute right-1 top-1 z-10">
           <ClickButton
@@ -246,10 +246,12 @@ export default function ToadGame() {
           onClose={() => toggleModal("isShopOpen", false)}
         />
 
-        <StorageModal
-          isOpen={ui.isStorageOpen}
-          onClose={() => toggleModal("isStorageOpen", false)}
-        />
+        {ui.isStorageOpen && (
+          <StorageModal
+            isOpen={ui.isStorageOpen}
+            onClose={() => toggleModal("isStorageOpen", false)}
+          />
+        )}
 
         {ui.isMenuOpen && <BurgerMenu toggleModal={toggleModal} />}
 
@@ -292,7 +294,7 @@ export default function ToadGame() {
 
         {/* Фиксированный футер ресурсов */}
         <footer className="fixed bottom-0 left-0 right-0 bg-gray-900/80 backdrop-blur-sm border-t border-purple-500/20 pt-2 pb-3 z-20">
-          <div className="max-w-md mx-auto px-10">
+          <div className="max-w-2xl mx-auto px-10">
             <div className="flex justify-between items-center text-xs px-3">
               <div className="text-pink-300/80">🍎 {account.storage.food} </div>
               <div className="text-cyan-300/80">

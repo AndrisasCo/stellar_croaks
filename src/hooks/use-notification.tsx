@@ -186,7 +186,7 @@ const NotificationStack: React.FC = () => {
 
   return (
     <div className="fixed bottom-5 left-0 w-full flex justify-center z-[100] pointer-events-none">
-      <div className="flex flex-col items-center gap-3 max-w-md w-full mx-4">
+      <div className="flex flex-col items-center gap-3 max-w-xl w-full mx-4">
         {notifications.map((notification, index) => (
           <div
             key={notification.id}

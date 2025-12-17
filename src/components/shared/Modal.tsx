@@ -39,7 +39,7 @@ const Modal: React.FC<ToadListModalProps> = ({
     <div onClick={onClose} className="overlay">
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-gray-800/90 text-white  px-1 rounded-2xl w-full max-w-md max-h-[95vh] overflow-hidden border-2 border-green-500/50 shadow-2xl backdrop-blur-sm"
+        className="bg-gray-800/90 text-white  px-1 rounded-2xl w-full max-w-2xl max-h-[95vh] overflow-hidden border-2 border-green-500/50 shadow-2xl backdrop-blur-sm"
       >
         <div className="h-[calc(95vh-32px)] overflow-auto py-4 flex flex-col">
           {/* Заголовок */}

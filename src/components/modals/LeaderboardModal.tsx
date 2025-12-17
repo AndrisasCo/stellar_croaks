@@ -14,6 +14,7 @@ import { useToads } from "../ToadContext";
 import { getGameState, updateGameState } from "../../backend/localStorage";
 import { ToadAvatar } from "../shared/ToadAvatar";
 import { ToadTypes } from "../../models/Toad/toad-species";
+import { HorizontalScroll } from "../shared/HorizontalScroll";
 
 interface LeaderboardModalProps {
   isOpen: boolean;
@@ -553,7 +554,7 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
 
       {/* Горизонтальные табы с прокруткой */}
       <div className="border-b border-gray-700 bg-gray-800 ">
-        <div className="flex overflow-auto gap-2">
+        <HorizontalScroll className="gap-2">
           <TabButton tab="tokens" label="Богатство" />
           <TabButton tab="species" label="Виды" />
           <TabButton tab="rarity" label="Редкие" />
@@ -565,7 +566,7 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
           <TabButton tab="speed_min" label="Медленные" />
           <TabButton tab="hunger_max" label="Прожорливые" />
           <TabButton tab="hunger_min" label="Экономные" />
-        </div>
+        </HorizontalScroll>
       </div>
 
       {/* Контент */}
