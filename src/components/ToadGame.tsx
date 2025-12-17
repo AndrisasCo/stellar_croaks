@@ -311,16 +311,6 @@ export default function ToadGame() {
       </div>
 
       <MusicPlayer />
-
-      {/* Контейнер для уведомлений */}
-      <div className="fixed bottom-16 left-0 w-full flex justify-center z-[100]">
-        <div
-          id="notification"
-          className="z-140 text-white px-4 py-3 rounded-lg shadow-lg transform transition-all duration-300 opacity-0 scale-95 flex items-center gap-2"
-        >
-          Notification
-        </div>
-      </div>
     </div>
   );
 }
