@@ -468,13 +468,6 @@ export const ToadInfo = ({ onClose }: { onClose: () => void }) => {
           </svg>
         </button>
       </div>
-
-      <button
-        onClick={onClose}
-        className="w-full bg-gray-700 hover:bg-gray-600 text-gray-300 py-3 rounded-xl mt-4"
-      >
-        Закрыть
-      </button>
     </Modal>
   );
 };

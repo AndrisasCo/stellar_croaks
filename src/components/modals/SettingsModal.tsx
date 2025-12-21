@@ -274,14 +274,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
               Начать заново
             </button>
           </div>
-
-          {/* Кнопка закрытия */}
-          <button
-            onClick={handleClose}
-            className="w-full bg-gradient-to-r from-green-600 to-purple-600 hover:from-green-500 hover:to-purple-500 text-white font-bold py-3 rounded-xl mt-6 transition-all duration-300 transform hover:scale-105 active:scale-95 border-2 border-white/20 shadow-lg hover:shadow-xl"
-          >
-            Готово
-          </button>
         </div>
       </Modal>
 

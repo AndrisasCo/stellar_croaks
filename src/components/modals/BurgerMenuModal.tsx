@@ -149,13 +149,6 @@ export const BurgerMenu = ({ toggleModal }: BurgerMenuProps) => {
           </button>
         ))}
       </div>
-
-      <button
-        onClick={() => toggleModal("isMenuOpen", false)}
-        className="w-full mt-auto bg-gray-700 hover:bg-gray-600 text-gray-300 hover:text-white py-3 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 border border-gray-600 font-bold"
-      >
-        Закрыть
-      </button>
     </Modal>
   );
 };

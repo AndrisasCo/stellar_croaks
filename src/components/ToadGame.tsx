@@ -8,7 +8,7 @@ import SettingsModal from "./modals/SettingsModal";
 import LoadingScreen from "./shared/LoadingScreen";
 import ColliderButton from "./ToadCollider/ColliderButton";
 import { processBreeding, TimeManager } from "../utils/breeding-manager";
-import ShopMenu from "./modals/ShopMenuModal";
+import ShopMenu from "./modals/ShopMenu/ShopMenuModal";
 import StorageModal from "./modals/StorageModal";
 import { processHunger } from "../utils/state-manager";
 import {
@@ -186,58 +186,67 @@ export default function ToadGame() {
   }, []);
 
   return (
-    <div className="min-h-[100dvh] safe-area-bottom flex mb-9 pb-4 flex-col items-center p-2 bg-gradient-to-br from-gray-900 via-purple-900/20 to-green-900/20">
+    <div className="min-h-[100dvh] flex  flex-col items-center ">
       {showLoadingScreen && <LoadingScreen />}
 
-      <div className="w-full flex flex-col max-w-2xl relative mx-auto">
+      <div className="w-full p-2 pb-4 mb-9  safe-area-bottom  flex flex-col bg-[url('/assets/bg-main.png')] cover max-w-2xl relative mx-auto">
         {/* Кнопка Меню (Бургер) */}
-        <div className="mb-4 text-center absolute right-1 top-1 z-10">
+        <div className="text-center absolute right-1 top-1 z-10">
           <ClickButton
             onClick={() => toggleModal("isMenuOpen", true)}
-            className="bg-gray-800/80 backdrop-blur-sm hover:bg-gray-700/80 text-gray-300 hover:text-white py-3 px-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 active:scale-95 border-2 border-purple-500/30 hover:border-purple-400/50 font-bold text-sm w-full neon-glow"
+            className="bg-gray-400/10 backdrop-blur-sm p-[6px] rounded-md  duration-300 transform hover:scale-105 active:scale-95 border-2 border-purple-300/80 text-purple-300 hover:border-purple-400/50 w-full"
           >
-            <div className="flex items-center justify-center gap-3">
-              {MenuIcons.menu}
-            </div>
+            {MenuIcons.menu}
           </ClickButton>
         </div>
 
-        <header className="text-center mb-4 pt-2">
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-green-400 via-purple-500 to-cyan-400 bg-clip-text text-transparent mb-2 animate-gradient">
-            Stellar Croak
-          </h1>
-          <p className="text-green-300/80 text-sm px-14 font-light">
-            Наполним галактику кваканьем!
-          </p>
+        <header className="text-center mb-8 pt-2 ">
+          <h1 className="text-3xl backgroundDark ">Stellar Croak</h1>
         </header>
 
         {/* Кнопки быстрого доступа */}
         <div className="grid grid-cols-2 gap-3 mb-4 px-2">
           <ClickButton
             onClick={() => toggleModal("isShopOpen", true)}
-            className="bg-purple-900/40 backdrop-blur-sm hover:bg-purple-800/60 text-purple-300 hover:text-purple-100 py-3 px-4 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 active:scale-95 border-2 border-purple-500/40 hover:border-purple-400/60 font-bold neon-glow-purple"
+            style={{
+              backgroundPosition: 10,
+              backgroundSize: 40,
+            }}
+            className="
+            bg-[url('/assets/market.png')]  bg-no-repeat
+            bg-gray-700/40 backdrop-blur-sm hover:bg-purple-800/60 text-purple-300 hover:text-purple-100 py-3 px-4 rounded-md transition-all duration-300 transform hover:scale-105 active:scale-95 border-2 border-purple-300/90 hover:border-purple-400/60 font-bold "
           >
-            <div className="flex justify-between items-center gap-2">
-              <span className="text-sm">РЫНОК</span>
-              {MenuIcons.shop}
-            </div>
+            <span className="p-l-10">РЫНОК</span>
           </ClickButton>
 
           <ClickButton
             onClick={() => toggleModal("isStorageOpen", true)}
-            className="bg-green-900/40 backdrop-blur-sm hover:bg-green-800/60 text-green-300 hover:text-green-100 py-3 px-4 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 active:scale-95 border-2 border-green-500/40 hover:border-green-400/60 font-bold neon-glow-green"
+            style={{
+              backgroundPosition: 10,
+              backgroundSize: 40,
+            }}
+            className="
+            bg-[url('/assets/storage.png')] bg-no-repeat
+            bg-gray-700/40 backdrop-blur-sm hover:bg-green-800/60 text-green-300 hover:text-green-100 py-3 px-4 rounded-md hover:shadow-xl transition-all duration-300 transform hover:scale-105 active:scale-95 border-2 border-green-300/90 hover:border-green-400/60 font-bold "
           >
-            <div className="flex justify-between items-center gap-2">
-              <span className="text-sm">СКЛАД</span>
-              {MenuIcons.inventory}
-            </div>
+            <span className="p-l-10">СКЛАД</span>
           </ClickButton>
         </div>
 
         {/* Сцена с жабами */}
         <div className="flex-1 min-h-0 pb-5">
-          {!showLoadingScreen && <ToadScene />}
+          <ToadScene />
         </div>
+
+        <ColliderButton />
+
+        {/* Футер статистики */}
+        <footer className="mt-auto text-center pb-4 relative">
+          <p className="text-white text-sm">
+            {toads.length} / {currentScene.capacity} жаб в вольере |{" "}
+            {toads.filter((t) => t.type === "hybrid").length} гибридов
+          </p>
+        </footer>
 
         {/* --- МОДАЛЬНЫЕ ОКНА --- */}
 
@@ -281,16 +290,6 @@ export default function ToadGame() {
           isOpen={ui.isGalleryOpen}
           onClose={() => toggleModal("isGalleryOpen", false)}
         />
-
-        <ColliderButton />
-
-        {/* Футер статистики */}
-        <footer className="mt-auto text-center pb-4">
-          <p className="text-gray-500 text-xs">
-            {toads.length} / {currentScene.capacity} жаб в вольере |{" "}
-            {toads.filter((t) => t.type === "hybrid").length} гибридов
-          </p>
-        </footer>
 
         {/* Фиксированный футер ресурсов */}
         <footer className="fixed bottom-0 left-0 right-0 bg-gray-900/80 backdrop-blur-sm border-t border-purple-500/20 pt-2 pb-3 z-20">

@@ -1,27 +1,26 @@
-import { createToad, updateUser } from "../../../backend";
+import { useState, useEffect } from "react";
+import { createToad, updateUser } from "../../../../backend";
 import {
   completeAchivement,
   completeAchivementCounter,
-} from "../../../backend/achivements-manager";
-import { getGameState } from "../../../backend/localStorage";
+} from "../../../../backend/achivements-manager";
+import { getGameState } from "../../../../backend/localStorage";
 import {
   ShopState,
+  getNewToads,
   getShopState,
+  initialItemsAmount,
+  REFRESH_COOLDOWN,
   saveShopState,
   INSTANT_REFRESH_COST,
-  REFRESH_COOLDOWN,
-  getNewToads,
-  initialItemsAmount,
-} from "../../../backend/shop-state";
-import { useNotifications } from "../../../hooks/use-notification";
-import { usePagination } from "../../../hooks/use-pagination";
-
-import { useSoundEffects } from "../../../hooks/use-sound-effects";
-import { calculateSellPrice, Toad } from "../../../models/Toad";
-import { CURRENCY_CONFIG, MAX_STORED_TOADS } from "../../../utils/constants";
-import { useToads } from "../../ToadContext";
-import { ToadItem } from "../../shared/ToadItem";
-import { useState, useEffect, useRef, useCallback } from "react";
+} from "../../../../backend/shop-state";
+import { useNotifications } from "../../../../hooks/use-notification";
+import { usePagination } from "../../../../hooks/use-pagination";
+import { useSoundEffects } from "../../../../hooks/use-sound-effects";
+import { Toad, calculateSellPrice } from "../../../../models/Toad";
+import { MAX_STORED_TOADS, CURRENCY_CONFIG } from "../../../../utils/constants";
+import { ToadItem } from "../../../shared/ToadItem";
+import { useToads } from "../../../ToadContext";
 
 const FOOD_PRICE = 10;
 
@@ -284,8 +283,8 @@ const BuyTab: React.FC = () => {
         <div className="bg-gray-800 rounded-2xl py-4 px-2 border border-gray-700 mb-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 flex items-center justify-center rounded-full border-2 border-green-400 bg-gray-900">
-                <span className="text-xl">🍎</span>
+              <div className="w-14 h-14 flex items-center justify-center rounded-full border-2 border-green-400 bg-gray-900">
+                <img src="/assets/food.png" className="max-w-14 max-h-14" />
               </div>
               <div>
                 <p className="text-white font-medium text-base">Жабий корм</p>
@@ -310,17 +309,8 @@ const BuyTab: React.FC = () => {
         <div className="bg-gray-800 rounded-2xl py-4 px-2 border border-gray-700 mb-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 flex items-center justify-center rounded-full border-2 border-blue-400 bg-gray-900">
-                <div className="w-10 h-10 flex items-center justify-center rounded-full border-2 border-blue-400 bg-gray-900 relative">
-                  {/* Наслоение иконок корма */}
-                  <span className="text-xl absolute transform  -translate-y-1 -translate-x-1">
-                    🍎
-                  </span>
-                  <span className="text-xl absolute ">🍎</span>
-                  <span className="text-xl absolute transform  translate-y-1 translate-x-1 ">
-                    🍎
-                  </span>
-                </div>
+              <div className="w-14 h-14 flex items-center justify-center rounded-full border-2 border-green-400 bg-gray-900">
+                <img src="/assets/food2.png" className="max-w-14 max-h-14" />
               </div>
               <div>
                 <p className="text-white font-medium text-base">
@@ -358,16 +348,8 @@ const BuyTab: React.FC = () => {
         <div className="bg-gray-800 rounded-2xl py-4 px-2 border border-gray-700 mb-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 flex items-center justify-center rounded-full border-2 border-blue-400 bg-gray-900">
-                <div className="w-10 h-10 flex items-center justify-center rounded-full border-2 border-blue-400 bg-gray-900 relative">
-                  <span className="text-xl absolute transform  -translate-y-1 -translate-x-1">
-                    🔋
-                  </span>
-                  <span className="text-xl absolute ">🔋</span>
-                  <span className="text-xl absolute transform  translate-y-1 translate-x-1 ">
-                    🔋
-                  </span>
-                </div>
+              <div className="w-14 h-14 flex items-center justify-center rounded-full border-2 border-blue-400 bg-gray-900">
+                <img src="/assets/battery.png" className="max-w-14 max-h-14" />
               </div>
               <div>
                 <p className="text-white font-medium text-base">
@@ -402,8 +384,8 @@ const BuyTab: React.FC = () => {
         <div className="bg-gray-800 rounded-2xl py-4 px-2 border border-blue-700 mb-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 flex items-center justify-center rounded-full border-2 border-blue-400 bg-gray-900">
-                <span className="text-xl">✨</span>
+              <div className="w-14 h-14 flex items-center justify-center rounded-full border-2 border-blue-400 bg-gray-900">
+                <img src="/assets/flies.png" className="max-w-14 max-h-14" />
               </div>
               <div>
                 <p className="text-white font-medium text-base">
@@ -439,8 +421,8 @@ const BuyTab: React.FC = () => {
         <div className="bg-gray-800 rounded-2xl py-4 px-2 border border-blue-700 mb-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 flex items-center justify-center rounded-full border-2 border-blue-400 bg-gray-900">
-                <span className="text-xl">🪱</span>
+              <div className="w-14 h-14 flex items-center justify-center rounded-full border-2 border-blue-400 bg-gray-900">
+                <img src="/assets/worms.png" className="max-w-14 max-h-14" />
               </div>
               <div>
                 <p className="text-white font-medium text-base">
@@ -476,8 +458,8 @@ const BuyTab: React.FC = () => {
         <div className="bg-gray-800 rounded-2xl py-4 px-2 border border-purple-700">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 flex items-center justify-center rounded-full border-2 border-purple-400 bg-gray-900">
-                <span className="text-xl">🎁</span>
+              <div className="w-14 h-14 flex items-center justify-center rounded-full border-2 border-purple-400 bg-gray-900">
+                <img src="/assets/lootbox.png" className="max-w-14 max-h-14" />
               </div>
               <div>
                 <p className="text-white font-medium text-base">

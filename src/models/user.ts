@@ -12,3 +12,11 @@ export type User = {
     worms?: number;
   };
 };
+
+export enum Items {
+  battery = "battery",
+  food = "food",
+  lootbox = "lootbox",
+  sparkleFlys = "sparkleFlys",
+  worms = "worms",
+}

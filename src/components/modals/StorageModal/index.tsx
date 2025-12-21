@@ -180,7 +180,7 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
     {
       id: "1",
       name: "Жабий корм",
-      icon: "🍎",
+      icon: "/assets/food.png",
       quantity: account?.storage?.food || 0,
       description: "Основной корм для жаб",
       type: "food",
@@ -190,7 +190,7 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
     {
       id: "2",
       name: "Лутбокс",
-      icon: "🎁",
+      icon: "/assets/lootbox.png",
       quantity: account?.storage?.lootbox || 0,
       description: "Открой!",
       type: "tool",
@@ -201,7 +201,7 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
     {
       id: "3",
       name: "Батарейка",
-      icon: "🔋",
+      icon: "/assets/battery.png",
       quantity: account?.storage?.battery || 0,
       description: "Ускоряет созревание жабы в инкубаторе на 10 минут",
       type: "tool",
@@ -212,17 +212,17 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
     {
       id: "4",
       name: "Сияющие мушки",
-      icon: "✨",
+      icon: "/assets/flies.png",
       quantity: account?.storage?.sparkleFlys || 0,
       description: "Ускоряют беременность жабы на 100%",
       type: "material",
       rarity: "rare",
-      key: "sparkle_flys",
+      key: "sparkleFlys",
     },
     {
       id: "5",
       name: "Белковые черви",
-      icon: "🪱",
+      icon: "/assets/worms.png",
       quantity: account?.storage?.worms || 0,
       description: "Ускоряет рост головастика на 100%",
       type: "material",
@@ -357,7 +357,10 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
                 </div>
 
                 {/* Иконка предмета */}
-                <div className="text-2xl text-center mb-2">{item.icon}</div>
+                <img
+                  className="max-w-16 max-h-16 mb-2 mx-auto"
+                  src={item.icon}
+                />
 
                 {/* Название и описание */}
                 <div className="text-center">

@@ -1,4 +1,5 @@
 import React, { ReactNode, useEffect, useState } from "react";
+import { ClickButton } from "./ClickButton";
 
 interface ToadListModalProps {
   icon?: ReactNode;
@@ -39,9 +40,9 @@ const Modal: React.FC<ToadListModalProps> = ({
     <div onClick={onClose} className="overlay">
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-gray-800/90 text-white  px-1 rounded-2xl w-full max-w-2xl max-h-[95vh] overflow-hidden border-2 border-green-500/50 shadow-2xl backdrop-blur-sm"
+        className="bg-gray-800/90 text-white h-full px-1 w-full max-w-2xl max-h-[100vh] overflow-hidden "
       >
-        <div className="h-[calc(95vh-32px)] overflow-auto py-4 flex flex-col">
+        <div className="h-[100vh] overflow-auto py-4 flex flex-col">
           {/* Заголовок */}
           <div className="flex w-full justify-center items-center relative">
             {title && (
@@ -53,16 +54,24 @@ const Modal: React.FC<ToadListModalProps> = ({
               </div>
             )}
             {closeButton && (
-              <button
+              <ClickButton
                 onClick={onClose}
-                className="text-gray-400 absolute right-2 top-[-8px] hover:text-green-400 text-2xl transition-colors duration-300 p-1 hover:scale-110"
+                className="text-gray-400 absolute right-2 top-[-8px] hover:text-green-400 text-3xl transition-colors duration-300 p-1 hover:scale-110"
               >
                 ×
-              </button>
+              </ClickButton>
             )}
           </div>
 
           {children}
+
+          <div className="min-h-4" />
+          <ClickButton
+            className="w-full mt-auto bg-gray-700 hover:bg-gray-600 text-gray-300 py-3 rounded-xl mt-4"
+            onClick={onClose}
+          >
+            Закрыть
+          </ClickButton>
         </div>
       </div>
     </div>

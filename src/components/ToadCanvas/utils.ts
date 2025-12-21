@@ -58,14 +58,19 @@ export const createTextures = (spritesheet: any) => {
 // Предзагружаем текстуры и создаем текстуры для анимации один раз
 export const preloadTextures = async () => {
   try {
-    const [toadpoleSpriteSheet, foodTexture] = await Promise.all([
-      Assets.load("/sprites/toadpole.png"),
-      Assets.load("/assets/apple.svg"),
-    ]);
+    const [toadpoleSpriteSheet, foodTexture, backgroundTexture, fenceTexture] =
+      await Promise.all([
+        Assets.load("/sprites/toadpole.png"),
+        Assets.load("/assets/apple.png"),
+        Assets.load("/assets/bg.png"),
+        Assets.load("/assets/fence.png"),
+      ]);
     const toadpoleTextures = createTextures(toadpoleSpriteSheet.source);
     const res: Record<string, Texture<TextureSource<any>>[]> = {
       toadpoleTextures,
       foodTexture,
+      backgroundTexture,
+      fenceTexture,
     };
 
     const typeArray = Object.values(ToadTypes);

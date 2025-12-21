@@ -18,6 +18,7 @@ import { ToadGender } from "../shared/ToadGender";
 import { nameGenerator } from "../../utils/name-generator";
 import { getGeneticFaultConfig } from "../../models/Toad";
 import { ToadAvatar } from "../shared/ToadAvatar";
+import { ClickButton } from "../shared/ClickButton";
 
 interface ToadColliderProps {
   isOpen: boolean;
@@ -285,13 +286,13 @@ export default function ToadCollider({
 
           {/* Кнопка скрещивания */}
           {isMixing && (
-            <div className="pb-4 my-auto">
+            <div className="pb-4 my-auto h-full">
               <MixingInProgress />
             </div>
           )}
 
           {!isMixing && (
-            <div className="text-center mb-6">
+            <div className="text-center mb-6 h-full">
               <button
                 onClick={handleBreed}
                 disabled={isDisabled}
@@ -311,7 +312,7 @@ export default function ToadCollider({
 
           {/* Список доступных жаб */}
           {!isMixing && (
-            <div className="mb-4">
+            <div className="mb-4 h-full">
               <p className="text-gray-300 text-xs sm:text-sm mb-2 text-center">
                 Нажмите на жаб, чтобы добавить в колбы:
               </p>
@@ -384,21 +385,14 @@ export default function ToadCollider({
           )}
 
           {/* Кнопки управления */}
-          <div className="flex gap-2 mt-4">
-            <button
-              onClick={handleReset}
-              disabled={isMixing}
-              className="flex-1 bg-gray-700 hover:bg-gray-600 text-gray-300 hover:text-white py-2 text-sm sm:text-base rounded-xl transition-all duration-300 border border-gray-600"
-            >
-              Очистить
-            </button>
-            <button
-              onClick={handleClose}
-              className="flex-1 bg-gray-700 hover:bg-gray-600 text-gray-300 hover:text-white py-2 text-sm sm:text-base rounded-xl transition-all duration-300 border border-gray-600"
-            >
-              Закрыть
-            </button>
-          </div>
+
+          <ClickButton
+            className="w-full mt-auto bg-gray-700 hover:bg-gray-600 text-gray-300 py-3 rounded-xl "
+            onClick={handleReset}
+            disabled={isMixing}
+          >
+            Очистить
+          </ClickButton>
         </>
       ) : (
         <div className="text-center">

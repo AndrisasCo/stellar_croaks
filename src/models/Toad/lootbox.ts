@@ -11,7 +11,7 @@ export enum LootboxRarity {
 }
 
 // База данных уникальных жаб с разной редкостью
-const UNIQUE_TOADS_BY_RARITY: Record<LootboxRarity, Partial<Toad>[]> = {
+export const UNIQUE_TOADS_BY_RARITY: Record<LootboxRarity, Partial<Toad>[]> = {
   // Редкость 1-5 (Обычные)
   [LootboxRarity.common]: [
     {

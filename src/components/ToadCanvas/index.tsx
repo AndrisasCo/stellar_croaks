@@ -6,7 +6,6 @@ import {
   Graphics,
   Sprite,
   Texture,
-  FillGradient,
   ContainerChild,
 } from "pixi.js";
 import { getWindowDimensions, getSceneSettings } from "../../utils/ui";
@@ -29,7 +28,6 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
   const foodRef = useRef<Container | null>(null);
   const initializedRef = useRef(false);
   const texturesRef = useRef<any>(null);
-  const { penWidth, penHeight } = getSceneSettings();
   const {
     playCroak,
     playBeep,
@@ -53,14 +51,20 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
   const sortToadsByDepth = () => {
     if (!appRef.current) return;
     const stage = appRef.current.stage;
+
+    // Фильтруем только жабы (не фон и не забор)
     const toadContainers = stage.children.filter(
       (child: ContainerChildCustom) => child.userData?.toadData
     );
+
+    // Сортируем жабы по Y координате (ниже = выше в отображении)
     toadContainers.sort((a: ContainerChildCustom, b: ContainerChildCustom) => {
       return a.y + a.userData.size / 2 - b.y - b.userData.size / 2;
     });
+
+    // Расставляем жабы в правильном порядке
     toadContainers.forEach((container, index) => {
-      stage.setChildIndex(container, index + 1);
+      stage.setChildIndex(container, index + 2);
     });
   };
 
@@ -115,8 +119,11 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
     const foodContainer: ContainerChildCustom = new Container();
     const foodSprite = new Sprite(texturesRef.current.foodTexture);
     foodSprite.anchor.set(0.5);
+
+    const ratio = foodSprite.height / foodSprite.width;
     foodSprite.width = 35;
-    foodSprite.height = 35;
+    foodSprite.height = 35 * ratio;
+
     foodContainer.addChild(foodSprite);
     foodContainer.x = x;
     foodContainer.y = y;
@@ -126,6 +133,10 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
     };
     appRef.current.stage.addChild(foodContainer);
     foodRef.current = foodContainer;
+    // Еда должна быть под забором
+    const stage = appRef.current.stage;
+    stage.setChildIndex(foodContainer, 1);
+
     if (foodTimerRef.current) {
       clearTimeout(foodTimerRef.current);
     }
@@ -175,9 +186,6 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
     });
   };
 
-  // ВНИМАНИЕ: createToad больше не должен замыкать ширину/высоту из пропсов,
-  // так как они нужны только для начального спавна (рандом).
-  // Логика границ перенесена в handlePointerUp с использованием app.screen
   const createToad =
     (spawnW: number, spawnH: number, onToadSelect: (toadId: number) => void) =>
     (toadData: Toad) => {
@@ -328,26 +336,65 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
 
       appRef.current.stage.addChild(container);
       toadsRef.current.push(container);
+
+      // Сортируем жабы после добавления новой
+      sortToadsByDepth();
     };
 
-  // Функция перерисовки фона (вынесли отдельно, чтобы вызывать при ресайзе)
   const drawBackground = (w: number, h: number) => {
-    if (!appRef.current) return;
-    const stage = appRef.current.stage;
-    // Фон всегда первый элемент
-    let ground = stage.getChildAt(0) as Graphics;
+    if (!appRef.current || !texturesRef.current?.backgroundTexture) return;
 
-    // Если по какой-то причине первого элемента нет или это не графика (редкий кейс)
-    if (!ground || !(ground instanceof Graphics)) {
-      return;
+    const stage = appRef.current.stage;
+
+    let backgroundSprite;
+    let fenceSprite;
+    let fenceSprite2;
+    // Ищем существующие спрайты
+    try {
+      backgroundSprite = stage.getChildAt(0) as Sprite;
+      fenceSprite = stage.getChildAt(stage.children.length - 1) as Sprite;
+      fenceSprite2 = stage.getChildAt(1) as Sprite;
+    } catch {
+      // Если нет спрайта фона или это не спрайт, создаем новый
+      backgroundSprite = new Sprite(texturesRef.current.backgroundTexture);
+      stage.addChildAt(backgroundSprite, 0); // Добавляем на самый нижний слой
+      fenceSprite2 = new Sprite(texturesRef.current.fenceTexture);
+
+      stage.addChildAt(fenceSprite2, 1);
+
+      // Если нет спрайта забора, создаем его
+      fenceSprite = new Sprite(texturesRef.current.fenceTexture);
+      stage.addChild(fenceSprite);
     }
 
-    ground.clear();
-    const gradient = new FillGradient({
-      end: { x: 0, y: 1 },
-      colorStops: GRADIENTS[currentScene?.gradient || 0],
-    });
-    ground.roundRect(0, 0, w, h, 20).fill(gradient);
+    // Обновляем размеры и позицию фона
+    backgroundSprite.texture = texturesRef.current.backgroundTexture;
+    backgroundSprite.width = w;
+    backgroundSprite.height = h;
+    backgroundSprite.x = 0;
+    backgroundSprite.y = 0;
+
+    // Обновляем размеры и позицию забора
+    fenceSprite.texture = texturesRef.current.fenceTexture;
+    fenceSprite2.texture = texturesRef.current.fenceTexture;
+    fenceSprite.width = w;
+    fenceSprite2.width = w;
+
+    // Рассчитываем высоту забора с сохранением пропорций
+    const fenceRatio = fenceSprite.texture.width / fenceSprite.texture.height;
+    fenceSprite.height = fenceSprite.width / fenceRatio;
+    fenceSprite2.height = fenceSprite.width / fenceRatio;
+
+    fenceSprite.x = 0;
+    fenceSprite2.x = 0;
+    fenceSprite.y = h - fenceSprite.height; // Забор начинается снизу
+    fenceSprite2.y = 0; // Забор начинается снизу
+
+    // ВАЖНО: Перемещаем забор на самый верхний слой
+    stage.setChildIndex(fenceSprite, stage.children.length - 1);
+
+    // Сортируем жабы после обновления фона
+    sortToadsByDepth();
   };
 
   const transitionToNewScene = async () => {
@@ -462,24 +509,11 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
       canvasRef.current?.appendChild(app.canvas);
       (appRef as any).current = app;
 
-      const ground = new Graphics();
-      app.stage.addChild(ground); // Сначала добавляем, потом рисуем helper-ом
       drawBackground(initialW, initialH);
 
       toads.forEach(createToad(initialW, initialH, onToadSelect));
 
       app.ticker.add(() => {
-        if (foodRef.current) {
-          const foodData = (foodRef as any).current.userData;
-          foodData.pulse += 0.1;
-          const scale = 1 + Math.sin(foodData.pulse) * 0.1;
-          foodRef.current.scale.set(scale);
-        }
-
-        if (app.ticker.lastTime % 2 === 0) {
-          sortToadsByDepth();
-        }
-
         toadsRef.current.forEach((container: ContainerChildCustom) => {
           const data = container.userData;
           if (!data) return;
@@ -612,6 +646,9 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
             }
           }
         });
+
+        // Сортируем жабы по глубине каждый кадр
+        sortToadsByDepth();
       });
 
       await new Promise((resolve) => setTimeout(resolve, 100));
@@ -706,7 +743,7 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
   ]);
 
   return (
-    <div className="relative">
+    <div className="relative -ml-2  w-[100vw]">
       <div
         className="rounded-2xl duration-200"
         // Размеры DIV теперь берутся из стейта

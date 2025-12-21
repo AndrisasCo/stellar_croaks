@@ -1,16 +1,12 @@
-import React, { useState } from "react";
-import { Toad } from "../../models/Toad";
-import { CURRENCY_CONFIG } from "../../utils/constants";
-import Modal from "../shared/Modal";
-import { useToads } from "../ToadContext";
-import { useSoundEffects } from "../../hooks/use-sound-effects";
-import { updateUser } from "../../backend";
-
-// Импортируем компоненты вкладок
-import BuyTab from "./ShopTabs/BuyTab";
-import SellTab from "./ShopTabs/SellTab";
-import EliteTab from "./ShopTabs/EliteTab";
-import EnclosureTab from "./ShopTabs/EnclosureTab";
+import { useState } from "react";
+import { useSoundEffects } from "../../../hooks/use-sound-effects";
+import { CURRENCY_CONFIG } from "../../../utils/constants";
+import Modal from "../../shared/Modal";
+import { useToads } from "../../ToadContext";
+import BuyTab from "../ShopTabs/BuyTab";
+import EliteTab from "../ShopTabs/EliteTab";
+import EnclosureTab from "../ShopTabs/EnclosureTab";
+import SellTab from "../ShopTabs/SellTab";
 
 interface ShopMenuProps {
   isOpen: boolean;
@@ -35,7 +31,6 @@ export default function ShopMenu({ isOpen, onClose }: ShopMenuProps) {
       id: "elite" as TabType,
       label: "Элитные",
       color: "text-purple-400",
-      // disabled: true,
     },
     { id: "enclosure" as TabType, label: "Вольеры", color: "text-blue-400" },
   ];

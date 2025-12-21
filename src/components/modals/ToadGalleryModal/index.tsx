@@ -629,14 +629,6 @@ export const ToadGalleryModal: React.FC<ToadGalleryModalProps> = ({
               )}
             </div>
           </div>
-
-          {/* Кнопка закрытия внизу */}
-          <button
-            onClick={() => setSelectedItem(null)}
-            className="mt-6 w-full py-2 rounded-lg bg-black/40 hover:bg-black/60 transition-colors text-gray-300 text-sm"
-          >
-            Закрыть
-          </button>
         </div>
       )}
     </Modal>
