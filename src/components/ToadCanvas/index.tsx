@@ -159,12 +159,16 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
   };
 
   const moveToadsToFood = () => {
-    if (!foodRef.current) return;
+    if (!foodRef.current) {
+      return;
+    }
     const foodX = foodRef.current.x;
     const foodY = foodRef.current.y;
     toadsRef.current.forEach((container: ContainerChildCustom) => {
       const data = container.userData;
-      if (!data || data.isDragging || data.state === "dragging") return;
+      if (!data || data.isDragging || data.state === "dragging") {
+        return;
+      }
       const dx = foodX - container.x;
       const dy = foodY - container.y;
       const distance = Math.sqrt(dx * dx + dy * dy);
@@ -278,7 +282,6 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
           };
           data.state = "dragging";
           container.cursor = "grabbing";
-          container.alpha = 0.9;
           container.scale.set(1.1);
         }, 200);
       });

@@ -104,14 +104,16 @@ export default function ToadScene() {
     <div className="relative">
       {/* Навигация между сценами */}
       <div className="flex items-center gap-4 mb-2 justify-between relative">
-        <ArrowLeftButtonCompact onClick={onPrevScene} disabled={isFirstScene} />
+        <ArrowLeftButtonCompact
+          onClick={onPrevScene}
+          disabled={isFirstScene}
+          className="w-12 h-12 flex-none"
+        />
 
-        <div className="flex flex-col ">
-          <div>
-            <h2 className="text-white font-bold text-lg text-center truncate leading-none">
-              {currentScene.name}
-            </h2>
-          </div>
+        <div className="flex flex-col min-h-16 justify-between gap-1">
+          <h2 className="text-white font-bold text-lg text-center  leading-none whitespace-break-spaces">
+            {currentScene.name}
+          </h2>
           {!selectedToad && (
             <div className="text-center">
               <span className="font-bold text-sm">{currentSceneIndex + 1}</span>
@@ -125,7 +127,7 @@ export default function ToadScene() {
             <ClickButton
               onClick={() => setIsInfoOpen(true)}
               className="
-                relative h-7  my-auto mb-[-4px] translate-y-1
+                relative h-8  my-auto
             border-[#00e1ff] border-[1px]
                 flex items-center justify-center gap-2  backdrop-blur-sm
                 px-3 py-1  rounded-md  text-sm
@@ -154,7 +156,11 @@ export default function ToadScene() {
           )}
         </div>
 
-        <ArrowRightButtonCompact onClick={onNextScene} disabled={isLastScene} />
+        <ArrowRightButtonCompact
+          onClick={onNextScene}
+          disabled={isLastScene}
+          className="w-12 h-12 flex-none"
+        />
       </div>
 
       {/* Основной канвас с жабами */}
@@ -163,7 +169,7 @@ export default function ToadScene() {
         setIsFoodActive={setIsFoodActive}
       />
       <div className="w-[100vw] h-[350px] absolute left-[-8px]  bg-[url('/assets/main-end.png')] cover max-w-2xl  " />
-      <div className="flex border-b-2 ml-[-8px] border-[#00e1ff] w-[100vw]  items-center gap-2 justify-between  relative  bg-slate-800/50 backdrop-blur-sm rounded-md p-2">
+      <div className="flex border-b-2 ml-[-8px] max-w-2xl border-[#00e1ff] w-[100vw]  items-center gap-2 justify-between  relative  bg-slate-800/50 backdrop-blur-sm rounded-md p-2">
         <ClickButton
           onClick={handleSceneInfo}
           className="

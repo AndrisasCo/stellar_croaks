@@ -9,10 +9,9 @@ export const usePagination = <T>(items: T[], itemsPerPage: number) => {
 
   // Инициализация видимых элементов
   useEffect(() => {
-    const initialVisible = items.slice(0, itemsPerPage);
+    const initialVisible = items.slice(0, itemsPerPage * currentPage);
     setVisibleItems(initialVisible);
-    setCurrentPage(1);
-    setHasMore(items.length > itemsPerPage);
+    setHasMore(items.length > itemsPerPage * currentPage);
   }, [JSON.stringify(items), itemsPerPage]);
 
   // Функция загрузки следующих элементов

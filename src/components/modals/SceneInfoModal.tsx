@@ -315,7 +315,7 @@ const SceneInfoModal: React.FC<SceneInfoModalProps> = ({ isOpen, onClose }) => {
             ) : (
               <>
                 <span className="text-gray-300 text-sm">Название</span>
-                <span className="text-white font-medium text-sm ml-2 flex-1 truncate">
+                <span className="text-white font-medium text-sm ml-2 flex-1 overflow-auto">
                   {currentScene.name}
                 </span>
                 <button
