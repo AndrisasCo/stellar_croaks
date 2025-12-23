@@ -11,18 +11,18 @@ export const BuyButton = (props: { item: ShopItem }) => {
     common: {
       border: "bg-gray-800 border-gray-700",
       icon: "border-green-400",
-      shadow: "0 0 10px 3px #00ff5233",
+      shadow: "0 0  1px  1px #00ff5233",
     },
     uncommon: {
       border: "bg-gray-800 border-blue-700",
       icon: "border-blue-400",
-      shadow: "0 0 10px 3px #0067ff33",
+      shadow: "0 0  1px  1px #0067ff33",
     },
     rare: {
       border:
         "bg-gradient-to-br from-gray-800 to-gray-900   border-purple-700 relative overflow-hidden",
       icon: "border-purple-400",
-      shadow: "0 0 10px 3px #eb00ff33",
+      shadow: "0 0  1px  1px #eb00ff33",
     },
   };
 
