@@ -1,24 +1,24 @@
 import { useState } from "react";
 
 import { useToads } from "../ToadContext";
-import { MixingInProgress } from "../ToadCollider/MixingInProgress";
 import {
   generateChildToad,
   calculateRarityBonus,
 } from "../../utils/calculate-genetics";
-import { MIXING_DURATION, TYPE_ICONS } from "../../utils/constants";
-import { getRarityConfig, getRarityGroup, Toad } from "../../models/Toad";
+import { MIXING_DURATION } from "../../utils/constants";
+import { getRarityConfig, Toad } from "../../models/Toad";
 import { ToadTypes } from "../../models/Toad/toad-species";
 import { useSoundEffects } from "../../hooks/use-sound-effects";
 import { BreedingResult } from "../../models/types";
 import { ColliderIcons, PregnancyIcon } from "../../assets/icons";
 import Modal from "../shared/Modal";
-import { deleteToadsByIds, updateToadsByIds } from "../../backend";
+import { deleteToadsByIds } from "../../backend";
 import { ToadGender } from "../shared/ToadGender";
 import { nameGenerator } from "../../utils/name-generator";
 import { getGeneticFaultConfig } from "../../models/Toad";
 import { ToadAvatar } from "../shared/ToadAvatar";
 import { ClickButton } from "../shared/ClickButton";
+import { MixingInProgress } from "./ToadCollider/MixingInProgress";
 
 interface ToadColliderProps {
   isOpen: boolean;

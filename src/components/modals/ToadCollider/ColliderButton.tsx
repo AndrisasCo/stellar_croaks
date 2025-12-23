@@ -1,10 +1,10 @@
-import { useEffect, useState } from "react";
-import { useToads } from "../ToadContext";
-import ToadCollider from "../modals/ToadColliderModal";
-import { useSoundEffects } from "../../hooks/use-sound-effects";
-import { BreedingSlot } from "../../models/types";
-import { completeAchivement } from "../../backend/achivements-manager";
-import { ColliderIcons } from "../../assets/icons";
+import { useState, useEffect } from "react";
+import { ColliderIcons } from "../../../assets/icons";
+import { completeAchivement } from "../../../backend/achivements-manager";
+import { useSoundEffects } from "../../../hooks/use-sound-effects";
+import { BreedingSlot } from "../../../models/types";
+import { useToads } from "../../ToadContext";
+import ToadCollider from "../ToadColliderModal";
 
 let interval;
 

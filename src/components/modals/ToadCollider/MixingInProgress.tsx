@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
-import { MIXING_DURATION } from "../../utils/constants";
-import { useSoundEffects } from "../../hooks/use-sound-effects";
+import { useState, useRef, useEffect } from "react";
+import { useSoundEffects } from "../../../hooks/use-sound-effects";
+import { MIXING_DURATION } from "../../../utils/constants";
 
 export const MixingInProgress = () => {
   const [mixingProgress, setMixingProgress] = useState(0);

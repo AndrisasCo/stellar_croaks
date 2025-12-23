@@ -1,14 +1,14 @@
 import { useRef, useState } from "react";
-import { useToads } from "./ToadContext";
-import { ToadInfo } from "./modals/ToadInfoModal";
-import { ArrowLeftButtonCompact } from "./shared/ArrowLeft";
-import { ArrowRightButtonCompact } from "./shared/ArrowRight";
-import ToadCanvas from "./ToadCanvas";
-import ToadListModal from "./modals/ToadListModal";
-import SceneInfoModal from "./modals/SceneInfoModal";
-import { useNotifications } from "../hooks/use-notification";
-import { completeAchivement } from "../backend/achivements-manager";
-import { ClickButton } from "./shared/ClickButton";
+import { completeAchivement } from "../../backend/achivements-manager";
+import { useNotifications } from "../../hooks/use-notification";
+import SceneInfoModal from "../modals/SceneInfoModal";
+import { ToadInfo } from "../modals/ToadInfoModal";
+import ToadListModal from "../modals/ToadListModal";
+import { ArrowLeftButtonCompact } from "../shared/ArrowLeft";
+import { ArrowRightButtonCompact } from "../shared/ArrowRight";
+import { ClickButton } from "../shared/ClickButton";
+import ToadCanvas from "../ToadCanvas";
+import { useToads } from "../ToadContext";
 
 export default function ToadScene() {
   const {

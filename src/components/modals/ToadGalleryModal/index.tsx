@@ -1,23 +1,15 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useSoundEffects } from "../../../hooks/use-sound-effects";
 import Modal from "../../shared/Modal";
 import { ToadAvatar } from "../../shared/ToadAvatar";
-import { useToads } from "../../ToadContext";
 import {
   TOAD_SPECIES_CONFIG,
   ToadObtainedBy,
   getLootboxHint,
   LootboxChanceLevel,
 } from "../../../models/Toad/toad-species";
-import {
-  addToadToCollection,
-  getAchievementState,
-} from "../../../backend/achivements-manager";
-import {
-  GlowWrapper,
-  GoldenGlowSimple,
-  GoldenGlowTailwind,
-} from "../../shared/glow";
+import { getAchievementState } from "../../../backend/achivements-manager";
+import { GlowWrapper } from "../../shared/Glow";
 
 // Интерфейс для элемента галереи
 interface GallerySlot {

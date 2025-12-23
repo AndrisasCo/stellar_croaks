@@ -1,32 +1,32 @@
 import { useEffect, useLayoutEffect, useState, useCallback } from "react";
-import ToadScene from "./ToadScene";
-import { useToads } from "./ToadContext";
-import { MenuIcons } from "../assets/icons";
-import { BurgerMenu } from "./modals/BurgerMenuModal";
-import MusicPlayer from "./shared/MusicPlayer";
-import SettingsModal from "./modals/SettingsModal";
-import LoadingScreen from "./shared/LoadingScreen";
-import ColliderButton from "./ToadCollider/ColliderButton";
-import { processBreeding, TimeManager } from "../utils/breeding-manager";
-import ShopMenu from "./modals/ShopMenu/ShopMenuModal";
-import StorageModal from "./modals/StorageModal";
-import { processHunger } from "../utils/state-manager";
+import { useToads } from "../ToadContext";
+import { MenuIcons } from "../../assets/icons";
+import { BurgerMenu } from "../modals/BurgerMenuModal";
+import MusicPlayer from "../shared/MusicPlayer";
+import SettingsModal from "../modals/SettingsModal";
+import LoadingScreen from "../shared/LoadingScreen";
+import { processBreeding, TimeManager } from "../../utils/breeding-manager";
+import ShopMenu from "../modals/ShopMenu/ShopMenuModal";
+import StorageModal from "../modals/StorageModal";
+import { processHunger } from "../../utils/state-manager";
 import {
   syncGameState,
   updateGameStateDB,
   updateLeaderbord,
-} from "../backend/db";
-import LeaderboardModal from "./modals/LeaderboardModal";
-import TutorialModal from "./modals/TutorialModal";
-import { useTelegram } from "../hooks/use-tg";
-import { useNotifications } from "../hooks/use-notification";
-import { CURRENCY_CONFIG } from "../utils/constants";
-import AchivementsModal from "./modals/AchivementsModal";
-import { getGameState } from "../backend/localStorage";
-import { ClickButton } from "./shared/ClickButton";
-import { ToadGalleryModal } from "./modals/ToadGalleryModal";
-import { addToadToCollection } from "../backend/achivements-manager";
-import { TOAD_SPECIES_CONFIG } from "../models/Toad/toad-species";
+} from "../../backend/db";
+import LeaderboardModal from "../modals/LeaderboardModal";
+import TutorialModal from "../modals/TutorialModal";
+import { useTelegram } from "../../hooks/use-tg";
+import { useNotifications } from "../../hooks/use-notification";
+import { CURRENCY_CONFIG } from "../../utils/constants";
+import AchivementsModal from "../modals/AchivementsModal";
+import { getGameState } from "../../backend/localStorage";
+import { ClickButton } from "../shared/ClickButton";
+import { ToadGalleryModal } from "../modals/ToadGalleryModal";
+import { addToadToCollection } from "../../backend/achivements-manager";
+import { TOAD_SPECIES_CONFIG } from "../../models/Toad/toad-species";
+import ColliderButton from "../modals/ToadCollider/ColliderButton";
+import ToadScene from "./ToadScene";
 
 // Конфиг обновлений для уведомлений
 const UPDATES_LOG = [
