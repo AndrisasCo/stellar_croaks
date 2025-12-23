@@ -93,9 +93,10 @@ export const updateLeaderbord = async () => {
   }
 
   const ldData = await getLeaderboardByTg();
-  console.log({ ldData });
 
   if (!ldData?.data) {
+    console.log("Created Leaderboard");
+
     await createLeaderbord();
     return;
   }
@@ -104,8 +105,6 @@ export const updateLeaderbord = async () => {
     username: user.username,
     tokens: user.tokens,
     total_toads: toads.length,
-    user_id: user.id,
-    tg_id: user.tg_id,
     total_species: getAchievementState().toads_collection?.length || 0,
     toads_collection: {
       rarest_toad: toads.sort((a, b) => b.genes.rarity - a.genes.rarity)[0],
