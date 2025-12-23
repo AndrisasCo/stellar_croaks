@@ -397,12 +397,6 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
               </div>
             ))}
           </div>
-          {/* Подсказка
-            <div className="p-3 bg-gray-700/50 mt-auto  rounded-lg border border-gray-600/50">
-              <div className="text-gray-400 text-sm text-center">
-                Нажмите на предмет для использования
-              </div>
-            </div> */}
         </div>
       )}
 
@@ -426,15 +420,17 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
             sortDirection={sortDirection}
           />
 
-          <div className="flex gap-2">
+          <div className="flex gap-2 justify-end items-center">
             {selectedFilteredToads.length > 0 && (
               <button
                 onClick={handleMoveToadsToScene}
-                className="px-3 py-1.5 bg-gradient-to-r from-yellow-600 to-amber-600 hover:from-yellow-500 hover:to-amber-500 text-white rounded-lg text-xs font-bold transition-all shadow-sm border border-yellow-500/30"
+                className="px-3 mr-auto py-1.5 bg-gradient-to-r from-yellow-600 to-amber-600 hover:from-yellow-500 hover:to-amber-500 text-white rounded-lg text-xs font-bold transition-all shadow-sm border border-yellow-500/30"
               >
                 В вольер
               </button>
             )}
+
+            {isAllFilteredSelected ? "Снять выделение" : "Выбрать все"}
             <button
               onClick={handleSelectAllFiltered}
               className={`w-8 h-8 flex items-center justify-center rounded-lg border transition-all ${
@@ -442,7 +438,6 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
                   ? "bg-red-500/20 text-red-400 border-red-500/40"
                   : "bg-green-500/10 text-green-400 border-green-500/30 hover:bg-green-500/20"
               }`}
-              title={isAllFilteredSelected ? "Снять выделение" : "Выбрать все"}
             >
               {isAllFilteredSelected ? "✕" : "▼"}
             </button>

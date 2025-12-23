@@ -6,7 +6,7 @@ import MusicPlayer from "../shared/MusicPlayer";
 import SettingsModal from "../modals/SettingsModal";
 import LoadingScreen from "../shared/LoadingScreen";
 import { processBreeding, TimeManager } from "../../utils/breeding-manager";
-import ShopMenu from "../modals/ShopMenu/ShopMenuModal";
+import ShopMenu from "../modals/ShopMenu";
 import StorageModal from "../modals/StorageModal";
 import { processHunger } from "../../utils/state-manager";
 import {

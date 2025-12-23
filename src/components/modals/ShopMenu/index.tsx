@@ -3,10 +3,10 @@ import { useSoundEffects } from "../../../hooks/use-sound-effects";
 import { CURRENCY_CONFIG } from "../../../utils/constants";
 import Modal from "../../shared/Modal";
 import { useToads } from "../../ToadContext";
-import BuyTab from "../ShopTabs/BuyTab";
-import EliteTab from "../ShopTabs/EliteTab";
-import EnclosureTab from "../ShopTabs/EnclosureTab";
-import SellTab from "../ShopTabs/SellTab";
+import BuyTab from "./BuyTab";
+import EliteTab from "./EliteTab";
+import EnclosureTab from "./EnclosureTab";
+import SellTab from "./SellTab";
 
 interface ShopMenuProps {
   isOpen: boolean;

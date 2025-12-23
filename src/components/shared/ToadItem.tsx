@@ -55,6 +55,7 @@ export const ToadItem = ({
   onClick?: () => void;
   isSelected?: boolean;
   showHunger?: boolean;
+  id?: string;
 }) => {
   return (
     <div

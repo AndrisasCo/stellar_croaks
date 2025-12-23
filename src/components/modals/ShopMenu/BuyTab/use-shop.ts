@@ -1,29 +1,49 @@
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
+import { createToad, updateUser } from "../../../../backend";
 import {
-  INSTANT_REFRESH_COST,
-  REFRESH_COOLDOWN,
+  completeAchivement,
+  completeAchivementCounter,
+} from "../../../../backend/achivements-manager";
+import { getGameState } from "../../../../backend/localStorage";
+import {
   ShopState,
-  getNewToads,
   getShopState,
-  initialItemsAmount,
   saveShopState,
-} from "../../../backend/shop-state";
-import { Items } from "../../../models/user";
-import { updateUser } from "../../../backend";
-import { completeAchivement } from "../../../backend/achivements-manager";
-import { getGameState } from "../../../backend/localStorage";
-import { useNotifications } from "../../../hooks/use-notification";
-import { useToads } from "../../ToadContext";
-import { useSoundEffects } from "../../../hooks/use-sound-effects";
+  getNewToads,
+  initialItemsAmount,
+  REFRESH_COOLDOWN,
+  INSTANT_REFRESH_COST,
+} from "../../../../backend/shop-state";
+import { useNotifications } from "../../../../hooks/use-notification";
+import { useSoundEffects } from "../../../../hooks/use-sound-effects";
+import { Items } from "../../../../models/user";
+import { useToads } from "../../../ToadContext";
+import { Toad, calculateSellPrice } from "../../../../models/Toad";
+import { MAX_STORED_TOADS } from "../../../../utils/constants";
+
+export type ShopItem = {
+  key: Items;
+  name: string;
+  icon: string;
+  description: string;
+  rarity: "common" | "rare" | "uncommon";
+  price: number;
+  currency: "tokens" | "astro_quax";
+  left: number;
+  quantity: number;
+  onClick: () => void;
+  disabled: boolean;
+};
 
 export const useShop = () => {
-  const { account } = useToads();
+  const { account, currentScene } = useToads();
 
-  const { tokens = 0, astro_quax = 0, storage = { food: 0 } } = account || {};
+  const { tokens = 0, storage = { food: 0 } } = account || {};
   const [shopState, setShopState] = useState<ShopState>(getShopState());
   const [timeLeft, setTimeLeft] = useState<string>("");
   const { addNotification } = useNotifications();
   const { playBuy } = useSoundEffects();
+  console.log({ shopState });
 
   // Таймер обратного отсчета
   useEffect(() => {
@@ -55,7 +75,7 @@ export const useShop = () => {
     return () => clearInterval(interval);
   }, [shopState.nextRefresh]);
 
-  const shopItems = [
+  const _shopItems: Partial<ShopItem>[] = [
     {
       key: Items.food,
       name: "Жабий корм x10",
@@ -78,25 +98,14 @@ export const useShop = () => {
       quantity: 100,
       left: shopState.items[Items.food],
     },
-    {
-      key: Items.lootbox,
 
-      name: "Лутбокс",
-      icon: "/assets/lootbox.png",
-      description: "Открой!",
-      rarity: "rare",
-      price: 50,
-      currency: "astro_quax",
-      quantity: 1,
-      left: shopState.items[Items.lootbox],
-    },
     {
       key: Items.battery,
       price: 5,
 
       name: "Батарейки х3",
       icon: "/assets/battery.png",
-      description: "Ускоряет созревание жабы в инкубаторе на 10 минут",
+      description: "Ускоряет созревание в инкубаторе",
       rarity: "common",
       currency: "astro_quax",
       quantity: 3,
@@ -108,8 +117,8 @@ export const useShop = () => {
 
       name: "Сияющие мушки",
       icon: "/assets/flies.png",
-      description: "Ускоряют беременность жабы на 100%",
-      rarity: "rare",
+      description: "Ускоряют беременность",
+      rarity: "uncommon",
       currency: "astro_quax",
       quantity: 1,
       left: shopState.items[Items.sparkleFlys],
@@ -119,15 +128,29 @@ export const useShop = () => {
       price: 10,
       name: "Протеиновые черви",
       icon: "/assets/worms.png",
-      description: "Ускоряет рост головастика на 100%",
+      description: "Ускоряет рост головастика",
       rarity: "uncommon",
       currency: "astro_quax",
       quantity: 1,
       left: shopState.items[Items.worms],
     },
+    {
+      key: Items.lootbox,
+
+      name: "Лутбокс",
+      icon: "/assets/lootbox.png",
+      description: "Случайная жаба или предмет",
+      rarity: "rare",
+      price: 50,
+      currency: "astro_quax",
+      quantity: 1,
+      left: shopState.items[Items.lootbox],
+    },
   ];
 
   const updateShopStateAmount = (keyString: string) => {
+    console.log({ keyString });
+
     const newShopState = { ...shopState };
     newShopState.items[keyString] = newShopState.items[keyString] - 1;
 
@@ -178,15 +201,15 @@ export const useShop = () => {
       updateShopStateAmount(itemName);
     };
 
-  shopItems.map((s) => ({
+  const shopItems = _shopItems.map((s) => ({
     ...s,
     disabled: account?.[s.currency] < s.price || s.left === 0,
-    onCLick: handleBuyItem(
+    onClick: handleBuyItem(
       { [s.key]: s.quantity },
       { [s.currency]: s.price },
-      true
+      s.left === Infinity
     ),
-  }));
+  })) as ShopItem[];
 
   const handleRefreshShop = () => {
     const now = Date.now();
@@ -247,6 +270,62 @@ export const useShop = () => {
   };
 
   const canRefresh = Date.now() >= shopState.nextRefresh;
+  const calculateBuyPrice = (toad: Toad) =>
+    Math.ceil(calculateSellPrice(toad) * 2.5);
 
-  return { shopItems };
+  const handleBuyToad = async (toad: Toad) => {
+    playBuy();
+    completeAchivement("buy-toad");
+    completeAchivementCounter("buyToad", 1);
+
+    const allToadsOnScene =
+      getGameState().toads.filter((t) => t.scene_id === currentScene.id)
+        .length + 1;
+
+    let scene_id: number | null = currentScene?.id;
+
+    if (currentScene.capacity < allToadsOnScene) {
+      if (
+        getGameState().toads.filter((t) => t.scene_id === null).length + 1 >
+        MAX_STORED_TOADS
+      ) {
+        addNotification({
+          type: "danger",
+          content: `Все хранилища переполнены`,
+        });
+        return;
+      }
+      scene_id = null;
+      addNotification({
+        type: "warn",
+        content:
+          "Превышен лимит жаб на вольер, новая жаба была помещена на склад.",
+      });
+    }
+
+    createToad({ ...toad, scene_id });
+    updateUser({ tokens: tokens - calculateBuyPrice(toad) });
+
+    // Помечаем жабу как купленную
+    const newShopState: ShopState = {
+      ...shopState,
+      availableToads: shopState.availableToads.filter((t) => t.id !== toad.id),
+    };
+
+    setShopState(newShopState);
+    saveShopState(newShopState);
+  };
+  const allToadsPurchased = shopState.availableToads.length === 0;
+
+  return {
+    shopItems,
+    handleInstantRefresh,
+    handleBuyToad,
+    handleRefreshShop,
+    timeLeft,
+    canRefresh,
+    allToadsPurchased,
+    calculateBuyPrice,
+    shopState,
+  };
 };

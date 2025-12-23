@@ -1,7 +1,8 @@
 import { CURRENCY_CONFIG } from "../../../utils/constants";
 import { ClickButton } from "../../shared/ClickButton";
+import { ShopItem } from "./use-shop";
 
-export const ItemButton = (props) => {
+export const ItemButton = (props: { item: ShopItem }) => {
   const { item } = props;
   const mapColor = {
     common: "gray-300",

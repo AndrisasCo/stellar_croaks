@@ -265,7 +265,6 @@ export default function ToadScene() {
       {isInfoOpen && <ToadInfo onClose={onInfoClose} />}
 
       <ToadListModal
-        toads={toads}
         isOpen={isListOpen}
         onClose={() => setIsListOpen(false)}
         onToadSelect={onToadSelect}
