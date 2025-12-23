@@ -9,7 +9,7 @@ import {
   LootboxChanceLevel,
 } from "../../../models/Toad/toad-species";
 import { getAchievementState } from "../../../backend/achivements-manager";
-import { GlowWrapper } from "../../shared/Glow";
+import { GlowWrapper } from "../../shared/GlowWrapper";
 
 // Интерфейс для элемента галереи
 interface GallerySlot {
