@@ -60,14 +60,14 @@ const getRarityStyles = (rarity: string, isUnlocked: boolean) => {
   if (!isUnlocked) {
     return {
       border: "border-gray-700",
-      bg: "bg-gray-800",
-      bgLight: "bg-gray-800/40",
+      bg: "bg-color-main",
+      bgLight: "bg-color-main",
       text: "text-gray-500",
       glow: "",
       icon: "text-gray-600",
       titleColor: "text-gray-500",
       progressBar: "bg-gray-600",
-      badge: "bg-gray-700 text-gray-400",
+      badge: "bg-color-second text-gray-300",
     };
   }
 
@@ -310,7 +310,6 @@ export const ToadGalleryModal: React.FC<ToadGalleryModalProps> = ({
 
   return (
     <Modal
-      closeButton={false}
       isOpen={isOpen}
       onClose={hadleClose}
       icon={!selectedItem?.name && icon}
@@ -319,18 +318,18 @@ export const ToadGalleryModal: React.FC<ToadGalleryModalProps> = ({
       {!detailedView && (
         <>
           <div className="flex justify-between items-center mb-4 px-1">
-            <div className="text-sm text-gray-400">
+            <div className="text-sm text-gray-300">
               Найдено{" "}
               <span className="text-purple-300 font-bold">
                 {stats.unlocked}
               </span>{" "}
-              из <span className="text-gray-300">{stats.total}</span> видов
+              из <span className="text-gray-200">{stats.total}</span> видов
             </div>
             <div className="flex gap-2">
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as any)}
-                className="text-xs bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-gray-300 focus:outline-none focus:border-purple-500"
+                className="text-xs bg-color-main border border-gray-700 rounded-lg px-3 py-1.5 text-gray-200 focus:outline-none focus:border-purple-500"
               >
                 <option value="rarity">По редкости</option>
                 <option value="unlocked">По открытию</option>
@@ -339,9 +338,9 @@ export const ToadGalleryModal: React.FC<ToadGalleryModalProps> = ({
             </div>
           </div>
 
-          <div className="mb-6 bg-gray-800/50 rounded-xl p-4 border border-gray-700/50 backdrop-blur-sm">
+          <div className="mb-6 bg-color-main rounded-xl p-4 border border-gray-700/50 backdrop-blur-sm">
             <div className="flex justify-between items-center mb-3">
-              <div className="text-sm text-gray-300 font-medium">
+              <div className="text-sm text-gray-200 font-medium">
                 Прогресс коллекции
               </div>
               <div className="text-purple-300 font-bold text-lg">
@@ -361,25 +360,25 @@ export const ToadGalleryModal: React.FC<ToadGalleryModalProps> = ({
                 <div className="text-green-400 font-bold">
                   {stats.byRarity.common}
                 </div>
-                <div className="text-xs text-gray-400">Обычные</div>
+                <div className="text-xs text-gray-300">Обычные</div>
               </div>
               <div className="bg-blue-900/30 rounded p-2">
                 <div className="text-blue-400 font-bold">
                   {stats.byRarity.rare}
                 </div>
-                <div className="text-xs text-gray-400">Редкие</div>
+                <div className="text-xs text-gray-300">Редкие</div>
               </div>
               <div className="bg-purple-900/30 rounded p-2">
                 <div className="text-purple-400 font-bold">
                   {stats.byRarity.epic}
                 </div>
-                <div className="text-xs text-gray-400">Эпические</div>
+                <div className="text-xs text-gray-300">Эпические</div>
               </div>
               <div className="bg-yellow-900/30 rounded p-2">
                 <div className="text-yellow-400 font-bold">
                   {stats.byRarity.legendary}
                 </div>
-                <div className="text-xs text-gray-400">Легенды</div>
+                <div className="text-xs text-gray-300">Легенды</div>
               </div>
             </div>
           </div>
@@ -459,7 +458,7 @@ export const ToadGalleryModal: React.FC<ToadGalleryModalProps> = ({
 
                     {/* Подсказка для неоткрытых */}
                     {!item.isUnlocked && hintText && (
-                      <div className="text-[10px] text-gray-400 px-1 truncate mb-1">
+                      <div className="text-[10px] text-gray-300 px-1 truncate mb-1">
                         {hintText}
                       </div>
                     )}
@@ -513,13 +512,6 @@ export const ToadGalleryModal: React.FC<ToadGalleryModalProps> = ({
       {/* --- DETAIL OVERLAY (Полное описание) --- */}
       {detailedView && (
         <div className="relative flex flex-col">
-          <button
-            onClick={() => setSelectedItem(null)}
-            className="absolute top-[-48px] right-0 text-gray-400 hover:text-white p-1 rounded-full bg-black/30 w-7 h-7 flex items-center justify-center"
-          >
-            ✕
-          </button>
-
           {/* Большой Аватар */}
           <div className="mb-6 flex mx-auto self-center">
             {selectedItem.isUnlocked && selectedItem.exampleToad ? (
@@ -565,12 +557,12 @@ export const ToadGalleryModal: React.FC<ToadGalleryModalProps> = ({
                 </h4>
 
                 {selectedItem.lootboxChanceLevel ? (
-                  <div className="mt-2 text-xs text-gray-400">
+                  <div className="mt-2 text-xs text-gray-300">
                     Шанс выпадения в лутбоксе:{" "}
                     {getLootboxHint(selectedItem.lootboxChanceLevel)}
                   </div>
                 ) : (
-                  <p className="text-xs text-gray-300">
+                  <p className="text-xs text-gray-200">
                     {getHintText(selectedItem)}
                   </p>
                 )}
@@ -585,7 +577,7 @@ export const ToadGalleryModal: React.FC<ToadGalleryModalProps> = ({
             {/* Статистика редкости */}
             <div className="grid grid-cols-2 gap-3 text-xs">
               <div className="bg-black/30 rounded p-3">
-                <div className="text-gray-400 mb-1">Редкость</div>
+                <div className="text-gray-300 mb-1">Редкость</div>
                 <div className={detailStyles.titleColor}>
                   {selectedItem.rarity === "legendary"
                     ? "Легендарная"
@@ -597,10 +589,10 @@ export const ToadGalleryModal: React.FC<ToadGalleryModalProps> = ({
                 </div>
               </div>
               <div className="bg-black/30 rounded p-3">
-                <div className="text-gray-400 mb-1">Статус</div>
+                <div className="text-gray-300 mb-1">Статус</div>
                 <div
                   className={
-                    selectedItem.isUnlocked ? "text-green-400" : "text-gray-400"
+                    selectedItem.isUnlocked ? "text-green-400" : "text-gray-300"
                   }
                 >
                   {selectedItem.isUnlocked ? "✓ В коллекции" : "✗ Не найдена"}

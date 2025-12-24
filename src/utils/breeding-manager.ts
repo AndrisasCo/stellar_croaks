@@ -44,7 +44,7 @@ const groupToadsByScene = (toads: Toad[]): Record<string, Toad[]> => {
   return toads
     .filter((t) => t.scene_id)
     .reduce((groups, toad) => {
-      const sceneId = toad.scene_id || "inv";
+      const sceneId = toad.scene_id || "0";
       if (!groups[sceneId]) {
         groups[sceneId] = [];
       }
@@ -74,23 +74,23 @@ const processSceneBreeding = async (
     }
   });
 
-  // Фильтруем потенциальных партнеров
-  const females = sceneToads
-    .filter((t) => t.state.hunger > MIN_HUNGER_TO_BREED)
-    .filter(
-      (t) =>
-        t.stage === "adult" && !t.pregnancy?.isPregnant && t.sex === "female"
+  if (hoursPassed > 0.09) {
+    // Фильтруем потенциальных партнеров
+    const females = sceneToads
+      .filter((t) => t.state.hunger > MIN_HUNGER_TO_BREED)
+      .filter(
+        (t) =>
+          t.stage === "adult" && !t.pregnancy?.isPregnant && t.sex === "female"
+      );
+
+    const males = sceneToads
+      .filter((t) => t.state.hunger > MIN_HUNGER_TO_BREED)
+      .filter((t) => t.stage === "adult" && t.sex === "male");
+
+    console.log(
+      `Scene ${sceneId}: ${females.length} females, ${males.length} males`
     );
 
-  const males = sceneToads
-    .filter((t) => t.state.hunger > MIN_HUNGER_TO_BREED)
-    .filter((t) => t.stage === "adult" && t.sex === "male");
-
-  console.log(
-    `Scene ${sceneId}: ${females.length} females, ${males.length} males`
-  );
-
-  if (hoursPassed > 0.09) {
     let pregnantCounter = 0;
     // ограничение по количеству самцов 1 на 5, это его предел
     // Обрабатываем каждую самку
@@ -101,8 +101,6 @@ const processSceneBreeding = async (
         males,
         hoursPassed
       );
-
-      console.log(`Female ${female.id} pregnancy chance: ${pregnancyChance}`);
 
       if (Math.random() < pregnancyChance) {
         // Выбираем отца на основе вероятностей

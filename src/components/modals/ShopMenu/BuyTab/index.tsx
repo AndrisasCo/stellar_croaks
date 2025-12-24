@@ -33,10 +33,10 @@ const BuyTab: React.FC = () => {
   return (
     <div className="space-y-4 pb-4">
       {/* Управление магазином */}
-      <div className="bg-gray-800 rounded-2xl py-4 px-2 border border-gray-700">
+      <div className="bg-color-main rounded-2xl py-4 px-2 border border-gray-700">
         <div className="flex flex-col gap-3">
           <div className="flex justify-between items-center">
-            <span className="text-gray-400">Обновление ассортимента:</span>
+            <span className="text-gray-300">Обновление ассортимента:</span>
             <span className="text-white font-mono">{timeLeft}</span>
           </div>
 
@@ -47,7 +47,7 @@ const BuyTab: React.FC = () => {
               className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 canRefresh
                   ? "bg-blue-600 hover:bg-blue-500 text-white"
-                  : "bg-gray-600 text-gray-400 cursor-not-allowed"
+                  : "bg-gray-600 text-gray-300 cursor-not-allowed"
               }`}
             >
               Обновить рынок
@@ -59,7 +59,7 @@ const BuyTab: React.FC = () => {
               className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
                 tokens >= INSTANT_REFRESH_COST
                   ? "bg-purple-600 hover:bg-purple-500 text-white"
-                  : "bg-gray-600 text-gray-400 cursor-not-allowed"
+                  : "bg-gray-600 text-gray-300 cursor-not-allowed"
               }`}
             >
               {INSTANT_REFRESH_COST} {CURRENCY_CONFIG.tokens.icon}
@@ -80,15 +80,15 @@ const BuyTab: React.FC = () => {
         <h3 className="text-white px-2 font-semibold mb-3 text-lg">
           Доступные жабы
           {visibleToads.length > 0 && (
-            <span className="text-gray-400 text-sm ml-2">
+            <span className="text-gray-300 text-sm ml-2">
               ({visibleToads.length} из {shopState.availableToads.length})
             </span>
           )}
         </h3>
 
         {allToadsPurchased ? (
-          <div className="bg-gray-800 rounded-2xl p-6 border border-gray-700 text-center">
-            <p className="text-gray-400 text-lg">Все жабы раскуплены!</p>
+          <div className="bg-color-main rounded-2xl p-6 border border-gray-700 text-center">
+            <p className="text-gray-300 text-lg">Все жабы раскуплены!</p>
             <p className="text-gray-500 text-sm mt-1">
               Дождитесь обновления магазина или обновите его сейчас за
               астрокваксы
@@ -125,7 +125,7 @@ const BuyTab: React.FC = () => {
                 className="flex justify-center py-4"
                 key="load-more"
               >
-                <div className="animate-pulse text-gray-400 text-sm">
+                <div className="animate-pulse text-gray-300 text-sm">
                   Загрузка жаб...
                 </div>
               </div>

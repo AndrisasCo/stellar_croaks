@@ -252,3 +252,11 @@ body {
   background-size: cover;
   background-position: center;
 }
+
+.bg-color-main {
+  background: rgb(24 36 54 / 75%);
+}
+
+.bg-color-second {
+  background: rgba(32, 48, 71, 0.75);
+}

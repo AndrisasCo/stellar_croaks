@@ -227,10 +227,10 @@ const SceneInfoModal: React.FC<SceneInfoModalProps> = ({ isOpen, onClose }) => {
     color?: string;
     icon?: React.ReactNode;
   }) => (
-    <div className="flex justify-between items-center p-3 bg-gray-700/50 rounded-lg border border-gray-600/50">
+    <div className="flex justify-between items-center p-3 bg-slate-700/80 rounded-lg border border-gray-600/50">
       <div className="flex items-center gap-2">
-        {icon && <span className="text-gray-400">{icon}</span>}
-        <span className="text-gray-300 text-sm">{label}</span>
+        {icon && <span className="text-gray-300">{icon}</span>}
+        <span className="text-gray-200 text-sm">{label}</span>
       </div>
       <span className={`${color} font-medium text-sm`}>{value}</span>
     </div>
@@ -245,10 +245,10 @@ const SceneInfoModal: React.FC<SceneInfoModalProps> = ({ isOpen, onClose }) => {
     >
       {/* Основная информация о сцене */}
       <div className="space-y-3 mb-6 ">
-        <div className="flex justify-between items-center p-3 bg-gray-700/50 rounded-lg border border-gray-600/50">
+        <div className="flex justify-between items-center p-3 bg-slate-700/80 rounded-lg border border-gray-600/50">
           <div className="flex items-center gap-2 flex-1">
             <svg
-              className="w-4 h-4 text-gray-400 flex-shrink-0"
+              className="w-4 h-4 text-gray-300 flex-shrink-0"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -314,13 +314,13 @@ const SceneInfoModal: React.FC<SceneInfoModalProps> = ({ isOpen, onClose }) => {
               </div>
             ) : (
               <>
-                <span className="text-gray-300 text-sm">Название</span>
+                <span className="text-gray-200 text-sm">Название</span>
                 <span className="text-white font-medium text-sm ml-2 flex-1 overflow-auto">
                   {currentScene.name}
                 </span>
                 <button
                   onClick={() => setIsEditing(true)}
-                  className="p-1 text-gray-400 hover:text-blue-400 transition-colors flex-shrink-0"
+                  className="p-1 text-gray-300 hover:text-blue-400 transition-colors flex-shrink-0"
                   title="Редактировать название"
                 >
                   {InfoIcons.pencil}
@@ -369,7 +369,7 @@ const SceneInfoModal: React.FC<SceneInfoModalProps> = ({ isOpen, onClose }) => {
               <StatItem
                 label="Бесполые"
                 value={toadStats.neuter}
-                color="text-gray-400"
+                color="text-gray-300"
               />
             </div>
 
@@ -407,23 +407,23 @@ const SceneInfoModal: React.FC<SceneInfoModalProps> = ({ isOpen, onClose }) => {
             Средние показатели
           </h4>
           <div className="grid grid-cols-3 gap-2">
-            <div className="bg-gray-700/50 rounded-lg p-3 text-center border border-gray-600/50">
+            <div className="bg-slate-700/80 rounded-lg p-3 text-center border border-gray-600/50">
               <div className="text-purple-400 text-lg font-bold">
                 {averageStats.rarity}
               </div>
-              <div className="text-gray-400 text-[10px] mt-1">Редкость</div>
+              <div className="text-gray-300 text-[10px] mt-1">Редкость</div>
             </div>
-            <div className="bg-gray-700/50 rounded-lg p-3 text-center border border-gray-600/50">
+            <div className="bg-slate-700/80 rounded-lg p-3 text-center border border-gray-600/50">
               <div className="text-blue-400 text-lg font-bold">
                 {averageStats.weight}
               </div>
-              <div className="text-gray-400 text-[10px] mt-1">Размер</div>
+              <div className="text-gray-300 text-[10px] mt-1">Размер</div>
             </div>
-            <div className="bg-gray-700/50 rounded-lg p-3 text-center border border-gray-600/50">
+            <div className="bg-slate-700/80 rounded-lg p-3 text-center border border-gray-600/50">
               <div className="text-green-400 text-lg font-bold">
                 {averageStats.speed}
               </div>
-              <div className="text-gray-400 text-[10px] mt-1">Скорость</div>
+              <div className="text-gray-300 text-[10px] mt-1">Скорость</div>
             </div>
           </div>
         </div>
@@ -650,7 +650,7 @@ const SceneInfoModal: React.FC<SceneInfoModalProps> = ({ isOpen, onClose }) => {
                                   className={`text-sm ${
                                     isAvailable
                                       ? "text-amber-100"
-                                      : "text-gray-300"
+                                      : "text-gray-200"
                                   }`}
                                 >
                                   {bonusLevel.cost}{" "}

@@ -81,7 +81,7 @@ export const Filters = ({
   return (
     <>
       {/* Панель фильтров и сортировки */}
-      <div className="bg-gray-800/40 backdrop-blur-sm rounded-xl p-3 border border-cyan-500/20  mb-3">
+      <div className="bg-color-main backdrop-blur-sm rounded-xl p-3 border border-cyan-500/20  mb-3">
         <div className="space-y-2">
           {/* Селектор сортировки */}
           <div className="flex items-center gap-2">
@@ -108,7 +108,7 @@ export const Filters = ({
                 />
               </svg>
             </span>
-            <HorizontalScroll className="flex bg-gray-700/50 rounded-lg p-1 border border-cyan-500/10">
+            <HorizontalScroll className="flex bg-color-main rounded-lg p-1 border border-cyan-500/10">
               {[
                 { key: "rarity", label: "Редкость" },
                 addPrice ? { key: "price", label: "Цена" } : {},
@@ -132,7 +132,7 @@ export const Filters = ({
                       className={`px-2 py-1 rounded text-xs font-medium transition-all flex items-center gap-1 ${
                         sortBy === item.key
                           ? "bg-cyan-600 text-white shadow-sm shadow-cyan-500/30"
-                          : "text-gray-300 hover:text-cyan-300"
+                          : "text-gray-200 hover:text-cyan-300"
                       }`}
                     >
                       {item.label}
@@ -165,13 +165,13 @@ export const Filters = ({
                   />
                 </svg>
               </span>
-              <HorizontalScroll className="flex bg-gray-700/50 rounded-lg p-1 border text-nowrap border-purple-500/10">
+              <HorizontalScroll className="flex bg-color-main rounded-lg p-1 border text-nowrap border-purple-500/10">
                 <button
                   onClick={() => setFilterBy("all")}
                   className={`px-2 py-1 text-nowrap rounded text-xs font-medium transition-all ${
                     filterBy === "all"
                       ? "bg-purple-600 text-white shadow-sm shadow-purple-500/30"
-                      : "text-gray-300 hover:text-purple-300"
+                      : "text-gray-200 hover:text-purple-300"
                   }`}
                 >
                   Все ({toads.length})
@@ -182,7 +182,7 @@ export const Filters = ({
                   className={`px-2 py-1 rounded text-xs font-medium transition-all ${
                     filterBy === "females"
                       ? "bg-purple-600 text-white shadow-sm shadow-purple-500/30"
-                      : "text-gray-300 hover:text-purple-300"
+                      : "text-gray-200 hover:text-purple-300"
                   }`}
                 >
                   Самки ({femalesCount})
@@ -193,7 +193,7 @@ export const Filters = ({
                   className={`px-2 py-1 rounded text-xs font-medium transition-all ${
                     filterBy === "males"
                       ? "bg-purple-600 text-white shadow-sm shadow-purple-500/30"
-                      : "text-gray-300 hover:text-purple-300"
+                      : "text-gray-200 hover:text-purple-300"
                   }`}
                 >
                   Самцы ({malesCount})
@@ -204,7 +204,7 @@ export const Filters = ({
                   className={`px-2 py-1 rounded text-xs font-medium transition-all ${
                     filterBy === "toadpoles"
                       ? "bg-purple-600 text-white shadow-sm shadow-purple-500/30"
-                      : "text-gray-300 hover:text-purple-300"
+                      : "text-gray-200 hover:text-purple-300"
                   }`}
                 >
                   Головастики ({toadPolesCount})
@@ -233,13 +233,13 @@ export const Filters = ({
                   />
                 </svg>
               </span>
-              <HorizontalScroll className="flex bg-gray-700/50 rounded-lg p-1 border text-nowrap border-purple-500/10">
+              <HorizontalScroll className="flex bg-color-main rounded-lg p-1 border text-nowrap border-purple-500/10">
                 <button
                   onClick={() => setFilterBy("all")}
                   className={`px-2 py-1 text-nowrap rounded text-xs font-medium transition-all ${
                     filterBy === "all"
                       ? "bg-purple-600 text-white shadow-sm shadow-purple-500/30"
-                      : "text-gray-300 hover:text-purple-300"
+                      : "text-gray-200 hover:text-purple-300"
                   }`}
                 >
                   Все ({toads.length})
@@ -250,7 +250,7 @@ export const Filters = ({
                   className={`px-2 py-1 truncate rounded text-xs font-medium transition-all ${
                     filterBy === "enclosure"
                       ? "bg-purple-600 text-white shadow-sm shadow-purple-500/30"
-                      : "text-gray-300 hover:text-purple-300"
+                      : "text-gray-200 hover:text-purple-300"
                   }`}
                 >
                   {currentScene.name} ({currentToads.length})
@@ -261,7 +261,7 @@ export const Filters = ({
                   className={`px-2 py-1 rounded text-xs font-medium transition-all ${
                     filterBy === "storage"
                       ? "bg-purple-600 text-white shadow-sm shadow-purple-500/30"
-                      : "text-gray-300 hover:text-purple-300"
+                      : "text-gray-200 hover:text-purple-300"
                   }`}
                 >
                   Склад ({storageToads})

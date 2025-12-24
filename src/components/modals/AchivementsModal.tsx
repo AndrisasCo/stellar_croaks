@@ -157,7 +157,7 @@ const AchievementModal: React.FC<AchievementModalProps> = ({
     <Modal isOpen={isOpen} onClose={onClose} icon={icon} title="Достижения">
       {/* Статистика */}
       <div className="grid grid-cols-3 gap-3 mb-6">
-        <div className="bg-gray-800/50 rounded-lg p-3 text-center border border-green-500/20">
+        <div className="bg-color-main rounded-lg p-3 text-center border border-green-500/20">
           <div className="text-green-400 text-lg font-bold">
             {
               achievementGroups
@@ -165,25 +165,25 @@ const AchievementModal: React.FC<AchievementModalProps> = ({
                 .filter((a) => achivements.completed.includes(a.id)).length
             }
           </div>
-          <div className="text-gray-400 text-xs">Выполнено</div>
+          <div className="text-gray-300 text-xs">Выполнено</div>
         </div>
-        <div className="bg-gray-800/50 rounded-lg p-3 text-center border border-blue-500/20">
+        <div className="bg-color-main rounded-lg p-3 text-center border border-blue-500/20">
           <div className="text-blue-400 text-lg font-bold">
             {achievementGroups.flatMap((g) => g.achievements).length}
           </div>
-          <div className="text-gray-400 text-xs">Всего</div>
+          <div className="text-gray-300 text-xs">Всего</div>
         </div>
-        <div className="bg-gray-800/50 rounded-lg p-3 text-center border border-purple-500/20">
+        <div className="bg-color-main rounded-lg p-3 text-center border border-purple-500/20">
           <div className="text-purple-400 text-lg font-bold">
             {achivements.rewards.length}
           </div>
-          <div className="text-gray-400 text-xs">Наград </div>
+          <div className="text-gray-300 text-xs">Наград </div>
         </div>
       </div>
 
       {/* Счетчики прогресса */}
       {Object.keys(achivements.counter || {}).length > 0 && (
-        <div className="mb-6 p-3 bg-gray-800/30 rounded-xl border border-gray-600/30">
+        <div className="mb-6 p-3 bg-color-main rounded-xl border border-gray-600/30">
           <h4 className="text-white font-semibold mb-3 text-sm">
             Прогресс по категориям:
           </h4>
@@ -191,9 +191,9 @@ const AchievementModal: React.FC<AchievementModalProps> = ({
             {Object.entries(achivements.counter || {}).map(([key, value]) => (
               <div
                 key={key}
-                className="flex items-center justify-between p-2 bg-gray-700/30 rounded"
+                className="flex items-center justify-between p-2 bg-color-second/30 rounded"
               >
-                <span className="text-gray-300 text-xs capitalize">
+                <span className="text-gray-200 text-xs capitalize">
                   {key === "earn"
                     ? `Заработано ${CURRENCY_CONFIG.tokens.icon}`
                     : key === "buyToad"
@@ -240,7 +240,7 @@ const AchievementModal: React.FC<AchievementModalProps> = ({
                     >
                       {group.title}
                     </h3>
-                    <p className="text-gray-400 text-sm">{group.description}</p>
+                    <p className="text-gray-300 text-sm">{group.description}</p>
                   </div>
                 </div>
                 <div className="text-right">
@@ -249,12 +249,12 @@ const AchievementModal: React.FC<AchievementModalProps> = ({
                   >
                     {progress.completed}/{progress.total}
                   </div>
-                  <div className="text-gray-400 text-xs">выполнено</div>
+                  <div className="text-gray-300 text-xs">выполнено</div>
                 </div>
               </div>
 
               {/* Прогресс бар группы */}
-              <div className="w-full bg-gray-700/50 rounded-full h-2 mb-4">
+              <div className="w-full bg-color-main rounded-full h-2 mb-4">
                 <div
                   className={`h-2 rounded-full transition-all duration-500 ${getProgressColor(
                     group.color
@@ -280,8 +280,8 @@ const AchievementModal: React.FC<AchievementModalProps> = ({
                           flex flex-col gap-2 p-3 rounded-lg border transition-all
                           ${
                             isCompleted
-                              ? "bg-gray-700/30 border-green-500/30"
-                              : "bg-gray-800/20 border-gray-600/30"
+                              ? "bg-color-second/30 border-green-500/30"
+                              : "bg-color-main border-gray-600/30"
                           }
                         `}
                     >
@@ -290,7 +290,7 @@ const AchievementModal: React.FC<AchievementModalProps> = ({
                         <div className="flex-1 min-w-0">
                           <div
                             className={`text-sm font-medium ${
-                              isCompleted ? "text-white" : "text-gray-400"
+                              isCompleted ? "text-white" : "text-gray-300"
                             }`}
                           >
                             {achievement.name}
@@ -305,7 +305,7 @@ const AchievementModal: React.FC<AchievementModalProps> = ({
                             ${
                               isCompleted
                                 ? "bg-green-500 border-green-500"
-                                : "bg-gray-700 border-gray-500"
+                                : "bg-color-second border-gray-500"
                             }
                           `}
                         >
@@ -322,7 +322,7 @@ const AchievementModal: React.FC<AchievementModalProps> = ({
                               />
                             </svg>
                           ) : (
-                            <span className="text-xs text-gray-300">
+                            <span className="text-xs text-gray-200">
                               {hasProgress ? "" : "?"}
                             </span>
                           )}
@@ -335,7 +335,7 @@ const AchievementModal: React.FC<AchievementModalProps> = ({
                           <div className="flex justify-between text-xs mb-1">
                             <span
                               className={`${
-                                isCompleted ? "text-green-300" : "text-gray-400"
+                                isCompleted ? "text-green-300" : "text-gray-300"
                               }`}
                             >
                               {isCompleted ? "Выполнено!" : "Прогресс:"}
@@ -351,7 +351,7 @@ const AchievementModal: React.FC<AchievementModalProps> = ({
                               {formatNumber(progress.target)}
                             </span>
                           </div>
-                          <div className="w-full bg-gray-700/50 rounded-full h-1.5">
+                          <div className="w-full bg-color-main rounded-full h-1.5">
                             <div
                               className={`h-1.5 rounded-full transition-all duration-300 ${
                                 isCompleted
@@ -384,7 +384,7 @@ const AchievementModal: React.FC<AchievementModalProps> = ({
                       ? isRewardClaimed
                         ? "bg-gradient-to-r from-yellow-500/10 to-amber-500/10 border-yellow-400/50"
                         : "bg-gradient-to-r from-green-500/10 to-emerald-500/10 border-green-400/50"
-                      : "bg-gray-800/30 border-gray-600/30"
+                      : "bg-color-main border-gray-600/30"
                   }
                 `}
               >
@@ -394,7 +394,7 @@ const AchievementModal: React.FC<AchievementModalProps> = ({
                       group.groupReward.icon
                     ) : (
                       <div className="w-8 h-8 rounded-full bg-gray-600 flex items-center justify-center border border-gray-500">
-                        <span className="text-gray-300 text-lg">?</span>
+                        <span className="text-gray-200 text-lg">?</span>
                       </div>
                     )}
                   </div>
@@ -405,7 +405,7 @@ const AchievementModal: React.FC<AchievementModalProps> = ({
                           ? isRewardClaimed
                             ? "text-yellow-300"
                             : "text-green-300"
-                          : "text-gray-400"
+                          : "text-gray-300"
                       }`}
                     >
                       {isGroupCompleted
@@ -440,12 +440,12 @@ const AchievementModal: React.FC<AchievementModalProps> = ({
       </div>
 
       {/* Подсказка о прогрессивных ачивках */}
-      <div className="mt-6 p-4 bg-gray-800/30 rounded-xl border border-gray-600/30">
+      <div className="mt-6 p-4 bg-color-main rounded-xl border border-gray-600/30">
         <div className="flex items-center gap-2 mb-2">
           <div className="text-yellow-400">📈</div>
           <h4 className="text-white font-semibold">О прогрессе достижений</h4>
         </div>
-        <p className="text-gray-400 text-sm mb-2">
+        <p className="text-gray-300 text-sm mb-2">
           Некоторые достижения требуют выполнения нескольких действий. Прогресс
           сохраняется автоматически.
         </p>

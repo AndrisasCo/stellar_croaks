@@ -39,7 +39,7 @@ export const CompactToadItem = ({
     <div
       id={toad.id}
       onClick={() => onSelect(toad.id)}
-      className={`bg-gray-800 flex flex-col gap-1.5 rounded-xl p-1 border transition-colors cursor-pointer ${
+      className={`bg-color-main flex flex-col gap-1.5 rounded-xl p-1 border transition-colors cursor-pointer ${
         isSelected
           ? "border-yellow-400 bg-yellow-500/10 shadow-sm shadow-yellow-500/20"
           : "border-gray-600/30 hover:border-gray-500/50"
@@ -81,7 +81,7 @@ export const CompactToadItem = ({
             style={{ width: `${toad.state.hunger}%` }}
           />
         </div>
-        <span className="text-gray-400 text-xs font-medium w-6 text-right">
+        <span className="text-gray-300 text-xs font-medium w-6 text-right">
           {Math.round(toad.state.hunger)}%
         </span>
       </div>
@@ -104,7 +104,7 @@ export const CompactToadItem = ({
             e.stopPropagation();
             onProfileClick(toad);
           }}
-          className="flex-shrink-0 p-1 text-gray-400 hover:text-white transition-colors"
+          className="flex-shrink-0 p-1 text-gray-300 hover:text-white transition-colors"
           title="Перейти в профиль"
         >
           <svg

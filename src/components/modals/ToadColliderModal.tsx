@@ -187,7 +187,7 @@ export default function ToadCollider({
     >
       {!breedingResult ? (
         <>
-          <div className="bg-gray-700  rounded-lg p-3 mb-4 sm:mb-6 border border-gray-600">
+          <div className="bg-color-second  rounded-lg p-3 mb-4 sm:mb-6 border border-gray-600">
             <div className="text-xs sm:text-sm text-white font-medium mb-2 sm:mb-3 text-center flex items-center justify-center gap-2">
               <span className="text-yellow-400">⭐</span>
               Бонусы редкости
@@ -221,7 +221,7 @@ export default function ToadCollider({
                   className={`text-center p-1 sm:p-2 rounded-xl transition-all duration-500 transform ${
                     currentToads.length >= count
                       ? `bg-gradient-to-br ${colors} text-white shadow-lg ${shadow} scale-105 border-2 border-white border-opacity-30 animate-gradient-x`
-                      : "bg-gray-600 text-gray-400 border-2 border-transparent hover:border-gray-500"
+                      : "bg-gray-600 text-gray-300 border-2 border-transparent hover:border-gray-500"
                   }`}
                 >
                   <div className="font-bold text-[10px] sm:text-[11px]">
@@ -231,7 +231,7 @@ export default function ToadCollider({
                     className={`font-bold text-[9px] sm:text-[10px] mt-1 ${
                       currentToads.length >= count
                         ? "text-yellow-300"
-                        : "text-gray-300"
+                        : "text-gray-200"
                     }`}
                   >
                     +{calculateRarityBonus(count)}%
@@ -299,7 +299,7 @@ export default function ToadCollider({
                 className={`px-4 py-2  rounded-xl text-sm sm:text-base font-bold transition-all duration-300 ${
                   currentToads.length > 1
                     ? "bg-gradient-to-r from-green-600 to-purple-600 hover:from-green-500 hover:to-purple-500 text-white shadow-lg hover:shadow-xl transform hover:scale-105 border-2 border-white/20"
-                    : "bg-gray-700 text-gray-400 cursor-not-allowed border-2 border-transparent"
+                    : "bg-color-second text-gray-300 cursor-not-allowed border-2 border-transparent"
                 }`}
               >
                 <div className="flex items-center justify-center gap-2 px-6">
@@ -313,7 +313,7 @@ export default function ToadCollider({
           {/* Список доступных жаб */}
           {!isMixing && (
             <div className="mb-4 h-full">
-              <p className="text-gray-300 text-xs sm:text-sm mb-2 text-center">
+              <p className="text-gray-200 text-xs sm:text-sm mb-2 text-center">
                 Нажмите на жаб, чтобы добавить в колбы:
               </p>
               <div className="min-h-24">
@@ -335,7 +335,7 @@ export default function ToadCollider({
                         className={`p-2 relative rounded-lg text-xs text-center transition-all flex flex-col items-center w-[100px] max-w-[100px] border ${
                           currentToads.find((t) => t.id === toad.id)
                             ? "bg-purple-600/50 text-white cursor-not-allowed border-purple-500/50"
-                            : `text-gray-300 cursor-pointer ${getRarityBackground(
+                            : `text-gray-200 cursor-pointer ${getRarityBackground(
                                 toad.genes.rarity
                               )} hover:bg-gray-600/30`
                         }`}
@@ -387,7 +387,7 @@ export default function ToadCollider({
           {/* Кнопки управления */}
 
           <ClickButton
-            className="w-full mt-auto bg-gray-700 hover:bg-gray-600 text-gray-300 py-3 rounded-xl "
+            className="w-full mt-auto bg-color-second hover:bg-gray-600 text-gray-200 py-3 rounded-xl "
             onClick={handleReset}
             disabled={isMixing}
           >
@@ -419,7 +419,7 @@ export default function ToadCollider({
             </div>
           </div>
 
-          <div className="bg-gray-700/50 rounded-xl p-2 border border-gray-600/50">
+          <div className="bg-color-main rounded-xl p-2 border border-gray-600/50">
             {/* Верхний блок: аватар + редкость + имя */}
             <div className="flex items-center gap-4 mb-4">
               {/* Поле ввода имени */}
@@ -445,7 +445,7 @@ export default function ToadCollider({
               <ToadAvatar size={10} toad={breedingResult.child} />
             </div>
             {/* Пол и поколение */}
-            <div className="flex items-center justify-center gap-3 text-sm text-gray-400">
+            <div className="flex items-center justify-center gap-3 text-sm text-gray-300">
               <div className="flex items-center gap-2">
                 <ToadGender gender={breedingResult.child.sex} />
                 <span>
@@ -474,25 +474,25 @@ export default function ToadCollider({
 
             {/* Таблица характеристик */}
             <div className="grid grid-cols-2 gap-2 text-sm mb-3">
-              <div className="text-gray-400 bg-gray-600/30 rounded-lg p-2 text-center">
+              <div className="text-gray-300 bg-gray-600/30 rounded-lg p-2 text-center">
                 <div className="text-gray-500 text-xs mb-1">Размер</div>
                 <div className="font-semibold">
                   {breedingResult.child!.genes.weight.toFixed(1)}
                 </div>
               </div>
-              <div className="text-gray-400 bg-gray-600/30 rounded-lg p-2 text-center">
+              <div className="text-gray-300 bg-gray-600/30 rounded-lg p-2 text-center">
                 <div className="text-gray-500 text-xs mb-1">Скорость</div>
                 <div className="font-semibold">
                   {breedingResult.child!.genes.speed.toFixed(1)}
                 </div>
               </div>
-              <div className="text-gray-400 bg-gray-600/30 rounded-lg p-2 text-center">
+              <div className="text-gray-300 bg-gray-600/30 rounded-lg p-2 text-center">
                 <div className="text-gray-500 text-xs mb-1">Аппетит</div>
                 <div className="font-semibold">
                   {breedingResult.child!.genes.hungerRate.toFixed(1)}
                 </div>
               </div>
-              <div className="text-gray-400 bg-gray-600/30 rounded-lg p-2 text-center">
+              <div className="text-gray-300 bg-gray-600/30 rounded-lg p-2 text-center">
                 <div className="text-gray-500 text-xs mb-1">Плодовитость</div>
                 <div className="font-semibold">
                   {breedingResult.child!.genes.fertility.toFixed(1)}
@@ -522,7 +522,7 @@ export default function ToadCollider({
                         ).icon
                       }
                     </span>
-                    <span className="text-gray-400 text-sm font-semibold">
+                    <span className="text-gray-300 text-sm font-semibold">
                       ГЕНЕТИКА
                     </span>
                   </div>

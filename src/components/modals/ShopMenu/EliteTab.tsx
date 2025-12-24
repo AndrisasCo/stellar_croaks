@@ -142,10 +142,10 @@ const EliteTab: React.FC = () => {
       <h3 className="text-white font-semibold mb-3 px-2 text-lg">
         Элитные заказы
       </h3>
-      <div className="bg-gray-800 rounded-2xl py-4 px-2 border border-gray-700">
+      <div className="bg-color-main rounded-2xl py-4 px-2 border border-gray-700">
         <div className="flex flex-col gap-3">
           <div className="flex justify-between items-center">
-            <span className="text-gray-400">Обновление заказов:</span>
+            <span className="text-gray-300">Обновление заказов:</span>
             <span className="text-white font-mono">{timeLeft}</span>
           </div>
 
@@ -156,7 +156,7 @@ const EliteTab: React.FC = () => {
               className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 canRefresh
                   ? "bg-blue-600 hover:bg-blue-500 text-white"
-                  : "bg-gray-600 text-gray-400 cursor-not-allowed"
+                  : "bg-gray-600 text-gray-300 cursor-not-allowed"
               }`}
             >
               Обновить
@@ -168,7 +168,7 @@ const EliteTab: React.FC = () => {
               className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
                 tokens >= INSTANT_REFRESH_ELITE_COST
                   ? "bg-purple-600 hover:bg-purple-500 text-white"
-                  : "bg-gray-600 text-gray-400 cursor-not-allowed"
+                  : "bg-gray-600 text-gray-300 cursor-not-allowed"
               }`}
             >
               {INSTANT_REFRESH_ELITE_COST} {CURRENCY_CONFIG.tokens.icon}
@@ -183,7 +183,7 @@ const EliteTab: React.FC = () => {
           className={`rounded-2xl py-4 px-2 border ${
             order.canComplete
               ? "bg-purple-900/20 border-purple-500/50"
-              : "bg-gray-800/50 border-gray-600/50"
+              : "bg-color-main border-gray-600/50"
           }`}
         >
           <div className="flex flex-col gap-3">
@@ -191,9 +191,9 @@ const EliteTab: React.FC = () => {
               <h4 className="text-white font-semibold text-base mb-2">
                 {order.title}
               </h4>
-              <p className="text-gray-300 text-sm mb-3">{order.description}</p>
+              <p className="text-gray-200 text-sm mb-3">{order.description}</p>
 
-              <div className="flex flex-col gap-2 text-sm text-gray-400 mb-3">
+              <div className="flex flex-col gap-2 text-sm text-gray-300 mb-3">
                 <div className="flex justify-between">
                   <span>Подходит жаб:</span>
                   <span>{order.suitableToads.length}</span>
@@ -223,7 +223,7 @@ const EliteTab: React.FC = () => {
               className={`w-full py-3 rounded-xl text-base font-medium transition-colors ${
                 order.canComplete
                   ? "bg-purple-600 hover:bg-purple-500 text-white"
-                  : "bg-gray-600 text-gray-400 cursor-not-allowed"
+                  : "bg-gray-600 text-gray-300 cursor-not-allowed"
               }`}
             >
               {order.canComplete ? "Принять заказ" : "Недоступно"}
@@ -271,13 +271,13 @@ const EliteOrderTooltip: React.FC<EliteOrderTooltipProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
-      <div className="bg-gray-800 rounded-xl p-4 w-full max-w-xs border border-purple-500/40 shadow-lg">
+      <div className="bg-color-main rounded-xl p-4 w-full max-w-xs border border-purple-500/40 shadow-lg">
         {/* Заголовок */}
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-white font-semibold text-sm">Выбор жабы</h3>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-white transition-colors p-1"
+            className="text-gray-300 hover:text-white transition-colors p-1"
           >
             <svg
               className="w-5 h-5"
@@ -300,7 +300,7 @@ const EliteOrderTooltip: React.FC<EliteOrderTooltipProps> = ({
           <h4 className="text-purple-400 font-medium text-xs mb-1">
             {order.title}
           </h4>
-          <p className="text-gray-300 text-xs mb-2 line-clamp-2">
+          <p className="text-gray-200 text-xs mb-2 line-clamp-2">
             {order.description}
           </p>
           <div className="text-green-400 text-sm font-semibold">
@@ -310,7 +310,7 @@ const EliteOrderTooltip: React.FC<EliteOrderTooltipProps> = ({
 
         {/* Список жаб */}
         <div className="space-y-2 mb-3 max-h-48 overflow-y-auto">
-          <p className="text-gray-400 text-xs">Подходящие жабы:</p>
+          <p className="text-gray-300 text-xs">Подходящие жабы:</p>
           {availableToads.map((toad) => (
             <div
               key={toad.id}
@@ -318,7 +318,7 @@ const EliteOrderTooltip: React.FC<EliteOrderTooltipProps> = ({
               className={`p-2 rounded-lg border cursor-pointer transition-all ${
                 selectedToadId === toad.id
                   ? "bg-purple-900/30 border-purple-500"
-                  : "bg-gray-700/50 border-gray-600 hover:border-purple-400/50"
+                  : "bg-color-main border-gray-600 hover:border-purple-400/50"
               }`}
             >
               <div className="flex items-center gap-2">
@@ -330,7 +330,7 @@ const EliteOrderTooltip: React.FC<EliteOrderTooltipProps> = ({
                     </span>
                     <ToadGender gender={toad.sex} />
                   </div>
-                  <div className="grid grid-cols-2 gap-x-2 text-xs text-gray-400">
+                  <div className="grid grid-cols-2 gap-x-2 text-xs text-gray-300">
                     <span>Редкость: {toad.genes.rarity.toFixed(1)}</span>
                   </div>
                 </div>
@@ -344,7 +344,7 @@ const EliteOrderTooltip: React.FC<EliteOrderTooltipProps> = ({
         <div className="flex gap-2">
           <button
             onClick={onClose}
-            className="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-2 rounded-lg transition-colors text-xs font-medium"
+            className="flex-1 bg-color-second hover:bg-gray-600 text-white py-2 rounded-lg transition-colors text-xs font-medium"
           >
             Отмена
           </button>
@@ -354,7 +354,7 @@ const EliteOrderTooltip: React.FC<EliteOrderTooltipProps> = ({
             className={`flex-1 py-2 rounded-lg font-medium transition-colors text-xs ${
               selectedToadId
                 ? "bg-purple-600 hover:bg-purple-500 text-white"
-                : "bg-gray-600 text-gray-400 cursor-not-allowed"
+                : "bg-gray-600 text-gray-300 cursor-not-allowed"
             }`}
           >
             Отправить

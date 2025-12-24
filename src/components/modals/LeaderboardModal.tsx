@@ -359,8 +359,6 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
     let label: string = "";
     let color: string = isUser ? "text-blue-300" : "text-white";
 
-    console.log({ player });
-
     switch (parameter) {
       case "rarity":
         toad = player.rarest_toad;
@@ -378,7 +376,7 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
         toad = player.weight_min_toad;
         value = toad?.genes.weight || 0;
         label = "Размер";
-        color = isUser ? "text-gray-300" : "text-gray-400";
+        color = isUser ? "text-gray-200" : "text-gray-300";
         break;
       case "fertility_max":
         toad = player.fertility_max_toad;
@@ -390,7 +388,7 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
         toad = player.fertility_min_toad;
         value = toad?.genes.fertility || 0;
         label = "Фертильность";
-        color = isUser ? "text-gray-300" : "text-gray-400";
+        color = isUser ? "text-gray-200" : "text-gray-300";
         break;
       case "speed_max":
         toad = player.speed_max_toad;
@@ -402,7 +400,7 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
         toad = player.speed_min_toad;
         value = toad?.genes.speed || 0;
         label = "Скорость";
-        color = isUser ? "text-gray-300" : "text-gray-400";
+        color = isUser ? "text-gray-200" : "text-gray-300";
         break;
       case "hunger_max":
         toad = player.hunger_max_toad;
@@ -437,7 +435,7 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                 <span className={`font-bold ${color}`}>{value.toFixed(1)}</span>
               </div>
 
-              <span className="text-gray-400 text-sm">{label}</span>
+              <span className="text-gray-300 text-sm">{label}</span>
             </div>
           </div>
         </div>
@@ -464,7 +462,7 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
         className={`flex flex-col items-center py-2 text-xs font-medium transition-all ${
           isActive
             ? "text-white border-t-2 border-white"
-            : "text-gray-400 hover:text-gray-300"
+            : "text-gray-300 hover:text-gray-200"
         }`}
         style={{ minWidth: "70px" }}
       >
@@ -477,7 +475,7 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
   return (
     <Modal isOpen={isOpen} onClose={onClose} icon={icon} title="Лидерборд">
       {/* Заголовок с редактируемым никнеймом */}
-      <div className="bg-gray-800 py-3 px-2 border-b border-gray-700">
+      <div className=" py-3 px-2 border-b border-gray-700">
         <div className="flex items-center justify-between mb-2">
           <div className="text-yellow-400 text-sm font-bold">
             Рейтинг: {getRank()}
@@ -494,7 +492,7 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                     if (e.key === "Enter") handleSaveUsername();
                     if (e.key === "Escape") handleCancelEdit();
                   }}
-                  className="bg-gray-700 outline-none border border-blue-400 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 w-28"
+                  className="bg-color-second outline-none border border-blue-400 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 w-28"
                   placeholder="Введите ник"
                   autoFocus
                   maxLength={15}
@@ -529,7 +527,7 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                     playClick();
                     setEditingUsername(true);
                   }}
-                  className="text-gray-400 hover:text-blue-400 transition-colors p-0.5 rounded hover:bg-blue-900/20"
+                  className="text-gray-300 hover:text-blue-400 transition-colors p-0.5 rounded hover:bg-blue-900/20"
                   title="Изменить никнейм"
                 >
                   <svg
@@ -553,7 +551,7 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
       </div>
 
       {/* Горизонтальные табы с прокруткой */}
-      <div className="border-b border-gray-700 bg-gray-800 ">
+      <div className="border-b border-gray-700  ">
         <HorizontalScroll className="gap-2">
           <TabButton tab="tokens" label="Богатство" />
           <TabButton tab="species" label="Виды" />
@@ -575,7 +573,7 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
           <h3 className="text-white px-2 font-semibold text-sm mb-1">
             {getTabTitle()}
           </h3>
-          <p className="text-gray-400 text-xs">{getTabDescription()}</p>
+          <p className="text-gray-300 text-xs">{getTabDescription()}</p>
         </div>
 
         {/* Список лидеров */}
@@ -596,7 +594,7 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                       `
                       : index <= 2
                       ? "border-yellow-500/30 bg-gradient-to-r from-gray-800 to-yellow-900/10"
-                      : "border-gray-600 bg-gray-800"
+                      : "border-gray-600 bg-color-main"
                   }
                 `}
               >
@@ -618,10 +616,10 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                             : index === 0
                             ? "text-yellow-400"
                             : index === 1
-                            ? "text-gray-300"
+                            ? "text-gray-200"
                             : index === 2
                             ? "text-orange-400"
-                            : "text-gray-400"
+                            : "text-gray-300"
                         }
                       `}
                     >
@@ -680,7 +678,7 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                           >
                             {CURRENCY_CONFIG.tokens.icon}
                           </span>
-                          <span className="text-gray-400 text-sm ml-2">
+                          <span className="text-gray-300 text-sm ml-2">
                             {player.total_toads} жаб
                           </span>
                         </div>
@@ -698,7 +696,7 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                           </span>
                           <span
                             className={`text-sm ${
-                              isUser ? "text-green-200" : "text-gray-400"
+                              isUser ? "text-green-200" : "text-gray-300"
                             }`}
                           >
                             / {Object.values(ToadTypes).length}
@@ -710,7 +708,7 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
 
                   <div
                     className={`text-right text-sm space-y-0.5 flex-shrink-0 ${
-                      isUser ? "text-blue-200" : "text-gray-400"
+                      isUser ? "text-blue-200" : "text-gray-300"
                     }`}
                   >
                     {activeTab !== "tokens" && activeTab !== "species" && (

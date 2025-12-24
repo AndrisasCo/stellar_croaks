@@ -115,8 +115,6 @@ export const checkGeneticAchievements = (toad: Toad) => {
     return;
   }
 
-  console.log({ toad }, toad.state.genetic_fault);
-
   achievements.forEach((achievement) => {
     const conditions = achievement.task;
     let matches = true;

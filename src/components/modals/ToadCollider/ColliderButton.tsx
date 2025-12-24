@@ -103,7 +103,7 @@ export default function ColliderButton() {
             </div>
             <div
               className={`${
-                isColliderDisabled ? "text-gray-400" : "text-green-300"
+                isColliderDisabled ? "text-gray-300" : "text-green-300"
               }`}
             >
               {ColliderIcons.flask}
@@ -112,7 +112,7 @@ export default function ColliderButton() {
         </button>
       ) : (
         // Колба с процессом скрещивания
-        <div className="bg-gray-800/90 rounded-2xl p-2 border-2 border-green-500/50 shadow-2xl max-w-2xl mx-auto backdrop-blur-sm">
+        <div className="bg-color-main rounded-2xl p-2 border-2 border-green-500/50 shadow-2xl max-w-2xl mx-auto backdrop-blur-sm">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <div className="text-green-400">{ColliderIcons.dna}</div>
@@ -127,7 +127,7 @@ export default function ColliderButton() {
           </div>
 
           {/* Прогресс бар */}
-          <div className="relative bg-gray-700 rounded-full h-7 mb-4 overflow-hidden border border-gray-600">
+          <div className="relative bg-color-second rounded-full h-7 mb-4 overflow-hidden border border-gray-600">
             <div
               className="bg-gradient-to-r from-green-400 via-purple-500 to-green-400 h-full rounded-full transition-all duration-1000 shadow-lg"
               style={{ width: `${activeSlot.isReady ? 100 : slotProgress}%` }}
@@ -143,7 +143,7 @@ export default function ColliderButton() {
 
           {/* Информация о процессе */}
           <div className="mb-4">
-            <div className="text-sm text-gray-300 mb-2"></div>
+            <div className="text-sm text-gray-200 mb-2"></div>
             {!activeSlot.isReady && (
               <div className="flex items-center justify-center gap-2 text-green-300 text-sm">
                 {ColliderIcons.time}

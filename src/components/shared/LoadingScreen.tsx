@@ -85,25 +85,25 @@ const LoadingScreen = () => {
             </h1>
           </div>
 
-          <p className="text-gray-400 text-lg">Генетическая лаборатория жаб</p>
+          <p className="text-gray-300 text-lg">Генетическая лаборатория жаб</p>
         </div>
 
         {/* Прогресс бар */}
         <div className="max-w-2xl mx-auto mb-6">
-          <div className="bg-gray-700/50 rounded-full h-3 overflow-hidden border border-gray-600/50 mb-2">
+          <div className="bg-color-main rounded-full h-3 overflow-hidden border border-gray-600/50 mb-2">
             <div
               className="h-full bg-gradient-to-r from-green-400 to-purple-500 rounded-full transition-all duration-300 ease-out shadow-lg shadow-green-500/30"
               style={{ width: `${progress}%` }}
             />
           </div>
-          <div className="flex justify-between text-sm text-gray-400">
+          <div className="flex justify-between text-sm text-gray-300">
             <span>Загрузка...</span>
             <span>{Math.min(100, Math.round(progress))}%</span>
           </div>
         </div>
 
         {/* Сообщение о загрузке */}
-        <div className="text-gray-300 text-sm">
+        <div className="text-gray-200 text-sm">
           <p>Инициализация генетического коллайдера{dots}</p>
         </div>
 

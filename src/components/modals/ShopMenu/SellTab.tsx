@@ -134,11 +134,11 @@ const SellTab: React.FC = () => {
       />
 
       {/* Панель выбора */}
-      <div className="bg-gray-800/30 backdrop-blur-sm rounded-xl p-3 border border-yellow-500/20">
+      <div className="bg-color-main backdrop-blur-sm rounded-xl p-3 border border-yellow-500/20">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
-              <span className="text-gray-300 text-sm">Сумма:</span>
+              <span className="text-gray-200 text-sm">Сумма:</span>
               <span className="text-yellow-200 font-bold text-sm">
                 {totalSellPrice} {CURRENCY_CONFIG.tokens.icon}
               </span>
@@ -171,8 +171,8 @@ const SellTab: React.FC = () => {
 
       {/* Список жаб */}
       {filteredToads.length === 0 ? (
-        <div className="bg-gray-800/20 backdrop-blur-sm rounded-xl p-6 border border-gray-600/20 text-center">
-          <p className="text-gray-400 text-sm">
+        <div className="bg-color-main backdrop-blur-sm rounded-xl p-6 border border-gray-600/20 text-center">
+          <p className="text-gray-300 text-sm">
             {activeToads.length === 0
               ? "У вас пока нет жаб"
               : "Жабы не найдены"}
@@ -223,7 +223,7 @@ const SellTab: React.FC = () => {
               className="flex justify-center py-4"
               key="load-more"
             >
-              <div className="animate-pulse text-gray-400 text-sm">
+              <div className="animate-pulse text-gray-300 text-sm">
                 Загрузка жаб...
               </div>
             </div>

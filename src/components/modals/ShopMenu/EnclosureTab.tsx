@@ -33,11 +33,11 @@ const EnclosureTab: React.FC = () => {
   return (
     <div className="space-y-3">
       <h3 className="text-white font-semibold px-2 mb-3">Вольеры</h3>
-      <div className="bg-gray-800 rounded-xl py-4 px-2 border border-gray-700">
+      <div className="bg-color-main rounded-xl py-4 px-2 border border-gray-700">
         <div className="flex items-center justify-between mb-3">
           <div>
             <h4 className="text-white font-semibold">Новый вольер</h4>
-            <p className="text-gray-400 text-sm">
+            <p className="text-gray-300 text-sm">
               +{DEFAULT_SCENE.capacity} мест для жаб
             </p>
           </div>
@@ -56,7 +56,7 @@ const EnclosureTab: React.FC = () => {
             className={`w-full py-2 rounded-lg text-sm font-medium transition-colors ${
               tokens >= scenePrice
                 ? "bg-blue-600 hover:bg-blue-500 text-white"
-                : "bg-gray-600 text-gray-400 cursor-not-allowed"
+                : "bg-gray-600 text-gray-300 cursor-not-allowed"
             }`}
           >
             {tokens >= scenePrice ? "Купить вольер" : "Недостаточно средств"}

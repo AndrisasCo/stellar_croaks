@@ -118,8 +118,6 @@ export const ToadInfo = ({ onClose }: { onClose: () => void }) => {
     handleNav("next");
   };
 
-  console.log(tooltips);
-
   return (
     <Modal isOpen onClose={onClose}>
       <div className="flex w-full items-center pb-1 px-10 ">
@@ -134,7 +132,7 @@ export const ToadInfo = ({ onClose }: { onClose: () => void }) => {
             <input
               value={editedName}
               onChange={(e) => setEditedName(e.target.value)}
-              className="bg-gray-700 border border-gray-600 rounded-lg px-2 py-1 text-white w-full"
+              className="bg-color-second border border-gray-600 rounded-lg px-2 py-1 text-white w-full"
               autoFocus
               onKeyDown={(e) => e.key === "Enter" && handleRename()}
             />
@@ -152,7 +150,7 @@ export const ToadInfo = ({ onClose }: { onClose: () => void }) => {
           <h2 className="font-bold flex gap-2 text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-purple-500">
             <span className="text-lg">{toad.name}</span>
             <button
-              className="text-gray-400"
+              className="text-gray-300"
               onClick={() => {
                 setEditedName(toad.name);
                 setIsEditingName(true);
@@ -175,12 +173,12 @@ export const ToadInfo = ({ onClose }: { onClose: () => void }) => {
         {tooltips["avatar"] && (
           <div
             onClick={() => toggleTooltip("avatar")}
-            className={`absolute top-full z-10 bg-gray-800 border border-purple-500/50 rounded-xl p-2  shadow-lg`}
+            className={`absolute top-full z-10 bg-color-main border border-purple-500/50 rounded-xl p-2  shadow-lg`}
           >
             <ToadAvatar toad={toad} size={75} />
           </div>
         )}
-        <div className="flex flex-col gap-1 mr-auto text-sm text-gray-400">
+        <div className="flex flex-col gap-1 mr-auto text-sm text-gray-300">
           <p>{getToadTypeLabel(toad.type)}</p>
           <p>Поколение {toad.generation}</p>
           <p>
@@ -205,7 +203,7 @@ export const ToadInfo = ({ onClose }: { onClose: () => void }) => {
         {/* Navigation Left */}
         <button
           onClick={() => handleNav("prev")}
-          className="text-gray-400 hover:text-white p-1"
+          className="text-gray-300 hover:text-white p-1"
         >
           <svg
             className="w-8 h-8"
@@ -250,7 +248,7 @@ export const ToadInfo = ({ onClose }: { onClose: () => void }) => {
                     onClose={() => toggleTooltip("genetic")}
                     className="right-0 w-[200%]"
                   >
-                    <p className="text-sm text-gray-300">
+                    <p className="text-sm text-gray-200">
                       {geneticFault.description}
                     </p>
                   </Tooltip>
@@ -339,7 +337,7 @@ export const ToadInfo = ({ onClose }: { onClose: () => void }) => {
                     isOpen
                     onClose={() => toggleTooltip("personality")}
                   >
-                    <p className="text-xs italic text-gray-400">
+                    <p className="text-xs italic text-gray-300">
                       {personality.description}
                     </p>
                     {/* Personality stats */}
@@ -387,7 +385,7 @@ export const ToadInfo = ({ onClose }: { onClose: () => void }) => {
           )}
 
           {/* ACTIONS */}
-          <div className="bg-gray-800/50 rounded-xl p-2 border border-gray-600/50 mt-1 grid grid-cols-2 gap-2">
+          <div className="bg-color-main rounded-xl p-2 border border-gray-600/50 mt-1 grid grid-cols-2 gap-2">
             <button
               onClick={() => {
                 playCrunchShort();
@@ -451,7 +449,7 @@ export const ToadInfo = ({ onClose }: { onClose: () => void }) => {
         {/* Navigation Right */}
         <button
           onClick={() => handleNav("next")}
-          className="text-gray-400 hover:text-white p-1"
+          className="text-gray-300 hover:text-white p-1"
         >
           <svg
             className="w-8 h-8"

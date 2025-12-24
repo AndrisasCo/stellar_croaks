@@ -20,7 +20,7 @@ import { useTelegram } from "../../hooks/use-tg";
 import { useNotifications } from "../../hooks/use-notification";
 import { CURRENCY_CONFIG } from "../../utils/constants";
 import AchivementsModal from "../modals/AchivementsModal";
-import { getGameState } from "../../backend/localStorage";
+import { getGameState, saveGameState } from "../../backend/localStorage";
 import { ClickButton } from "../shared/ClickButton";
 import { ToadGalleryModal } from "../modals/ToadGalleryModal";
 import { addToadToCollection } from "../../backend/achivements-manager";
@@ -95,19 +95,14 @@ export default function ToadGame() {
     const initGame = async () => {
       await syncGameState();
 
-      // todo удалить
-      TOAD_SPECIES_CONFIG.map((config) => {
-        const foundToad = allToads.find((t) => t.type === config.type)?.type;
-        foundToad && addToadToCollection(foundToad);
-      });
-      // end todo
-
       const timeManager = new TimeManager();
       const offlineHours = timeManager.getTimePassed();
 
       // Отложенный запуск уведомлений о размножении
       const delayNotification = (props: any) =>
         setTimeout(() => addNotification(props), 2000);
+
+      console.log({ offlineHours });
 
       processBreeding(offlineHours, delayNotification);
 
@@ -116,6 +111,8 @@ export default function ToadGame() {
       }
 
       updateLeaderbord();
+
+      saveGameState(getGameState(), false);
 
       // Костыль для первого рендера
       setTimeout(() => {
@@ -130,11 +127,14 @@ export default function ToadGame() {
       () => processBreeding(0.25, addNotification),
       5 * 60 * 1000
     );
+
     const hungerLoop = setInterval(() => processHunger(0.1), 5 * 60 * 1000);
+
     const fastBreedLoop = setInterval(
       () => processBreeding(0, addNotification),
       60 * 1000
     );
+
     const saveLoop = setInterval(() => updateGameStateDB(), 3 * 60 * 1000);
 
     return () => {
@@ -162,6 +162,7 @@ export default function ToadGame() {
 
       // Проверка обновлений
       const lastSaveTime = new Date(getGameState().lastSaved).getTime();
+
       UPDATES_LOG.forEach((update) => {
         if (update.time > lastSaveTime) {
           addNotification({
@@ -214,7 +215,7 @@ export default function ToadGame() {
             }}
             className="
             bg-[url('/assets/market.png')]  bg-no-repeat
-            bg-gray-700/40 backdrop-blur-sm hover:bg-purple-800/60 text-purple-300 hover:text-purple-100 py-3 px-4 rounded-md transition-all duration-300 transform hover:scale-105 active:scale-95 border-2 border-purple-300/90 hover:border-purple-400/60 font-bold "
+            bg-slate-700/40 backdrop-blur-sm hover:bg-purple-800/60 text-purple-300 hover:text-purple-100 py-3 px-4 rounded-md transition-all duration-300 transform hover:scale-105 active:scale-95 border-2 border-purple-300/90 hover:border-purple-400/60 font-bold "
           >
             <span className="p-l-10">РЫНОК</span>
           </ClickButton>
@@ -227,7 +228,7 @@ export default function ToadGame() {
             }}
             className="
             bg-[url('/assets/storage.png')] bg-no-repeat
-            bg-gray-700/40 backdrop-blur-sm hover:bg-green-800/60 text-green-300 hover:text-green-100 py-3 px-4 rounded-md hover:shadow-xl transition-all duration-300 transform hover:scale-105 active:scale-95 border-2 border-green-300/90 hover:border-green-400/60 font-bold "
+            bg-slate-700/40 backdrop-blur-sm hover:bg-green-800/60 text-green-300 hover:text-green-100 py-3 px-4 rounded-md hover:shadow-xl transition-all duration-300 transform hover:scale-105 active:scale-95 border-2 border-green-300/90 hover:border-green-400/60 font-bold "
           >
             <span className="p-l-10">СКЛАД</span>
           </ClickButton>

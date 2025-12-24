@@ -38,7 +38,7 @@ export const MixingInProgress = () => {
   }, []);
 
   return (
-    <div className="w-full my-auto bg-gray-800/80 rounded-2xl shadow-2xl border-2 border-green-500/50 overflow-hidden backdrop-blur-sm">
+    <div className="w-full my-auto bg-color-main rounded-2xl shadow-2xl border-2 border-green-500/50 overflow-hidden backdrop-blur-sm">
       {/* Основной контейнер анимации */}
       <div className="relative h-40 rounded-xl bg-gradient-to-r from-green-900/40 to-emerald-900/40 overflow-hidden">
         {/* Фон с узором */}

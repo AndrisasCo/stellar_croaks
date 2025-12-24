@@ -234,7 +234,7 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
   // Функция для получения цвета редкости предмета
   const getItemRarityColor = (rarity: StorageItem["rarity"]): string => {
     const colors = {
-      common: "text-gray-400",
+      common: "text-gray-300",
       uncommon: "text-green-400",
       rare: "text-blue-400",
       epic: "text-purple-400",
@@ -246,11 +246,11 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
   // Функция для получения цвета фона редкости
   const getItemRarityBg = (rarity: StorageItem["rarity"]): string => {
     const colors = {
-      common: "bg-gray-700/50",
-      uncommon: "bg-green-900/20",
-      rare: "bg-blue-900/20",
-      epic: "bg-purple-900/20",
-      legendary: "bg-yellow-900/20",
+      common: "bg-slate-900/50",
+      uncommon: "bg-green-900/50",
+      rare: "bg-blue-900/50",
+      epic: "bg-purple-900/50",
+      legendary: "bg-yellow-900/50",
     };
     return colors[rarity];
   };
@@ -302,7 +302,7 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
     <Modal isOpen={isOpen} onClose={onClose} icon={icon} title="Склад">
       <ConfettiAnimation trigger={showConfetti} intensity={5} />
       {/* Табы */}
-      <div className="flex border-b border-gray-700 bg-gray-800 mb-3">
+      <div className="flex border-b border-gray-700 mb-3">
         <button
           onClick={() => {
             playClick();
@@ -311,7 +311,7 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
           className={`flex-1 py-3 text-sm font-medium transition-colors ${
             activeTab === "toads"
               ? "text-green-400 border-b-2 border-green-400"
-              : "text-gray-400 hover:text-gray-300"
+              : "text-gray-300 hover:text-gray-200"
           }`}
         >
           Жабы ({storedToads.length})
@@ -324,7 +324,7 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
           className={`flex-1 py-3 text-sm font-medium transition-colors ${
             activeTab === "items"
               ? "text-blue-400 border-b-2 border-blue-400"
-              : "text-gray-400 hover:text-gray-300"
+              : "text-gray-300 hover:text-gray-200"
           }`}
         >
           Предметы
@@ -336,7 +336,7 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
         <div className="flex flex-col gap-5">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-white px-2 font-semibold">Инвентарь</h3>
-            <div className="text-gray-400 text-sm">
+            <div className="text-gray-300 text-sm">
               Всего предметов:{" "}
               {storageItems.reduce((sum, item) => sum + item.quantity, 0)}
             </div>
@@ -371,7 +371,7 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
                   >
                     {item.name}
                   </div>
-                  <div className="text-gray-400 text-xs leading-tight">
+                  <div className="text-gray-300 text-xs leading-tight">
                     {item.description}
                   </div>
                 </div>
@@ -405,7 +405,7 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
         <div className="space-y-3">
           <div className="flex justify-between items-center mb-3">
             <h3 className="text-white px-2 font-semibold">Жабы на складе</h3>
-            <div className="text-gray-400 text-sm">
+            <div className="text-gray-300 text-sm">
               {storedToads.length} из {MAX_STORED_TOADS}
             </div>
           </div>
@@ -445,8 +445,8 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
 
           {filteredAndSortedToads.length === 0 ? (
             <div className="text-center py-8">
-              <div className="text-gray-400 text-4xl mb-3">🐸</div>
-              <p className="text-gray-400 text-sm">Жаб не обнаружено</p>
+              <div className="text-gray-300 text-4xl mb-3">🐸</div>
+              <p className="text-gray-300 text-sm">Жаб не обнаружено</p>
               <p className="text-gray-500 text-xs mt-1">
                 Попробуйте поменять фильтры
               </p>
@@ -486,7 +486,7 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
               className="flex justify-center py-4"
               key="load-more"
             >
-              <div className="animate-pulse text-gray-400 text-sm">
+              <div className="animate-pulse text-gray-300 text-sm">
                 Загрузка жаб...
               </div>
             </div>

@@ -85,7 +85,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
       <Modal isOpen={isOpen} onClose={onClose} icon={icon} title="Настройки">
         <div className="flex flex-col gap-3">
           {/* Настройки музыки */}
-          <div className="bg-gray-700/50 rounded-xl py-4 px-2 border border-gray-600/50">
+          <div className="bg-color-main rounded-xl py-4 px-2 border border-gray-600/50">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <svg
@@ -147,7 +147,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
           </div>
 
           {/* Настройки звуковых эффектов */}
-          <div className="bg-gray-700/50 rounded-xl py-4 px-2 border border-gray-600/50">
+          <div className="bg-color-main rounded-xl py-4 px-2 border border-gray-600/50">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <svg
@@ -211,7 +211,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
           </div>
 
           {/* Информация о игре */}
-          <div className="bg-gray-700/50 rounded-xl py-4 px-2 border border-gray-600/50">
+          <div className="bg-color-main rounded-xl py-4 px-2 border border-gray-600/50">
             <div className="flex items-center gap-2 mb-3">
               <svg
                 className="w-5 h-5 text-purple-400"
@@ -228,7 +228,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
               </svg>
               <h3 className="text-white font-semibold px-2 text-sm">Об игре</h3>
             </div>
-            <div className="text-gray-300 text-sm space-y-2">
+            <div className="text-gray-200 text-sm space-y-2">
               <div className="flex justify-between">
                 <span>Версия:</span>
                 <span className="text-green-400 font-medium">pre-alpha</span>
@@ -263,7 +263,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                 Опасная зона
               </h3>
             </div>
-            <p className="text-gray-300 text-sm mb-3">
+            <p className="text-gray-200 text-sm mb-3">
               Это действие нельзя отменить. Все ваши жабы, вольеры и прогресс
               будут удалены.
             </p>
@@ -280,7 +280,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
       {/* Модальное окно подтверждения сброса */}
       {showResetConfirmation && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-800 rounded-2xl border-2 border-red-500/50 p-6 max-w-sm w-full mx-auto">
+          <div className="bg-color-main rounded-2xl border-2 border-red-500/50 p-6 max-w-sm w-full mx-auto">
             <div className="text-center mb-4">
               <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-3">
                 <svg
@@ -300,7 +300,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
               <h3 className="text-white font-bold text-lg mb-2">
                 Сброс прогресса
               </h3>
-              <p className="text-gray-300 text-sm">
+              <p className="text-gray-200 text-sm">
                 Вы уверены, что хотите удалить все данные? Это действие нельзя
                 отменить.
               </p>

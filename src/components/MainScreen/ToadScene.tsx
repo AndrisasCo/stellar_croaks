@@ -133,7 +133,7 @@ export default function ToadScene() {
                 px-3 py-1  rounded-md  text-sm
                 transition-all duration-300 transform
                 text-white 
-                active:scale-95 bg-gray-700/50 hover:bg-gray-600/50
+                active:scale-95 bg-color-main hover:bg-gray-600/50
               "
             >
               <span className="truncate max-w-[180px]">
@@ -200,7 +200,7 @@ export default function ToadScene() {
           <div className="absolute bottom-full right-2 transform  mb-2 z-50">
             <div
               className="
-                  bg-gray-800 border border-gray-600 rounded-lg p-3 
+                  bg-color-main border border-gray-600 rounded-lg p-3 
                   shadow-lg min-w-[250px] backdrop-blur-sm
                 "
             >

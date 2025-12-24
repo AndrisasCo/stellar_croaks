@@ -40,9 +40,9 @@ const Modal: React.FC<ToadListModalProps> = ({
     <div onClick={onClose} className="overlay">
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-gray-800/90 text-white h-full px-1 w-full max-w-2xl max-h-[100vh] overflow-hidden "
+        className=" text-white h-full  w-full max-w-2xl max-h-[100vh] overflow-hidden bg-[url('/assets/bg-shop.png')] cover"
       >
-        <div className="h-[100vh] overflow-auto py-4 flex flex-col">
+        <div className="h-[100vh] overflow-auto py-4 flex flex-col  bg-slate-900/50 backdrop-blur-sm px-1">
           {/* Заголовок */}
           <div className="flex w-full justify-center items-center relative">
             {title && (
@@ -56,7 +56,7 @@ const Modal: React.FC<ToadListModalProps> = ({
             {closeButton && (
               <ClickButton
                 onClick={onClose}
-                className="text-gray-400 absolute right-2 top-[-8px] hover:text-green-400 text-3xl transition-colors duration-300 p-1 hover:scale-110"
+                className="text-gray-300 absolute right-2 top-[-16px] hover:text-green-400 text-5xl transition-colors duration-300 p-1 hover:scale-110"
               >
                 ×
               </ClickButton>
@@ -67,7 +67,7 @@ const Modal: React.FC<ToadListModalProps> = ({
 
           <div className="min-h-4" />
           <ClickButton
-            className="w-full mt-auto bg-gray-700 hover:bg-gray-600 text-gray-300 py-3 rounded-xl mt-4"
+            className="w-full mt-auto bg-color-second hover:bg-slate-800/70 text-gray-200 py-3 rounded-xl "
             onClick={onClose}
           >
             Закрыть

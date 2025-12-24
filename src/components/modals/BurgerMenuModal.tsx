@@ -138,7 +138,7 @@ export const BurgerMenu = ({ toggleModal }: BurgerMenuProps) => {
                 <div className="text-sm font-bold text-white group-hover:text-green-200 transition-colors duration-300">
                   {item.label}
                 </div>
-                <div className="text-[10px] text-gray-400 group-hover:text-gray-300 transition-colors duration-300">
+                <div className="text-[10px] text-gray-300 group-hover:text-gray-200 transition-colors duration-300">
                   {item.desc}
                 </div>
               </div>

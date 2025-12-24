@@ -168,7 +168,7 @@ const TutorialModal: React.FC<TutorialModalProps> = ({ isOpen, onClose }) => {
           <h3 className="text-white font-semibold px-2 text-lg mb-2">
             Добро пожаловать в мир космических жаб!
           </h3>
-          <p className="text-gray-400 text-sm">
+          <p className="text-gray-300 text-sm">
             Освойте все механики игры и станьте лучшим жабоводом галактики
           </p>
         </div>
@@ -194,7 +194,7 @@ const TutorialModal: React.FC<TutorialModalProps> = ({ isOpen, onClose }) => {
                       ? "bg-indigo-800 border-indigo-500"
                       : section.color === "teal"
                       ? "bg-teal-800 border-teal-500"
-                      : "bg-gray-800 border-gray-600"
+                      : "bg-color-main border-gray-600"
                   }
                 `}
               >
@@ -210,7 +210,7 @@ const TutorialModal: React.FC<TutorialModalProps> = ({ isOpen, onClose }) => {
               </div>
 
               {/* Описание */}
-              <p className="text-gray-300 mb-4 leading-relaxed">
+              <p className="text-gray-200 mb-4 leading-relaxed">
                 {section.description}
               </p>
 
@@ -273,7 +273,7 @@ const TutorialModal: React.FC<TutorialModalProps> = ({ isOpen, onClose }) => {
           <h4 className="text-white font-semibold mb-2">
             Готовы к приключениям?
           </h4>
-          <p className="text-gray-300 text-sm">
+          <p className="text-gray-200 text-sm">
             Начните свое путешествие в мире космических жаб! Создавайте
             уникальных существ, управляйте генетикой и займите первое место в
             галактическом рейтинге!

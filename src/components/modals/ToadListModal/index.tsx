@@ -201,8 +201,6 @@ const ToadListModal: React.FC<ToadListModalProps> = ({
     setCurrentSceneId(currentSceneIndex - 1);
   };
 
-  const TitleComponent = <ClickButton></ClickButton>;
-
   return (
     <Modal onClose={onClose} isOpen={isOpen} icon={icon} title={"Все жабы"}>
       <Filters
@@ -223,7 +221,7 @@ const ToadListModal: React.FC<ToadListModalProps> = ({
           className={`px-3 py-1 rounded-md h-min text-xs font-medium transition-all ${
             viewMode === "detailed"
               ? "bg-green-500 text-white"
-              : "bg-gray-700 text-gray-300 hover:text-white"
+              : "bg-color-second text-gray-200 hover:text-white"
           }`}
           title="Подробный вид"
         >
@@ -234,7 +232,7 @@ const ToadListModal: React.FC<ToadListModalProps> = ({
           className={`px-3 py-1 rounded-md h-min text-xs font-medium transition-all ${
             viewMode === "compact"
               ? "bg-blue-500 text-white"
-              : "bg-gray-700 text-gray-300 hover:text-white"
+              : "bg-color-second text-gray-200 hover:text-white"
           }`}
           title="Компактный вид"
         >
@@ -258,7 +256,7 @@ const ToadListModal: React.FC<ToadListModalProps> = ({
       </div>
       {/* Панель управления выделением (только для компактного режима) */}
       {viewMode === "compact" && (
-        <div className="bg-gray-800/50 rounded-lg p-3 mb-4 border border-gray-600/50">
+        <div className="bg-color-main rounded-lg p-3 mb-4 border border-gray-600/50">
           <div className="flex items-center justify-between relative">
             <div className="text-sm text-white">
               Выбрано: <span className="font-bold">{selectedToads.size}</span>{" "}
@@ -278,7 +276,7 @@ const ToadListModal: React.FC<ToadListModalProps> = ({
               {/* Отменить выделение */}
               <button
                 onClick={clearSelection}
-                className="px-2 py-1 bg-gray-500/20 text-gray-300 rounded-lg text-xs font-medium transition-all border border-gray-500/30 hover:bg-gray-500/30"
+                className="px-2 py-1 bg-gray-500/20 text-gray-200 rounded-lg text-xs font-medium transition-all border border-gray-500/30 hover:bg-gray-500/30"
                 title="Отменить выделение"
               >
                 ✕
@@ -341,8 +339,8 @@ const ToadListModal: React.FC<ToadListModalProps> = ({
       <div className="px-1">
         {filteredAndSortedToads.length === 0 ? (
           <div className="text-center py-8">
-            <div className="text-gray-400 text-4xl mb-3">🐸</div>
-            <p className="text-gray-400 text-sm">
+            <div className="text-gray-300 text-4xl mb-3">🐸</div>
+            <p className="text-gray-300 text-sm">
               {toads.length === 0
                 ? "Пока нет жаб в коллекции"
                 : "Жабы не найдены"}
@@ -364,14 +362,7 @@ const ToadListModal: React.FC<ToadListModalProps> = ({
                   : undefined;
 
               return (
-                <div
-                  key={toad.id}
-                  style={{
-                    backgroundColor: familyColor ? familyColor : undefined,
-                    backgroundImage: familyColor ? "none" : undefined,
-                  }}
-                  className="rounded-2xl relative"
-                >
+                <div key={toad.id} className="rounded-2xl relative">
                   <ToadItem
                     id={(toad.id || 0).toString()}
                     showHunger
@@ -440,31 +431,31 @@ const ToadListModal: React.FC<ToadListModalProps> = ({
             <div className="text-green-400 font-bold">
               {groupedToads.common.length}
             </div>
-            <div className="text-gray-400 text-[10px]">Обычные</div>
+            <div className="text-gray-300 text-[10px]">Обычные</div>
           </div>
           <div>
             <div className="text-blue-400 font-bold">
               {groupedToads.uncommon.length}
             </div>
-            <div className="text-gray-400 text-[10px]">Необычные</div>
+            <div className="text-gray-300 text-[10px]">Необычные</div>
           </div>
           <div>
             <div className="text-purple-400 font-bold">
               {groupedToads.rare.length}
             </div>
-            <div className="text-gray-400 text-[10px]">Редкие</div>
+            <div className="text-gray-300 text-[10px]">Редкие</div>
           </div>
           <div>
             <div className="text-orange-400 font-bold">
               {groupedToads.epic.length}
             </div>
-            <div className="text-gray-400 text-[10px]">Эпические</div>
+            <div className="text-gray-300 text-[10px]">Эпические</div>
           </div>
           <div>
             <div className="text-yellow-400 font-bold">
               {groupedToads.legendary.length}
             </div>
-            <div className="text-gray-400 text-[10px]">Легендарные</div>
+            <div className="text-gray-300 text-[10px]">Легендарные</div>
           </div>
         </div>
 
@@ -474,17 +465,17 @@ const ToadListModal: React.FC<ToadListModalProps> = ({
             <div className="text-green-400 font-bold">
               {hungerStats.wellFed}
             </div>
-            <div className="text-gray-400 text-[10px]">Сытые</div>
+            <div className="text-gray-300 text-[10px]">Сытые</div>
           </div>
           <div>
             <div className="text-yellow-400 font-bold">
               {hungerStats.normal}
             </div>
-            <div className="text-gray-400 text-[10px]">Норма</div>
+            <div className="text-gray-300 text-[10px]">Норма</div>
           </div>
           <div>
             <div className="text-red-400 font-bold">{hungerStats.starving}</div>
-            <div className="text-gray-400 text-[10px]">Голодные</div>
+            <div className="text-gray-300 text-[10px]">Голодные</div>
           </div>
         </div>
       </div>
