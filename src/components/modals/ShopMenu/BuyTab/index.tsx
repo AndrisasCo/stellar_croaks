@@ -28,8 +28,6 @@ const BuyTab: React.FC = () => {
     loadMoreRef,
   } = usePagination<Toad>(shopState.availableToads, 5);
 
-  console.log({ shopItems });
-
   return (
     <div className="space-y-4 pb-4">
       {/* Управление магазином */}

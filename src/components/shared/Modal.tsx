@@ -26,6 +26,7 @@ const Modal: React.FC<ToadListModalProps> = ({
 
   useEffect(() => {
     // Блокируем скролл
+
     document.body.style.overflow = !modalIsOpen ? "auto" : "hidden";
 
     // Функция cleanup - восстанавливаем скролл при размонтировании
@@ -42,7 +43,10 @@ const Modal: React.FC<ToadListModalProps> = ({
         onClick={(e) => e.stopPropagation()}
         className=" text-white h-full  w-full max-w-2xl max-h-[100vh] overflow-hidden bg-[url('/assets/bg-shop.png')] cover"
       >
-        <div className="h-[100vh] overflow-auto py-4 flex flex-col  bg-slate-900/50 backdrop-blur-sm px-1">
+        <div
+          id="modal"
+          className="h-[100vh]  overflow-auto py-4 flex flex-col  bg-slate-900/50 backdrop-blur-sm px-1"
+        >
           {/* Заголовок */}
           <div className="flex w-full justify-center items-center relative">
             {title && (

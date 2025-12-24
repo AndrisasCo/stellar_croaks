@@ -89,7 +89,13 @@ export const BuyButton = (props: { item: ShopItem }) => {
             </button>
             {item.key === "lootbox" && (
               <button
-                onClick={() => setShowLootboxDetails(true)}
+                onClick={() => {
+                  document.getElementById("modal")?.scrollTo({
+                    top: 0,
+                    left: 0,
+                  });
+                  setShowLootboxDetails(true);
+                }}
                 className="px-3 py-1.5 rounded-lg text-sm font-medium bg-color-second hover:bg-gray-600 text-gray-200 hover:text-white transition-colors"
               >
                 Подробнее
