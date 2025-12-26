@@ -81,7 +81,7 @@ export const Filters = ({
   return (
     <>
       {/* Панель фильтров и сортировки */}
-      <div className="bg-color-main backdrop-blur-sm rounded-xl p-3 border border-cyan-500/20  mb-3">
+      <div className="bg-color-main rounded-xl p-3 border border-cyan-500/20  mb-3">
         <div className="space-y-2">
           {/* Селектор сортировки */}
           <div className="flex items-center gap-2">

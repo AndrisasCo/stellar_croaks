@@ -134,7 +134,7 @@ const SellTab: React.FC = () => {
       />
 
       {/* Панель выбора */}
-      <div className="bg-color-main backdrop-blur-sm rounded-xl p-3 border border-yellow-500/20">
+      <div className="bg-color-main rounded-xl p-3 border border-gray-500/30">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">

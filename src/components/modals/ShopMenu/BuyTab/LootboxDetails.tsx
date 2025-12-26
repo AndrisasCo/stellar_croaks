@@ -1,4 +1,3 @@
-import { useSoundEffects } from "../../../../hooks/use-sound-effects";
 import {
   LootboxRarity,
   UNIQUE_TOADS_BY_RARITY,
@@ -6,12 +5,13 @@ import {
 import Modal from "../../../shared/Modal";
 import { ToadAvatar } from "../../../shared/ToadAvatar";
 
-export const LootboxDetails: React.FC<{ onClose: () => void }> = ({
-  onClose,
-}) => {
+export const LootboxDetails: React.FC<{
+  onClose: () => void;
+  isOpen: boolean;
+}> = ({ onClose, isOpen }) => {
   return (
     <Modal
-      isOpen={true}
+      isOpen={isOpen}
       onClose={onClose}
       title={
         <div className="text-2xl font-bold text-white flex gap-6 items-center">

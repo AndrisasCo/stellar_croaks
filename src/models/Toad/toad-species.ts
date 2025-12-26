@@ -206,12 +206,11 @@ export const TOAD_SPECIES_CONFIG: ToadSpeciesConfig[] = [
     achievementId: "gene_engineering",
   },
 
-  // --- LEGENDARY (Лутбоксы высокой редкости) ---
   {
     id: "toad_dragon",
     type: ToadTypes.dragon,
     name: toadTypeMap[ToadTypes.dragon],
-    rarity: "legendary",
+    rarity: "epic",
     desc: "Древняя сила, пробужденная ото сна.",
     obtainedBy: "lootbox",
     lootboxChanceLevel: "epic",
@@ -220,7 +219,7 @@ export const TOAD_SPECIES_CONFIG: ToadSpeciesConfig[] = [
     id: "toad_fire",
     type: ToadTypes.fire,
     name: toadTypeMap[ToadTypes.fire],
-    rarity: "legendary",
+    rarity: "epic",
     desc: "Горячая штучка. Осторожно, обжигает!",
     obtainedBy: "lootbox",
     lootboxChanceLevel: "epic",
@@ -229,11 +228,14 @@ export const TOAD_SPECIES_CONFIG: ToadSpeciesConfig[] = [
     id: "toad_zebra",
     type: ToadTypes.zebra,
     name: toadTypeMap[ToadTypes.zebra],
-    rarity: "legendary",
+    rarity: "epic",
     desc: "Уникальный черно-белый узор природы.",
     obtainedBy: "lootbox",
     lootboxChanceLevel: "epic",
   },
+
+  // --- LEGENDARY (Лутбоксы высокой редкости) ---
+
   {
     id: "toad_cosmos",
     type: ToadTypes.cosmos,

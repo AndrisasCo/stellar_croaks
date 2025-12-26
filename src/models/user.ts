@@ -19,4 +19,8 @@ export enum Items {
   lootbox = "lootbox",
   sparkleFlys = "sparkleFlys",
   worms = "worms",
+  pigmentGreen = "pigmentGreen",
+  pigmentRed = "pigmentRed",
+  pigmentBlue = "pigmentBlue",
+  pigmentUnstable = "pigmentUnstable",
 }

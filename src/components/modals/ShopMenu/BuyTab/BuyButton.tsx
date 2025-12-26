@@ -29,9 +29,10 @@ export const BuyButton = (props: { item: ShopItem }) => {
 
   return (
     <>
-      {showLootboxDetails && (
-        <LootboxDetails onClose={() => setShowLootboxDetails(false)} />
-      )}
+      <LootboxDetails
+        isOpen={showLootboxDetails}
+        onClose={() => setShowLootboxDetails(false)}
+      />
 
       <div className={` rounded-xl py-4 px-2 border mb-3 ${className.border} `}>
         {item.rarity === "rare" && (
