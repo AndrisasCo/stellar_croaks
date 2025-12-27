@@ -716,9 +716,14 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
     const oldToadsNames = toadsRef.current.map(
       (i: ContainerChildCustom) => i.userData.toadData.name
     );
-    const updatedToad = toads.find(
-      (toad) => !oldToadsNames.includes(toad.name)
+
+    const oldToadsColors = toadsRef.current.map(
+      (i: ContainerChildCustom) => i.userData.toadData.genes.colors[0]
     );
+
+    const updatedToad =
+      toads.find((toad) => !oldToadsColors.includes(toad.genes.colors[0])) ||
+      toads.find((toad) => !oldToadsNames.includes(toad.name));
 
     if (updatedToad) {
       const currentToadData: ContainerChildCustom | undefined =
@@ -726,7 +731,7 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
           (i: ContainerChildCustom) => i.userData.toadData.id === updatedToad.id
         );
       if (currentToadData) {
-        currentToadData.userData.toadData.name = updatedToad.name;
+        currentToadData.userData.toadData = { ...updatedToad };
         currentToadData.userData.toadData.spawnTime = Date.now();
         updateToadAppearance(
           currentToadData,
@@ -739,10 +744,10 @@ export default function ToadCanvas({ isFoodActive, setIsFoodActive }: any) {
   }, [
     currentScene.id,
     lastSaved,
-    toads, // Добавил toads в зависимости, чтобы отслеживать новых
     initializedRef.current,
     appRef.current,
     texturesRef.current,
+    JSON.stringify(toads),
   ]);
 
   return (

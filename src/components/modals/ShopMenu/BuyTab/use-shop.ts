@@ -16,7 +16,7 @@ import {
 } from "../../../../backend/shop-state";
 import { useNotifications } from "../../../../hooks/use-notification";
 import { useSoundEffects } from "../../../../hooks/use-sound-effects";
-import { Items } from "../../../../models/user";
+import { Items, itemsFull } from "../../../../models/user";
 import { useToads } from "../../../ToadContext";
 import { Toad, calculateSellPrice } from "../../../../models/Toad";
 import { MAX_STORED_TOADS } from "../../../../utils/constants";
@@ -43,7 +43,6 @@ export const useShop = () => {
   const [timeLeft, setTimeLeft] = useState<string>("");
   const { addNotification } = useNotifications();
   const { playBuy } = useSoundEffects();
-  console.log({ shopState });
 
   // Таймер обратного отсчета
   useEffect(() => {
@@ -79,7 +78,6 @@ export const useShop = () => {
     {
       key: Items.food,
       name: "Жабий корм x10",
-      icon: "/assets/food.png",
       description: "Основной корм для жаб",
       rarity: "common",
       price: 10,
@@ -90,7 +88,6 @@ export const useShop = () => {
     {
       key: Items.food,
       name: "Упаковка корма x100",
-      icon: "/assets/food2.png",
       description: "Большая упаковка корма",
       rarity: "common",
       price: 90,
@@ -102,10 +99,7 @@ export const useShop = () => {
     {
       key: Items.battery,
       price: 5,
-
       name: "Батарейки х3",
-      icon: "/assets/battery.png",
-      description: "Ускоряет созревание в инкубаторе",
       rarity: "common",
       currency: "astro_quax",
       quantity: 3,
@@ -116,8 +110,6 @@ export const useShop = () => {
       price: 20,
 
       name: "Сияющие мушки",
-      icon: "/assets/flies.png",
-      description: "Ускоряют беременность",
       rarity: "uncommon",
       currency: "astro_quax",
       quantity: 1,
@@ -127,8 +119,6 @@ export const useShop = () => {
       key: Items.worms,
       price: 10,
       name: "Протеиновые черви",
-      icon: "/assets/worms.png",
-      description: "Ускоряет рост головастика",
       rarity: "uncommon",
       currency: "astro_quax",
       quantity: 1,
@@ -138,13 +128,47 @@ export const useShop = () => {
       key: Items.lootbox,
 
       name: "Лутбокс",
-      icon: "/assets/lootbox.png",
-      description: "Случайная жаба или предмет",
       rarity: "rare",
       price: 50,
       currency: "astro_quax",
       quantity: 1,
       left: shopState.items[Items.lootbox],
+    },
+    {
+      key: Items.pigmentRed,
+      name: "Красный пигмент",
+      rarity: "common",
+      price: 5,
+      currency: "astro_quax",
+      left: Infinity,
+      quantity: 1,
+    },
+    {
+      key: Items.pigmentBlue,
+      name: "Синий пигмент",
+      rarity: "common",
+      price: 5,
+      currency: "astro_quax",
+      left: Infinity,
+      quantity: 1,
+    },
+    {
+      key: Items.pigmentGreen,
+      name: "Зеленый пигмент",
+      rarity: "common",
+      price: 5,
+      currency: "astro_quax",
+      left: Infinity,
+      quantity: 1,
+    },
+    {
+      key: Items.pigmentUnstable,
+      name: "Нестабильный пигмент",
+      rarity: "uncommon",
+      price: 15,
+      currency: "astro_quax",
+      left: shopState.items[Items.pigmentUnstable],
+      quantity: 1,
     },
   ];
 
@@ -202,6 +226,7 @@ export const useShop = () => {
     };
 
   const shopItems = _shopItems.map((s) => ({
+    ...itemsFull[s.key],
     ...s,
     disabled: account?.[s.currency] < s.price || s.left === 0,
     onClick: handleBuyItem(

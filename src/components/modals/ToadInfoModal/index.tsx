@@ -24,6 +24,7 @@ import { ProgressBar } from "./ProgressBar";
 import { StatCard } from "./StatCard";
 import { useToadRelatives } from "./useToadRelatives";
 import { useToadTimers } from "./useToadTimers";
+import { Colors } from "./Colors";
 
 export const ToadInfo = ({ onClose }: { onClose: () => void }) => {
   const {
@@ -432,18 +433,7 @@ export const ToadInfo = ({ onClose }: { onClose: () => void }) => {
             </div>
           </div>
 
-          {/* COLORS */}
-          {toad.genes?.colors?.length > 0 && (
-            <div className="flex gap-1 mt-2 justify-center">
-              {toad.genes.colors.map((c: string, i: number) => (
-                <div
-                  key={i}
-                  className="w-4 h-4 rounded-full border border-white/30"
-                  style={{ backgroundColor: c }}
-                />
-              ))}
-            </div>
-          )}
+          <Colors toad={toad} />
         </div>
 
         {/* Navigation Right */}

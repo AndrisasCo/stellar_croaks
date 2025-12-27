@@ -7,6 +7,24 @@ import { Toad } from "../models/Toad";
  * @returns жаба с рандомизированными характеристиками
  */
 
+export const generateRandomHexColor = () => {
+  // Функция для генерации случайного числа в диапазоне
+  const getRandomInRange = (min, max) =>
+    Math.floor(Math.random() * (max - min + 1)) + min;
+
+  // Генерируем RGB компоненты
+  // Ограничиваем диапазон, чтобы избежать слишком тёмных (< 50)
+  // и слишком светлых (> 220) значений
+  const r = getRandomInRange(50, 220);
+  const g = getRandomInRange(50, 220);
+  const b = getRandomInRange(50, 220);
+
+  // Преобразуем в hex
+  const toHex = (value) => value.toString(16).padStart(2, "0");
+
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`.toUpperCase();
+};
+
 export const varyColor = (color: string): string => {
   if (!color.startsWith("#")) return color;
 

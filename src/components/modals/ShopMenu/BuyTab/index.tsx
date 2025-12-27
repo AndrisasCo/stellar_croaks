@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { INSTANT_REFRESH_COST } from "../../../../backend/shop-state";
 import { usePagination } from "../../../../hooks/use-pagination";
 import { Toad } from "../../../../models/Toad";
 import { CURRENCY_CONFIG } from "../../../../utils/constants";
+import { ClickButton } from "../../../shared/ClickButton";
 import { ToadItem } from "../../../shared/ToadItem";
 import { useToads } from "../../../ToadContext";
 import { BuyButton } from "./BuyButton";
@@ -21,6 +23,8 @@ const BuyTab: React.FC = () => {
     allToadsPurchased,
     shopState,
   } = useShop();
+
+  const [activeTab, setActiveTab] = useState("items");
 
   const {
     visibleItems: visibleToads,
@@ -66,71 +70,85 @@ const BuyTab: React.FC = () => {
         </div>
       </div>
 
-      <div>
-        <h3 className="text-white font-semibold mb-3 px-2 text-lg">Предметы</h3>
-        {shopItems.map((i) => (
-          <BuyButton item={i} />
-        ))}
+      <div className="flex gap-3 mb-3">
+        <ClickButton
+          onClick={() => {
+            setActiveTab("items");
+          }}
+          className={`text-white font-semibold border-2 rounded-md border-gray-500/50 duration-200  px-2 text-lg ${
+            activeTab === "items"
+              ? "opacity-100 border-blue-500/80 bg-blue-500/20"
+              : "opacity-70  bg-color-main"
+          }`}
+        >
+          Предметы
+        </ClickButton>
+        <ClickButton
+          onClick={() => {
+            setActiveTab("toads");
+          }}
+          className={`text-white  font-semibold border-2 rounded-md border-gray-500/50 duration-200  px-2 text-lg ${
+            activeTab === "toads"
+              ? "opacity-100 border-green-500/80 bg-green-500/20"
+              : "opacity-70 bg-color-main"
+          }`}
+        >
+          Жабы
+        </ClickButton>
       </div>
 
-      {/* Доступные жабы */}
-      <div>
-        <h3 className="text-white px-2 font-semibold mb-3 text-lg">
-          Доступные жабы
-          {visibleToads.length > 0 && (
-            <span className="text-gray-300 text-sm ml-2">
-              ({visibleToads.length} из {shopState.availableToads.length})
-            </span>
-          )}
-        </h3>
+      {activeTab === "items" && shopItems.map((i) => <BuyButton item={i} />)}
 
-        {allToadsPurchased ? (
-          <div className="bg-color-main rounded-2xl p-6 border border-gray-700 text-center">
-            <p className="text-gray-300 text-lg">Все жабы раскуплены!</p>
-            <p className="text-gray-500 text-sm mt-1">
-              Дождитесь обновления магазина или обновите его сейчас за
-              астрокваксы
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {visibleToads.map((toad, index) => {
-              return (
-                <ToadItem
-                  toad={toad as Toad}
-                  key={`${toad.id}-${index}`}
-                  button={
-                    <button
-                      onClick={() => handleBuyToad(toad as Toad)}
-                      disabled={tokens < calculateBuyPrice(toad as Toad)}
-                      className={`px-3 min-w-[64px] py-1.5 rounded-lg bg-gray-600 text-sm font-medium text-white whitespace-nowrap transition-colors ${
-                        tokens >= calculateBuyPrice(toad as Toad) &&
-                        "bg-gradient-to-r from-green-600 to-emerald-800 text-white"
-                      }`}
-                    >
-                      {calculateBuyPrice(toad as Toad)}{" "}
-                      {CURRENCY_CONFIG.tokens.icon}
-                    </button>
-                  }
-                />
-              );
-            })}
+      {activeTab === "toads" && (
+        <>
+          {allToadsPurchased ? (
+            <div className="bg-color-main rounded-2xl p-6 border border-gray-700 text-center">
+              <p className="text-gray-300 text-lg">Все жабы раскуплены!</p>
+              <p className="text-gray-500 text-sm mt-1">
+                Дождитесь обновления магазина или обновите его сейчас за
+                астрокваксы
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {visibleToads.map((toad, index) => {
+                return (
+                  <ToadItem
+                    toad={toad as Toad}
+                    key={`${toad.id}-${index}`}
+                    button={
+                      <button
+                        onClick={() => handleBuyToad(toad as Toad)}
+                        disabled={tokens < calculateBuyPrice(toad as Toad)}
+                        className={`px-3 min-w-[64px] py-1.5 rounded-lg bg-gray-600 text-sm font-medium text-white whitespace-nowrap transition-colors ${
+                          tokens >= calculateBuyPrice(toad as Toad) &&
+                          "bg-gradient-to-r from-green-600 to-emerald-800 text-white"
+                        }`}
+                      >
+                        {calculateBuyPrice(toad as Toad)}{" "}
+                        {CURRENCY_CONFIG.tokens.icon}
+                      </button>
+                    }
+                  />
+                );
+              })}
 
-            {/* Индикатор загрузки для бесконечного скролла */}
-            {hasMore && (
-              <div
-                ref={loadMoreRef}
-                className="flex justify-center py-4"
-                key="load-more"
-              >
-                <div className="animate-pulse text-gray-300 text-sm">
-                  Загрузка жаб...
+              {/* Индикатор загрузки для бесконечного скролла */}
+              {hasMore && (
+                <div
+                  ref={loadMoreRef}
+                  className="flex justify-center py-4"
+                  key="load-more"
+                >
+                  <div className="animate-pulse text-gray-300 text-sm">
+                    Загрузка жаб...
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+              )}
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 };

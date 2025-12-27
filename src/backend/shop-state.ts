@@ -1,5 +1,6 @@
 import { Toad } from "../models/Toad";
 import { ToadTypes } from "../models/Toad/toad-species";
+import { Items } from "../models/user";
 import { randomizeToadCharacteristics } from "../utils/randomize-toad-characteristics";
 
 // Интерфейс для состояния магазина
@@ -216,7 +217,7 @@ export const ALL_TOADS: Partial<Toad>[] = [
 ];
 
 // Ключ для localStorage
-export const SHOP_STATE_KEY = "toad_shop_state8";
+export const SHOP_STATE_KEY = "toad_shop_state9";
 export const REFRESH_COOLDOWN = 3 * 60 * 60 * 1000; // 3 часа в миллисекундах
 export const INSTANT_REFRESH_COST = 20; // Стоимость мгновенного обновления
 export const INSTANT_REFRESH_ELITE_COST = 50; // Стоимость мгновенного обновления
@@ -241,6 +242,7 @@ export const initialItemsAmount = {
   food: 5,
   worms: 10,
   sparkleFlys: 10,
+  [Items.pigmentUnstable]: 5,
 };
 // Инициализация магазина со случайным набором жаб
 export const initializeShop = (): ShopState => {

@@ -26,6 +26,7 @@ import {
   LootboxRarity,
 } from "../../../models/Toad/lootbox";
 import { ConfettiAnimation } from "./animations";
+import { itemsFull } from "../../../models/user";
 
 interface StorageModalProps {
   isOpen: boolean;
@@ -176,8 +177,8 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
     });
   };
 
-  const storageItems: StorageItem[] = [
-    {
+  const _storageItems: Record<string, StorageItem> = {
+    food: {
       id: "1",
       name: "Жабий корм",
       icon: "/assets/food.png",
@@ -187,7 +188,7 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
       rarity: "common",
       key: "food",
     },
-    {
+    lootbox: {
       id: "2",
       name: "Лутбокс",
       icon: "/assets/lootbox.png",
@@ -198,7 +199,7 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
       key: "lootbox",
       onClick: handleOpenLootbox,
     },
-    {
+    battery: {
       id: "3",
       name: "Батарейка",
       icon: "/assets/battery.png",
@@ -209,7 +210,7 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
       key: "battery",
       onClick: handleClickBattery,
     },
-    {
+    sparkleFlys: {
       id: "4",
       name: "Сияющие мушки",
       icon: "/assets/flies.png",
@@ -219,7 +220,7 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
       rarity: "rare",
       key: "sparkleFlys",
     },
-    {
+    worms: {
       id: "5",
       name: "Белковые черви",
       icon: "/assets/worms.png",
@@ -229,7 +230,15 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
       rarity: "uncommon",
       key: "worms",
     },
-  ].filter((t) => t.quantity);
+  };
+
+  const storageItems = Object.values(itemsFull)
+    .map((i) => ({
+      ...i,
+      quantity: account?.storage?.[i.key] || 0,
+      ..._storageItems[i.key],
+    }))
+    .filter((t) => t.quantity);
 
   // Функция для получения цвета редкости предмета
   const getItemRarityColor = (rarity: StorageItem["rarity"]): string => {
