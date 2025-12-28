@@ -510,7 +510,7 @@ export default function ToadCanvas() {
         ref={canvasRef}
       />
       {showFoodTooltip && (
-        <div className="fixed top-[calc(50%-50px)] left-[calc(50%-125px)]   mb-2 z-50">
+        <div className="fixed top-[calc(25%)] left-[calc(50%-125px)]   mb-2 z-50">
           <div
             className="
                   bg-color-main border border-gray-600 rounded-lg p-3 
