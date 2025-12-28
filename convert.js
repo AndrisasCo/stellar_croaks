@@ -8,8 +8,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 async function convertImages() {
-  const inputDir = "./public/sprites-png"; // ваша папка с PNG
-  const outputDir = "./public/sprites";
+  const inputDir = "./public/assets-old"; // ваша папка с PNG
+  const outputDir = "./public/assets";
 
   // Создаем выходную папку если её нет
   if (!fs.existsSync(outputDir)) {
@@ -22,7 +22,7 @@ async function convertImages() {
     (file) =>
       file.toLowerCase().endsWith(".png") ||
       file.toLowerCase().endsWith(".jpg") ||
-      file.toLowerCase().endsWith(".jpeg")
+      file.toLowerCase().endsWith(".webp")
   );
 
   console.log(`Найдено ${pngFiles.length} изображений`);
@@ -46,12 +46,12 @@ async function convertImages() {
           smartSubsample: true, // умная субдискретизация
         })
         // Опционально: ограничение размера (раскомментировать если нужно)
-        // .resize({
-        //   width: 2000,
-        //   height: 2000,
-        //   fit: 'inside',
-        //   withoutEnlargement: true
-        // })
+        .resize({
+          width: 300,
+          height: 300,
+          fit: "inside",
+          withoutEnlargement: true,
+        })
         .toFile(outputPath);
 
       // Получаем размеры файлов

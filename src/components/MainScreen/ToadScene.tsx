@@ -168,7 +168,7 @@ export default function ToadScene() {
         isFoodActive={isFoodActive}
         setIsFoodActive={setIsFoodActive}
       />
-      <div className="w-[100vw] h-[350px] absolute left-[-8px]  bg-[url('/assets/main-end.webp')] cover max-w-2xl  " />
+      <div className="w-[100vw] h-[350px] absolute left-[-8px]  bg-[url('/bg/main-end.webp')] cover max-w-2xl  " />
       <div className="flex border-b-2 ml-[-8px] max-w-2xl border-[#00e1ff] w-[100vw]  items-center gap-2 justify-between  relative  bg-slate-800/50 backdrop-blur-sm rounded-md p-2">
         <ClickButton
           onClick={handleSceneInfo}

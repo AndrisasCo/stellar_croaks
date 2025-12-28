@@ -62,8 +62,8 @@ export const preloadTextures = async () => {
       await Promise.all([
         Assets.load("/sprites/toadpole.webp"),
         Assets.load("/assets/apple.webp"),
-        Assets.load("/assets/bg.webp"),
-        Assets.load("/assets/fence.webp"),
+        Assets.load("/bg/bg.webp"),
+        Assets.load("/bg/fence.webp"),
       ]);
     const toadpoleTextures = createTextures(toadpoleSpriteSheet.source);
     const res: Record<string, Texture<TextureSource<any>>[]> = {

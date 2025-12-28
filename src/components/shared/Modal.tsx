@@ -39,7 +39,7 @@ const Modal: React.FC<ToadListModalProps> = ({
 
   return (
     <div className="overlay ">
-      <div className=" text-white h-full  w-full max-w-2xl max-h-[100vh] overflow-hidden bg-[url('/assets/bg-shop.webp')] cover">
+      <div className=" text-white h-full  w-full max-w-2xl max-h-[100vh] overflow-hidden bg-[url('/bg/bg-shop.webp')] cover">
         <div
           id="modal"
           className="h-[100vh]  overflow-auto py-4 flex flex-col  bg-slate-900/50 backdrop-blur-sm px-1"

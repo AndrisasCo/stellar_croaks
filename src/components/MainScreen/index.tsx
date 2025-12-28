@@ -190,7 +190,7 @@ export default function ToadGame() {
     <div className="min-h-[100dvh] flex  flex-col items-center ">
       {showLoadingScreen && <LoadingScreen />}
 
-      <div className="w-full p-2 pb-4 mb-9  safe-area-bottom  flex flex-col bg-[url('/assets/bg-main.webp')] cover max-w-2xl relative mx-auto">
+      <div className="w-full p-2 pb-4 mb-9  safe-area-bottom  flex flex-col bg-[url('/bg/bg-main.webp')] cover max-w-2xl relative mx-auto">
         {/* Кнопка Меню (Бургер) */}
         <div className="text-center absolute right-1 top-1 z-10">
           <ClickButton
