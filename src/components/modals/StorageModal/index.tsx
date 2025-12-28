@@ -181,7 +181,7 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
     food: {
       id: "1",
       name: "Жабий корм",
-      icon: "/assets/food.png",
+      icon: "/assets/food.webp",
       quantity: account?.storage?.food || 0,
       description: "Основной корм для жаб",
       type: "food",
@@ -191,7 +191,7 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
     lootbox: {
       id: "2",
       name: "Лутбокс",
-      icon: "/assets/lootbox.png",
+      icon: "/assets/lootbox.webp",
       quantity: account?.storage?.lootbox || 0,
       description: "Открой!",
       type: "tool",
@@ -202,7 +202,7 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
     battery: {
       id: "3",
       name: "Батарейка",
-      icon: "/assets/battery.png",
+      icon: "/assets/battery.webp",
       quantity: account?.storage?.battery || 0,
       description: "Ускоряет созревание жабы в инкубаторе на 10 минут",
       type: "tool",
@@ -213,7 +213,7 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
     sparkleFlys: {
       id: "4",
       name: "Сияющие мушки",
-      icon: "/assets/flies.png",
+      icon: "/assets/flies.webp",
       quantity: account?.storage?.sparkleFlys || 0,
       description: "Ускоряют беременность жабы на 100%",
       type: "material",
@@ -223,7 +223,7 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
     worms: {
       id: "5",
       name: "Белковые черви",
-      icon: "/assets/worms.png",
+      icon: "/assets/worms.webp",
       quantity: account?.storage?.worms || 0,
       description: "Ускоряет рост головастика на 100%",
       type: "material",

@@ -190,7 +190,7 @@ export default function ToadGame() {
     <div className="min-h-[100dvh] flex  flex-col items-center ">
       {showLoadingScreen && <LoadingScreen />}
 
-      <div className="w-full p-2 pb-4 mb-9  safe-area-bottom  flex flex-col bg-[url('/assets/bg-main.png')] cover max-w-2xl relative mx-auto">
+      <div className="w-full p-2 pb-4 mb-9  safe-area-bottom  flex flex-col bg-[url('/assets/bg-main.webp')] cover max-w-2xl relative mx-auto">
         {/* Кнопка Меню (Бургер) */}
         <div className="text-center absolute right-1 top-1 z-10">
           <ClickButton
@@ -214,7 +214,7 @@ export default function ToadGame() {
               backgroundSize: 40,
             }}
             className="
-            bg-[url('/assets/market.png')]  bg-no-repeat
+            bg-[url('/assets/market.webp')]  bg-no-repeat
             bg-slate-700/40 backdrop-blur-sm hover:bg-purple-800/60 text-purple-300 hover:text-purple-100 py-3 px-4 rounded-md transition-all duration-300 transform hover:scale-105 active:scale-95 border-2 border-purple-300/90 hover:border-purple-400/60 font-bold "
           >
             <span className="p-l-10">РЫНОК</span>
@@ -227,7 +227,7 @@ export default function ToadGame() {
               backgroundSize: 40,
             }}
             className="
-            bg-[url('/assets/storage.png')] bg-no-repeat
+            bg-[url('/assets/storage.webp')] bg-no-repeat
             bg-slate-700/40 backdrop-blur-sm hover:bg-green-800/60 text-green-300 hover:text-green-100 py-3 px-4 rounded-md hover:shadow-xl transition-all duration-300 transform hover:scale-105 active:scale-95 border-2 border-green-300/90 hover:border-green-400/60 font-bold "
           >
             <span className="p-l-10">СКЛАД</span>
@@ -304,7 +304,7 @@ export default function ToadGame() {
                 {CURRENCY_CONFIG.astro_quax.icon} {account?.astro_quax || 0}
               </div>
               <div className="text-purple-300/80 flex gap-1">
-                <img src="/assets/logo.png" width={16} alt="logo" />{" "}
+                <img src="/assets/logo.webp" width={16} alt="logo" />{" "}
                 {allToads.length}
               </div>
             </div>

@@ -168,12 +168,12 @@ export default function ToadScene() {
         isFoodActive={isFoodActive}
         setIsFoodActive={setIsFoodActive}
       />
-      <div className="w-[100vw] h-[350px] absolute left-[-8px]  bg-[url('/assets/main-end.png')] cover max-w-2xl  " />
+      <div className="w-[100vw] h-[350px] absolute left-[-8px]  bg-[url('/assets/main-end.webp')] cover max-w-2xl  " />
       <div className="flex border-b-2 ml-[-8px] max-w-2xl border-[#00e1ff] w-[100vw]  items-center gap-2 justify-between  relative  bg-slate-800/50 backdrop-blur-sm rounded-md p-2">
         <ClickButton
           onClick={handleSceneInfo}
           className="
-             bg-[url('/assets/cage-btn.png')] cover
+             bg-[url('/assets/cage-btn.webp')] cover
               w-[100px] h-[60px]
               transition-all duration-300 transform
               hover:scale-105 active:scale-95
@@ -186,7 +186,7 @@ export default function ToadScene() {
           onClick={handleShowFoodTooltip}
           disabled={isFoodActive}
           className="
-             bg-[url('/assets/feed-btn.png')] cover
+             bg-[url('/assets/feed-btn.webp')] cover
                             w-[100px] h-[60px]
               transition-all duration-300 transform
               hover:scale-105 active:scale-95
@@ -231,7 +231,7 @@ export default function ToadScene() {
                         flex items-center justify-center gap-1
                       "
                 >
-                  <img src={"/assets/food.png"} width={30} />
+                  <img src={"/assets/food.webp"} width={30} />
                   Покормить
                 </ClickButton>
               </div>
@@ -251,7 +251,7 @@ export default function ToadScene() {
         <ClickButton
           onClick={handleViewToads}
           className="
-             bg-[url('/assets/list-btn.png')] cover
+             bg-[url('/assets/list-btn.webp')] cover
                             w-[100px] h-[60px]
 
               transition-all duration-300 transform

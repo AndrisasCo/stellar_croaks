@@ -60,10 +60,10 @@ export const preloadTextures = async () => {
   try {
     const [toadpoleSpriteSheet, foodTexture, backgroundTexture, fenceTexture] =
       await Promise.all([
-        Assets.load("/sprites/toadpole.png"),
-        Assets.load("/assets/apple.png"),
-        Assets.load("/assets/bg.png"),
-        Assets.load("/assets/fence.png"),
+        Assets.load("/sprites/toadpole.webp"),
+        Assets.load("/assets/apple.webp"),
+        Assets.load("/assets/bg.webp"),
+        Assets.load("/assets/fence.webp"),
       ]);
     const toadpoleTextures = createTextures(toadpoleSpriteSheet.source);
     const res: Record<string, Texture<TextureSource<any>>[]> = {
@@ -76,7 +76,7 @@ export const preloadTextures = async () => {
     const typeArray = Object.values(ToadTypes);
 
     const promises = typeArray.map((type) =>
-      Assets.load(`/sprites/${type}.png`)
+      Assets.load(`/sprites/${type}.webp`)
     );
 
     const allSpriteshits = await Promise.all(promises);

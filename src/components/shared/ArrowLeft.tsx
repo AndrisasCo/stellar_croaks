@@ -14,6 +14,6 @@ export const ArrowLeftButtonCompact = ({
   <ClickButton
     onClick={onClick}
     disabled={disabled}
-    className={`bg-[url('/assets/back.png')] disabled:opacity-50 cover ${className}`}
+    className={`bg-[url('/assets/back.webp')] disabled:opacity-50 cover ${className}`}
   />
 );

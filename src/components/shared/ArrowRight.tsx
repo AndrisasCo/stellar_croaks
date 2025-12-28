@@ -14,6 +14,6 @@ export const ArrowRightButtonCompact = ({
   <ClickButton
     onClick={onClick}
     disabled={disabled}
-    className={`bg-[url('/assets/back.png')] disabled:opacity-50 rotate-180 cover ${className}`}
+    className={`bg-[url('/assets/back.webp')] disabled:opacity-50 rotate-180 cover ${className}`}
   />
 );

@@ -64,7 +64,7 @@ const LoadingScreen = () => {
             <div className="relative">
               {/* Анимированная жаба */}
               <div
-                style={{ backgroundImage: "url(/assets/logo-2.png)" }}
+                style={{ backgroundImage: "url(/logo-2.webp)" }}
                 className="w-24 h-24 bg-contain bg-no-repeat"
               >
                 {/* Глаза */}

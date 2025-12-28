@@ -1,12 +1,12 @@
 import React, { useState } from "react";
-import { useToads } from "../ToadContext";
-import Modal from "../shared/Modal";
-import { getGameState, updateGameState } from "../../backend/localStorage";
-import { InfoIcons } from "../../assets/icons";
-import { bonuses, BonusType, INITIAL_CAPACITY } from "../../models/scene";
-import { updateScene, updateUser } from "../../backend";
-import { CURRENCY_CONFIG } from "../../utils/constants";
-import { useNotifications } from "../../hooks/use-notification";
+import { useToads } from "../../ToadContext";
+import Modal from "../../shared/Modal";
+import { getGameState, updateGameState } from "../../../backend/localStorage";
+import { InfoIcons } from "../../../assets/icons";
+import { bonuses, BonusType, INITIAL_CAPACITY } from "../../../models/scene";
+import { updateScene, updateUser } from "../../../backend";
+import { CURRENCY_CONFIG } from "../../../utils/constants";
+import { useNotifications } from "../../../hooks/use-notification";
 
 interface SceneInfoModalProps {
   isOpen: boolean;

@@ -237,7 +237,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
               <div className="pt-2 border-t border-gray-600/50 text-center">
                 <span className="text-green-400 font-bold flex items-center justify-between">
                   Stellar Croak{" "}
-                  <img width={30} height={30} src="/assets/logo.png" />
+                  <img width={30} height={30} src="/assets/logo.webp" />
                 </span>
               </div>
             </div>

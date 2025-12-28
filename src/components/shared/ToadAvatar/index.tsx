@@ -14,8 +14,8 @@ export const ToadAvatar = (props: {
 
   const isColoredToad = [ToadTypes.hybrid, ToadTypes.camouflage].includes(type);
   const imageSrc = isColoredToad
-    ? `/assets/${type}.png`
-    : `/sprites/${type}.png`;
+    ? `/assets/${type}.webp`
+    : `/sprites/${type}.webp`;
 
   return (
     <div

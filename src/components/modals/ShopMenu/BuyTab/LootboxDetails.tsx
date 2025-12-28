@@ -15,7 +15,7 @@ export const LootboxDetails: React.FC<{
       onClose={onClose}
       title={
         <div className="text-2xl font-bold text-white flex gap-6 items-center">
-          <img src="assets/lootbox.png" width={180} />
+          <img src="assets/lootbox.webp" width={180} />
           Жаббокс
         </div>
       }
