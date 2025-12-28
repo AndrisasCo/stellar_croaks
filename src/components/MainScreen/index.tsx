@@ -239,8 +239,6 @@ export default function ToadGame() {
           <ToadScene />
         </div>
 
-        <ColliderButton />
-
         {/* Футер статистики */}
         <footer className="mt-auto text-center pb-4 relative">
           <p className="text-white text-sm">

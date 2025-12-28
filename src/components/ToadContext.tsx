@@ -24,6 +24,7 @@ import {
   saveColliderState,
 } from "../backend/collider-manager";
 import { MAX_STORED_TOADS } from "../utils/constants";
+import { getAutoHunger } from "../utils/get-auto-hunger";
 
 interface ToadContextType {
   toads: Toad[];
@@ -218,7 +219,19 @@ export const ToadProvider: React.FC<ToadProviderProps> = ({ children }) => {
   };
 
   const handleFeedToads = async (toadsId: number[]) => {
-    const newFood = (account.storage?.food || 0) - toadsId.length;
+    let newFood;
+
+    if (currentScene.bonuses?.autoFeeder) {
+      const allHunger = getAutoHunger(
+        toads.filter((t) => toadsId.includes(t.id))
+      );
+
+      newFood = (account.storage?.food || 0) - allHunger;
+      console.log({ allHunger });
+    } else {
+      newFood = (account.storage?.food || 0) - toadsId.length;
+    }
+
     if (newFood < 0) {
       addNotification({
         type: "warn",

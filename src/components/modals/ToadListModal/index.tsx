@@ -20,10 +20,9 @@ import { CompactToadItem } from "./CompactToadItem";
 interface ToadListModalProps {
   isOpen: boolean;
   onClose: () => void;
-  toads: Toad[];
   onToadSelect: (toadId: number) => void;
-  setLastToadId: (toadId: number) => void;
-  lastToadId: number;
+  setLastToadId: (toadId: number | null) => void;
+  lastToadId: number | null;
 }
 
 const ToadListModal: React.FC<ToadListModalProps> = ({

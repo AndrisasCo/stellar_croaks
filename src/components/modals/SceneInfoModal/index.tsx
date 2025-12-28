@@ -75,24 +75,24 @@ const SceneInfoModal: React.FC<SceneInfoModalProps> = ({ isOpen, onClose }) => {
   const handleBuyBonus = (
     bonusType: BonusType,
     level: number,
-    price: number
+    price: number,
+    currency = "astro_quax"
   ) => {
-    const newQuax = account.astro_quax - price;
+    const newQuax = account[currency] - price;
     if (newQuax < 0) {
       addNotification({
         type: "danger",
         content: `Не хватает ${Math.abs(newQuax)} ${
-          CURRENCY_CONFIG.astro_quax.icon
+          CURRENCY_CONFIG[currency].icon
         }`,
       });
       return;
     }
-    console.log(`Покупаем бонус ${bonusType} уровня ${level}`);
     const bonuses = currentScene.bonuses || {};
-    bonuses[bonusType] = level; // Устанавливаем конкретный уровень
+    bonuses[bonusType] = level;
 
     updateScene(currentScene.id, { bonuses });
-    updateUser({ astro_quax: newQuax });
+    updateUser({ [currency]: newQuax });
   };
 
   // Обработчик отмены редактирования
@@ -214,6 +214,19 @@ const SceneInfoModal: React.FC<SceneInfoModalProps> = ({ isOpen, onClose }) => {
         d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
       />
     </svg>,
+    <svg
+      className="w-5 h-5"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+      />
+    </svg>,
   ];
 
   const StatItem = ({
@@ -227,7 +240,7 @@ const SceneInfoModal: React.FC<SceneInfoModalProps> = ({ isOpen, onClose }) => {
     color?: string;
     icon?: React.ReactNode;
   }) => (
-    <div className="flex justify-between items-center p-3 bg-slate-700/80 rounded-lg border border-gray-600/50">
+    <div className="flex justify-between items-center p-3 bg-color-main rounded-lg border border-gray-600/50">
       <div className="flex items-center gap-2">
         {icon && <span className="text-gray-300">{icon}</span>}
         <span className="text-gray-200 text-sm">{label}</span>
@@ -245,7 +258,7 @@ const SceneInfoModal: React.FC<SceneInfoModalProps> = ({ isOpen, onClose }) => {
     >
       {/* Основная информация о сцене */}
       <div className="space-y-3 mb-6 ">
-        <div className="flex justify-between items-center p-3 bg-slate-700/80 rounded-lg border border-gray-600/50">
+        <div className="flex justify-between items-center p-3 bg-color-main rounded-lg border border-gray-600/50">
           <div className="flex items-center gap-2 flex-1">
             <svg
               className="w-4 h-4 text-gray-300 flex-shrink-0"
@@ -407,19 +420,19 @@ const SceneInfoModal: React.FC<SceneInfoModalProps> = ({ isOpen, onClose }) => {
             Средние показатели
           </h4>
           <div className="grid grid-cols-3 gap-2">
-            <div className="bg-slate-700/80 rounded-lg p-3 text-center border border-gray-600/50">
+            <div className="bg-color-main rounded-lg p-3 text-center border border-gray-600/50">
               <div className="text-purple-400 text-lg font-bold">
                 {averageStats.rarity}
               </div>
               <div className="text-gray-300 text-[10px] mt-1">Редкость</div>
             </div>
-            <div className="bg-slate-700/80 rounded-lg p-3 text-center border border-gray-600/50">
+            <div className="bg-color-main rounded-lg p-3 text-center border border-gray-600/50">
               <div className="text-blue-400 text-lg font-bold">
                 {averageStats.weight}
               </div>
               <div className="text-gray-300 text-[10px] mt-1">Размер</div>
             </div>
-            <div className="bg-slate-700/80 rounded-lg p-3 text-center border border-gray-600/50">
+            <div className="bg-color-main rounded-lg p-3 text-center border border-gray-600/50">
               <div className="text-green-400 text-lg font-bold">
                 {averageStats.speed}
               </div>
@@ -576,6 +589,54 @@ const SceneInfoModal: React.FC<SceneInfoModalProps> = ({ isOpen, onClose }) => {
               </div>
 
               <div className="space-y-3">
+                <div className="bg-amber-500/10 rounded-lg p-3 border border-amber-500/30">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <div className="text-amber-400">{icons[2]}</div>
+                      <span className="text-amber-200 text-sm font-medium">
+                        Кормушка с автопроцессором
+                      </span>
+                    </div>
+                    <span className="text-amber-300 text-xs">
+                      {getCurrentBonusLevel(BonusType.autoFeeder) > 0
+                        ? `Есть`
+                        : "Не улучшено"}
+                    </span>
+                  </div>
+
+                  <button
+                    onClick={() =>
+                      handleBuyBonus(BonusType.autoFeeder, 1, 1000, "tokens")
+                    }
+                    disabled={false}
+                    className={`w-full
+                                relative text-xs font-bold py-2 px-1 rounded   shadow
+                                bg-gradient-to-br  text-white from-amber-500 to-orange-500
+                              `}
+                  >
+                    <span>Умное распределение корма</span>
+                    {getCurrentBonusLevel(BonusType.autoFeeder) > 0 ? (
+                      <div className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-400 rounded-full flex items-center justify-center">
+                        <svg
+                          className="w-2 h-2 text-white"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                      </div>
+                    ) : (
+                      <div className={`text-sm text-amber-100`}>
+                        1000 {CURRENCY_CONFIG.tokens.icon}
+                      </div>
+                    )}
+                  </button>
+                </div>
+
                 {bonuses.map((bonus, index) => {
                   const currentLevel = getCurrentBonusLevel(bonus.type);
 

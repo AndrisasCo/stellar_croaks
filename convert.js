@@ -8,7 +8,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 async function convertImages() {
-  const inputDir = "./public/assets-old"; // ваша папка с PNG
+  const inputDir = "./public/assets"; // ваша папка с PNG
   const outputDir = "./public/assets";
 
   // Создаем выходную папку если её нет
@@ -20,9 +20,8 @@ async function convertImages() {
   const files = fs.readdirSync(inputDir);
   const pngFiles = files.filter(
     (file) =>
-      file.toLowerCase().endsWith(".png") ||
-      file.toLowerCase().endsWith(".jpg") ||
-      file.toLowerCase().endsWith(".webp")
+      file.toLowerCase().endsWith(".png") || file.toLowerCase().endsWith(".jpg")
+    // || file.toLowerCase().endsWith(".webp")
   );
 
   console.log(`Найдено ${pngFiles.length} изображений`);

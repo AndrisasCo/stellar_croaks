@@ -8,7 +8,7 @@ export interface Scene {
   name: string | null;
   price: number | null;
   texture: string | null;
-  bonuses?: Record<string, number>;
+  bonuses?: Record<BonusType, number>;
   capacity: number;
 }
 
@@ -41,12 +41,16 @@ export const GRADIENTS = [
   ],
 ];
 
-export type BonusType = "grow" | "pregnancy";
+export enum BonusType {
+  grow = "grow",
+  pregnancy = "pregnancy",
+  autoFeeder = "autoFeeder",
+}
 
 // Бонусы вольера
 export const bonuses = [
   {
-    type: "grow" as BonusType,
+    type: BonusType.grow,
     name: "Ускоренный рост",
     levels: [
       { level: 1, bonus: 5, cost: 30 },
@@ -55,7 +59,7 @@ export const bonuses = [
     ],
   },
   {
-    type: "pregnancy" as BonusType,
+    type: BonusType.pregnancy,
     name: "Ускоренная беременность",
     levels: [
       { level: 1, bonus: 5, cost: 50 },
@@ -66,8 +70,8 @@ export const bonuses = [
 ];
 
 const bonusMap = {
-  pregnancy: [5, 10, 20],
-  grow: [5, 10, 20],
+  [BonusType.pregnancy]: [5, 10, 20],
+  [BonusType.grow]: [5, 10, 20],
 };
 
 export const getBoostByScene = (

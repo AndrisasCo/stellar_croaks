@@ -1,24 +1,27 @@
 import { useState } from "react";
-
-import { useToads } from "../ToadContext";
+import { ColliderIcons, PregnancyIcon } from "../../../assets/icons";
+import { deleteToadsByIds } from "../../../backend";
+import { useSoundEffects } from "../../../hooks/use-sound-effects";
+import {
+  Toad,
+  getRarityConfig,
+  getGeneticFaultConfig,
+} from "../../../models/Toad";
+import { ToadTypes } from "../../../models/Toad/toad-species";
+import { BreedingResult } from "../../../models/types";
 import {
   generateChildToad,
   calculateRarityBonus,
-} from "../../utils/calculate-genetics";
-import { MIXING_DURATION } from "../../utils/constants";
-import { getRarityConfig, Toad } from "../../models/Toad";
-import { ToadTypes } from "../../models/Toad/toad-species";
-import { useSoundEffects } from "../../hooks/use-sound-effects";
-import { BreedingResult } from "../../models/types";
-import { ColliderIcons, PregnancyIcon } from "../../assets/icons";
-import Modal from "../shared/Modal";
-import { deleteToadsByIds } from "../../backend";
-import { ToadGender } from "../shared/ToadGender";
-import { nameGenerator } from "../../utils/name-generator";
-import { getGeneticFaultConfig } from "../../models/Toad";
-import { ToadAvatar } from "../shared/ToadAvatar";
-import { ClickButton } from "../shared/ClickButton";
-import { MixingInProgress } from "./ToadCollider/MixingInProgress";
+} from "../../../utils/calculate-genetics";
+import { MIXING_DURATION } from "../../../utils/constants";
+import { nameGenerator } from "../../../utils/name-generator";
+import { ClickButton } from "../../shared/ClickButton";
+import Modal from "../../shared/Modal";
+import { ToadAvatar } from "../../shared/ToadAvatar";
+import { ToadGender } from "../../shared/ToadGender";
+import { useToads } from "../../ToadContext";
+import { MixingInProgress } from "./MixingInProgress";
+import { useModal } from "../../ModalContext";
 
 interface ToadColliderProps {
   isOpen: boolean;
@@ -42,7 +45,6 @@ const getRarityBackground = (rarity: number): string => {
 };
 
 export default function ToadCollider({
-  isOpen,
   onClose,
   availableToads,
 }: ToadColliderProps) {
@@ -173,18 +175,17 @@ export default function ToadCollider({
     setCustomName(randomName);
   };
 
-  const handleClose = () => {
-    handleReset();
-    onClose();
-  };
-
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={handleClose}
-      icon={ColliderIcons.collider}
-      title="Генетический Коллайдер"
-    >
+    <>
+      <div className="flex w-full justify-center items-center relative">
+        <div className="flex items-center gap-2 pb-4 ">
+          {ColliderIcons.collider}
+          <h2 className="text-xl font-bold bg-gradient-to-r from-green-400 to-purple-500 bg-clip-text text-transparent">
+            Генетический Коллайдер
+          </h2>
+        </div>
+      </div>
+
       {!breedingResult ? (
         <>
           <div className="bg-color-second  rounded-lg p-3 mb-4 sm:mb-6 border border-gray-600">
@@ -563,6 +564,6 @@ export default function ToadCollider({
           </div>
         </div>
       )}
-    </Modal>
+    </>
   );
 }

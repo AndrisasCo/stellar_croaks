@@ -1,6 +1,4 @@
 import { useRef, useState } from "react";
-import { completeAchivement } from "../../backend/achivements-manager";
-import { useNotifications } from "../../hooks/use-notification";
 import SceneInfoModal from "../modals/SceneInfoModal";
 import { ToadInfo } from "../modals/ToadInfoModal";
 import ToadListModal from "../modals/ToadListModal";
@@ -9,30 +7,22 @@ import { ArrowRightButtonCompact } from "../shared/ArrowRight";
 import { ClickButton } from "../shared/ClickButton";
 import ToadCanvas from "../ToadCanvas";
 import { useToads } from "../ToadContext";
+import ColliderButton from "../modals/ToadCollider/ColliderButton";
 
 export default function ToadScene() {
   const {
     selectedToad,
-    toads,
     selectToad,
     currentScene,
     setCurrentSceneId,
     ownedScenes,
     currentSceneIndex,
-    handleFeedToads,
-    account,
   } = useToads();
-  const { addNotification } = useNotifications();
-  const buttonRef = useRef<HTMLButtonElement>(null);
-
-  const isFoodAvailable = (account?.storage?.food || 0) >= toads.length;
 
   const [isInfoOpen, setIsInfoOpen] = useState(false);
   const [isListOpen, setIsListOpen] = useState(false);
   const [isSceneInfoOpen, setIsSceneInfoOpen] = useState(false);
-  const [isFoodActive, setIsFoodActive] = useState(false);
-  const [showFoodTooltip, setShowFoodTooltip] = useState(false);
-  const [lastToadId, setLastToadId] = useState(null);
+  const [lastToadId, setLastToadId] = useState<number | null>(null);
 
   const onToadSelect = (toadId: number) => {
     selectToad(toadId);
@@ -62,33 +52,6 @@ export default function ToadScene() {
   const handleSceneInfo = () => {
     console.log("📊 Открыть данные о сцене:", currentScene?.name);
     setIsSceneInfoOpen(true);
-  };
-
-  const handleShowFoodTooltip = () => {
-    if (!isFoodAvailable) {
-      addNotification({
-        content: `Недостаточно корма на складе! Не хватает: ${Math.abs(
-          (account?.storage?.food || 0) - toads.length
-        )}`,
-        type: "warn",
-      });
-      return;
-    }
-    setShowFoodTooltip(true);
-  };
-
-  const handleConfirmFeed = () => {
-    if (isFoodActive) {
-      return;
-    }
-    completeAchivement("feed-all");
-    setIsFoodActive(true);
-    setShowFoodTooltip(false);
-    handleFeedToads(toads.map((t) => t.id));
-  };
-
-  const handleCancelFeed = () => {
-    setShowFoodTooltip(false);
   };
 
   const handleViewToads = () => {
@@ -164,11 +127,8 @@ export default function ToadScene() {
       </div>
 
       {/* Основной канвас с жабами */}
-      <ToadCanvas
-        isFoodActive={isFoodActive}
-        setIsFoodActive={setIsFoodActive}
-      />
-      <div className="w-[100vw] h-[350px] absolute left-[-8px]  bg-[url('/bg/main-end.webp')] cover max-w-2xl  " />
+      <ToadCanvas />
+      <div className="w-[100vw] h-[200px] absolute left-[-8px]  bg-[url('/bg/main-end.webp')] cover max-w-2xl  " />
       <div className="flex border-b-2 ml-[-8px] max-w-2xl border-[#00e1ff] w-[100vw]  items-center gap-2 justify-between  relative  bg-slate-800/50 backdrop-blur-sm rounded-md p-2">
         <ClickButton
           onClick={handleSceneInfo}
@@ -181,72 +141,7 @@ export default function ToadScene() {
           title="Статистика сцене"
         ></ClickButton>
 
-        <ClickButton
-          ref={buttonRef}
-          onClick={handleShowFoodTooltip}
-          disabled={isFoodActive}
-          className="
-             bg-[url('/assets/feed-btn.webp')] cover
-                            w-[100px] h-[60px]
-              transition-all duration-300 transform
-              hover:scale-105 active:scale-95
-                disabled:opacity-60
-              "
-          title="Покормить жаб"
-        ></ClickButton>
-
-        {/* Тултип подтверждения */}
-        {showFoodTooltip && (
-          <div className="absolute bottom-full right-2 transform  mb-2 z-50">
-            <div
-              className="
-                  bg-color-main border border-gray-600 rounded-lg p-3 
-                  shadow-lg min-w-[250px] backdrop-blur-sm
-                "
-            >
-              <div className="text-white text-sm text-center mb-2">
-                Вы потратите{" "}
-                <span className="text-yellow-400 font-bold">
-                  {toads.length}
-                </span>{" "}
-                корма
-              </div>
-              <div className="flex gap-2">
-                <ClickButton
-                  onClick={handleCancelFeed}
-                  className="
-                        flex-1 py-2 px-3 rounded text-sm
-                        bg-gray-600 hover:bg-gray-500 text-white
-                        transition-colors duration-200
-                      "
-                >
-                  Отмена
-                </ClickButton>
-                <ClickButton
-                  onClick={handleConfirmFeed}
-                  className="
-                        flex-1 py-2 px-3 rounded text-sm
-                        bg-yellow-600 hover:bg-yellow-500 text-white
-                        transition-colors duration-200
-                        flex items-center justify-center gap-1
-                      "
-                >
-                  <img src={"/assets/food.webp"} width={30} />
-                  Покормить
-                </ClickButton>
-              </div>
-            </div>
-
-            {/* Стрелка тултипа */}
-            <div
-              className="
-                  absolute top-full left-1/2 transform -translate-x-1/2
-                  w-0 h-0 border-l-4 border-r-4 border-t-4
-                  border-l-transparent border-r-transparent border-t-gray-800
-                "
-            ></div>
-          </div>
-        )}
+        <ColliderButton />
 
         <ClickButton
           onClick={handleViewToads}

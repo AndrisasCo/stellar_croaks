@@ -22,18 +22,23 @@ export function makeColorWhiter(hexColor: string, percent: number) {
     .padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
 }
 
-export const createTextures = (spritesheet: any) => {
+export const createTextures = (
+  spritesheet: any,
+  isToad = true,
+  iMax = 3,
+  jMax = 2
+) => {
   const result: Texture[] = [];
-  for (let j = 0; j < 2; j++) {
-    for (let i = 0; i < 3; i++) {
-      if (i === 2 && j === 0) {
+  for (let j = 0; j < jMax; j++) {
+    for (let i = 0; i < iMax; i++) {
+      if (i === 2 && j === 0 && isToad) {
         result.push(
           new Texture({
             source: spritesheet,
             frame: {
-              x: (i * spritesheet.width) / 3,
-              y: (j * spritesheet.height) / 2,
-              width: spritesheet.width / 3,
+              x: (i * spritesheet.width) / iMax,
+              y: (j * spritesheet.height) / jMax,
+              width: spritesheet.width / iMax,
               height: spritesheet.height / 2,
             },
           })
@@ -43,10 +48,10 @@ export const createTextures = (spritesheet: any) => {
         new Texture({
           source: spritesheet,
           frame: {
-            x: (i * spritesheet.width) / 3,
-            y: (j * spritesheet.height) / 2,
-            width: spritesheet.width / 3,
-            height: spritesheet.height / 2,
+            x: (i * spritesheet.width) / iMax,
+            y: (j * spritesheet.height) / jMax,
+            width: spritesheet.width / iMax,
+            height: spritesheet.height / jMax,
           },
         })
       );
@@ -58,17 +63,28 @@ export const createTextures = (spritesheet: any) => {
 // Предзагружаем текстуры и создаем текстуры для анимации один раз
 export const preloadTextures = async () => {
   try {
-    const [toadpoleSpriteSheet, foodTexture, backgroundTexture, fenceTexture] =
-      await Promise.all([
-        Assets.load("/sprites/toadpole.webp"),
-        Assets.load("/assets/apple.webp"),
-        Assets.load("/bg/bg.webp"),
-        Assets.load("/bg/fence.webp"),
-      ]);
+    const [
+      toadpoleSpriteSheet,
+      foodSpritesheet,
+      foodSpritesheet2,
+      backgroundTexture,
+      fenceTexture,
+    ] = await Promise.all([
+      Assets.load("/sprites/toadpole.webp"),
+      Assets.load("/assets/bowl.webp"),
+      Assets.load("/assets/bowl2.webp"),
+      Assets.load("/bg/bg.webp"),
+      Assets.load("/bg/fence.webp"),
+    ]);
+
+    const foodTextures1 = createTextures(foodSpritesheet, false, 2, 1);
+    const foodTextures2 = createTextures(foodSpritesheet2, false, 2, 1);
+
     const toadpoleTextures = createTextures(toadpoleSpriteSheet.source);
     const res: Record<string, Texture<TextureSource<any>>[]> = {
       toadpoleTextures,
-      foodTexture,
+      foodTextures1,
+      foodTextures2,
       backgroundTexture,
       fenceTexture,
     };
