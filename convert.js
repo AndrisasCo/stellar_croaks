@@ -8,8 +8,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 async function convertImages() {
-  const inputDir = "./public/assets"; // ваша папка с PNG
-  const outputDir = "./public/assets";
+  const inputDir = "./public/sprites"; // ваша папка с PNG
+  const outputDir = "./public/sprites";
 
   // Создаем выходную папку если её нет
   if (!fs.existsSync(outputDir)) {
@@ -45,12 +45,12 @@ async function convertImages() {
           smartSubsample: true, // умная субдискретизация
         })
         // Опционально: ограничение размера (раскомментировать если нужно)
-        .resize({
-          width: 300,
-          height: 300,
-          fit: "inside",
-          withoutEnlargement: true,
-        })
+        // .resize({
+        //   width: 300,
+        //   height: 300,
+        //   fit: "inside",
+        //   withoutEnlargement: true,
+        // })
         .toFile(outputPath);
 
       // Получаем размеры файлов

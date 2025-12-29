@@ -27,6 +27,7 @@ import {
 } from "../../../models/Toad/lootbox";
 import { ConfettiAnimation } from "./animations";
 import { itemsFull } from "../../../models/user";
+import { completeAchivementCounter } from "../../../backend/achivements-manager";
 
 type StorageTabType = "items" | "toads";
 
@@ -107,7 +108,7 @@ const StorageModal: React.FC = () => {
       return;
     }
     setShowConfetti(showConfetti + 1);
-
+    completeAchivementCounter("lootbox", 1);
     const { baseToad, rarity } = generateLootboxToad();
     const randomToad = randomizeToadCharacteristics(baseToad);
     let toadLabel = "";

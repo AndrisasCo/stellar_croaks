@@ -316,6 +316,58 @@ export const achievementGroups = [
       ],
     },
   },
+  {
+    id: "lootbox-champion",
+    title: "Искатель сокровищ",
+    description: "Откройте 100 лутбоксов и станьте мастером удачи",
+    color: "yellow",
+    achievements: [
+      {
+        id: "open-100-lootboxes",
+        icon: "🎁",
+        name: "Открытие лутбоксов",
+        description: "Проверьте ваше везение",
+        taskType: "lootbox",
+        taskValue: 100,
+      },
+    ],
+    groupReward: {
+      icon: "💍",
+      name: "Кольцо удачи",
+      description: "Какой же камень украсит это кольцо?",
+      reward: [
+        {
+          type: "toad",
+          content: {
+            id: Math.round(Date.now() * Math.random()),
+            name: "Брилиантовый везунчик",
+            type: ToadTypes.diamond,
+            generation: 0,
+            sex: "female",
+            stage: "adult",
+            scene_id: null,
+            created_at: new Date().toISOString(),
+            parents: null,
+            state: {
+              hunger: 100,
+            },
+            pregnancy: null,
+            genes: {
+              colors: ["#4B0082"],
+              pattern: "holographic",
+              weight: 18,
+              speed: 1,
+              rarity: 5,
+              hungerRate: 1,
+              fertility: 0.5,
+              personality: "lucky",
+            },
+          },
+        },
+        { type: "lootbox", content: 11 },
+      ],
+    },
+  },
 ]; // Динамические типы для ID
 
 export type DynamicAchievementId =
@@ -338,9 +390,11 @@ export type DynamicAchievementId =
   | "size-30"
   | "speed-slow"
   | "speed-fast"
-  | "size-small";
+  | "size-small"
+  | "open-100-lootboxes";
 
 export type DynamicGroupId =
   | "first-steps"
   | "market-domination"
-  | "genetic-engineer";
+  | "genetic-engineer"
+  | "lootbox-champion";

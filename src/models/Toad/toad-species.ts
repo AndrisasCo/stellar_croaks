@@ -21,6 +21,7 @@ export enum ToadTypes {
   cosmos = "cosmos", // лутбокс 0.1
   phoenix = "phoenix", // лутбокс 0.1
   chaos = "chaos", // лутбокс 0.1
+  diamond = "diamond", // ачивка за 100 лутбоксов
 
   money = "money",
 }
@@ -46,6 +47,7 @@ export const toadTypeMap: Record<ToadTypes, string> = {
   [ToadTypes.phoenix]: "Феникс",
   [ToadTypes.mutantNeonBlue]: "Мутант Светящийся",
   [ToadTypes.mutantNeon]: "Мутант Светящийся",
+  [ToadTypes.diamond]: "Алмазная",
 };
 
 // Тип для способа получения
@@ -262,6 +264,14 @@ export const TOAD_SPECIES_CONFIG: ToadSpeciesConfig[] = [
     desc: "Чистая энтропия и непредсказуемость.",
     obtainedBy: "lootbox",
     lootboxChanceLevel: "legendary",
+  },
+  {
+    id: "toad_diamond",
+    type: ToadTypes.diamond,
+    name: toadTypeMap[ToadTypes.diamond],
+    rarity: "legendary",
+    desc: "Самая редкая и ценная из всех жаб.",
+    obtainedBy: "achievement",
   },
   // {
   //   id: "toad_money",
