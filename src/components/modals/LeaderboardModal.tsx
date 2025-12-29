@@ -34,10 +34,7 @@ type LeaderboardTabType =
   | "tokens" // Богатство (кваксы)
   | "species"; // Разнообразие видов
 
-const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
-  isOpen,
-  onClose,
-}) => {
+const LeaderboardModal: React.FC = () => {
   const { account, allToads } = useToads();
   const [activeTab, setActiveTab] = useState<LeaderboardTabType>("rarity");
   const [editingUsername, setEditingUsername] = useState(false);
@@ -49,7 +46,7 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
   }
 
   const { data: players, mutate } = useSWR(
-    "leaderbord" + isOpen + account.username,
+    "leaderbord" + account.username,
     () => getAllLeaderboards(),
     {
       dedupingInterval: 30000,
@@ -473,7 +470,7 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} icon={icon} title="Лидерборд">
+    <Modal icon={icon} title="Лидерборд">
       {/* Заголовок с редактируемым никнеймом */}
       <div className=" py-3 px-2 border-b border-gray-700">
         <div className="flex items-center justify-between mb-2">

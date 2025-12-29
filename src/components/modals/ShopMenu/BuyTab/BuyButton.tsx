@@ -1,11 +1,11 @@
-import { useState } from "react";
 import { CURRENCY_CONFIG } from "../../../../utils/constants";
 import { ShopItem } from "./use-shop";
 import { LootboxDetails } from "./LootboxDetails";
+import { useModal } from "../../../ModalContext";
 
 export const BuyButton = (props: { item: ShopItem }) => {
   const { item } = props;
-  const [showLootboxDetails, setShowLootboxDetails] = useState(false);
+  const { openModal } = useModal();
 
   const mapRarityStyles = {
     common: {
@@ -29,11 +29,6 @@ export const BuyButton = (props: { item: ShopItem }) => {
 
   return (
     <>
-      <LootboxDetails
-        isOpen={showLootboxDetails}
-        onClose={() => setShowLootboxDetails(false)}
-      />
-
       <div className={` rounded-xl py-4 px-2 border mb-3 ${className.border} `}>
         {item.rarity === "rare" && (
           <>
@@ -91,11 +86,7 @@ export const BuyButton = (props: { item: ShopItem }) => {
             {item.key === "lootbox" && (
               <button
                 onClick={() => {
-                  document.getElementById("modal")?.scrollTo({
-                    top: 0,
-                    left: 0,
-                  });
-                  setShowLootboxDetails(true);
+                  openModal(() => <LootboxDetails />);
                 }}
                 className="px-3 py-1.5 rounded-lg text-sm font-medium bg-color-second hover:bg-gray-600 text-gray-200 hover:text-white transition-colors"
               >

@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useSoundEffects } from "../../../hooks/use-sound-effects";
-import { BreedingSlot } from "../../../models/types";
 import { ClickButton } from "../../shared/ClickButton";
 import { useToads } from "../../ToadContext";
 import ToadCollider from "./ToadColliderModal";
@@ -31,7 +30,7 @@ export default function ColliderButton() {
     playClickCollider();
 
     if (activeSlot) {
-      openModal(() => <ToadSlotModal activeSlot={activeSlot} />);
+      openModal(() => <ToadSlotModal />);
     } else {
       openModal(() => (
         <ToadCollider

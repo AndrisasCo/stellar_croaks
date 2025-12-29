@@ -2,24 +2,19 @@ import {
   LootboxRarity,
   UNIQUE_TOADS_BY_RARITY,
 } from "../../../../models/Toad/lootbox";
-import Modal from "../../../shared/Modal";
 import { ToadAvatar } from "../../../shared/ToadAvatar";
 
-export const LootboxDetails: React.FC<{
-  onClose: () => void;
-  isOpen: boolean;
-}> = ({ onClose, isOpen }) => {
+export const LootboxDetails: React.FC = () => {
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title={
-        <div className="text-2xl font-bold text-white flex gap-6 items-center">
-          <img src="assets/lootbox.webp" width={180} />
-          Жаббокс
-        </div>
-      }
-    >
+    <>
+      <div className="flex items-center gap-2 pb-4 ">
+        <h2 className="text-xl font-bold bg-gradient-to-r from-green-400 to-purple-500 bg-clip-text text-transparent">
+          <div className="text-2xl font-bold text-white flex gap-6 items-center">
+            <img src="assets/lootbox.webp" width={180} />
+            Жаббокс
+          </div>
+        </h2>
+      </div>
       <div>
         <div className="p-6">
           <p className="text-gray-200 mb-6">
@@ -90,6 +85,6 @@ export const LootboxDetails: React.FC<{
           </div>
         </div>
       </div>
-    </Modal>
+    </>
   );
 };

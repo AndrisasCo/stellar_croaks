@@ -27,6 +27,7 @@ import { addToadToCollection } from "../../backend/achivements-manager";
 import { TOAD_SPECIES_CONFIG } from "../../models/Toad/toad-species";
 import ColliderButton from "../modals/ToadCollider/ColliderButton";
 import ToadScene from "./ToadScene";
+import { useModal } from "../ModalContext";
 
 // Конфиг обновлений для уведомлений
 const UPDATES_LOG = [
@@ -64,6 +65,7 @@ export default function ToadGame() {
   const { toads, account, allToads, currentScene } = useToads();
   const { isLoading: isLoadingTg } = useTelegram();
   const { addNotification } = useNotifications();
+  const { openModal, closeModal } = useModal();
 
   // Единый стейт для UI
   const [ui, setUi] = useState<UiState>({
@@ -194,7 +196,7 @@ export default function ToadGame() {
         {/* Кнопка Меню (Бургер) */}
         <div className="text-center absolute right-1 top-1 z-10">
           <ClickButton
-            onClick={() => toggleModal("isMenuOpen", true)}
+            onClick={() => openModal(() => <BurgerMenu />)}
             className="bg-gray-400/10 backdrop-blur-sm p-[6px] rounded-md  duration-300 transform hover:scale-105 active:scale-95 border-2 border-purple-300/80 text-purple-300 hover:border-purple-400/50 w-full"
           >
             {MenuIcons.menu}
@@ -208,7 +210,7 @@ export default function ToadGame() {
         {/* Кнопки быстрого доступа */}
         <div className="grid grid-cols-2 gap-3 mb-4 px-2">
           <ClickButton
-            onClick={() => toggleModal("isShopOpen", true)}
+            onClick={() => openModal(() => <ShopMenu />)}
             style={{
               backgroundPosition: 10,
               backgroundSize: 40,
@@ -221,7 +223,7 @@ export default function ToadGame() {
           </ClickButton>
 
           <ClickButton
-            onClick={() => toggleModal("isStorageOpen", true)}
+            onClick={() => openModal(() => <StorageModal />)}
             style={{
               backgroundPosition: 10,
               backgroundSize: 40,
@@ -246,49 +248,6 @@ export default function ToadGame() {
             {toads.filter((t) => t.type === "hybrid").length} гибридов
           </p>
         </footer>
-
-        {/* --- МОДАЛЬНЫЕ ОКНА --- */}
-
-        <ShopMenu
-          isOpen={ui.isShopOpen}
-          onClose={() => toggleModal("isShopOpen", false)}
-        />
-
-        {ui.isStorageOpen && (
-          <StorageModal
-            isOpen={ui.isStorageOpen}
-            onClose={() => toggleModal("isStorageOpen", false)}
-          />
-        )}
-
-        {ui.isMenuOpen && <BurgerMenu toggleModal={toggleModal} />}
-
-        <SettingsModal
-          isOpen={ui.isSettingsOpen}
-          onClose={() => toggleModal("isSettingsOpen", false)}
-        />
-
-        <TutorialModal
-          isOpen={ui.isTutorialOpen}
-          onClose={() => toggleModal("isTutorialOpen", false)}
-        />
-
-        {ui.isLeaderboardOpen && (
-          <LeaderboardModal
-            isOpen={ui.isLeaderboardOpen}
-            onClose={() => toggleModal("isLeaderboardOpen", false)}
-          />
-        )}
-
-        <AchivementsModal
-          isOpen={ui.isAchievementsOpen}
-          onClose={() => toggleModal("isAchievementsOpen", false)}
-        />
-
-        <ToadGalleryModal
-          isOpen={ui.isGalleryOpen}
-          onClose={() => toggleModal("isGalleryOpen", false)}
-        />
 
         {/* Фиксированный футер ресурсов */}
         <footer className="fixed bottom-0 left-0 right-0 bg-gray-900/80 backdrop-blur-sm border-t border-purple-500/20 pt-2 pb-3 z-20">

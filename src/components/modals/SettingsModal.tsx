@@ -6,13 +6,9 @@ import {
   updateGameState,
 } from "../../backend/localStorage";
 import { updateGameStateDB } from "../../backend/db";
+import { useModal } from "../ModalContext";
 
-interface SettingsModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-}
-
-const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
+const SettingsModal: React.FC = () => {
   const {
     settings,
     toggleMusic,
@@ -20,6 +16,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
     toggleSoundEffects,
     setSoundEffectsVolume,
   } = useSettings();
+
+  const { closeModal } = useModal();
   const [localMusicVolume, setLocalMusicVolume] = useState(
     settings.musicVolume
   );
@@ -38,10 +36,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
     setSoundEffectsVolume(volume);
   };
 
-  const handleClose = () => {
-    onClose();
-  };
-
   const handleResetClick = () => {
     setShowResetConfirmation(true);
   };
@@ -51,7 +45,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
     updateGameState(getDefaultGameState());
     updateGameStateDB();
     setShowResetConfirmation(false);
-    onClose();
+    closeModal();
   };
 
   const handleCancelReset = () => {
@@ -82,7 +76,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
 
   return (
     <>
-      <Modal isOpen={isOpen} onClose={onClose} icon={icon} title="Настройки">
+      <Modal icon={icon} title="Настройки">
         <div className="flex flex-col gap-3">
           {/* Настройки музыки */}
           <div className="bg-color-main rounded-xl py-4 px-2 border border-gray-600/50">

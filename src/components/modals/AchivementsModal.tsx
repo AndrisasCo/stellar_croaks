@@ -11,15 +11,7 @@ import { useNotifications } from "../../hooks/use-notification";
 import { getGameState } from "../../backend/localStorage";
 import { CURRENCY_CONFIG, MAX_STORED_TOADS } from "../../utils/constants";
 
-interface AchievementModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-}
-
-const AchievementModal: React.FC<AchievementModalProps> = ({
-  isOpen,
-  onClose,
-}) => {
+const AchievementModal: React.FC = () => {
   const { playClick } = useSoundEffects();
   const { addNotification } = useNotifications();
 
@@ -154,7 +146,7 @@ const AchievementModal: React.FC<AchievementModalProps> = ({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} icon={icon} title="Достижения">
+    <Modal icon={icon} title="Достижения">
       {/* Статистика */}
       <div className="grid grid-cols-3 gap-3 mb-6">
         <div className="bg-color-main rounded-lg p-3 text-center border border-green-500/20">
@@ -464,17 +456,6 @@ const AchievementModal: React.FC<AchievementModalProps> = ({
           </div>
         </div>
       </div>
-
-      {/* Кнопка закрытия */}
-      <button
-        onClick={() => {
-          playClick();
-          onClose();
-        }}
-        className="w-full mt-4 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white py-3 rounded-xl font-semibold transition-all duration-200 transform hover:scale-105 active:scale-95"
-      >
-        Продолжить игру
-      </button>
     </Modal>
   );
 };

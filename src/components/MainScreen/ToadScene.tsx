@@ -8,34 +8,17 @@ import { ClickButton } from "../shared/ClickButton";
 import ToadCanvas from "../ToadCanvas";
 import { useToads } from "../ToadContext";
 import ColliderButton from "../modals/ToadCollider/ColliderButton";
+import { useModal } from "../ModalContext";
 
 export default function ToadScene() {
+  const { openModal } = useModal();
   const {
     selectedToad,
-    selectToad,
     currentScene,
     setCurrentSceneId,
     ownedScenes,
     currentSceneIndex,
   } = useToads();
-
-  const [isInfoOpen, setIsInfoOpen] = useState(false);
-  const [isListOpen, setIsListOpen] = useState(false);
-  const [isSceneInfoOpen, setIsSceneInfoOpen] = useState(false);
-  const [lastToadId, setLastToadId] = useState<number | null>(null);
-
-  const onToadSelect = (toadId: number) => {
-    selectToad(toadId);
-    setIsInfoOpen(true);
-  };
-
-  const onInfoClose = () => {
-    setIsInfoOpen(false);
-
-    if (lastToadId) {
-      setIsListOpen(true);
-    }
-  };
 
   const isFirstScene = currentSceneIndex === 0;
   const isLastScene = currentSceneIndex === ownedScenes.length - 1;
@@ -46,17 +29,6 @@ export default function ToadScene() {
 
   const onPrevScene = () => {
     setCurrentSceneId(currentSceneIndex - 1);
-  };
-
-  // Функции для панели управления (заглушки)
-  const handleSceneInfo = () => {
-    console.log("📊 Открыть данные о сцене:", currentScene?.name);
-    setIsSceneInfoOpen(true);
-  };
-
-  const handleViewToads = () => {
-    console.log("👀 Посмотреть список жаб на сцене");
-    setIsListOpen(true);
   };
 
   if (!currentScene) {
@@ -88,7 +60,7 @@ export default function ToadScene() {
           {/* Кнопка информации о выбранной жабе */}
           {selectedToad && (
             <ClickButton
-              onClick={() => setIsInfoOpen(true)}
+              onClick={() => openModal(() => <ToadInfo />)}
               className="
                 relative h-8  my-auto
             border-[#00e1ff] border-[1px]
@@ -131,7 +103,7 @@ export default function ToadScene() {
       <div className="w-[100vw] h-[200px] absolute left-[-8px]  bg-[url('/bg/main-end.webp')] cover max-w-2xl  " />
       <div className="flex border-b-2 ml-[-8px] max-w-2xl border-[#00e1ff] w-[100vw]  items-center gap-2 justify-between  relative  bg-slate-800/50 backdrop-blur-sm rounded-md p-2">
         <ClickButton
-          onClick={handleSceneInfo}
+          onClick={() => openModal(() => <SceneInfoModal />)}
           className="
              bg-[url('/assets/cage-btn.webp')] cover
               w-[100px] h-[60px]
@@ -139,12 +111,12 @@ export default function ToadScene() {
               hover:scale-105 active:scale-95
             "
           title="Статистика сцене"
-        ></ClickButton>
+        />
 
         <ColliderButton />
 
         <ClickButton
-          onClick={handleViewToads}
+          onClick={() => openModal(() => <ToadListModal />)}
           className="
              bg-[url('/assets/list-btn.webp')] cover
                             w-[100px] h-[60px]
@@ -153,27 +125,8 @@ export default function ToadScene() {
               hover:scale-105 active:scale-95
             "
           title="Список жаб"
-        ></ClickButton>
-      </div>
-
-      {/* Модальные окна */}
-      {isInfoOpen && <ToadInfo onClose={onInfoClose} />}
-
-      <ToadListModal
-        isOpen={isListOpen}
-        onClose={() => setIsListOpen(false)}
-        onToadSelect={onToadSelect}
-        lastToadId={lastToadId}
-        setLastToadId={setLastToadId}
-      />
-
-      {/* Модальное окно информации о сцене */}
-      {isSceneInfoOpen && (
-        <SceneInfoModal
-          isOpen={isSceneInfoOpen}
-          onClose={() => setIsSceneInfoOpen(false)}
         />
-      )}
+      </div>
     </div>
   );
 }

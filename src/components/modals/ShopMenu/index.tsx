@@ -8,21 +8,14 @@ import EnclosureTab from "./EnclosureTab";
 import SellTab from "./SellTab";
 import { EliteTab } from "./EliteTab";
 
-interface ShopMenuProps {
-  isOpen: boolean;
-  onClose: () => void;
-}
-
 type TabType = "buy" | "sell" | "elite" | "enclosure";
 
-export default function ShopMenu({ isOpen, onClose }: ShopMenuProps) {
+export default function ShopMenu() {
   const [activeTab, setActiveTab] = useState<TabType>("buy");
   const { account } = useToads();
   const { playClick } = useSoundEffects();
 
   const { tokens = 0, astro_quax = 0 } = account || {};
-
-  if (!isOpen) return null;
 
   const tabs = [
     { id: "buy" as TabType, label: "Купить", color: "text-green-400" },
@@ -51,7 +44,7 @@ export default function ShopMenu({ isOpen, onClose }: ShopMenuProps) {
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Космический рынок">
+    <Modal title="Космический рынок">
       <div className="pb-4 px-2 border-b border-gray-700">
         {/* Валюта */}
         <div className="flex gap-4 mt-3 text-sm">
@@ -78,12 +71,8 @@ export default function ShopMenu({ isOpen, onClose }: ShopMenuProps) {
       <div className="flex border-b border-gray-700 ">
         {tabs.map((tab) => (
           <button
-            disabled={tab.disabled}
             key={tab.id}
             onClick={() => {
-              if (tab.disabled) {
-                return;
-              }
               playClick();
               setActiveTab(tab.id);
             }}
@@ -97,11 +86,6 @@ export default function ShopMenu({ isOpen, onClose }: ShopMenuProps) {
             }`}
           >
             {tab.label}
-            {tab.disabled && (
-              <span className="absolute right-[-3px] top-[10px] rotate-45 opacity-75  bg-purple-500 rounded-md px-1 text-white text-xs">
-                Cкоро
-              </span>
-            )}
           </button>
         ))}
       </div>

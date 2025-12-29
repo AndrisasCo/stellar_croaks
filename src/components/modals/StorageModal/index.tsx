@@ -28,11 +28,6 @@ import {
 import { ConfettiAnimation } from "./animations";
 import { itemsFull } from "../../../models/user";
 
-interface StorageModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-}
-
 type StorageTabType = "items" | "toads";
 
 // Типы предметов на складе
@@ -48,7 +43,7 @@ interface StorageItem {
   onClick?: () => void;
 }
 
-const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
+const StorageModal: React.FC = () => {
   const [activeTab, setActiveTab] = useState<StorageTabType>("toads");
   const { addNotification } = useNotifications();
   const { allToads = [], account, currentScene, toads } = useToads();
@@ -311,7 +306,7 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
   );
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} icon={icon} title="Склад">
+    <Modal icon={icon} title="Склад">
       <ConfettiAnimation trigger={showConfetti} intensity={5} />
       {/* Табы */}
       <div className="flex border-b border-gray-700 mb-3">

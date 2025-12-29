@@ -24,7 +24,6 @@ import { MixingInProgress } from "./MixingInProgress";
 import { useModal } from "../../ModalContext";
 
 interface ToadColliderProps {
-  isOpen: boolean;
   onClose: () => void;
   availableToads: Toad[];
 }

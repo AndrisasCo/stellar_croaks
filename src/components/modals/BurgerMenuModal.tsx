@@ -1,21 +1,11 @@
 import { MenuIcons } from "../../assets/icons";
+import { useModal } from "../ModalContext";
 import Modal from "../shared/Modal";
-
-// Дублируем ключи из родительского стейта для типизации (или можно вынести в отдельный types.ts)
-type UiKey =
-  | "isSettingsOpen"
-  | "isMenuOpen"
-  | "isShopOpen"
-  | "isStorageOpen"
-  | "isLeaderboardOpen"
-  | "isTutorialOpen"
-  | "isAchievementsOpen"
-  | "isGalleryOpen"
-  | "isLoading";
-
-interface BurgerMenuProps {
-  toggleModal: (key: UiKey, value: boolean) => void;
-}
+import AchivementsModal from "./AchivementsModal";
+import LeaderboardModal from "./LeaderboardModal";
+import SettingsModal from "./SettingsModal";
+import { ToadGalleryModal } from "./ToadGalleryModal";
+import TutorialModal from "./TutorialModal";
 
 type MenuId = "gallery" | "stats" | "leaderboard" | "tutorial" | "settings";
 
@@ -48,7 +38,7 @@ const MENU_ITEMS: {
   label: string;
   desc: string;
   color: string;
-  targetKey: UiKey; // Добавил поле targetKey для прямой связи
+  target: JSX.Element;
 }[] = [
   {
     id: "gallery",
@@ -70,7 +60,7 @@ const MENU_ITEMS: {
     label: "Жабопедия",
     desc: "Коллекция всех видов жаб",
     color: "bg-purple-900/50 border-purple-500/50",
-    targetKey: "isGalleryOpen",
+    target: <ToadGalleryModal />,
   },
   {
     id: "stats",
@@ -78,7 +68,7 @@ const MENU_ITEMS: {
     label: "Достижения",
     desc: "Ваши достижения и прогресс",
     color: "bg-yellow-900/50 border-yellow-500/50",
-    targetKey: "isAchievementsOpen",
+    target: <AchivementsModal />,
   },
   {
     id: "leaderboard",
@@ -86,7 +76,7 @@ const MENU_ITEMS: {
     label: "Лидерборд",
     desc: "Сравнение с другими игроками",
     color: "bg-blue-900/50 border-blue-500/50",
-    targetKey: "isLeaderboardOpen",
+    target: <LeaderboardModal />,
   },
   {
     id: "tutorial",
@@ -94,7 +84,7 @@ const MENU_ITEMS: {
     label: "Обучение",
     desc: "Ваш путеводитель в мире жабоводства",
     color: "bg-teal-900/50 border-teal-500/50",
-    targetKey: "isTutorialOpen",
+    target: <TutorialModal />,
   },
   {
     id: "settings",
@@ -102,28 +92,20 @@ const MENU_ITEMS: {
     label: "Настройки",
     desc: "Звук, музыка и другие опции",
     color: "bg-gray-900/50 border-gray-500/50",
-    targetKey: "isSettingsOpen",
+    target: <SettingsModal />,
   },
 ];
 
-export const BurgerMenu = ({ toggleModal }: BurgerMenuProps) => {
-  const handleMenuClick = (targetKey: UiKey) => {
-    toggleModal("isMenuOpen", false);
-
-    toggleModal(targetKey, true);
-  };
+export const BurgerMenu = () => {
+  const { openModal } = useModal();
 
   return (
-    <Modal
-      onClose={() => toggleModal("isMenuOpen", false)}
-      title="Меню"
-      isOpen={true}
-    >
+    <Modal title="Меню">
       <div className="mb-3 flex flex-col gap-3">
         {MENU_ITEMS.map((item, index) => (
           <button
             key={item.id}
-            onClick={() => handleMenuClick(item.targetKey)}
+            onClick={() => openModal(() => item.target)}
             className={`w-full ${item.color} rounded-xl py-4 px-2 shadow-lg border-2 hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02] active:scale-95 group`}
             style={{
               animationDelay: `${index * 70}ms`,

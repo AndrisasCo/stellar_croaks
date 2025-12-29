@@ -4,13 +4,12 @@ import { useSoundEffects } from "../../hooks/use-sound-effects";
 import { CURRENCY_CONFIG, TYPE_ICONS } from "../../utils/constants";
 import { completeAchivement } from "../../backend/achivements-manager";
 
-interface TutorialModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-}
-
-const TutorialModal: React.FC<TutorialModalProps> = ({ isOpen, onClose }) => {
+const TutorialModal: React.FC = () => {
   const { playClick } = useSoundEffects();
+
+  useEffect(() => {
+    completeAchivement("read-tutorial");
+  }, []);
 
   const icon = (
     <svg
@@ -153,13 +152,8 @@ const TutorialModal: React.FC<TutorialModalProps> = ({ isOpen, onClose }) => {
     return colors[color as keyof typeof colors] || colors.blue;
   };
 
-  const handleClose = () => {
-    completeAchivement("read-tutorial");
-    onClose();
-  };
-
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} icon={icon} title="Обучение">
+    <Modal icon={icon} title="Обучение">
       {/* Контент */}
       <div className="px-4">
         {/* Вступление */}

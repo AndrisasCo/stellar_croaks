@@ -26,7 +26,7 @@ import { useToadRelatives } from "./useToadRelatives";
 import { useToadTimers } from "./useToadTimers";
 import { Colors } from "./Colors";
 
-export const ToadInfo = ({ onClose }: { onClose: () => void }) => {
+export const ToadInfo = () => {
   const {
     selectedToad: toad,
     toads,
@@ -120,7 +120,7 @@ export const ToadInfo = ({ onClose }: { onClose: () => void }) => {
   };
 
   return (
-    <Modal isOpen onClose={onClose}>
+    <Modal>
       <div className="flex w-full items-center pb-1 px-10 ">
         {isEditingName ? (
           <div className="flex w-full items-center gap-2">

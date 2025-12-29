@@ -16,22 +16,11 @@ import { ArrowLeftButtonCompact } from "../../shared/ArrowLeft";
 import { ArrowRightButtonCompact } from "../../shared/ArrowRight";
 import { getFamilyGroups, getRelationshipColor } from "./utils";
 import { CompactToadItem } from "./CompactToadItem";
+import { ToadInfo } from "../ToadInfoModal";
+import { useModal } from "../../ModalContext";
 
-interface ToadListModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onToadSelect: (toadId: number) => void;
-  setLastToadId: (toadId: number | null) => void;
-  lastToadId: number | null;
-}
-
-const ToadListModal: React.FC<ToadListModalProps> = ({
-  isOpen,
-  onClose,
-  onToadSelect,
-  setLastToadId,
-  lastToadId,
-}) => {
+const ToadListModal: React.FC = () => {
+  const { openModal, modals } = useModal();
   const { playCrunchShort } = useSoundEffects();
   const {
     handleFeedToads,
@@ -39,7 +28,9 @@ const ToadListModal: React.FC<ToadListModalProps> = ({
     currentScene,
     currentSceneIndex,
     setCurrentSceneId,
+    selectToad,
     toads,
+    selectedToad,
   } = useToads();
   const { addNotification } = useNotifications();
   const {
@@ -60,15 +51,15 @@ const ToadListModal: React.FC<ToadListModalProps> = ({
   );
 
   useEffect(() => {
-    if (!lastToadId) {
+    if (!selectedToad) {
       return;
     }
-    const element = document.getElementById(lastToadId.toString());
+    const element = document.getElementById(selectedToad.id.toString());
 
     if (element) {
       element.scrollIntoView();
     }
-  }, [lastToadId, isOpen]);
+  }, [selectedToad?.id]);
 
   // Вычисляем родственные группы при изменении списка жаб
   useEffect(() => {
@@ -79,9 +70,8 @@ const ToadListModal: React.FC<ToadListModalProps> = ({
   }, [toads]);
 
   const handleToadClick = (toad: Toad) => {
-    onToadSelect(toad.id);
-    setLastToadId(toad.id);
-    onClose();
+    selectToad(toad.id);
+    openModal(() => <ToadInfo />);
   };
 
   // Функция для выделения/снятия выделения жабы
@@ -137,8 +127,6 @@ const ToadListModal: React.FC<ToadListModalProps> = ({
     setSelectedToads(new Set());
     setShowMoveTooltip(false);
   };
-
-  if (!isOpen) return null;
 
   // Группируем жаб по всем типам редкости
   const groupedToads = {
@@ -201,7 +189,7 @@ const ToadListModal: React.FC<ToadListModalProps> = ({
   };
 
   return (
-    <Modal onClose={onClose} isOpen={isOpen} icon={icon} title={"Все жабы"}>
+    <Modal icon={icon} title={"Все жабы"}>
       <Filters
         toads={toads}
         setSortDirection={setSortDirection}

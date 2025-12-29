@@ -8,18 +8,11 @@ import { updateScene, updateUser } from "../../../backend";
 import { CURRENCY_CONFIG } from "../../../utils/constants";
 import { useNotifications } from "../../../hooks/use-notification";
 
-interface SceneInfoModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-}
-
-const SceneInfoModal: React.FC<SceneInfoModalProps> = ({ isOpen, onClose }) => {
+const SceneInfoModal: React.FC = () => {
   const { currentScene, toads, account } = useToads();
   const [isEditing, setIsEditing] = useState(false);
   const [sceneName, setSceneName] = useState(currentScene?.name || "");
   const { addNotification } = useNotifications();
-
-  if (!isOpen) return null;
 
   // Обработчик сохранения названия
   const handleSaveName = () => {
@@ -250,12 +243,7 @@ const SceneInfoModal: React.FC<SceneInfoModalProps> = ({ isOpen, onClose }) => {
   );
 
   return (
-    <Modal
-      onClose={onClose}
-      isOpen={isOpen}
-      icon={icon}
-      title="Статистика вольера"
-    >
+    <Modal icon={icon} title="Статистика вольера">
       {/* Основная информация о сцене */}
       <div className="space-y-3 mb-6 ">
         <div className="flex justify-between items-center p-3 bg-color-main rounded-lg border border-gray-600/50">

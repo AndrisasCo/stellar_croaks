@@ -10,6 +10,8 @@ import {
 } from "../../../models/Toad/toad-species";
 import { getAchievementState } from "../../../backend/achivements-manager";
 import { GlowWrapper } from "../../shared/GlowWrapper";
+import { DetailedView } from "./DetailedView";
+import { useModal } from "../../ModalContext";
 
 // Интерфейс для элемента галереи
 interface GallerySlot {
@@ -178,33 +180,30 @@ const RarityIcon: React.FC<{ rarity: string; size?: "sm" | "md" }> = ({
   );
 };
 
-export const ToadGalleryModal: React.FC<ToadGalleryModalProps> = ({
-  isOpen,
-  onClose,
-}) => {
+const icon = (
+  <svg
+    className="w-6 h-6 text-purple-400"
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={1.5}
+      d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+    />
+  </svg>
+);
+
+export const ToadGalleryModal: React.FC = () => {
   const { playClick } = useSoundEffects();
+  const { openModal } = useModal();
 
   const openedToadsTypes = getAchievementState().toads_collection || [];
 
-  const [selectedItem, setSelectedItem] = useState<GallerySlot | null>(null);
   const [sortBy, setSortBy] = useState<"rarity" | "unlocked" | "name">(
     "rarity"
-  );
-
-  const icon = (
-    <svg
-      className="w-6 h-6 text-purple-400"
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.5}
-        d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
-      />
-    </svg>
   );
 
   const galleryItems: GallerySlot[] = useMemo(() => {
@@ -291,125 +290,100 @@ export const ToadGalleryModal: React.FC<ToadGalleryModalProps> = ({
 
   const handleItemClick = (item: GallerySlot) => {
     playClick();
-    setSelectedItem(item);
-  };
-
-  const detailStyles = selectedItem
-    ? getRarityStyles(selectedItem.rarity, selectedItem.isUnlocked)
-    : null;
-
-  const detailedView = selectedItem && detailStyles;
-
-  const hadleClose = () => {
-    if (detailedView) {
-      setSelectedItem(null);
-      return;
-    }
-    onClose();
+    openModal(() => <DetailedView selectedItem={item} />);
   };
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={hadleClose}
-      icon={!selectedItem?.name && icon}
-      title={selectedItem?.name || "Жабопедия"}
-    >
-      {!detailedView && (
-        <>
-          <div className="flex justify-between items-center mb-4 px-1">
-            <div className="text-sm text-gray-300">
-              Найдено{" "}
-              <span className="text-purple-300 font-bold">
-                {stats.unlocked}
-              </span>{" "}
-              из <span className="text-gray-200">{stats.total}</span> видов
-            </div>
-            <div className="flex gap-2">
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as any)}
-                className="text-xs bg-color-main border border-gray-700 rounded-lg px-3 py-1.5 text-gray-200 focus:outline-none focus:border-purple-500"
-              >
-                <option value="rarity">По редкости</option>
-                <option value="unlocked">По открытию</option>
-                <option value="name">По имени</option>
-              </select>
-            </div>
+    <Modal icon={icon} title={"Жабопедия"}>
+      <div className="flex justify-between items-center mb-4 px-1">
+        <div className="text-sm text-gray-300">
+          Найдено{" "}
+          <span className="text-purple-300 font-bold">{stats.unlocked}</span> из{" "}
+          <span className="text-gray-200">{stats.total}</span> видов
+        </div>
+        <div className="flex gap-2">
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as any)}
+            className="text-xs bg-color-main border border-gray-700 rounded-lg px-3 py-1.5 text-gray-200 focus:outline-none focus:border-purple-500"
+          >
+            <option value="rarity">По редкости</option>
+            <option value="unlocked">По открытию</option>
+            <option value="name">По имени</option>
+          </select>
+        </div>
+      </div>
+
+      <div className="mb-6 bg-color-main rounded-xl p-4 border border-gray-700/50 backdrop-blur-sm">
+        <div className="flex justify-between items-center mb-3">
+          <div className="text-sm text-gray-200 font-medium">
+            Прогресс коллекции
           </div>
-
-          <div className="mb-6 bg-color-main rounded-xl p-4 border border-gray-700/50 backdrop-blur-sm">
-            <div className="flex justify-between items-center mb-3">
-              <div className="text-sm text-gray-200 font-medium">
-                Прогресс коллекции
-              </div>
-              <div className="text-purple-300 font-bold text-lg">
-                {Math.round(progressPercentage)}%
-              </div>
-            </div>
-
-            <div className="w-full bg-gray-900 rounded-full h-3 mb-3 ">
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-purple-600 via-pink-500 to-yellow-500 shadow-[0_0_10px_rgba(236,72,153,0.5)] transition-all duration-700 ease-out"
-                style={{ width: `${progressPercentage}%` }}
-              />
-            </div>
-
-            <div className="grid grid-cols-4 gap-2 text-center">
-              <div className="bg-green-900/30 rounded p-2">
-                <div className="text-green-400 font-bold">
-                  {stats.byRarity.common}
-                </div>
-                <div className="text-xs text-gray-300">Обычные</div>
-              </div>
-              <div className="bg-blue-900/30 rounded p-2">
-                <div className="text-blue-400 font-bold">
-                  {stats.byRarity.rare}
-                </div>
-                <div className="text-xs text-gray-300">Редкие</div>
-              </div>
-              <div className="bg-purple-900/30 rounded p-2">
-                <div className="text-purple-400 font-bold">
-                  {stats.byRarity.epic}
-                </div>
-                <div className="text-xs text-gray-300">Эпические</div>
-              </div>
-              <div className="bg-yellow-900/30 rounded p-2">
-                <div className="text-yellow-400 font-bold">
-                  {stats.byRarity.legendary}
-                </div>
-                <div className="text-xs text-gray-300">Легенды</div>
-              </div>
-            </div>
+          <div className="text-purple-300 font-bold text-lg">
+            {Math.round(progressPercentage)}%
           </div>
+        </div>
 
-          {/* --- СЕТКА ГАЛЕРЕИ --- */}
-          <div className="grid grid-cols-2 gap-6 px-3 pb-3">
-            {sortedItems.map((item, idx) => {
-              const styles = getRarityStyles(item.rarity, item.isUnlocked);
-              const hintText = getHintText(item);
+        <div className="w-full bg-gray-900 rounded-full h-3 mb-3 ">
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-purple-600 via-pink-500 to-yellow-500 shadow-[0_0_10px_rgba(236,72,153,0.5)] transition-all duration-700 ease-out"
+            style={{ width: `${progressPercentage}%` }}
+          />
+        </div>
 
-              return (
-                <GlowWrapper
-                  disabled={
-                    item.rarity === "rare" ||
-                    item.rarity === "common" ||
-                    !item.isUnlocked
-                  }
-                  sparklesOn={item.rarity === "legendary"}
-                  key={item.type + idx}
-                  onClick={() => handleItemClick(item)}
-                  style={
-                    item.rarity === "epic"
-                      ? {
-                          "--color-01": "#9d4edd",
-                          "--color-02": "#7b2cbf",
-                          "--color-03": "#c77dff",
-                          "--color-04": "#e0aaff",
-                        }
-                      : {}
-                  }
-                  className={`
+        <div className="grid grid-cols-4 gap-2 text-center">
+          <div className="bg-green-900/30 rounded p-2">
+            <div className="text-green-400 font-bold">
+              {stats.byRarity.common}
+            </div>
+            <div className="text-xs text-gray-300">Обычные</div>
+          </div>
+          <div className="bg-blue-900/30 rounded p-2">
+            <div className="text-blue-400 font-bold">{stats.byRarity.rare}</div>
+            <div className="text-xs text-gray-300">Редкие</div>
+          </div>
+          <div className="bg-purple-900/30 rounded p-2">
+            <div className="text-purple-400 font-bold">
+              {stats.byRarity.epic}
+            </div>
+            <div className="text-xs text-gray-300">Эпические</div>
+          </div>
+          <div className="bg-yellow-900/30 rounded p-2">
+            <div className="text-yellow-400 font-bold">
+              {stats.byRarity.legendary}
+            </div>
+            <div className="text-xs text-gray-300">Легенды</div>
+          </div>
+        </div>
+      </div>
+
+      {/* --- СЕТКА ГАЛЕРЕИ --- */}
+      <div className="grid grid-cols-2 gap-6 px-3 pb-3">
+        {sortedItems.map((item, idx) => {
+          const styles = getRarityStyles(item.rarity, item.isUnlocked);
+          const hintText = getHintText(item);
+
+          return (
+            <GlowWrapper
+              disabled={
+                item.rarity === "rare" ||
+                item.rarity === "common" ||
+                !item.isUnlocked
+              }
+              sparklesOn={item.rarity === "legendary"}
+              key={item.type + idx}
+              onClick={() => handleItemClick(item)}
+              style={
+                item.rarity === "epic"
+                  ? {
+                      "--color-01": "#9d4edd",
+                      "--color-02": "#7b2cbf",
+                      "--color-03": "#c77dff",
+                      "--color-04": "#e0aaff",
+                    }
+                  : {}
+              }
+              className={`
                 relative rounded-xl p-2 flex flex-col items-center justify-between
                 border transition-all duration-300 group cursor-pointer
                  ${styles.bgLight} ${styles.border}
@@ -420,201 +394,92 @@ export const ToadGalleryModal: React.FC<ToadGalleryModalProps> = ({
                     : "active:scale-95"
                 }
               `}
-                >
-                  {/* Значок редкости */}
-                  <div className="absolute top-0 right-1">
-                    <RarityIcon rarity={item.rarity} />
-                  </div>
+            >
+              {/* Значок редкости */}
+              <div className="absolute top-0 right-1">
+                <RarityIcon rarity={item.rarity} />
+              </div>
 
-                  {/* Аватар жабы */}
-                  <div className="flex items-center justify-center w-full ">
-                    {item.isUnlocked && item.exampleToad ? (
-                      <div className="drop-shadow-2xl transform scale-110">
-                        <ToadAvatar toad={item.exampleToad} size={20} />
-                      </div>
-                    ) : (
-                      <div className="relative w-16 h-16 flex items-center justify-center">
-                        <svg
-                          viewBox="0 0 100 100"
-                          className="absolute inset-0 w-full h-full text-gray-900 opacity-30"
-                          fill="currentColor"
-                        >
-                          <path d="M20,70 Q10,60 10,50 Q10,30 30,20 Q50,10 70,20 Q90,30 90,50 Q90,60 80,70 L90,90 L70,90 L70,80 L30,80 L30,90 L10,90 Z" />
-                        </svg>
-                        <div className="text-3xl font-bold text-gray-600 drop-shadow-md z-10 select-none">
-                          ?
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Информация под аватаром */}
-                  <div className="w-full text-center">
-                    <div
-                      className={`font-bold text-xs truncate ${styles.titleColor} my-1`}
-                    >
-                      {item.isUnlocked ? item.name : "???"}
-                    </div>
-
-                    {/* Подсказка для неоткрытых */}
-                    {!item.isUnlocked && hintText && (
-                      <div className="text-[10px] text-gray-300 px-1 truncate mb-1">
-                        {hintText}
-                      </div>
-                    )}
-
-                    {/* Цена для магазинных */}
-                    {item.obtainedBy === "shop" &&
-                      !item.isUnlocked &&
-                      item.price && (
-                        <div className="text-[10px] text-yellow-400 font-medium">
-                          {item.price} монет
-                        </div>
-                      )}
-
-                    {/* Бейдж редкости */}
-                    <div
-                      className={`text-[10px] px-2 py-0.5 rounded-full ${styles.badge} inline-block`}
-                    >
-                      {item.rarity === "legendary"
-                        ? "ЛЕГЕНДАРНАЯ"
-                        : item.rarity === "epic"
-                        ? "ЭПИЧЕСКАЯ"
-                        : item.rarity === "rare"
-                        ? "РЕДКАЯ"
-                        : "ОБЫЧНАЯ"}
-                    </div>
-                  </div>
-
-                  {/* Эффект при наведении */}
-                  <div
-                    className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-20 transition-opacity duration-300 pointer-events-none"
-                    style={{
-                      background: `radial-gradient(circle at center, ${
-                        styles.titleColor.replace("text-", "#").split("-")[0]
-                      }20 0%, transparent 70%)`,
-                    }}
-                  />
-                </GlowWrapper>
-              );
-            })}
-          </div>
-
-          {/* Подсказки по интерфейсу */}
-          <div className="mt-6 pt-4 border-t border-gray-800">
-            <div className="text-xs text-gray-500 text-center">
-              💡 Нажмите на жабу для подробной информации.
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* --- DETAIL OVERLAY (Полное описание) --- */}
-      {detailedView && (
-        <div className="relative flex flex-col">
-          {/* Большой Аватар */}
-          <div className="mb-6 flex mx-auto self-center">
-            {selectedItem.isUnlocked && selectedItem.exampleToad ? (
-              <GlowWrapper
-                className="rounded-xl "
-                disabled={
-                  selectedItem.rarity === "rare" ||
-                  selectedItem.rarity === "common"
-                }
-                sparklesOn={selectedItem.rarity === "legendary"}
-                style={
-                  selectedItem.rarity === "epic"
-                    ? {
-                        "--color-01": "#9d4edd",
-                        "--color-02": "#7b2cbf",
-                        "--color-03": "#c77dff",
-                        "--color-04": "#e0aaff",
-                      }
-                    : {}
-                }
-              >
-                <ToadAvatar toad={selectedItem.exampleToad} size={50} />
-              </GlowWrapper>
-            ) : (
-              <div className="text-8xl w-[200px] text-center opacity-40">?</div>
-            )}
-          </div>
-
-          {/* Информационный блок */}
-          <div className="w-full space-y-4">
-            {/* Описание */}
-            <div className="bg-black/30 rounded-xl p-4">
-              <p className={`text-sm leading-relaxed ${detailStyles.text}`}>
-                {selectedItem.description}
-              </p>
-            </div>
-
-            {/* Детали получения */}
-            {!selectedItem.isUnlocked && (
-              <div className="bg-black/40 rounded-xl p-4 border border-dashed border-gray-600">
-                <h4 className={`text-sm font-medium mb-2 ${detailStyles.text}`}>
-                  Как получить:
-                </h4>
-
-                {selectedItem.lootboxChanceLevel ? (
-                  <div className="mt-2 text-xs text-gray-300">
-                    Шанс выпадения в лутбоксе:{" "}
-                    {getLootboxHint(selectedItem.lootboxChanceLevel)}
+              {/* Аватар жабы */}
+              <div className="flex items-center justify-center w-full ">
+                {item.isUnlocked && item.exampleToad ? (
+                  <div className="drop-shadow-2xl transform scale-110">
+                    <ToadAvatar toad={item.exampleToad} size={20} />
                   </div>
                 ) : (
-                  <p className="text-xs text-gray-200">
-                    {getHintText(selectedItem)}
-                  </p>
-                )}
-                {selectedItem.price && (
-                  <div className="mt-2 text-xs text-yellow-400">
-                    Цена: {selectedItem.price} монет
+                  <div className="relative w-16 h-16 flex items-center justify-center">
+                    <svg
+                      viewBox="0 0 100 100"
+                      className="absolute inset-0 w-full h-full text-gray-900 opacity-30"
+                      fill="currentColor"
+                    >
+                      <path d="M20,70 Q10,60 10,50 Q10,30 30,20 Q50,10 70,20 Q90,30 90,50 Q90,60 80,70 L90,90 L70,90 L70,80 L30,80 L30,90 L10,90 Z" />
+                    </svg>
+                    <div className="text-3xl font-bold text-gray-600 drop-shadow-md z-10 select-none">
+                      ?
+                    </div>
                   </div>
                 )}
               </div>
-            )}
 
-            {/* Статистика редкости */}
-            <div className="grid grid-cols-2 gap-3 text-xs">
-              <div className="bg-black/30 rounded p-3">
-                <div className="text-gray-300 mb-1">Редкость</div>
-                <div className={detailStyles.titleColor}>
-                  {selectedItem.rarity === "legendary"
-                    ? "Легендарная"
-                    : selectedItem.rarity === "epic"
-                    ? "Эпическая"
-                    : selectedItem.rarity === "rare"
-                    ? "Редкая"
-                    : "Обычная"}
-                </div>
-              </div>
-              <div className="bg-black/30 rounded p-3">
-                <div className="text-gray-300 mb-1">Статус</div>
+              {/* Информация под аватаром */}
+              <div className="w-full text-center">
                 <div
-                  className={
-                    selectedItem.isUnlocked ? "text-green-400" : "text-gray-300"
-                  }
+                  className={`font-bold text-xs truncate ${styles.titleColor} my-1`}
                 >
-                  {selectedItem.isUnlocked ? "✓ В коллекции" : "✗ Не найдена"}
+                  {item.isUnlocked ? item.name : "???"}
+                </div>
+
+                {/* Подсказка для неоткрытых */}
+                {!item.isUnlocked && hintText && (
+                  <div className="text-[10px] text-gray-300 px-1 truncate mb-1">
+                    {hintText}
+                  </div>
+                )}
+
+                {/* Цена для магазинных */}
+                {item.obtainedBy === "shop" &&
+                  !item.isUnlocked &&
+                  item.price && (
+                    <div className="text-[10px] text-yellow-400 font-medium">
+                      {item.price} монет
+                    </div>
+                  )}
+
+                {/* Бейдж редкости */}
+                <div
+                  className={`text-[10px] px-2 py-0.5 rounded-full ${styles.badge} inline-block`}
+                >
+                  {item.rarity === "legendary"
+                    ? "ЛЕГЕНДАРНАЯ"
+                    : item.rarity === "epic"
+                    ? "ЭПИЧЕСКАЯ"
+                    : item.rarity === "rare"
+                    ? "РЕДКАЯ"
+                    : "ОБЫЧНАЯ"}
                 </div>
               </div>
-            </div>
 
-            <div>
-              {/* Способ получения */}
-              {selectedItem.obtainedBy && (
-                <div className="flex  gap-2 mb-4 text-sm">
-                  <span className={detailStyles.text}>
-                    Способ получения:{" "}
-                    {getObtainedByIcon(selectedItem.obtainedBy).label}
-                  </span>
-                  <span>{getObtainedByIcon(selectedItem.obtainedBy).icon}</span>
-                </div>
-              )}
-            </div>
-          </div>
+              {/* Эффект при наведении */}
+              <div
+                className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-20 transition-opacity duration-300 pointer-events-none"
+                style={{
+                  background: `radial-gradient(circle at center, ${
+                    styles.titleColor.replace("text-", "#").split("-")[0]
+                  }20 0%, transparent 70%)`,
+                }}
+              />
+            </GlowWrapper>
+          );
+        })}
+      </div>
+
+      {/* Подсказки по интерфейсу */}
+      <div className="mt-6 pt-4 border-t border-gray-800">
+        <div className="text-xs text-gray-500 text-center">
+          💡 Нажмите на жабу для подробной информации.
         </div>
-      )}
+      </div>
     </Modal>
   );
 };
