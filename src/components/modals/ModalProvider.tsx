@@ -32,7 +32,7 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({
       element = document.createElement("div");
       element.id = rootId;
       element.style.position = "relative";
-      element.style.zIndex = "9999";
+      element.style.zIndex = "99";
       document.body.appendChild(element);
     }
 
