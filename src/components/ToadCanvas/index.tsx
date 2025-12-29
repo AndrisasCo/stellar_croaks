@@ -35,6 +35,7 @@ export default function ToadCanvas() {
     handleCancelFeed,
     handleConfirmFeed,
     handleShowFoodTooltip,
+    getTooltipMessage,
     isFoodActive,
   } = useFeedToads();
 
@@ -518,13 +519,7 @@ export default function ToadCanvas() {
                 "
           >
             <div className="text-white text-sm text-center mb-2">
-              Вы потратите{" "}
-              <span className="text-yellow-400 font-bold">
-                {currentScene.bonuses?.autoFeeder
-                  ? getAutoHunger(toads)
-                  : toads.length}
-              </span>{" "}
-              корма
+              {getTooltipMessage().message}
             </div>
             <div className="flex gap-2">
               <ClickButton
@@ -539,11 +534,13 @@ export default function ToadCanvas() {
               </ClickButton>
               <ClickButton
                 onClick={handleConfirmFeed}
+                disabled={getTooltipMessage().disabled || isFoodActive}
                 className="
                         flex-1 py-2 px-3 rounded text-sm
                         bg-yellow-600 hover:bg-yellow-500 text-white
                         transition-colors duration-200
                         flex items-center justify-center gap-1
+                        disabled:opacity-50 disabled:cursor-not-allowed
                       "
               >
                 <img src={"/assets/food.webp"} width={30} />

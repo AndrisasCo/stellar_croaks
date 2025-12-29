@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { useNotifications } from "../../hooks/use-notification";
 import { useToads } from "../ToadContext";
 import { completeAchivement } from "../../backend/achivements-manager";
 import { useSoundEffects } from "../../hooks/use-sound-effects";
@@ -15,32 +14,38 @@ export const useFeedToads = () => {
     setShowFoodTooltip(false);
   }, [currentScene.id]);
 
-  const { addNotification } = useNotifications();
   const { playCrunch, playExited } = useSoundEffects();
 
   const handleShowFoodTooltip = () => {
-    let newFood = (account?.storage?.food || 0) - toads.length;
-
-    if (currentScene.bonuses?.autoFeeder) {
-      const allHunger = getAutoHunger(toads);
-
-      newFood = (account?.storage?.food || 0) - allHunger;
-    }
-
-    if (newFood < 0) {
-      addNotification({
-        content: `Недостаточно корма на складе! Не хватает: ${Math.abs(
-          newFood
-        )}`,
-        type: "warn",
-      });
-      return;
-    }
     setShowFoodTooltip(true);
+  };
+
+  const getTooltipMessage = () => {
+    const newFood = currentScene.bonuses?.autoFeeder
+      ? getAutoHunger(toads)
+      : toads.length;
+
+    if ((account?.storage?.food || 0) < newFood) {
+      return {
+        message: `Не хватает: ${Math.abs(
+          (account?.storage?.food || 0) - newFood
+        )} корма`,
+        disabled: true,
+      };
+    }
+
+    return { message: `Потратить: ${newFood} корма?`, disabled: false };
   };
 
   const handleConfirmFeed = () => {
     if (isFoodActive) {
+      return;
+    }
+    const newFood = currentScene.bonuses?.autoFeeder
+      ? getAutoHunger(toads)
+      : toads.length;
+
+    if ((account?.storage?.food || 0) < newFood) {
       return;
     }
     completeAchivement("feed-all");
@@ -67,5 +72,6 @@ export const useFeedToads = () => {
     handleConfirmFeed,
     handleShowFoodTooltip,
     isFoodActive,
+    getTooltipMessage,
   };
 };
