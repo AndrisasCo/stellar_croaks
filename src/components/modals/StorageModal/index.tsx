@@ -155,7 +155,10 @@ const StorageModal: React.FC<StorageModalProps> = ({ isOpen, onClose }) => {
       return;
     }
 
-    if (activeSlot.isReady) {
+    if (
+      activeSlot.isReady ||
+      (activeSlot.startTime || 0) > Date.now() - activeSlot.duration
+    ) {
       addNotification({
         type: "warn",
         content: `Инкубация уже завершена!`,

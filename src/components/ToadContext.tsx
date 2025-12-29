@@ -227,7 +227,6 @@ export const ToadProvider: React.FC<ToadProviderProps> = ({ children }) => {
       );
 
       newFood = (account.storage?.food || 0) - allHunger;
-      console.log({ allHunger });
     } else {
       newFood = (account.storage?.food || 0) - toadsId.length;
     }
