@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useSoundEffects } from "../../../hooks/use-sound-effects";
 import { CURRENCY_CONFIG } from "../../../utils/constants";
-import Modal from "../../shared/Modal";
+import Modal from "../../shared/Header";
 import { useToads } from "../../ToadContext";
 import BuyTab from "./BuyTab";
 import EnclosureTab from "./EnclosureTab";

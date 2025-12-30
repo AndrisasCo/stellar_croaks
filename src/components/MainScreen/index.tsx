@@ -210,7 +210,9 @@ export default function ToadGame() {
         {/* Кнопки быстрого доступа */}
         <div className="grid grid-cols-2 gap-3 mb-4 px-2">
           <ClickButton
-            onClick={() => openModal(() => <ShopMenu />)}
+            onClick={() =>
+              openModal(() => <ShopMenu />, { bg: "/bg/bg-col.webp" })
+            }
             style={{
               backgroundPosition: 10,
               backgroundSize: 40,

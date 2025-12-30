@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useToads } from "../../ToadContext";
-import Modal from "../../shared/Modal";
+import Modal from "../../shared/Header";
 import { getGameState, updateGameState } from "../../../backend/localStorage";
 import { InfoIcons } from "../../../assets/icons";
 import { bonuses, BonusType, INITIAL_CAPACITY } from "../../../models/scene";

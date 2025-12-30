@@ -105,8 +105,8 @@ export default function ToadScene() {
         <ClickButton
           onClick={() => openModal(() => <SceneInfoModal />)}
           className="
-             bg-[url('/assets/cage-btn.webp')] cover
-              w-[100px] h-[60px]
+             bg-[url('/assets/cage-btn.webp')] bg-contain bg-no-repeat bg-center
+          w-[100px] h-[64px]
               transition-all duration-300 transform
               hover:scale-105 active:scale-95
             "
@@ -118,8 +118,8 @@ export default function ToadScene() {
         <ClickButton
           onClick={() => openModal(() => <ToadListModal />)}
           className="
-             bg-[url('/assets/list-btn.webp')] cover
-                            w-[100px] h-[60px]
+             bg-[url('/assets/list-btn.webp')] bg-contain bg-no-repeat bg-center
+                             w-[100px] h-[64px]
 
               transition-all duration-300 transform
               hover:scale-105 active:scale-95

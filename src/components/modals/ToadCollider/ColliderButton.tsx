@@ -6,6 +6,7 @@ import ToadCollider from "./ToadColliderModal";
 import ToadSlotModal from "./ToadSlotModal";
 import { useNotifications } from "../../../hooks/use-notification";
 import { useModal } from "../../ModalContext";
+import { ColliderMenu } from "./ColliderMenu";
 
 export default function ColliderButton() {
   const { colliderState, toads, allToads } = useToads();
@@ -27,24 +28,15 @@ export default function ColliderButton() {
 
     playClickCollider();
 
-    if (activeSlot) {
-      openModal(() => <ToadSlotModal />);
-    } else {
-      openModal(() => (
-        <ToadCollider
-          availableToads={toads.filter((t) => t.stage === "adult")}
-          onClose={closeModal}
-        />
-      ));
-    }
+    openModal(() => <ColliderMenu />, { bg: "/bg/bg-lab.webp" });
   };
 
   return (
     <ClickButton
       onClick={openCollider}
       className="
-                 bg-[url('/assets/collider-btn.webp')] cover
-                                w-[100px] h-[60px]
+                 bg-[url('/assets/collider-btn.webp')] bg-contain bg-no-repeat bg-center
+                               w-[100px] h-[64px]
                   transition-all duration-300 transform
                   hover:scale-105 active:scale-95
                     disabled:opacity-60

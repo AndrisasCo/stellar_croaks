@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Toad } from "../../../models/Toad";
-import Modal from "../../shared/Modal";
+import Modal from "../../shared/Header";
 import { useToads } from "../../ToadContext";
 import { useSoundEffects } from "../../../hooks/use-sound-effects";
 import {

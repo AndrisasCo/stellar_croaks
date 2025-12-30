@@ -10,7 +10,7 @@ import {
 } from "../../../models/Toad";
 import { useToads } from "../../ToadContext";
 import { InfoIcons } from "../../../assets/icons";
-import Modal from "../../shared/Modal";
+import Modal from "../../shared/Header";
 import { useSoundEffects } from "../../../hooks/use-sound-effects";
 import { updateToadById, updateUserStorage } from "../../../backend";
 import { completeAchivement } from "../../../backend/achivements-manager";

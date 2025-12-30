@@ -108,15 +108,18 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({
   const renderModal = () => {
     if (!modalRoot || !currentModal || !currentModal.isOpen) return null;
 
-    const { component: Component, options } = currentModal;
+    const { component: Component, options = {} } = currentModal;
 
     const modalContent = (
       <>
         <div className="overlay">
-          <div className="text-white h-full  w-full max-w-2xl max-h-[100vh] overflow-hidden bg-[url('/bg/bg-shop.webp')] cover">
+          <div
+            style={options.bg ? { backgroundImage: `url(${options.bg})` } : {}}
+            className={`"text-white h-full  w-full max-w-2xl max-h-[100vh] overflow-hidden bg-[url('/bg/bg-shop.webp')] cover`}
+          >
             <div
               id="modal"
-              className="h-[100vh]  overflow-auto py-4 flex flex-col  bg-slate-900/50 backdrop-blur-sm px-1"
+              className="h-[100vh]  overflow-auto py-4 flex flex-col  bg-slate-900/50 backdrop-blur-[2px] px-1"
             >
               <ClickButton
                 onClick={closeModal}
@@ -129,7 +132,7 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({
 
               <div className="min-h-4" />
               <ClickButton
-                className="w-full mt-auto bg-color-second hover:bg-slate-800/70 text-gray-200 py-3 rounded-xl "
+                className="w-full mt-auto relative bg-color-second hover:bg-slate-800/70 text-gray-200 py-3 rounded-xl "
                 onClick={closeModal}
               >
                 Закрыть

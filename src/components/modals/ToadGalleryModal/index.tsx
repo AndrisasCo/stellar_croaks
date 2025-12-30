@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { useSoundEffects } from "../../../hooks/use-sound-effects";
-import Modal from "../../shared/Modal";
+import Modal from "../../shared/Header";
 import { ToadAvatar } from "../../shared/ToadAvatar";
 import {
   TOAD_SPECIES_CONFIG,

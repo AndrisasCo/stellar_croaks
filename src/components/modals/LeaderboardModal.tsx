@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { getRarityConfig, Toad } from "../../models/Toad";
 import { CURRENCY_CONFIG } from "../../utils/constants";
-import Modal from "../shared/Modal";
+import Modal from "../shared/Header";
 import { useSoundEffects } from "../../hooks/use-sound-effects";
 import {
   getAllLeaderboards,

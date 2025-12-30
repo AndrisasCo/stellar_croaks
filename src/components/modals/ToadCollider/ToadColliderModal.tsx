@@ -16,7 +16,7 @@ import {
 import { MIXING_DURATION } from "../../../utils/constants";
 import { nameGenerator } from "../../../utils/name-generator";
 import { ClickButton } from "../../shared/ClickButton";
-import Modal from "../../shared/Modal";
+import Modal from "../../shared/Header";
 import { ToadAvatar } from "../../shared/ToadAvatar";
 import { ToadGender } from "../../shared/ToadGender";
 import { useToads } from "../../ToadContext";
@@ -43,10 +43,7 @@ const getRarityBackground = (rarity: number): string => {
   return getRarityConfig(rarity).bgColor;
 };
 
-export default function ToadCollider({
-  onClose,
-  availableToads,
-}: ToadColliderProps) {
+export default function ToadCollider() {
   const [selectedToads, setSelectedToads] = useState<(Toad | null)[]>([
     null,
     null,
@@ -57,7 +54,10 @@ export default function ToadCollider({
 
   const [isMixing, setIsMixing] = useState(false);
 
-  const { startBreeding, updateBreeding } = useToads();
+  const { closeModal } = useModal();
+  const { startBreeding, updateBreeding, toads } = useToads();
+
+  const availableToads = toads.filter((t) => t.stage === "adult");
   const { playBubble2 } = useSoundEffects();
   const [breedingResult, setBreedingResult] = useState<BreedingResult | null>(
     null
@@ -159,7 +159,7 @@ export default function ToadCollider({
 
     setCustomName("");
     setBreedingResult(null);
-    onClose();
+    closeModal();
   };
 
   const handleReset = () => {
@@ -187,8 +187,8 @@ export default function ToadCollider({
 
       {!breedingResult ? (
         <>
-          <div className="bg-color-second  rounded-lg p-3 mb-4 sm:mb-6 border border-gray-600">
-            <div className="text-xs sm:text-sm text-white font-medium mb-2 sm:mb-3 text-center flex items-center justify-center gap-2">
+          <div className="bg-color-second  rounded-lg p-3 mb-4  border border-gray-600">
+            <div className="text-xs sm:text-sm text-white font-medium mb-2  text-center flex items-center justify-center gap-2">
               <span className="text-yellow-400">⭐</span>
               Бонусы редкости
               <span className="text-yellow-400">⭐</span>
@@ -221,7 +221,7 @@ export default function ToadCollider({
                   className={`text-center p-1 sm:p-2 rounded-xl transition-all duration-500 transform ${
                     currentToads.length >= count
                       ? `bg-gradient-to-br ${colors} text-white shadow-lg ${shadow} scale-105 border-2 border-white border-opacity-30 animate-gradient-x`
-                      : "bg-gray-600 text-gray-300 border-2 border-transparent hover:border-gray-500"
+                      : "bg-color-main text-gray-300 border-2 border-transparent "
                   }`}
                 >
                   <div className="font-bold text-[10px] sm:text-[11px]">

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useSettings } from "../SettingsContext";
-import Modal from "../shared/Modal";
+import Modal from "../shared/Header";
 import {
   getDefaultGameState,
   updateGameState,

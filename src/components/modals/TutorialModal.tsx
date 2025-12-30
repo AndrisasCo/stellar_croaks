@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import Modal from "../shared/Modal";
+import Modal from "../shared/Header";
 import { useSoundEffects } from "../../hooks/use-sound-effects";
 import { CURRENCY_CONFIG, TYPE_ICONS } from "../../utils/constants";
 import { completeAchivement } from "../../backend/achivements-manager";

@@ -1,6 +1,6 @@
 import { MenuIcons } from "../../assets/icons";
 import { useModal } from "../ModalContext";
-import Modal from "../shared/Modal";
+import Modal from "../shared/Header";
 import AchivementsModal from "./AchivementsModal";
 import LeaderboardModal from "./LeaderboardModal";
 import SettingsModal from "./SettingsModal";

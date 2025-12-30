@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { RARITY_GROUPS_TRESHOLD, Toad } from "../../../models/Toad";
-import Modal from "../../shared/Modal";
+import Modal from "../../shared/Header";
 import { updateToadById, updateToadsByIds } from "../../../backend";
 import { useSoundEffects } from "../../../hooks/use-sound-effects";
 import { useToads } from "../../ToadContext";

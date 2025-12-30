@@ -8,8 +8,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 async function convertImages() {
-  const inputDir = "./public/sprites"; // ваша папка с PNG
-  const outputDir = "./public/sprites";
+  const inputDir = "./public/bg"; // ваша папка с PNG
+  const outputDir = "./public/bg";
 
   // Создаем выходную папку если её нет
   if (!fs.existsSync(outputDir)) {

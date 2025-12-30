@@ -1,5 +1,4 @@
-// contexts/ModalContext.tsx
-import React, { createContext, useContext, useState, useCallback } from "react";
+import React, { createContext, useContext } from "react";
 
 export type ModalComponent = React.ComponentType<any>;
 
@@ -12,6 +11,7 @@ export interface ModalOptions {
   overlayClassName?: string;
   animation?: "fade" | "slide" | "zoom";
   disableScroll?: boolean;
+  bg?: string;
 }
 
 interface ModalData {
