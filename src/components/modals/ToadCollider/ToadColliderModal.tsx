@@ -311,7 +311,7 @@ export default function ToadCollider() {
               <p className="text-gray-200 text-xs sm:text-sm mb-2 text-center">
                 Нажмите на жаб, чтобы добавить в колбы:
               </p>
-              <div className="min-h-24">
+              <div>
                 <div className="flex flex-wrap gap-1 sm:gap-2 justify-center">
                   {availableToads.length === 0 && (
                     <div className="text-gray-500 text-sm py-4">
