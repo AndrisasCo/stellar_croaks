@@ -64,13 +64,7 @@ export default function ToadSlotModal() {
       ? toad.type
       : ToadTypes.hybrid;
 
-    const isColoredToad = [ToadTypes.hybrid, ToadTypes.camouflage].includes(
-      type
-    );
-    const imageSrc = isColoredToad
-      ? `/bg/${type}.webp`
-      : `/sprites/${type}.webp`;
-    return imageSrc;
+    return `/sprites/${type}.webp`;
   };
 
   return (
@@ -81,12 +75,12 @@ export default function ToadSlotModal() {
             backgroundImage: activeSlot
               ? `url('${getToadSrc(activeSlot.child)}')`
               : "none",
-            backgroundPositionX: "49%",
-            backgroundPositionY: "100%",
+            backgroundPositionX: "50%",
+            backgroundPositionY: "102%",
             backgroundSize: "300%",
-            aspectRatio: 1 / 0.85,
+            aspectRatio: 1.779 / 1.4,
           }}
-          className={` bg-no-repeat w-[30%] absolute left-[35%] top-[42%] opacity-65 incubate`}
+          className={` bg-no-repeat overflow-hidden w-[30%] absolute left-[35%] top-[42%] opacity-65 incubate`}
         />
       </div>
 
