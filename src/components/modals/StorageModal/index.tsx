@@ -153,7 +153,8 @@ const StorageModal: React.FC = () => {
 
     if (
       activeSlot.isReady ||
-      (activeSlot.startTime || 0) > Date.now() - activeSlot.duration
+      (activeSlot.startTime &&
+        activeSlot.startTime + activeSlot.duration < Date.now())
     ) {
       addNotification({
         type: "warn",
