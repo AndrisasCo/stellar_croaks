@@ -253,12 +253,7 @@ export default function ToadCollider({
               >
                 {selectedToads[slot] ? (
                   <>
-                    <div
-                      className="w-8 h-8 sm:w-10 sm:h-10 rounded-full mb-1  border-2 border-white/80 shadow-sm"
-                      style={{
-                        backgroundColor: selectedToads[slot]!.genes.colors[0],
-                      }}
-                    />
+                    <ToadAvatar size={8} toad={selectedToads[slot]} />
                     <p className="text-white text-[10px]  text-center px-1 truncate w-full">
                       {selectedToads[slot]!.name}
                     </p>

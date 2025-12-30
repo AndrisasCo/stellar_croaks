@@ -9,7 +9,6 @@ import { useModal } from "../../ModalContext";
 
 export default function ColliderButton() {
   const { colliderState, toads, allToads } = useToads();
-  const [isColliderOpen, setIsColliderOpen] = useState(false);
   const { playClickCollider } = useSoundEffects();
   const { openModal, closeModal } = useModal();
 
@@ -26,7 +25,6 @@ export default function ColliderButton() {
       return;
     }
 
-    setIsColliderOpen(true);
     playClickCollider();
 
     if (activeSlot) {
