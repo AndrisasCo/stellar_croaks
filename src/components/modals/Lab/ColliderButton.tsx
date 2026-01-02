@@ -6,7 +6,7 @@ import ToadCollider from "./ToadColliderModal";
 import ToadSlotModal from "./ToadSlotModal";
 import { useNotifications } from "../../../hooks/use-notification";
 import { useModal } from "../../ModalContext";
-import { ColliderMenu } from "./ColliderMenu";
+import { ColliderMenu } from "./LabMenu";
 
 export default function ColliderButton() {
   const { colliderState, toads, allToads } = useToads();

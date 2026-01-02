@@ -7,7 +7,7 @@ import { ArrowRightButtonCompact } from "../shared/ArrowRight";
 import { ClickButton } from "../shared/ClickButton";
 import ToadCanvas from "../ToadCanvas";
 import { useToads } from "../ToadContext";
-import ColliderButton from "../modals/ToadCollider/ColliderButton";
+import ColliderButton from "../modals/Lab/ColliderButton";
 import { useModal } from "../ModalContext";
 
 export default function ToadScene() {

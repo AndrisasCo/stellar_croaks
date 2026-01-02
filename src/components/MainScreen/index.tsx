@@ -25,7 +25,7 @@ import { ClickButton } from "../shared/ClickButton";
 import { ToadGalleryModal } from "../modals/ToadGalleryModal";
 import { addToadToCollection } from "../../backend/achivements-manager";
 import { TOAD_SPECIES_CONFIG } from "../../models/Toad/toad-species";
-import ColliderButton from "../modals/ToadCollider/ColliderButton";
+import ColliderButton from "../modals/Lab/ColliderButton";
 import ToadScene from "./ToadScene";
 import { useModal } from "../ModalContext";
 import { preloadImages } from "../../utils/ui";

@@ -4,8 +4,16 @@ import { useSettings } from "../SettingsContext";
 import ambientMusic from "../../assets/music.mp3";
 import ambientMusic2 from "../../assets/music2.mp3";
 import ambientMusic3 from "../../assets/music3.mp3";
+import ambientMusic4 from "../../assets/music4.mp3";
+import ambientMusic5 from "../../assets/music5.mp3";
+import ambientMusic6 from "../../assets/music6.mp3";
+import { shuffle } from "../../utils";
 
-const tracks = [ambientMusic3, ambientMusic2, ambientMusic];
+const tracks = shuffle([ambientMusic5, ambientMusic4, ambientMusic6]).concat([
+  ambientMusic3,
+  ambientMusic2,
+  ambientMusic,
+]);
 
 const MusicPlayer: React.FC = () => {
   const { settings } = useSettings();
