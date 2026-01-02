@@ -16,17 +16,12 @@ import {
 import { MIXING_DURATION } from "../../../utils/constants";
 import { nameGenerator } from "../../../utils/name-generator";
 import { ClickButton } from "../../shared/ClickButton";
-import Modal from "../../shared/Header";
 import { ToadAvatar } from "../../shared/ToadAvatar";
 import { ToadGender } from "../../shared/ToadGender";
 import { useToads } from "../../ToadContext";
 import { MixingInProgress } from "./MixingInProgress";
 import { useModal } from "../../ModalContext";
-
-interface ToadColliderProps {
-  onClose: () => void;
-  availableToads: Toad[];
-}
+import ToadSlotModal from "./ToadSlotModal";
 
 // Функция для определения цвета редкости
 const getRarityColor = (rarity: number): string => {
@@ -54,7 +49,7 @@ export default function ToadCollider() {
 
   const [isMixing, setIsMixing] = useState(false);
 
-  const { closeModal } = useModal();
+  const { closeModal, openModal } = useModal();
   const { startBreeding, updateBreeding, toads } = useToads();
 
   const availableToads = toads.filter((t) => t.stage === "adult");
@@ -160,6 +155,7 @@ export default function ToadCollider() {
     setCustomName("");
     setBreedingResult(null);
     closeModal();
+    openModal(() => <ToadSlotModal />);
   };
 
   const handleReset = () => {

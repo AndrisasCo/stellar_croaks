@@ -76,11 +76,11 @@ export default function ToadSlotModal() {
               ? `url('${getToadSrc(activeSlot.child)}')`
               : "none",
             backgroundPositionX: "50%",
-            backgroundPositionY: "102%",
-            backgroundSize: "300%",
+            backgroundPositionY: "100%",
+            backgroundSize: "300% 200%",
             aspectRatio: 1.779 / 1.4,
           }}
-          className={` bg-no-repeat overflow-hidden w-[30%] absolute left-[35%] top-[42%] opacity-65 incubate`}
+          className={` bg-no-repeat overflow-hidden w-[30%] absolute left-[35%] top-[43%] opacity-65 incubate`}
         />
       </div>
 

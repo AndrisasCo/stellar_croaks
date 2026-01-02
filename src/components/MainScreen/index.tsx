@@ -28,6 +28,7 @@ import { TOAD_SPECIES_CONFIG } from "../../models/Toad/toad-species";
 import ColliderButton from "../modals/ToadCollider/ColliderButton";
 import ToadScene from "./ToadScene";
 import { useModal } from "../ModalContext";
+import { preloadImages } from "../../utils/ui";
 
 // Конфиг обновлений для уведомлений
 const UPDATES_LOG = [
@@ -95,6 +96,15 @@ export default function ToadGame() {
     }
 
     const initGame = async () => {
+      preloadImages([
+        "/bg/bg-main.webp",
+        "/bg/bg-col.webp",
+        "/bg/bg-lab.webp",
+        "/bg/bg-shop.webp",
+        "/bg/main-end.webp",
+        "/bg/incubator.webp",
+      ]);
+
       await syncGameState();
 
       const timeManager = new TimeManager();
@@ -103,8 +113,6 @@ export default function ToadGame() {
       // Отложенный запуск уведомлений о размножении
       const delayNotification = (props: any) =>
         setTimeout(() => addNotification(props), 2000);
-
-      console.log({ offlineHours });
 
       processBreeding(offlineHours, delayNotification);
 
