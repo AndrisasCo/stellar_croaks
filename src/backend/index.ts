@@ -3,6 +3,11 @@ import { Toad } from "../models/Toad";
 import { User } from "../models/user";
 import { getHunger } from "../utils/state-manager";
 import {
+  ENERGY_REGEN_PER_HOUR,
+  MAX_ENERGY,
+  getToadEnergy,
+} from "../utils/gamification-config";
+import {
   addToadToCollection,
   checkGeneticAchievements,
 } from "./achivements-manager";
@@ -168,6 +173,26 @@ export const updateToadsBulkHunger = (
         }
       : toad
   );
+
+  updateGameState({ toads: updatedToads }, syntetic);
+};
+
+/**
+ * Пассивное восстановление «сил» (energy) у всех жаб.
+ * Часть 3.2: жабы копят силы со временем (+ENERGY_REGEN_PER_HOUR в час).
+ */
+export const updateToadsBulkEnergy = (
+  hoursPassed: number,
+  syntetic?: boolean
+) => {
+  const state = getGameState();
+  const updatedToads = state.toads.map((toad) => ({
+    ...toad,
+    energy: Math.min(
+      MAX_ENERGY,
+      getToadEnergy(toad) + ENERGY_REGEN_PER_HOUR * hoursPassed
+    ),
+  }));
 
   updateGameState({ toads: updatedToads }, syntetic);
 };

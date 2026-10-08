@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { updateUser, deleteToadsByIds } from "../../../backend";
 import { useSoundEffects } from "../../../hooks/use-sound-effects";
-import { calculateSellPrice } from "../../../models/Toad";
+import { Toad, calculateSellPrice } from "../../../models/Toad";
 import { CURRENCY_CONFIG } from "../../../utils/constants";
 import { useToads } from "../../ToadContext";
 import {
@@ -17,13 +17,38 @@ import {
 import { useFilters } from "../../../hooks/use-filters";
 import { Filters } from "../../shared/Filters";
 import { usePagination } from "../../../hooks/use-pagination";
+import { useNotifications } from "../../../hooks/use-notification";
+import { exchangeBiomassForTokens } from "../../../utils/production-manager";
+import { BIOMASS_TO_TOKENS_RATE } from "../../../utils/gamification-config";
 
 const SellTab: React.FC = () => {
   const { allToads: activeToads, account } = useToads();
   const { playCell } = useSoundEffects();
+  const { addNotification } = useNotifications();
   const [selectedToads, setSelectedToads] = useState<number[]>([]);
 
-  const { tokens = 0 } = account || {};
+  const { tokens = 0, biomass = 0 } = account || {};
+  const biomassTokens = Math.floor(biomass * BIOMASS_TO_TOKENS_RATE);
+
+  // Часть 3.7: биомасса с фермы обменивается на Кваксы
+  const handleExchangeBiomass = () => {
+    const result = exchangeBiomassForTokens();
+    if (result.success) {
+      playCell();
+      addNotification({
+        type: "success",
+        content: `Обменяно биомассы на ${result.tokensGained} Кваксов`,
+      });
+    } else {
+      addNotification({
+        type: "warn",
+        content: "Недостаточно биомассы для обмена",
+      });
+    }
+  };
+
+  // Часть 5: жабы в походе за Периметр продаются только после возвращения
+  const saleableToads = activeToads.filter((toad) => toad.status !== "out");
 
   const {
     filteredAndSortedToads: filteredToads,
@@ -33,7 +58,7 @@ const SellTab: React.FC = () => {
     setSortDirection,
     filterBy,
     setFilterBy,
-  } = useFilters(activeToads);
+  } = useFilters(saleableToads);
 
   const selectedFilteredToads = selectedToads.filter((id) =>
     filteredToads.some((toad) => toad.id === id)
@@ -78,7 +103,7 @@ const SellTab: React.FC = () => {
   const handleSellSingleToad = async (toadId: number) => {
     const toad = activeToads.find((t) => t.id === toadId);
 
-    if (!toad) {
+    if (!toad || toad.status === "out") {
       return;
     }
     completeAchivement("sell-toad");
@@ -121,6 +146,29 @@ const SellTab: React.FC = () => {
 
   return (
     <div className="space-y-3 pb-3">
+      {/* Ферма: обмен биомассы на Кваксы (Часть 3.7) */}
+      <div className="bg-color-main rounded-xl p-3 border border-emerald-500/30 flex items-center justify-between gap-2">
+        <div className="min-w-0">
+          <div className="text-emerald-300 font-semibold text-sm truncate">
+            🧪 Биомасса: {Math.floor(biomass)}
+          </div>
+          <div className="text-gray-400 text-xs">
+            Курс обмена: 2 биомассы = 1 {CURRENCY_CONFIG.tokens.icon}
+          </div>
+        </div>
+        <button
+          onClick={handleExchangeBiomass}
+          disabled={biomassTokens <= 0}
+          className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all shrink-0 ${
+            biomassTokens > 0
+              ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white border-emerald-400/30 hover:from-emerald-500 hover:to-teal-500"
+              : "bg-gray-600/30 text-gray-400 border-gray-500/30 cursor-not-allowed"
+          }`}
+        >
+          Обменять ({biomassTokens} {CURRENCY_CONFIG.tokens.icon})
+        </button>
+      </div>
+
       {/* Панель фильтров */}
       <Filters
         toads={activeToads}

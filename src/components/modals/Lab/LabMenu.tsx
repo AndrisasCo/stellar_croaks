@@ -1,12 +1,20 @@
 import { useModal } from "../../ModalContext";
 import { ClickButton } from "../../shared/ClickButton";
+import DissolveModal from "./DissolveModal";
+import NestModal from "./NestModal";
 import ToadCollider from "./ToadColliderModal";
 import ToadSlotModal from "./ToadSlotModal";
+
+interface LabMenuButton {
+  name: string;
+  bg: string;
+  Component: React.ReactNode;
+}
 
 export const ColliderMenu = () => {
   const { openModal } = useModal();
 
-  const buttons = [
+  const buttons: LabMenuButton[] = [
     {
       name: "Коллайдер",
       bg: "/assets/collider.webp",
@@ -17,15 +25,20 @@ export const ColliderMenu = () => {
       bg: "/assets/incubator.webp",
       Component: <ToadSlotModal />,
     },
+    {
+      name: "Гнездо",
+      bg: "/assets/bowl2.webp",
+      Component: <NestModal />,
+    },
+    {
+      name: "Диссоциатор",
+      bg: "/assets/destructor.webp",
+      Component: <DissolveModal />,
+    },
     // {
     //   name: "Био-принтер",
     //   bg: "/assets/printer.webp",
     //   Component: <ToadCollider />,
-    // },
-    // {
-    //   name: "Диссоциатор",
-    //   bg: "/assets/destructor.webp",
-    //   Component: () => <ToadCollider />,
     // },
   ];
 

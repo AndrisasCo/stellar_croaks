@@ -95,7 +95,7 @@ export default function ToadSlotModal() {
 
       {activeSlot ? (
         <>
-          <div className="relative bg-color-main p-1 rounded-lg mb-4">
+          <div className="relative p-1 rounded-lg  flex flex-col h-full">
             {!activeSlot.isReady && (
               <div className="flex items-center justify-center gap-2 text-green-300">
                 Осталось:{" "}
@@ -105,10 +105,25 @@ export default function ToadSlotModal() {
               </div>
             )}
 
+            {/* Прогресс бар */}
+            <div className="relative bg-color-second mt-6 rounded-xl h-10 mb-4 overflow-hidden border border-gray-600">
+              <div
+                className="bg-gradient-to-r from-green-400 via-purple-500 to-green-400 h-full rounded-xl transition-all duration-1000 shadow-lg"
+                style={{ width: `${activeSlot.isReady ? 100 : slotProgress}%` }}
+              />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="text-white text-lg font-bold drop-shadow-lg">
+                  {activeSlot.isReady
+                    ? "Готово!"
+                    : `${Math.round(slotProgress)}%`}
+                </span>
+              </div>
+            </div>
+
             {activeSlot.isReady && (
               <button
                 onClick={handleCollectChild}
-                className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-bold py-3 rounded-xl transition-all duration-300 transform hover:scale-105 border-2 border-white/20 shadow-lg"
+                className="w-full bg-gradient-to-r mt-auto from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-bold py-3 rounded-xl transition-all duration-300 transform hover:scale-105 border-2 border-white/20 "
               >
                 <div className="flex items-center justify-center gap-2">
                   {ColliderIcons.ready}
@@ -116,21 +131,6 @@ export default function ToadSlotModal() {
                 </div>
               </button>
             )}
-          </div>
-
-          {/* Прогресс бар */}
-          <div className="relative bg-color-second rounded-full h-7 mb-4 overflow-hidden border border-gray-600">
-            <div
-              className="bg-gradient-to-r from-green-400 via-purple-500 to-green-400 h-full rounded-full transition-all duration-1000 shadow-lg"
-              style={{ width: `${activeSlot.isReady ? 100 : slotProgress}%` }}
-            />
-            <div className="absolute inset-0 flex items-center justify-center">
-              <span className="text-white text-sm font-bold drop-shadow-lg">
-                {activeSlot.isReady
-                  ? "Готово!"
-                  : `${Math.round(slotProgress)}%`}
-              </span>
-            </div>
           </div>
         </>
       ) : (

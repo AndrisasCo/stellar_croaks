@@ -418,31 +418,31 @@ const ToadListModal: React.FC = () => {
             <div className="text-green-400 font-bold">
               {groupedToads.common.length}
             </div>
-            <div className="text-gray-300 text-[10px]">Обычные</div>
+            <div className="text-gray-300 text-2xs">Обычные</div>
           </div>
           <div>
             <div className="text-blue-400 font-bold">
               {groupedToads.uncommon.length}
             </div>
-            <div className="text-gray-300 text-[10px]">Необычные</div>
+            <div className="text-gray-300 text-2xs">Необычные</div>
           </div>
           <div>
             <div className="text-purple-400 font-bold">
               {groupedToads.rare.length}
             </div>
-            <div className="text-gray-300 text-[10px]">Редкие</div>
+            <div className="text-gray-300 text-2xs">Редкие</div>
           </div>
           <div>
             <div className="text-orange-400 font-bold">
               {groupedToads.epic.length}
             </div>
-            <div className="text-gray-300 text-[10px]">Эпические</div>
+            <div className="text-gray-300 text-2xs">Эпические</div>
           </div>
           <div>
             <div className="text-yellow-400 font-bold">
               {groupedToads.legendary.length}
             </div>
-            <div className="text-gray-300 text-[10px]">Легендарные</div>
+            <div className="text-gray-300 text-2xs">Легендарные</div>
           </div>
         </div>
 
@@ -452,17 +452,17 @@ const ToadListModal: React.FC = () => {
             <div className="text-green-400 font-bold">
               {hungerStats.wellFed}
             </div>
-            <div className="text-gray-300 text-[10px]">Сытые</div>
+            <div className="text-gray-300 text-2xs">Сытые</div>
           </div>
           <div>
             <div className="text-yellow-400 font-bold">
               {hungerStats.normal}
             </div>
-            <div className="text-gray-300 text-[10px]">Норма</div>
+            <div className="text-gray-300 text-2xs">Норма</div>
           </div>
           <div>
             <div className="text-red-400 font-bold">{hungerStats.starving}</div>
-            <div className="text-gray-300 text-[10px]">Голодные</div>
+            <div className="text-gray-300 text-2xs">Голодные</div>
           </div>
         </div>
       </div>

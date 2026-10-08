@@ -7,6 +7,45 @@ import {
 import { ToadGender } from "./ToadGender";
 import { PregnancyIcon } from "../../assets/icons";
 import { ToadAvatar } from "./ToadAvatar";
+import { isToadSick } from "../../utils/disease-manager";
+import {
+  getToadHp,
+  getToadMaxHp,
+  getToadHpRatio,
+  getToadHpStatusLabel,
+} from "../../utils/expedition-config";
+
+/** Полоска HP жабы (Часть 5: походы ранят жаб) */
+const ToadHpRow = ({ toad }: { toad: Toad }) => {
+  const maxHp = getToadMaxHp(toad);
+  const hp = Math.round(getToadHp(toad));
+  const ratio = getToadHpRatio(toad);
+  const color =
+    ratio <= 0
+      ? "bg-red-600"
+      : ratio < 0.35
+      ? "bg-red-500"
+      : ratio < 0.7
+      ? "bg-yellow-500"
+      : "bg-green-500";
+
+  return (
+    <div className="flex w-full mt-2 items-center justify-between gap-3">
+      <span className="text-2xs text-gray-300 whitespace-nowrap">
+        ❤️ {hp}/{maxHp}
+      </span>
+      <div className="flex-1 h-1.5 bg-gray-600 rounded-full overflow-hidden">
+        <div
+          className={`h-full rounded-full transition-all duration-500 ${color}`}
+          style={{ width: `${Math.max(0, Math.min(1, ratio)) * 100}%` }}
+        />
+      </div>
+      <span className="text-2xs text-gray-400 whitespace-nowrap">
+        {getToadHpStatusLabel(toad)}
+      </span>
+    </div>
+  );
+};
 
 const HungerIcon = ({ level }: { level: number }) => {
   const getHungerColor = (level: number) => {
@@ -26,7 +65,7 @@ const HungerIcon = ({ level }: { level: number }) => {
   return (
     <div className={`flex items-center gap-1 ${getHungerColor(level)}`}>
       <span className="text-xs">{getHungerIcon(level)}</span>
-      <span className="text-[10px] font-medium">{level}%</span>
+      <span className="text-2xs font-medium">{level}%</span>
     </div>
   );
 };
@@ -57,6 +96,8 @@ export const ToadItem = ({
   showHunger?: boolean;
   id?: string;
 }) => {
+  const isSick = isToadSick(toad);
+
   return (
     <div
       onClick={onClick}
@@ -77,6 +118,14 @@ export const ToadItem = ({
                 <PregnancyIcon />
               </span>
             )}
+            {isSick && (
+              <span
+                className="absolute -top-1 -left-1 text-sm bg-color-main rounded-full p-0.5"
+                title="Кибер-заражение: выработка биомассы снижена"
+              >
+                🦠
+              </span>
+            )}
             <div>
               <p className="text-white font-medium text-base">{toad.name}</p>
               <div className="flex items-center gap-2 text-sm text-gray-300 mt-1">
@@ -86,6 +135,21 @@ export const ToadItem = ({
                 <span>
                   {toad.stage === "adult" ? "Взрослый" : "Головастик"}
                 </span>
+
+                {toad.status === "out" && (
+                  <>
+                    <span>•</span>
+                    <span className="text-amber-300 text-2xs">
+                      🧭 в походе
+                    </span>
+                  </>
+                )}
+                {toad.status === "injured" && (
+                  <>
+                    <span>•</span>
+                    <span className="text-red-300 text-2xs">🩹 ранена</span>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -147,6 +211,9 @@ export const ToadItem = ({
             />
           </div>
         </div>
+      )}
+      {(toad.hp !== undefined || toad.status === "injured") && (
+        <ToadHpRow toad={toad} />
       )}
     </div>
   );

@@ -14,6 +14,7 @@ import { ToadItem } from "../../shared/ToadItem";
 import { useFilters } from "../../../hooks/use-filters";
 import { Filters } from "../../shared/Filters";
 import { randomizeToadCharacteristics } from "../../../utils/randomize-toad-characteristics";
+import { ToadTypes } from "../../../models/Toad/toad-species";
 import { getGameState } from "../../../backend/localStorage";
 import {
   loadColliderState,
@@ -26,8 +27,29 @@ import {
   LootboxRarity,
 } from "../../../models/Toad/lootbox";
 import { ConfettiAnimation } from "./animations";
-import { itemsFull } from "../../../models/user";
-import { completeAchivementCounter } from "../../../backend/achivements-manager";
+import { itemsFull, Items } from "../../../models/user";
+import {
+  completeAchivementCounter,
+  getAchievementState,
+} from "../../../backend/achivements-manager";
+import { DissolveConfirm } from "../../shared/DissolveConfirm";
+import {
+  dissolveToads,
+  getDissolveBatchYield,
+  getDissolveYield,
+} from "../../../utils/dissolve-manager";
+
+/** Сколько крафтовой пыли даёт дубликат жабы (Часть 3.7) */
+const getDuplicateDust = (rarity: LootboxRarity): number => {
+  switch (rarity) {
+    case LootboxRarity.rare:
+      return 10;
+    case LootboxRarity.uncommon:
+      return 5;
+    default:
+      return 3;
+  }
+};
 
 type StorageTabType = "items" | "toads";
 
@@ -50,6 +72,8 @@ const StorageModal: React.FC = () => {
   const { allToads = [], account, currentScene, toads } = useToads();
   const { playClick, playOk, playLegendary } = useSoundEffects();
   const [selectedToads, setSelectedToads] = useState<number[]>([]);
+  // Жабы, отправленные в Диссоциатор (ждут подтверждения разбора)
+  const [dissolveTargets, setDissolveTargets] = useState<Toad[]>([]);
   const [showConfetti, setShowConfetti] = useState(0);
   // Жабы на складе (без сцены)
   const storedToads = allToads?.filter((toad) => toad.scene_id === null) || [];
@@ -90,6 +114,11 @@ const StorageModal: React.FC = () => {
     filteredAndSortedToads.some((toad) => toad.id === id)
   );
 
+  // Жабы выборки как объекты (для Диссоциатора)
+  const selectedFilteredToadObjects = filteredAndSortedToads.filter((toad) =>
+    selectedFilteredToads.includes(toad.id)
+  );
+
   const isAllFilteredSelected =
     filteredAndSortedToads.length > 0 &&
     filteredAndSortedToads.every((toad) => selectedToads.includes(toad.id));
@@ -122,13 +151,41 @@ const StorageModal: React.FC = () => {
       toadLabel = rarity === LootboxRarity.rare ? "✨ Редкая" : "Обычная";
     }
 
-    addNotification({
-      type: "success",
-      content: `${toadLabel} жаба ${randomToad.name} добавлена на склад!`,
-    });
+    const isHighRarity = [LootboxRarity.epic, LootboxRarity.legendary].includes(
+      rarity
+    );
 
     updateUser({
       storage: { ...account.storage, lootbox: account.storage.lootbox - 1 },
+    });
+
+    // Часть 3.7: дубликат вида (кроме эпиков/легендарок) разбирается в крафтовую пыль
+    const isDuplicate =
+      !isHighRarity &&
+      Boolean(randomToad.type) &&
+      (getAchievementState().toads_collection || []).includes(
+        randomToad.type as ToadTypes
+      );
+
+    if (isDuplicate) {
+      const dust = getDuplicateDust(rarity);
+      updateUser({
+        storage: {
+          ...getGameState().user.storage,
+          [Items.craftDust]: (account.storage[Items.craftDust] || 0) + dust,
+        },
+      });
+      playOk();
+      addNotification({
+        type: "success",
+        content: `Дубликат (${toadLabel.toLowerCase()}) разобран на крафтовую пыль: +${dust} ${itemsFull[Items.craftDust].name}`,
+      });
+      return;
+    }
+
+    addNotification({
+      type: "success",
+      content: `${toadLabel} жаба ${randomToad.name} добавлена на склад!`,
     });
 
     createToad(randomToad);
@@ -163,7 +220,8 @@ const StorageModal: React.FC = () => {
       return;
     }
 
-    activeSlot.startTime = activeSlot.startTime - 10 * 60 * 1000; // +10 мин
+    // −10 минут: сдвигаем старт инкубации назад, приближая готовность
+    activeSlot.startTime = activeSlot.startTime - 10 * 60 * 1000; // −10 мин
     saveColliderState(collider);
     window.dispatchEvent(new Event("colliderChanged"));
 
@@ -291,6 +349,31 @@ const StorageModal: React.FC = () => {
     addNotification({ type: "warn", content: "Данный вольер переполнен!" });
   };
 
+  /** Открыть подтверждение разбора жаб со склада в биомассу */
+  const requestDissolve = (toadsToDissolve: Toad[]) => {
+    if (toadsToDissolve.length === 0) {
+      return;
+    }
+    playClick();
+    setDissolveTargets(toadsToDissolve);
+  };
+
+  /** Подтверждённый разбор: жабы исчезают, биомасса начисляется */
+  const handleDissolveConfirm = () => {
+    const ids = dissolveTargets.map((toad) => toad.id);
+    const result = dissolveToads(ids);
+    setDissolveTargets([]);
+
+    if (!result.success) {
+      addNotification({ type: "warn", content: result.message });
+      return;
+    }
+
+    setSelectedToads(selectedToads.filter((id) => !ids.includes(id)));
+    playOk();
+    addNotification({ type: "success", content: result.message });
+  };
+
   const icon = (
     <svg
       className="w-6 h-6 text-blue-400"
@@ -388,7 +471,7 @@ const StorageModal: React.FC = () => {
                 {/* Бэйджик типа */}
                 <div className="absolute top-1 left-1">
                   <div
-                    className={`text-[10px] px-2 py-1 rounded-full ${
+                    className={`text-2xs px-2 py-1 rounded-full ${
                       item.type === "food"
                         ? "bg-green-900/50 text-green-400"
                         : item.type === "material"
@@ -431,12 +514,20 @@ const StorageModal: React.FC = () => {
 
           <div className="flex gap-2 justify-end items-center">
             {selectedFilteredToads.length > 0 && (
-              <button
-                onClick={handleMoveToadsToScene}
-                className="px-3 mr-auto py-1.5 bg-gradient-to-r from-yellow-600 to-amber-600 hover:from-yellow-500 hover:to-amber-500 text-white rounded-lg text-xs font-bold transition-all shadow-sm border border-yellow-500/30"
-              >
-                В вольер
-              </button>
+              <div className="mr-auto flex gap-2">
+                <button
+                  onClick={handleMoveToadsToScene}
+                  className="px-3 py-1.5 bg-gradient-to-r from-yellow-600 to-amber-600 hover:from-yellow-500 hover:to-amber-500 text-white rounded-lg text-xs font-bold transition-all shadow-sm border border-yellow-500/30"
+                >
+                  В вольер
+                </button>
+                <button
+                  onClick={() => requestDissolve(selectedFilteredToadObjects)}
+                  className="px-3 py-1.5 bg-gradient-to-r from-amber-600 to-red-600 hover:from-amber-500 hover:to-red-500 text-white rounded-lg text-xs font-bold transition-all shadow-sm border border-amber-500/30"
+                >
+                  ♻️ +{getDissolveBatchYield(selectedFilteredToadObjects)} 🧪
+                </button>
+              </div>
             )}
 
             {isAllFilteredSelected ? "Снять выделение" : "Выбрать все"}
@@ -476,12 +567,27 @@ const StorageModal: React.FC = () => {
                   }}
                   key={toad.id}
                   button={
-                    <button
-                      className="text-green-400 px-1 py-2 bg-green-400 bg-opacity-30 rounded-lg text-sm font-medium"
-                      onClick={() => handleMoveToadToScene(toad)}
-                    >
-                      В вольер →
-                    </button>
+                    <div className="flex flex-col items-end gap-1">
+                      <button
+                        className="text-green-400 px-1 py-2 bg-green-400 bg-opacity-30 rounded-lg text-sm font-medium"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          handleMoveToadToScene(toad);
+                        }}
+                      >
+                        В вольер →
+                      </button>
+                      <button
+                        className="text-amber-300 px-1 py-1 bg-amber-400/20 rounded-lg text-2xs font-medium"
+                        title="Разобрать на биомассу"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          requestDissolve([toad]);
+                        }}
+                      >
+                        ♻️ +{getDissolveYield(toad)} 🧪
+                      </button>
+                    </div>
                   }
                   toad={toad}
                 />
@@ -501,6 +607,15 @@ const StorageModal: React.FC = () => {
             </div>
           )}
         </div>
+      )}
+
+      {/* Подтверждение: жабы уйдут в биомассу навсегда */}
+      {dissolveTargets.length > 0 && (
+        <DissolveConfirm
+          toads={dissolveTargets}
+          onCancel={() => setDissolveTargets([])}
+          onConfirm={handleDissolveConfirm}
+        />
       )}
     </Modal>
   );

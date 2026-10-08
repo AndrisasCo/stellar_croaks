@@ -10,6 +10,8 @@ export interface Scene {
   texture: string | null;
   bonuses?: Record<BonusType, number>;
   capacity: number;
+  /** Число родильных слотов купола (постройка «Гнездо»), по умолчанию NEST_BASE_SLOTS */
+  nestSlots?: number;
 }
 
 export const INITIAL_CAPACITY = 20;
@@ -69,7 +71,7 @@ export const bonuses = [
   },
 ];
 
-const bonusMap = {
+const bonusMap: Record<string, number[]> = {
   [BonusType.pregnancy]: [5, 10, 20],
   [BonusType.grow]: [5, 10, 20],
 };

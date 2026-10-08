@@ -14,14 +14,16 @@ export default function ColliderButton() {
   const { openModal, closeModal } = useModal();
 
   const { addNotification } = useNotifications();
-  const isColliderDisabled = allToads.length < 10;
+  // Ручное размножение доступно с самого начала (нужна хотя бы пара жаб),
+  // поэтому порог открытия лаборатории снижен с 10 до 2.
+  const isColliderDisabled = allToads.length < 2;
   const activeSlot = colliderState.slots.find((slot) => slot.child);
 
   const openCollider = () => {
     if (isColliderDisabled && !activeSlot) {
       addNotification({
         type: "danger",
-        content: `Нужно как минимум 10 жаб, чтобы открыть коллайдер`,
+        content: `Нужно как минимум 2 жабы, чтобы открыть лабораторию`,
       });
       return;
     }

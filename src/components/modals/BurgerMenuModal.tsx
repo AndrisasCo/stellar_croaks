@@ -2,12 +2,19 @@ import { MenuIcons } from "../../assets/icons";
 import { useModal } from "../ModalContext";
 import Modal from "../shared/Header";
 import AchivementsModal from "./AchivementsModal";
+import ExpeditionModal from "./ExpeditionModal";
 import LeaderboardModal from "./LeaderboardModal";
 import SettingsModal from "./SettingsModal";
 import { ToadGalleryModal } from "./ToadGalleryModal";
 import TutorialModal from "./TutorialModal";
 
-type MenuId = "gallery" | "stats" | "leaderboard" | "tutorial" | "settings";
+type MenuId =
+  | "expedition"
+  | "gallery"
+  | "stats"
+  | "leaderboard"
+  | "tutorial"
+  | "settings";
 
 // Иконка настроек
 const SettingsIcon = (
@@ -40,6 +47,28 @@ const MENU_ITEMS: {
   color: string;
   target: JSX.Element;
 }[] = [
+  {
+    id: "expedition",
+    icon: (
+      <svg
+        className="w-6 h-6"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={1.5}
+          d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"
+        />
+      </svg>
+    ),
+    label: "Разведка",
+    desc: "Походы команд за Периметр",
+    color: "bg-amber-900/50 border-amber-500/50",
+    target: <ExpeditionModal />,
+  },
   {
     id: "gallery",
     icon: (
@@ -120,7 +149,7 @@ export const BurgerMenu = () => {
                 <div className="text-sm font-bold text-white group-hover:text-green-200 transition-colors duration-300">
                   {item.label}
                 </div>
-                <div className="text-[10px] text-gray-300 group-hover:text-gray-200 transition-colors duration-300">
+                <div className="text-2xs text-gray-300 group-hover:text-gray-200 transition-colors duration-300">
                   {item.desc}
                 </div>
               </div>

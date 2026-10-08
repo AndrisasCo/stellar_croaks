@@ -5,6 +5,13 @@ export type User = {
   tokens: number;
   astro_quax: number;
   storage: Record<Items, number | undefined>;
+  /** Биомасса — ресурс «фермы», вырабатывается жабами (Часть 3.3) */
+  biomass?: number;
+  /**
+   * Уровень «Диспетчерской» (Часть 5.2): 1 команда + по одной за уровень.
+   * Стоимость постройки — `DISPATCH_OFFICE_COST`.
+   */
+  dispatchLevel?: number;
 };
 
 export enum Items {
@@ -17,6 +24,8 @@ export enum Items {
   pigmentRed = "pigmentRed",
   pigmentBlue = "pigmentBlue",
   pigmentUnstable = "pigmentUnstable",
+  /** Крафтовая пыль — получается при разборе дубликатов (Часть 3.7) */
+  craftDust = "craftDust",
 }
 
 export type InventoryItem = {
@@ -89,6 +98,13 @@ export const itemsFull: Record<Items, InventoryItem> = {
     name: "Нестабильный пигмент",
     icon: "/assets/p-rainbow.webp",
     description: "Красит жабу в случайный цвет",
+    rarity: "uncommon",
+  },
+  [Items.craftDust]: {
+    key: Items.craftDust,
+    name: "Крафтовая пыль",
+    icon: "/assets/dust.webp",
+    description: "Материал крафта: получается при разборе дубликатов жаб",
     rarity: "uncommon",
   },
 };

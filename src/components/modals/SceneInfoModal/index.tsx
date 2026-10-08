@@ -412,19 +412,19 @@ const SceneInfoModal: React.FC = () => {
               <div className="text-purple-400 text-lg font-bold">
                 {averageStats.rarity}
               </div>
-              <div className="text-gray-300 text-[10px] mt-1">Редкость</div>
+              <div className="text-gray-300 text-2xs mt-1">Редкость</div>
             </div>
             <div className="bg-color-main rounded-lg p-3 text-center border border-gray-600/50">
               <div className="text-blue-400 text-lg font-bold">
                 {averageStats.weight}
               </div>
-              <div className="text-gray-300 text-[10px] mt-1">Размер</div>
+              <div className="text-gray-300 text-2xs mt-1">Размер</div>
             </div>
             <div className="bg-color-main rounded-lg p-3 text-center border border-gray-600/50">
               <div className="text-green-400 text-lg font-bold">
                 {averageStats.speed}
               </div>
-              <div className="text-gray-300 text-[10px] mt-1">Скорость</div>
+              <div className="text-gray-300 text-2xs mt-1">Скорость</div>
             </div>
           </div>
         </div>

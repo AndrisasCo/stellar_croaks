@@ -126,7 +126,7 @@ export const achievementGroups = [
         id: "earn-300",
         icon: "💴",
         name: "Растущий бизнес",
-        description: "Заработать 1 000 кваксов",
+        description: "Заработать 300 кваксов",
         completed: false,
         taskType: "earn",
         taskValue: 300,
@@ -269,10 +269,14 @@ export const achievementGroups = [
           content: {
             id: Math.round(Date.now() * Math.random()),
             name: "Рекомбинант Идеальный",
-            type: "designed_organism",
+            type: ToadTypes.mutantNeonBlue,
             generation: 0,
             sex: "neuter",
             stage: "adult",
+            scene_id: null,
+            created_at: new Date().toISOString(),
+            parents: null,
+            pregnancy: null,
             state: {
               hunger: 100,
               genetic_fault: 50, // Контролируемые мутации
@@ -294,10 +298,14 @@ export const achievementGroups = [
           content: {
             id: Math.round(Date.now() * Math.random()),
             name: "Симбионт Стабильный",
-            type: "symbiotic_host",
+            type: ToadTypes.forest,
             generation: 0,
             sex: "female",
             stage: "adult",
+            scene_id: null,
+            created_at: new Date().toISOString(),
+            parents: null,
+            pregnancy: null,
             state: {
               hunger: 100,
               genetic_fault: 65,
@@ -310,6 +318,87 @@ export const achievementGroups = [
               hungerRate: 1.8,
               fertility: 0,
               personality: "calm", // Спокойный
+            },
+          },
+        },
+      ],
+    },
+  },
+  {
+    id: "biocampus-farm",
+    title: "🏭 Хозяин биокупола",
+    description: "Освойте ферму, Гнездо и Диссоциатор лаборатории",
+    color: "purple",
+    achievements: [
+      {
+        id: "first-manual-breed",
+        icon: "🥚",
+        name: "Гнездо в деле",
+        description: "Запустить первое размножение вручную в «Гнезде»",
+        completed: false,
+      },
+      {
+        id: "biomass-100",
+        icon: "🧪",
+        name: "Биофабрика",
+        description: "Накопить 100 биомассы на ферме",
+        completed: false,
+      },
+      {
+        id: "quarantine-cure",
+        icon: "🛡️",
+        name: "Санитарный день",
+        description: "Провести карантин и вылечить заражённых жаб",
+        completed: false,
+      },
+      {
+        id: "first-dissolve",
+        icon: "♻️",
+        name: "Первый разбор",
+        description: "Переработать жабу в биомассу в «Диссоциаторе»",
+        completed: false,
+      },
+      {
+        id: "dissolve-10",
+        icon: "⚗️",
+        name: "Биоконвейер",
+        description: "Переработать 10 жаб в биомассу",
+        taskType: "dissolve",
+        taskValue: 10,
+      },
+    ],
+    groupReward: {
+      icon: "🏭",
+      name: "Биокуратор Квак",
+      description: "Награда за освоение фермы и Диссоциатора",
+      reward: [
+        { type: "lootbox", content: 3 },
+        {
+          type: "toad",
+          content: {
+            id: Math.round(Date.now() * Math.random()),
+            name: "Биокуратор Квак",
+            type: ToadTypes.crystall,
+            generation: 0,
+            sex: "female",
+            stage: "adult",
+            scene_id: null,
+            created_at: new Date().toISOString(),
+            parents: null,
+            pregnancy: null,
+            state: {
+              hunger: 100,
+              genetic_fault: 0, // Чистый геном фермера
+            },
+            genes: {
+              colors: ["#7FFF00", "#00CED1", "#2E8B57"], // лайм, бирюзовый, морской
+              pattern: "holographic",
+              weight: 24,
+              speed: 1.1,
+              rarity: 5,
+              hungerRate: 0.6, // Экономная в содержании
+              fertility: 1.4,
+              personality: "workaholic", // Трудоголик
             },
           },
         },
@@ -368,7 +457,89 @@ export const achievementGroups = [
       ],
     },
   },
-]; // Динамические типы для ID
+  {
+    id: "perimeter-scouts",
+    title: "🧭 Разведчики Периметра",
+    description: "Собирайте команды жаб, ходите в походы и тащите домой чужое добро",
+    color: "blue",
+    achievements: [
+      {
+        id: "first-expedition",
+        icon: "🎒",
+        name: "Первый рейд",
+        description: "Отправить команду жаб в поход за Периметр",
+        completed: false,
+      },
+      {
+        id: "expedition-10",
+        icon: "🚁",
+        name: "Полевой отряд",
+        description: "Завершить 10 походов",
+        taskType: "expedition",
+        taskValue: 10,
+      },
+      {
+        id: "expedition-50",
+        icon: "🗺️",
+        name: "Хозяин Периметра",
+        description: "Завершить 50 походов",
+        taskType: "expedition",
+        taskValue: 50,
+      },
+      {
+        id: "sector-depth-3",
+        icon: "🏚️",
+        name: "Станция «Периметр-3»",
+        description: "Вернуться из сектора глубины 3 или глубже",
+        completed: false,
+      },
+      {
+        id: "sector-depth-6",
+        icon: "☢️",
+        name: "Реактор «Квак-7»",
+        description: "Вернуться живыми из сектора глубины 6 или глубже",
+        completed: false,
+      },
+    ],
+    groupReward: {
+      icon: "🧭",
+      name: "Проводник Периметра",
+      description: "Награда за освоение дальних секторов",
+      reward: [
+        { type: "lootbox", content: 3 },
+        {
+          type: "toad",
+          content: {
+            id: Math.round(Date.now() * Math.random()),
+            name: "Проводник Периметра",
+            type: ToadTypes.forest,
+            generation: 0,
+            sex: "female",
+            stage: "adult",
+            scene_id: null,
+            created_at: new Date().toISOString(),
+            parents: null,
+            pregnancy: null,
+            state: {
+              hunger: 100,
+              genetic_fault: 0,
+            },
+            genes: {
+              colors: ["#556B2F", "#2E8B57", "#8FBC8F"],
+              pattern: "striped",
+              weight: 26,
+              speed: 1.45,
+              rarity: 6,
+              hungerRate: 0.7,
+              fertility: 1.6,
+              personality: "adventurer",
+            },
+          },
+        },
+      ],
+    },
+  },
+];
 
 export type DynamicAchievementId =
   | "feed-all"
@@ -383,18 +554,31 @@ export type DynamicAchievementId =
   | "earn-100"
   | "earn-300"
   | "earn-1000"
-  | "buy-10-toads"
-  | "sell-10-toads"
+  | "buy-12-toads"
   | "rarity-3"
   | "rarity-10"
   | "size-30"
   | "speed-slow"
   | "speed-fast"
   | "size-small"
-  | "open-100-lootboxes";
+  | "mutant-chaos"
+  | "perfect-genome"
+  | "first-manual-breed"
+  | "biomass-100"
+  | "quarantine-cure"
+  | "first-dissolve"
+  | "dissolve-10"
+  | "open-100-lootboxes"
+  | "first-expedition"
+  | "expedition-10"
+  | "expedition-50"
+  | "sector-depth-3"
+  | "sector-depth-6";
 
 export type DynamicGroupId =
-  | "first-steps"
-  | "market-domination"
+  | "first-steps2"
+  | "market-domination2"
   | "genetic-engineer"
-  | "lootbox-champion";
+  | "biocampus-farm"
+  | "lootbox-champion"
+  | "perimeter-scouts";

@@ -38,6 +38,20 @@ const getRarityBackground = (rarity: number): string => {
   return getRarityConfig(rarity).bgColor;
 };
 
+// Склонение слова «жаба» для предупреждения о безвозвратной потере
+const pluralizeToads = (count: number): string => {
+  const mod10 = count % 10;
+  const mod100 = count % 100;
+
+  if (mod10 === 1 && mod100 !== 11) {
+    return "жаба";
+  }
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
+    return "жабы";
+  }
+  return "жаб";
+};
+
 export default function ToadCollider() {
   const [selectedToads, setSelectedToads] = useState<(Toad | null)[]>([
     null,
@@ -48,11 +62,17 @@ export default function ToadCollider() {
   ]);
 
   const [isMixing, setIsMixing] = useState(false);
+  // Коллайдер уничтожает исходных жаб безвозвратно — смешиваем только
+  // после явного подтверждения.
+  const [showWarning, setShowWarning] = useState(false);
 
   const { closeModal, openModal } = useModal();
   const { startBreeding, updateBreeding, toads } = useToads();
 
-  const availableToads = toads.filter((t) => t.stage === "adult");
+  // Часть 5: жабы в походе недоступны для коллайдера (они на Периметре)
+  const availableToads = toads.filter(
+    (t) => t.stage === "adult" && t.status !== "out"
+  );
   const { playBubble2 } = useSoundEffects();
   const [breedingResult, setBreedingResult] = useState<BreedingResult | null>(
     null
@@ -158,6 +178,12 @@ export default function ToadCollider() {
     openModal(() => <ToadSlotModal />);
   };
 
+  /** Подтверждение: жабы уходят в коллайдер навсегда */
+  const handleConfirmMixing = () => {
+    setShowWarning(false);
+    void handleBreed();
+  };
+
   const handleReset = () => {
     setSelectedToads([null, null, null, null, null]);
     setBreedingResult(null);
@@ -220,11 +246,11 @@ export default function ToadCollider() {
                       : "bg-color-main text-gray-300 border-2 border-transparent "
                   }`}
                 >
-                  <div className="font-bold text-[10px] sm:text-[11px]">
+                  <div className="font-bold text-2xs sm:text-1xs">
                     {count} жаб
                   </div>
                   <div
-                    className={`font-bold text-[9px] sm:text-[10px] mt-1 ${
+                    className={`font-bold text-3xs sm:text-2xs mt-1 ${
                       currentToads.length >= count
                         ? "text-yellow-300"
                         : "text-gray-200"
@@ -250,7 +276,7 @@ export default function ToadCollider() {
                 {selectedToads[slot] ? (
                   <>
                     <ToadAvatar size={8} toad={selectedToads[slot]} />
-                    <p className="text-white text-[10px]  text-center px-1 truncate w-full">
+                    <p className="text-white text-2xs  text-center px-1 truncate w-full">
                       {selectedToads[slot]!.name}
                     </p>
 
@@ -282,10 +308,12 @@ export default function ToadCollider() {
             </div>
           )}
 
+          {/* Единственное предупреждение о необратимости — финальное
+              подтверждение после нажатия «Смешать» (см. showWarning ниже) */}
           {!isMixing && (
             <div className="text-center mb-6 h-full">
               <button
-                onClick={handleBreed}
+                onClick={() => setShowWarning(true)}
                 disabled={isDisabled}
                 className={`px-4 py-2  rounded-xl text-sm sm:text-base font-bold transition-all duration-300 ${
                   currentToads.length > 1
@@ -341,7 +369,7 @@ export default function ToadCollider() {
 
                         <div className="flex items-center gap-1 mb-1 w-full justify-center min-h-[20px]">
                           <ToadGender gender={toad.sex} />
-                          <span className="truncate font-medium text-[11px]">
+                          <span className="truncate font-medium text-1xs">
                             {toad.name}
                           </span>
                         </div>
@@ -352,7 +380,7 @@ export default function ToadCollider() {
                             toad.genes.rarity
                           )} flex items-center gap-1 mb-1`}
                         >
-                          <span className="text-[10px]">
+                          <span className="text-2xs">
                             {getRarityBadge(toad.genes.rarity)}
                           </span>
                           <span>{toad.genes.rarity.toFixed(1)}</span>
@@ -360,7 +388,7 @@ export default function ToadCollider() {
 
                         {/* Генетическая поломка */}
                         <div
-                          className={`w-full rounded px-1 py-0.5 text-[9px] font-medium border ${geneticFaultConfig.bgColor} ${geneticFaultConfig.borderColor} ${geneticFaultConfig.color}`}
+                          className={`w-full rounded px-1 py-0.5 text-3xs font-medium border ${geneticFaultConfig.bgColor} ${geneticFaultConfig.borderColor} ${geneticFaultConfig.color}`}
                         >
                           <div className="flex items-center justify-center gap-1">
                             <span>{geneticFaultConfig.icon}</span>
@@ -551,6 +579,85 @@ export default function ToadCollider() {
             >
               Поместить в инкубатор
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Подтверждение: жабы исчезнут навсегда (действие нельзя отменить) */}
+      {showWarning && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-color-main rounded-2xl border-2 border-red-500/50 p-5 max-w-sm w-full mx-auto">
+            <div className="text-center mb-3">
+              <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-3">
+                <svg
+                  className="w-8 h-8 text-red-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.5}
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.35 16.5c-.77.833.192 2.5 1.732 2.5z"
+                  />
+                </svg>
+              </div>
+              <h3 className="text-white font-bold text-lg mb-2">
+                Жабы исчезнут навсегда
+              </h3>
+              <p className="text-gray-200 text-sm leading-snug">
+                Генетический коллайдер разберёт выбранных жаб на гены и соберёт
+                из них одного нового гибрида. Вернуть исходных жаб будет
+                невозможно.
+              </p>
+            </div>
+
+            <div className="mb-4 rounded-xl bg-red-900/25 border border-red-500/40 p-2 text-left max-h-[30vh] overflow-y-auto">
+              <div className="text-1xs text-red-200/90 mb-1">
+                Исчезнут безвозвратно {currentToads.length}{" "}
+                {pluralizeToads(currentToads.length)}:
+              </div>
+              <ul className="text-xs text-white flex flex-col gap-1">
+                {currentToads.map((toad) => (
+                  <li key={toad.id} className="flex items-center gap-2">
+                    <ToadGender gender={toad.sex} />
+                    <span
+                      className={`truncate font-medium ${getRarityColor(
+                        toad.genes.rarity
+                      )}`}
+                    >
+                      {toad.name}
+                    </span>
+                    <span className="text-gray-400 text-2xs shrink-0">
+                      {getRarityBadge(toad.genes.rarity)}{" "}
+                      {toad.genes.rarity.toFixed(1)}
+                    </span>
+                    {toad.pregnancy?.isPregnant && (
+                      <span className="text-2xs text-pink-300 shrink-0">
+                        🍼 потомство пропадёт
+                      </span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowWarning(false)}
+                className="flex-1 bg-gray-600 hover:bg-gray-500 text-white font-medium py-3 rounded-xl transition-all duration-300"
+              >
+                Отмена
+              </button>
+              <button
+                onClick={handleConfirmMixing}
+                disabled={isDisabled}
+                className="flex-1 bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-500 hover:to-orange-500 text-white font-bold py-3 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                Разобрать и смешать
+              </button>
+            </div>
           </div>
         </div>
       )}

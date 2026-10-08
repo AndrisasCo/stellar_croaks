@@ -1,12 +1,17 @@
 import { DEFAULT_SCENE, Scene } from "../models/scene";
 import { DEFAULT_TOADS, Toad } from "../models/Toad";
 import { User } from "../models/user";
+import { Expedition, ExpeditionStats } from "../models/expedition";
 
 // Интерфейс для всего состояния игры
 export interface GameState {
   user: User;
   scenes: Scene[];
   toads: Toad[];
+  /** Активные походы (разведка, Часть 5) */
+  expeditions?: Expedition[];
+  /** Статистика разведки: открытие секторов и ачивки */
+  expeditionStats?: ExpeditionStats;
   lastSaved: string;
   createdAt: string;
 }
@@ -36,12 +41,15 @@ export const getDefaultGameState = (): GameState => {
       // tg_id: webAppData.user?.id || 857360604,
       tokens: 50,
       astro_quax: 0,
+      biomass: 0,
       storage: {
         food: 100,
       },
     },
     scenes: [DEFAULT_SCENE],
     toads: DEFAULT_TOADS,
+    expeditions: [],
+    expeditionStats: { completed: 0, bestDepth: 0, downed: 0 },
     lastSaved: new Date().toISOString(),
     createdAt: new Date().toISOString(),
   };

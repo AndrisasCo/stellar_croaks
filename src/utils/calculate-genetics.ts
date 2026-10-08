@@ -242,7 +242,9 @@ export const generateChildToad = (
   );
 
   // Расчет генетической поломки
-  const inbreedingLevel = isCollider ? 0 : calculateInbreedingLevel(parents);
+  const inbreedingLevel = isCollider
+    ? 0
+    : calculateInbreedingLevel(parents);
   const geneticFault = Math.round(
     calculateGeneticFault(parents, isCollider, inbreedingLevel)
   );

@@ -19,12 +19,45 @@ import { Tooltip } from "../../shared/Tooltip";
 import { getGameState } from "../../../backend/localStorage";
 import { useNotifications } from "../../../hooks/use-notification";
 import { endPregnancy } from "../../../utils/breeding-manager";
+import {
+  MAX_ENERGY,
+  getEnergyCost,
+  getPersonalityCooldownMultiplier,
+  getToadEnergy,
+} from "../../../utils/gamification-config";
+import {
+  getToadHp,
+  getToadMaxHp,
+  getToadHpRatio,
+  getToadHpStatusLabel,
+  getHealCost,
+  HP_REGEN_PER_HOUR,
+} from "../../../utils/expedition-config";
 import { ToadAvatar } from "../../shared/ToadAvatar";
 import { ProgressBar } from "./ProgressBar";
 import { StatCard } from "./StatCard";
 import { useToadRelatives } from "./useToadRelatives";
 import { useToadTimers } from "./useToadTimers";
 import { Colors } from "./Colors";
+import { useModal } from "../../ModalContext";
+import { DissolveConfirm } from "../../shared/DissolveConfirm";
+import {
+  canDissolveToad,
+  dissolveToads,
+  getDissolveYield,
+  getIncubatingToadIds,
+} from "../../../utils/dissolve-manager";
+
+/** Отдых после спаривания: «8м 20с» / «готова» */
+const formatCooldownLeft = (ms: number): string => {
+  if (ms <= 0) {
+    return "готова";
+  }
+  const totalSeconds = Math.ceil(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return minutes > 0 ? `${minutes}м ${seconds}с` : `${seconds}с`;
+};
 
 export const ToadInfo = () => {
   const {
@@ -37,13 +70,16 @@ export const ToadInfo = () => {
     currentScene,
     account,
   } = useToads();
-  const { playCrunchShort } = useSoundEffects();
+  const { playCrunchShort, playCrunch } = useSoundEffects();
   const { addNotification } = useNotifications();
+  const { closeModal } = useModal();
 
   // Local State
   const [isEditingName, setIsEditingName] = useState(false);
   const [editedName, setEditedName] = useState(toad?.name || "");
   const [tooltips, setTooltips] = useState<Record<string, boolean>>({});
+  // Разбор жабы в биомассу (Диссоциатор) — необратимо, подтверждаем отдельно
+  const [showDissolve, setShowDissolve] = useState(false);
 
   // Logic Hooks
   const { relatives, inbreedingRisk } = useToadRelatives(toad, allToads);
@@ -57,6 +93,35 @@ export const ToadInfo = () => {
   const personality = toad.genes?.personality
     ? personalities[toad.genes.personality]
     : null;
+
+  // Ручное размножение (Гнездо): силы жабы, отдых и готовность (Часть 3.2)
+  const energy = getToadEnergy(toad);
+  const energyCost = getEnergyCost(toad);
+  const cooldownLeft = Math.max(0, (toad.breedCooldownUntil ?? 0) - Date.now());
+  const isPregnant = Boolean(toad.pregnancy?.isPregnant);
+  const cooldownMult = getPersonalityCooldownMultiplier(
+    toad.genes?.personality
+  );
+  const breedStatus = isPregnant
+    ? "🍼 вынашивает"
+    : cooldownLeft > 0
+    ? `🛏️ отдых ${formatCooldownLeft(cooldownLeft)}`
+    : energy >= energyCost
+    ? "✅ готова"
+    : `нужно ⚡${energyCost}`;
+
+  // Разведка (Часть 5): HP жабы, состояние и стоимость лечения
+  const hpValue = Math.round(getToadHp(toad));
+  const hpMax = getToadMaxHp(toad);
+  const hpRatio = getToadHpRatio(toad);
+  const hpStatusLabel = getToadHpStatusLabel(toad);
+  const hpIcon = hpRatio <= 0 ? "💀" : hpRatio < 0.7 ? "🩹" : "❤️";
+  const hpColor =
+    hpRatio >= 0.7
+      ? "text-green-400"
+      : hpRatio > 0
+      ? "text-amber-400"
+      : "text-red-400";
 
   // Handlers
   const toggleTooltip = (key: string) =>
@@ -119,8 +184,35 @@ export const ToadInfo = () => {
     handleNav("next");
   };
 
+  /** Разбор жабы в биомассу: жаба исчезает навсегда */
+  const handleDissolve = () => {
+    setShowDissolve(false);
+    playCrunch();
+    const result = dissolveToads([toad.id]);
+
+    if (!result.success) {
+      addNotification({ type: "warn", content: result.message });
+      return;
+    }
+
+    addNotification({ type: "success", content: result.message });
+
+    // Переходим к следующей жабе этого вольера, чтобы карточка осталась полезной
+    const nextToad = toads.find((item) => item.id !== toad.id);
+
+    if (nextToad) {
+      selectToad(nextToad.id);
+    } else {
+      closeModal();
+    }
+  };
+
+  /** Жаб в инкубаторе коллайдера разбирать нельзя */
+  const cannotDissolve = !canDissolveToad(toad, getIncubatingToadIds());
+
   return (
-    <Modal>
+    <>
+      <Modal>
       <div className="flex w-full items-center pb-1 px-10 ">
         {isEditingName ? (
           <div className="flex w-full items-center gap-2">
@@ -284,6 +376,69 @@ export const ToadInfo = () => {
               value={toad.genes?.speed?.toFixed(2)}
               colorClass="text-blue-400"
             />
+            <StatCard
+              icon={<span>⚡</span>}
+              label="Силы"
+              value={`${Math.round(energy)} / ${MAX_ENERGY}`}
+              colorClass={energy >= energyCost ? "text-lime-400" : "text-red-400"}
+              onClick={() => toggleTooltip("energy")}
+              tooltip={
+                tooltips["energy"] && (
+                  <Tooltip
+                    title="Силы и размножение"
+                    isOpen
+                    onClose={() => toggleTooltip("energy")}
+                    className="right-0 w-[200%]"
+                  >
+                    <p className="text-sm text-gray-200">
+                      Спаривание в «Гнезде» стоит {energyCost} ⚡ и тратит
+                      биомассу. Силы восстанавливаются сами: +6 в час (максимум{" "}
+                      {MAX_ENERGY}). Снять отдых после спаривания можно за 1
+                      Астро-квакс.
+                    </p>
+                  </Tooltip>
+                )
+              }
+            />
+            <StatCard
+              icon={<span>{hpIcon}</span>}
+              label="Здоровье"
+              value={`${hpValue} / ${hpMax}`}
+              colorClass={hpColor}
+              onClick={() => toggleTooltip("hp")}
+              tooltip={
+                tooltips["hp"] && (
+                  <Tooltip
+                    title="Здоровье и походы"
+                    isOpen
+                    onClose={() => toggleTooltip("hp")}
+                    className="right-0 w-[200%]"
+                  >
+                    <p className="text-sm text-gray-200">
+                      Сейчас жаба {hpStatusLabel}. Походы за Периметр ранят жаб:
+                      провалы событий снимают HP. Дома здоровье восстанавливается
+                      само (+{HP_REGEN_PER_HOUR} в час), а в «Лазарете» его можно
+                      мгновенно восстановить за{" "}
+                      {getHealCost(toad) || 0} Кваксов. Раненая жаба даёт вдвое
+                      меньше биомассы, выбитая — не работает совсем и не может
+                      идти в поход.
+                    </p>
+                  </Tooltip>
+                )
+              }
+            />
+            <StatCard
+              icon={<span>🛏️</span>}
+              label="Разведение"
+              value={breedStatus}
+              colorClass={
+                isPregnant || cooldownLeft > 0
+                  ? "text-amber-400"
+                  : energy >= energyCost
+                  ? "text-green-400"
+                  : "text-red-400"
+              }
+            />
           </div>
 
           {/* RELATIVES & PERSONALITY */}
@@ -341,7 +496,33 @@ export const ToadInfo = () => {
                     <p className="text-xs italic text-gray-300">
                       {personality.description}
                     </p>
-                    {/* Personality stats */}
+                    {/* Влияние характера на гены и отдых */}
+                    <div className="mt-2 text-xs text-gray-300 space-y-0.5">
+                      <div className="flex justify-between">
+                        <span>Аппетит</span>
+                        <span className="text-white">×{personality.hungerRate}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Плодовитость</span>
+                        <span className="text-white">×{personality.fertility}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Вес</span>
+                        <span className="text-white">
+                          ×{personality.weightMultiplier}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Скорость</span>
+                        <span className="text-white">
+                          ×{personality.speedMultiplier}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Отдых после спаривания</span>
+                        <span className="text-white">×{cooldownMult}</span>
+                      </div>
+                    </div>
                   </Tooltip>
                 )
               }
@@ -431,6 +612,23 @@ export const ToadInfo = () => {
                 </Tooltip>
               )}
             </div>
+
+            {/* Быстрый разбор жабы в биомассу (Диссоциатор) */}
+            <button
+              onClick={() => setShowDissolve(true)}
+              disabled={cannotDissolve}
+              title={
+                cannotDissolve
+                  ? "Жаба находится в инкубаторе — разбор недоступен"
+                  : "Переработать жабу в биомассу навсегда"
+              }
+              className="col-span-2 bg-amber-600/30 hover:bg-amber-600/40 rounded-lg py-2 text-xs flex justify-center items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <span>♻️</span> Разобрать на биомассу
+              <span className="text-amber-300 font-semibold">
+                +{getDissolveYield(toad)} 🧪
+              </span>
+            </button>
           </div>
 
           <Colors toad={toad} />
@@ -456,6 +654,16 @@ export const ToadInfo = () => {
           </svg>
         </button>
       </div>
-    </Modal>
+      </Modal>
+
+      {/* Подтверждение: жаба уйдёт в биомассу навсегда */}
+      {showDissolve && (
+        <DissolveConfirm
+          toads={[toad]}
+          onCancel={() => setShowDissolve(false)}
+          onConfirm={handleDissolve}
+        />
+      )}
+    </>
   );
 };

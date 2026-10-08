@@ -432,7 +432,7 @@ export const ToadGalleryModal: React.FC = () => {
 
                 {/* Подсказка для неоткрытых */}
                 {!item.isUnlocked && hintText && (
-                  <div className="text-[10px] text-gray-300 px-1 truncate mb-1">
+                  <div className="text-2xs text-gray-300 px-1 truncate mb-1">
                     {hintText}
                   </div>
                 )}
@@ -441,14 +441,14 @@ export const ToadGalleryModal: React.FC = () => {
                 {item.obtainedBy === "shop" &&
                   !item.isUnlocked &&
                   item.price && (
-                    <div className="text-[10px] text-yellow-400 font-medium">
+                    <div className="text-2xs text-yellow-400 font-medium">
                       {item.price} монет
                     </div>
                   )}
 
                 {/* Бейдж редкости */}
                 <div
-                  className={`text-[10px] px-2 py-0.5 rounded-full ${styles.badge} inline-block`}
+                  className={`text-2xs px-2 py-0.5 rounded-full ${styles.badge} inline-block`}
                 >
                   {item.rarity === "legendary"
                     ? "ЛЕГЕНДАРНАЯ"

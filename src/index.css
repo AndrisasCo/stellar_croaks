@@ -34,6 +34,60 @@
   font-display: swap; /* Для лучшей производительности */
 }
 
+/* ===== Типографика: масштаб шрифтов ===== */
+/* Мобильная версия: значения = дефолтам Tailwind, внешний вид не меняется. */
+:root {
+  --fs-3xs: 9px;
+  --fs-2xs: 10px;
+  --fs-1xs: 11px;
+  --fs-xs: 0.75rem;
+  --lh-xs: 1rem;
+  --fs-sm: 0.875rem;
+  --lh-sm: 1.25rem;
+  --fs-base: 1rem;
+  --lh-base: 1.5rem;
+  --fs-lg: 1.125rem;
+  --lh-lg: 1.75rem;
+  --fs-xl: 1.25rem;
+  --lh-xl: 1.75rem;
+  --fs-2xl: 1.5rem;
+  --lh-2xl: 2rem;
+  --fs-3xl: 1.875rem;
+  --lh-3xl: 2.25rem;
+  --fs-4xl: 2.25rem;
+  --lh-4xl: 2.5rem;
+  --fs-5xl: 3rem;
+  --lh-5xl: 1;
+}
+
+/* Desktop-версия (окно ≥ 768px): шрифт немного крупнее.
+   Меняются только размеры текста — отступы, ширины и gap (rem-сетка) не затронуты. */
+@media (min-width: 768px) {
+  :root {
+    --fs-3xs: 10px; /* 9 → 10px */
+    --fs-2xs: 11px; /* 10 → 11px */
+    --fs-1xs: 12px; /* 11 → 12px */
+    --fs-xs: 0.8125rem; /* 12 → 13px */
+    --lh-xs: 1.125rem;
+    --fs-sm: 0.9375rem; /* 14 → 15px */
+    --lh-sm: 1.375rem;
+    --fs-base: 1.0625rem; /* 16 → 17px */
+    --lh-base: 1.625rem;
+    --fs-lg: 1.1875rem; /* 18 → 19px */
+    --lh-lg: 1.875rem;
+    --fs-xl: 1.3125rem; /* 20 → 21px */
+    --lh-xl: 1.875rem;
+    --fs-2xl: 1.5625rem; /* 24 → 25px */
+    --lh-2xl: 2.125rem;
+    --fs-3xl: 1.9375rem; /* 30 → 31px */
+    --lh-3xl: 2.375rem;
+    --fs-4xl: 2.375rem; /* 36 → 38px */
+    --lh-4xl: 2.625rem;
+    --fs-5xl: 3.125rem; /* 48 → 50px */
+    --lh-5xl: 1.0625;
+  }
+}
+
 :root {
   --background: #111827;
   --foreground: #f8f8f8;

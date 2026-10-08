@@ -1,12 +1,31 @@
 import { getPregnancyDuration, HOURS_TO_GROW_UP, Toad } from "../models/Toad";
-import { createToads, updateToadById, updateToadsByIds } from "../backend";
+import {
+  createToads,
+  updateScene,
+  updateToadById,
+  updateToadsByIds,
+  updateUser,
+} from "../backend";
 import { generateChildToad } from "./calculate-genetics";
 import { getHoursFromNow } from "./date";
 import { getGameState } from "../backend/localStorage";
 import { getHunger } from "./state-manager";
 import { completeAchivement } from "../backend/achivements-manager";
-import { getBoostByScene } from "../models/scene";
+import { BonusType, getBoostByScene } from "../models/scene";
 import { MAX_STORED_TOADS } from "./constants";
+import {
+  canUpgradeNest,
+  getBreedCooldownMs,
+  getBreedPairBiomassCost,
+  getEnergyCost,
+  getNestSlotUpgradeCost,
+  getNestSlots,
+  getToadEnergy,
+  isToadReadyToBreed,
+  NEST_MAX_SLOTS,
+} from "./gamification-config";
+import { isToadDown } from "./expedition-config";
+import { isToadOnExpedition } from "./expedition-manager";
 
 export class TimeManager {
   lastPlayTime: string | number;
@@ -53,8 +72,6 @@ const groupToadsByScene = (toads: Toad[]): Record<string, Toad[]> => {
     }, {} as Record<string, Toad[]>);
 };
 
-const MIN_HUNGER_TO_BREED = 30;
-
 const processSceneBreeding = async (
   sceneId: string,
   sceneToads: Toad[],
@@ -63,7 +80,7 @@ const processSceneBreeding = async (
 ) => {
   const pregnant = sceneToads.filter((t) => t.pregnancy);
 
-  // рожаем
+  // рожаем уже начатые беременности (таймер дожидаем — ок)
   pregnant.forEach((toad) => {
     if (
       toad.pregnancy &&
@@ -74,56 +91,14 @@ const processSceneBreeding = async (
     }
   });
 
-  if (hoursPassed > 0.09) {
-    // Фильтруем потенциальных партнеров
-    const females = sceneToads
-      .filter((t) => t.state.hunger > MIN_HUNGER_TO_BREED)
-      .filter(
-        (t) =>
-          t.stage === "adult" && !t.pregnancy?.isPregnant && t.sex === "female"
-      );
-
-    const males = sceneToads
-      .filter((t) => t.state.hunger > MIN_HUNGER_TO_BREED)
-      .filter((t) => t.stage === "adult" && t.sex === "male");
-
-    console.log(
-      `Scene ${sceneId}: ${females.length} females, ${males.length} males`
-    );
-
-    let pregnantCounter = 0;
-    // ограничение по количеству самцов 1 на 5, это его предел
-    // Обрабатываем каждую самку
-    females.slice(0, males.length * 5).forEach((female) => {
-      // Вычисляем общий шанс беременности для этой самки
-      const pregnancyChance = calculatePregnancyChance(
-        female,
-        males,
-        hoursPassed
-      );
-
-      if (Math.random() < pregnancyChance) {
-        // Выбираем отца на основе вероятностей
-        const father = selectFather(males);
-        startPregnancy(female, father);
-        console.log(
-          `Pregnancy started for female ${female.id} with father ${father.id}`
-        );
-        pregnantCounter += 1;
-      }
-    });
-
-    pregnantCounter > 0 &&
-      addNotification({
-        content: `Ваши жабы беременны: ${pregnantCounter} `,
-        type: "success",
-      });
-  }
+  // Часть 3.2: авто-беременность по таймеру удалена.
+  // Новые беременности запускаются ТОЛЬКО вручную через «Гнездо»
+  // (см. performManualBreeding). Здесь остаются роды и рост головастиков.
 
   // смотрим нужно ли жабе вырасти
   const toadpoles = sceneToads.filter((t) => t.stage === "toadpole");
 
-  const boost = getBoostByScene(toadpoles[0]?.scene_id, "grow");
+  const boost = getBoostByScene(toadpoles[0]?.scene_id, BonusType.grow);
 
   const boostedTimeToGrow = HOURS_TO_GROW_UP / boost;
 
@@ -153,54 +128,8 @@ const processSceneBreeding = async (
   }
 };
 
-const calculatePregnancyChance = (
-  female: Toad,
-  males: Toad[],
-  hoursPassed: number
-): number => {
-  let baseChance = (female.genes?.fertility || 1) * 0.8;
-
-  const timeFactor = Math.min(hoursPassed / 2, 1);
-  baseChance *= 0.6 + timeFactor * 0.4;
-
-  const maleFactor = Math.min(males.length / 2, 1);
-  baseChance *= 0.7 + maleFactor * 0.3;
-
-  // Штраф за голод (новая механика)
-  const hungerPenalty = female.state.hunger > 70 ? 1 : female.state.hunger / 70;
-  baseChance *= hungerPenalty;
-
-  return Math.min(baseChance, 0.9); // Почти гарантия при идеальных условиях
-};
-
-const selectFather = (males: Toad[]): Toad => {
-  // Вычисляем вес для каждого самца на основе его fertility
-  const maleWeights = males.map((male) => ({
-    male,
-    weight: male.genes.fertility * (0.8 + Math.random() * 0.4), // Небольшая случайность
-  }));
-
-  // Сортируем по весу (более плодовитые самцы имеют больше шансов)
-  maleWeights.sort((a, b) => b.weight - a.weight);
-
-  // Берем топ-2 самцов и выбираем случайно с учетом весов
-  const topMales = maleWeights.slice(0, 2);
-  const totalWeight = topMales.reduce((sum, m) => sum + m.weight, 0);
-
-  let random = Math.random() * totalWeight;
-  for (const { male, weight } of topMales) {
-    if (random < weight) {
-      return male;
-    }
-    random -= weight;
-  }
-
-  // Fallback - возвращаем первого из топ-3
-  return topMales[0].male;
-};
-
 export const startPregnancy = async (toad: Toad, father: Toad) => {
-  const boost = getBoostByScene(toad.scene_id, "pregnancy");
+  const boost = getBoostByScene(toad.scene_id, BonusType.pregnancy);
   toad.pregnancy = {
     isPregnant: true,
     pregnancyStart: Date.now(),
@@ -289,4 +218,166 @@ export const endPregnancy = async (toad: Toad, addNotification: any) => {
   completeAchivement("first-offspring");
   // обновляем мать
   updateToadById(toad.id, { ...toad, pregnancy: null }, true);
+};
+
+/**
+ * Занятость родильных слотов вольера (Часть 3.2).
+ * used — число беременных жаб, limit — лимит слотов купола.
+ */
+export const getNestOccupancy = (
+  sceneId: number | null
+): { used: number; limit: number } => {
+  const state = getGameState();
+  const scene = state.scenes.find((s) => s.id === sceneId) ?? null;
+  const used = state.toads.filter(
+    (t) => t.scene_id === sceneId && t.pregnancy?.isPregnant
+  ).length;
+
+  return { used, limit: getNestSlots(scene) };
+};
+
+export interface ManualBreedingResult {
+  success: boolean;
+  message: string;
+}
+
+/**
+ * Апгрейд постройки «Гнездо» (Часть 3.2): +1 родильный слот за Кваксы.
+ * Цена растёт с каждым апгрейдом, максимум — NEST_MAX_SLOTS.
+ */
+export const upgradeNestSlots = (
+  sceneId: number | null
+): ManualBreedingResult => {
+  const state = getGameState();
+  const scene = state.scenes.find((s) => s.id === sceneId);
+
+  if (!scene) {
+    return { success: false, message: "Вольер для апгрейда не найден" };
+  }
+
+  if (!canUpgradeNest(scene)) {
+    return {
+      success: false,
+      message: `Гнездо уже расширено до предела (${NEST_MAX_SLOTS} слотов)`,
+    };
+  }
+
+  const cost = getNestSlotUpgradeCost(scene);
+  const tokens = state.user.tokens || 0;
+
+  if (tokens < cost) {
+    return {
+      success: false,
+      message: `Не хватает Кваксов на Гнездо: нужно ${cost}, есть ${Math.floor(
+        tokens
+      )}`,
+    };
+  }
+
+  const slots = getNestSlots(scene) + 1;
+
+  updateScene(scene.id, { nestSlots: slots });
+  updateUser({ tokens: tokens - cost });
+
+  return {
+    success: true,
+    message: `Гнездо расширено: ${slots} родильных слотов`,
+  };
+};
+
+/**
+ * Ручное спаривание через «Гнездо» (Часть 3.2).
+ * Списывает энергию у обоих родителей и биомассу с аккаунта,
+ * сажает обеих жаб на cooldown и запускает беременность самки.
+ */
+export const performManualBreeding = async (
+  maleId: number,
+  femaleId: number,
+  addNotification?: (notification: any) => void
+): Promise<ManualBreedingResult> => {
+  const state = getGameState();
+
+  const fail = (message: string): ManualBreedingResult => {
+    addNotification?.({ type: "warn", content: message });
+    return { success: false, message };
+  };
+
+  const male = state.toads.find((t) => t.id === maleId);
+  const female = state.toads.find((t) => t.id === femaleId);
+
+  if (!male || !female) {
+    return fail("Жаба для спаривания не найдена");
+  }
+  if (male.sex !== "male") {
+    return fail("В роли партнёра нужен самец");
+  }
+  if (female.sex !== "female") {
+    return fail("Для спаривания нужна самка");
+  }
+  if (male.scene_id === null || female.scene_id !== male.scene_id) {
+    return fail("Обе жабы должны находиться в одном вольере");
+  }
+  // Часть 5: выбитые (HP = 0) и ушедшие в поход жабы не размножаются
+  if (isToadDown(male) || isToadDown(female)) {
+    return fail("Выбитая жаба не может размножаться — сначала подлечите её");
+  }
+  if (
+    isToadOnExpedition(male.id) ||
+    isToadOnExpedition(female.id)
+  ) {
+    return fail("Жаба в походе за Периметр — размножение только дома");
+  }
+  if (female.pregnancy?.isPregnant) {
+    return fail(`${female.name} уже вынашивает потомство`);
+  }
+
+  const { used, limit } = getNestOccupancy(female.scene_id);
+  if (used >= limit) {
+    return fail("Все гнёзда вольера заняты — дождитесь родов");
+  }
+
+  if (!isToadReadyToBreed(male)) {
+    return fail(`${male.name} ещё не восстановил силы для спаривания`);
+  }
+  if (!isToadReadyToBreed(female)) {
+    return fail(`${female.name} ещё не восстановила силы для спаривания`);
+  }
+
+  const biomassCost = getBreedPairBiomassCost(male, female);
+  const biomass = state.user.biomass || 0;
+
+  if (biomass < biomassCost) {
+    return fail(
+      `Не хватает биомассы для гнезда: нужно ${biomassCost}, есть ${Math.floor(
+        biomass
+      )}`
+    );
+  }
+
+  const now = Date.now();
+
+  const updatedMale: Toad = {
+    ...male,
+    energy: getToadEnergy(male) - getEnergyCost(male),
+    breedCooldownUntil: now + getBreedCooldownMs(male),
+  };
+
+  const updatedFemale: Toad = {
+    ...female,
+    energy: getToadEnergy(female) - getEnergyCost(female),
+    breedCooldownUntil: now + getBreedCooldownMs(female),
+  };
+
+  updateToadById(updatedMale.id, updatedMale, true);
+  updateUser({ biomass: Math.round((biomass - biomassCost) * 100) / 100 });
+
+  // startPregnancy сохранит самку вместе с новыми энергией и cooldown
+  await startPregnancy(updatedFemale, updatedMale);
+
+  addNotification?.({
+    type: "success",
+    content: `${updatedMale.name} ♥ ${updatedFemale.name}: беременность началась!`,
+  });
+
+  return { success: true, message: "Беременность началась" };
 };

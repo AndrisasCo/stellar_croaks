@@ -1,5 +1,8 @@
 import { toadTypeMap, ToadTypes } from "./toad-species";
 
+/** Статус жабы (используется разведкой/экспедициями) */
+export type ToadStatus = "ok" | "injured" | "out";
+
 export interface Toad {
   id: number;
   stage: string; // 'toadpole' | 'adult'
@@ -10,9 +13,19 @@ export interface Toad {
   scene_id: number | null; //  null это в инвентаре
   sex: string; // 'male' 'female' 'neuter'
   type: ToadTypes | null; // пока не используется, мб тут будут варианты окраса
+  // Ручное размножение (Гнездо): сила жабы тратится на скрещивание
+  energy?: number; // 0 to 100
+  breedCooldownUntil?: number; // timestamp, до которого жаба отдыхает после скрещивания
+  // Разведка (экспедиции): HP жабы
+  hp?: number; // 0 to maxHp
+  maxHp?: number;
+  status?: ToadStatus; // "ok" | "injured" | "out"
   state: {
     hunger: number; // 0 to 100
     genetic_fault?: number; // 0 to 100
+    /** Кибер-болезнь (Часть 3.6): индекс в DISEASES + время выздоровления */
+    diseaseId?: number;
+    diseaseUntil?: number;
     // добавить потом болезни, которые дают дебаффы к голоду/цене/размножению + нельзя в коллайдер
   };
   pregnancy: null | {

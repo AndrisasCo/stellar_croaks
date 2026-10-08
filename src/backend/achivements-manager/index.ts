@@ -39,14 +39,12 @@ export const completeAchivement = (id: DynamicAchievementId) => {
 };
 
 export const completeAchivementCounter = (
-  action: "earn" | "buyToad" | "lootbox",
+  action: "earn" | "buyToad" | "lootbox" | "dissolve" | "expedition",
   value: number
 ) => {
-  achievementGroups;
   const currentState = getAchievementState();
   if (!currentState.counter) {
     currentState.counter = {};
-    return;
   }
 
   currentState.counter[action] = currentState.counter[action]
