@@ -94,11 +94,16 @@ const SceneInfoModal: React.FC = () => {
     setSceneName(currentScene.name || "");
   };
 
-  // Обработчик нажатия Enter
+  // Обработчик нажатия Enter / Escape
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
       handleSaveName();
-    } else if (e.key === "Escape") {
+      return;
+    }
+
+    if (e.key === "Escape") {
+      // Esc в правке имени отменяет её, а не закрывает окно (см. ModalProvider).
+      e.preventDefault();
       handleCancelEdit();
     }
   };

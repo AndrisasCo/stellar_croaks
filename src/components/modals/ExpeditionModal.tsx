@@ -181,12 +181,16 @@ const emptySlots = (): Record<ExpeditionRole, number | ""> => ({
   negotiator: "",
 });
 
-const ExpeditionModal: React.FC<{ onClose?: () => void }> = () => {
+const ExpeditionModal: React.FC<{
+  onClose?: () => void;
+  /** Вкладка, с которой открывается модалка: комната «Лазарет» открывает свою вкладку. */
+  initialTab?: ExpeditionTab;
+}> = ({ initialTab = "runs" }) => {
   const { addNotification } = useNotifications();
   const state = useGameState();
   const [, setTick] = useState(0);
 
-  const [tab, setTab] = useState<ExpeditionTab>("runs");
+  const [tab, setTab] = useState<ExpeditionTab>(initialTab);
   const [sectorId, setSectorId] = useState<number>(SECTORS[0].id);
   const [slots, setSlots] =
     useState<Record<ExpeditionRole, number | "">>(emptySlots());

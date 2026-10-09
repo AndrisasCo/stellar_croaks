@@ -11,6 +11,11 @@ export interface Toad {
   name: string | null;
   parents: number[] | null; // ?
   scene_id: number | null; //  null это в инвентаре
+  /**
+   * id комнаты колонии, в которой жаба сидит физически (сейчас — энергокомната ⚡).
+   * Пусто — жаба живёт в вольере, как раньше.
+   */
+  roomId?: string | null;
   sex: string; // 'male' 'female' 'neuter'
   type: ToadTypes | null; // пока не используется, мб тут будут варианты окраса
   // Ручное размножение (Гнездо): сила жабы тратится на скрещивание

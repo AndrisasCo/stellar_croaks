@@ -5,10 +5,14 @@ import AchivementsModal from "./AchivementsModal";
 import ExpeditionModal from "./ExpeditionModal";
 import LeaderboardModal from "./LeaderboardModal";
 import SettingsModal from "./SettingsModal";
+import ShopMenu from "./ShopMenu";
+import StorageModal from "./StorageModal";
 import { ToadGalleryModal } from "./ToadGalleryModal";
 import TutorialModal from "./TutorialModal";
 
 type MenuId =
+  | "shop"
+  | "storage"
   | "expedition"
   | "gallery"
   | "stats"
@@ -47,6 +51,24 @@ const MENU_ITEMS: {
   color: string;
   target: JSX.Element;
 }[] = [
+  // Пока что рынок и склад живут в меню: на карте под них зарезервированы
+  // пустые гексы, когда комнаты появятся — пункты меню уберём.
+  {
+    id: "shop",
+    icon: MenuIcons.shop,
+    label: "Рынок",
+    desc: "Жабы, предметы и улучшения",
+    color: "bg-fuchsia-900/50 border-fuchsia-500/50",
+    target: <ShopMenu />,
+  },
+  {
+    id: "storage",
+    icon: MenuIcons.collection,
+    label: "Склад",
+    desc: "Ресурсы и запасы колонии",
+    color: "bg-green-900/50 border-green-500/50",
+    target: <StorageModal />,
+  },
   {
     id: "expedition",
     icon: (

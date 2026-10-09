@@ -1,5 +1,5 @@
 // components/ModalProvider.tsx
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { ModalOptions, ModalComponent, ModalContext } from "../ModalContext";
 import { ClickButton } from "../shared/ClickButton";
@@ -102,6 +102,42 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({
     setModals([]);
     document.body.style.overflow = "";
   }, []);
+
+  /** Стек модалок для слушателя Escape: колбэк не должен зависеть от рендера. */
+  const modalsRef = useRef(modals);
+
+  useEffect(() => {
+    modalsRef.current = modals;
+  }, [modals]);
+
+  /**
+   * Escape закрывает верхнюю модалку (и так по одной — как кнопка ×).
+   *
+   * Слушатель висит на window: кнопки внутри модалки обычно нигде не в фокусе,
+   * и тогда событие не доходит до её контейнера. Модалка «в режиме правки»
+   * (имя вольера, ник) гасит клавишу сама через preventDefault — там Esc
+   * отменяет правку, а закрывает окно уже следующее нажатие.
+   */
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || event.repeat || event.defaultPrevented) {
+        return;
+      }
+
+      const lastModal = modalsRef.current[modalsRef.current.length - 1];
+
+      if (!lastModal?.isOpen) {
+        return;
+      }
+
+      event.preventDefault();
+      closeModal();
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [closeModal]);
 
   const currentModal = modals.length > 0 ? modals[modals.length - 1] : null;
 

@@ -487,7 +487,12 @@ const LeaderboardModal: React.FC = () => {
                   onChange={(e) => setNewUsername(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") handleSaveUsername();
-                    if (e.key === "Escape") handleCancelEdit();
+
+                    if (e.key === "Escape") {
+                      // Esc в правке ника отменяет её, а не закрывает окно (см. ModalProvider).
+                      e.preventDefault();
+                      handleCancelEdit();
+                    }
                   }}
                   className="bg-color-second outline-none border border-blue-400 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 w-28"
                   placeholder="Введите ник"

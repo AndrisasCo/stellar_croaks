@@ -21,6 +21,9 @@ export const INJURED_PRODUCTION_FACTOR = 0.5;
 /** Жаба в походе (разведка) — не работает на ферме и не ест биомассу */
 const isToadAway = (toad: Toad): boolean => toad.status === "out";
 
+/** Жаба работает в комнате колонии (энергокомната ⚡) — она не на ферме */
+const isToadStationed = (toad: Toad): boolean => Boolean(toad.roomId);
+
 /** Множитель выработки по состоянию здоровья жабы (выбитая — 0) */
 const getInjuryFactor = (toad: Toad): number => {
   if (isToadDown(toad)) {
@@ -29,17 +32,24 @@ const getInjuryFactor = (toad: Toad): number => {
   return toad.status === "injured" ? INJURED_PRODUCTION_FACTOR : 1;
 };
 
-/** Суммарная выработка биомассы (за час) всеми переданными жабами */
+/**
+ * Суммарная выработка биомассы (за час) всеми переданными жабами.
+ * Жабы, работающие в энергокомнатах, биомассу не вырабатывают: они дают ток.
+ */
 export const getSceneProductionRate = (toads: Toad[]): number =>
   toads.reduce(
     (sum, toad) =>
-      sum + (isToadAway(toad) ? 0 : getBiomassRate(toad) * getInjuryFactor(toad)),
+      sum +
+      (isToadAway(toad) || isToadStationed(toad)
+        ? 0
+        : getBiomassRate(toad) * getInjuryFactor(toad)),
     0
   );
 
 /** Расход биомассы на содержание передаваемых жаб (за час) */
 export const getUpkeepRate = (toads: Toad[]): number =>
-  toads.filter((toad) => !isToadAway(toad)).length * UPKEEP_PER_TOAD_HOUR;
+  toads.filter((toad) => !isToadAway(toad) && !isToadStationed(toad)).length *
+  UPKEEP_PER_TOAD_HOUR;
 
 /**
  * Начисляет биомассу и вычитает апкипинг за `hoursPassed` часов.
@@ -50,9 +60,10 @@ export const processProduction = (
   hoursPassed: number
 ): { gross: number; upkeep: number; net: number } => {
   const state = getGameState();
-  // Жабы в походе (Часть 5) дома не работают и не потребляют биомассу
+  // Жабы в походе (Часть 5) дома не работают и не потребляют биомассу,
+  // а жабы в энергокомнатах колонии вместо фермы дают ток
   const sceneToads = state.toads.filter(
-    (t) => t.scene_id !== null && !isToadAway(t)
+    (t) => t.scene_id !== null && !isToadAway(t) && !t.roomId
   );
 
   const gross = getSceneProductionRate(sceneToads) * hoursPassed;

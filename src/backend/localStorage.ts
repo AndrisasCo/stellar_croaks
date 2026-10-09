@@ -2,12 +2,15 @@ import { DEFAULT_SCENE, Scene } from "../models/scene";
 import { DEFAULT_TOADS, Toad } from "../models/Toad";
 import { User } from "../models/user";
 import { Expedition, ExpeditionStats } from "../models/expedition";
+import { ColonyState, EMPTY_COLONY } from "../models/colony";
 
 // Интерфейс для всего состояния игры
 export interface GameState {
   user: User;
   scenes: Scene[];
   toads: Toad[];
+  /** Построенные комнаты колонии (гексагональная карта). */
+  colony?: ColonyState;
   /** Активные походы (разведка, Часть 5) */
   expeditions?: Expedition[];
   /** Статистика разведки: открытие секторов и ачивки */
@@ -48,6 +51,7 @@ export const getDefaultGameState = (): GameState => {
     },
     scenes: [DEFAULT_SCENE],
     toads: DEFAULT_TOADS,
+    colony: EMPTY_COLONY,
     expeditions: [],
     expeditionStats: { completed: 0, bestDepth: 0, downed: 0 },
     lastSaved: new Date().toISOString(),
