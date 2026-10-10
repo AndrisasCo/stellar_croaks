@@ -1,5 +1,11 @@
 import { Expedition, ExpeditionRole, SectorDef } from "../models/expedition";
 import { getPersonalityMultipliers, Toad } from "../models/Toad";
+import { Items } from "../models/user";
+import {
+  BIOMASS_TO_TOKENS_RATE,
+  UPKEEP_PER_TOAD_HOUR,
+  getBiomassPotentialRate,
+} from "./gamification-config";
 
 /**
  * Константы разведки (Часть 5) и смысл характеристик жаб (Часть 5.3).
@@ -98,11 +104,11 @@ export const getRoleStat = (toad: Toad, role: ExpeditionRole): number => {
   }
 };
 
-/** Сила роли 0..1 — нормализованная характеристика жабы */
+/** Сила роли 0..EXPEDITION_ROLE_MAX_POWER — нормализованная характеристика жабы */
 export const getRolePower = (toad: Toad, role: ExpeditionRole): number => {
   const cap = ROLE_CONFIG[role].statCap;
   const stat = getRoleStat(toad, role);
-  return Math.max(0, Math.min(1, stat / cap));
+  return Math.max(0, Math.min(EXPEDITION_ROLE_MAX_POWER, stat / cap));
 };
 
 // === HP (Часть 2: hp, урон и утилизация) ===
@@ -142,6 +148,18 @@ export const getToadHp = (toad: Toad): number => {
 
 /** Жаба выбыла из игры: не производит, не размножается, не идёт в поход */
 export const isToadDown = (toad: Toad): boolean => getToadHp(toad) <= 0;
+
+/**
+ * Обновление жабы при отправке в поход: место в комнате сбрасывается (`roomId: null`).
+ * Жаба в походе не стоит ни в ⚡-комнате, ни в «Разведке» — двух мест сразу не бывает:
+ * уйдя, она освобождает место, а вернувшись, попадает в вольер (её сажают заново).
+ * HP на старте похода полный — раны лечат уже после возвращения.
+ */
+export const getAwayToadUpdate = (toad: Toad): Partial<Toad> => {
+  const maxHp = getToadMaxHp(toad);
+
+  return { status: "out", hp: maxHp, maxHp, roomId: null };
+};
 
 /** Отношение HP жабы к максимуму (0..1) */
 export const getToadHpRatio = (toad: Toad): number => {
@@ -190,6 +208,130 @@ export const TANK_DAMAGE_REDIRECT = 0.6;
 /** Общий множитель добычи сектора */
 export const getSectorLootFactor = (sector: SectorDef): number =>
   sector.lootMultiplier * (1 + (sector.depth - 1) * 0.08);
+
+// === Итог похода: удачное завершение (Часть 5.4) ===
+
+/**
+ * Каждая роль в команде добавляет шанс завершить поход удачно.
+ * Полностью подходящая жаба (сила роли 1.0) даёт +20%; жаба на 200% даёт +40%,
+ * а жаба, которая лишь дотягивает до требований роли (сила < 1), закрывает только
+ * половину вклада. Отсюда две опорные точки дизайна:
+ *  - 5 ролей с силой 0.9 → 5 × 0.45 × 20% = 45% удачного завершения;
+ *  - 3 роли с силой 2.0 → 3 × 2.0 × 20% = 120% (гарантированный успех).
+ */
+export const EXPEDITION_ROLE_SUCCESS_BONUS = 0.2;
+/** Максимум силы роли: 2.0 — жаба сильно перекрывает требования роли (200%) */
+export const EXPEDITION_ROLE_MAX_POWER = 2;
+/** Множитель вклада для жабы, которая не дотягивает до роли (сила < 1) */
+export const EXPEDITION_ROLE_UNDERFIT_FACTOR = 0.5;
+/** Разброс удачи: шанс умножается на 0.9..1.1 («немного рандома») */
+export const EXPEDITION_LUCK_SPREAD = 0.1;
+/** Потолок отображаемого шанса (выше 100% — «гарантированно») */
+export const EXPEDITION_SUCCESS_CAP = 1.5;
+/** Множитель добычи за удачное завершение похода */
+export const EXPEDITION_GOOD_FINISH_LOOT = 1.7;
+/** Во сколько раз поход обязан быть выгоднее фермы за то же время */
+export const EXPEDITION_PROFIT_MARGIN = 1.5;
+/** Оценка случайного предмета из похода в Кваксах-эквиваленте */
+export const EXPEDITION_ITEM_VALUE = 6;
+/** Оценка образца (живой жабы из сектора) в Кваксах-эквиваленте */
+export const EXPEDITION_SAMPLE_VALUE = 40;
+
+/** Вклад роли в «юнитах»: 1 юнит = +20% к шансу удачного завершения */
+export const getRoleSuccessUnits = (power: number): number =>
+  Math.max(0, power) <= 1
+    ? Math.max(0, power) * EXPEDITION_ROLE_UNDERFIT_FACTOR
+    : Math.max(0, power);
+
+/** Множитель сложности сектора: чем глубже Периметр, тем труднее удержать удачу */
+export const getSectorSuccessFactor = (sector: SectorDef): number =>
+  1 / (1 + Math.max(0, sector.depth - 1) * 0.12);
+
+/** Живые роли команды: жаба + назначенная роль (для UI и расчётов) */
+export interface ExpeditionTeamMember {
+  role: ExpeditionRole;
+  toad: Toad;
+}
+
+/** Случайная удача похода: 0.9..1.1 (немного рандома вокруг расчётного шанса) */
+export const rollExpeditionLuck = (rng: () => number = Math.random): number =>
+  1 - EXPEDITION_LUCK_SPREAD + rng() * EXPEDITION_LUCK_SPREAD * 2;
+
+/**
+ * Шанс завершить поход удачно (0..1.5).
+ * Складываем вклады всех занятых ролей, множим на сложность сектора и на удачу.
+ */
+export const getExpeditionSuccessChance = (
+  members: ExpeditionTeamMember[],
+  sector: SectorDef,
+  luck = 1
+): number => {
+  const units = members.reduce(
+    (sum, member) =>
+      sum + getRoleSuccessUnits(getRolePower(member.toad, member.role)),
+    0
+  );
+
+  const chance =
+    units *
+    EXPEDITION_ROLE_SUCCESS_BONUS *
+    getSectorSuccessFactor(sector) *
+    Math.max(0, luck);
+
+  return Math.max(0, Math.min(EXPEDITION_SUCCESS_CAP, chance));
+};
+
+// === Поход против фермы (Часть 5.4: «поход всегда выгоднее») ===
+
+/** Оценка добычи похода в Кваксах-эквиваленте (1 🧪 = 0.5 🔷) */
+export const getLootValue = (loot: {
+  biomass?: number;
+  tokens?: number;
+  astro_quax?: number;
+  items?: Partial<Record<Items, number>>;
+  samples?: number;
+}): number => {
+  const items = Object.values(loot.items ?? {}).reduce(
+    (sum, amount) => sum + Math.max(0, amount || 0),
+    0
+  );
+
+  return (
+    Math.max(0, loot.biomass || 0) * 0.5 +
+    Math.max(0, loot.tokens || 0) +
+    Math.max(0, loot.astro_quax || 0) * EXPEDITION_SAMPLE_VALUE / 2 +
+    items * EXPEDITION_ITEM_VALUE +
+    Math.max(0, loot.samples || 0) * EXPEDITION_SAMPLE_VALUE
+  );
+};
+
+/** Сколько Кваксов-эквивалента те же жабы принесли бы фермой за `hours` часов (нетто) */
+export const getFarmValueForTeam = (toads: Toad[], hours: number): number => {
+  const perHour = toads.reduce(
+    (sum, toad) =>
+      sum +
+      Math.max(
+        0,
+        getBiomassPotentialRate(toad) - UPKEEP_PER_TOAD_HOUR
+      ),
+    0
+  );
+
+  return perHour * Math.max(0, hours) * BIOMASS_TO_TOKENS_RATE;
+};
+
+/**
+ * Норма добычи похода: ферма за время отсутствия команды (туда и обратно) с запасом
+ * `EXPEDITION_PROFIT_MARGIN` плюс потраченное на снаряжение. Поход ниже этой нормы
+ * не возвращается — иначе ферма была бы выгоднее похода.
+ */
+export const getExpeditionProfitFloor = (
+  toads: Toad[],
+  awayHours: number,
+  supplyBiomass = 0
+): number =>
+  getFarmValueForTeam(toads, awayHours) * EXPEDITION_PROFIT_MARGIN +
+  Math.max(0, supplyBiomass) * BIOMASS_TO_TOKENS_RATE;
 
 // === Стоимость отправки и манипуляций ===
 

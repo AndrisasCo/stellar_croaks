@@ -24,4 +24,3 @@ export const CURRENCY_CONFIG = {
 };
 
 export const MAX_OWNED_SCENES = 10;
-export const MAX_STORED_TOADS = 1000;

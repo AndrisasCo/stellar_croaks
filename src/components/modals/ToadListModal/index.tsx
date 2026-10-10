@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { RARITY_GROUPS_TRESHOLD, Toad } from "../../../models/Toad";
 import Modal from "../../shared/Header";
-import { updateToadById, updateToadsByIds } from "../../../backend";
+import { updateToadsByIds } from "../../../backend";
 import { useSoundEffects } from "../../../hooks/use-sound-effects";
 import { useToads } from "../../ToadContext";
 import { completeAchivement } from "../../../backend/achivements-manager";
@@ -18,10 +18,13 @@ import { getFamilyGroups, getRelationshipColor } from "./utils";
 import { CompactToadItem } from "./CompactToadItem";
 import { ToadInfo } from "../ToadInfoModal";
 import { useModal } from "../../ModalContext";
+import { DissolveConfirm } from "../../shared/DissolveConfirm";
+import { dissolveToads } from "../../../utils/dissolve-manager";
+import { getHousingInfo } from "../../../utils/housing";
 
 const ToadListModal: React.FC = () => {
   const { openModal, modals } = useModal();
-  const { playCrunchShort } = useSoundEffects();
+  const { playCrunchShort, playClick } = useSoundEffects();
   const {
     handleFeedToads,
     ownedScenes,
@@ -46,9 +49,27 @@ const ToadListModal: React.FC = () => {
   const [viewMode, setViewMode] = useState<"detailed" | "compact">("detailed");
   const [selectedToads, setSelectedToads] = useState<Set<number>>(new Set());
   const [showMoveTooltip, setShowMoveTooltip] = useState(false);
+  /** Жабы, отправленные в диссоциатор: ждут подтверждения разбора */
+  const [dissolveTargets, setDissolveTargets] = useState<Toad[]>([]);
   const [familyGroups, setFamilyGroups] = useState<Map<number, number>>(
     new Map()
   );
+
+  /** Места в вольерах колонии: склада жаб больше нет, поэтому это единственный дом */
+  const housing = getHousingInfo();
+
+  const handleDissolveConfirm = () => {
+    const ids = dissolveTargets.map((toad) => toad.id);
+    const result = dissolveToads(ids);
+    setDissolveTargets([]);
+
+    if (!result.success) {
+      addNotification({ type: "warn", content: result.message });
+      return;
+    }
+
+    addNotification({ type: "success", content: result.message });
+  };
 
   useEffect(() => {
     if (!selectedToad) {
@@ -107,19 +128,18 @@ const ToadListModal: React.FC = () => {
     setSelectedToads(new Set());
   };
 
-  // Переместить выделенных
-  const moveSelected = (sceneId: number | null) => {
+  // Переместить выделенных: вольер обязателен — склада жаб больше нет
+  const moveSelected = (sceneId: number) => {
     if (selectedToads.size === 0) return;
 
-    if (sceneId !== null) {
-      const nextScene = getGameState().scenes.find((s) => s.id === sceneId);
-      const nextSceneToads =
-        getGameState().toads.filter((t) => t.scene_id === sceneId).length +
-        selectedToads.size;
-      if (!nextScene || nextScene.capacity < nextSceneToads) {
-        addNotification({ type: "warn", content: "Данный вольер переполнен!" });
-        return;
-      }
+    const nextScene = getGameState().scenes.find((s) => s.id === sceneId);
+    const nextSceneToads =
+      getGameState().toads.filter((t) => t.scene_id === sceneId).length +
+      selectedToads.size;
+
+    if (!nextScene || nextScene.capacity < nextSceneToads) {
+      addNotification({ type: "warn", content: "Данный вольер переполнен!" });
+      return;
     }
 
     updateToadsByIds(Array.from(selectedToads), { scene_id: sceneId });
@@ -296,12 +316,6 @@ const ToadListModal: React.FC = () => {
                     className="right-0 "
                   >
                     <div className="space-y-1 h-40 overflow-auto">
-                      <button
-                        onClick={() => moveSelected(null)}
-                        className="w-full text-left p-2 truncate  text-xs border-b-[1px] border-gray-500/10"
-                      >
-                        📦 На склад
-                      </button>
                       {ownedScenes
                         .filter((s) => s.id !== currentScene.id)
                         .map((s) => (
@@ -361,11 +375,13 @@ const ToadListModal: React.FC = () => {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            updateToadById(toad.id, { scene_id: null });
+                            playClick();
+                            setDissolveTargets([toad]);
                           }}
-                          className="px-3 py-2 bg-blue-500/20 text-blue-300 rounded-lg text-xs font-medium transition-all border border-blue-500/30 hover:bg-blue-500/30"
+                          className="px-3 py-2 bg-amber-500/20 text-amber-200 rounded-lg text-xs font-medium transition-all border border-amber-500/30 hover:bg-amber-500/30"
+                          title="Разобрать на биомассу (освободит место)"
                         >
-                          📦
+                          ♻️
                         </button>
                         <button
                           onClick={(e) => {
@@ -465,7 +481,29 @@ const ToadListModal: React.FC = () => {
             <div className="text-gray-300 text-2xs">Голодные</div>
           </div>
         </div>
+
+        {/* Места в вольерах: склада жаб нет, поэтому «дом» — только вольеры */}
+        <div className="mt-2 flex items-center justify-between text-2xs text-gray-300 px-2">
+          <span>
+            🏠 Мест в вольерах: {housing.used} / {housing.capacity} (вольеров:{" "}
+            {housing.enclosures})
+          </span>
+          {housing.free === 0 && (
+            <span className="text-rose-300">
+              Мест нет — постройте «Вольер» на карте
+            </span>
+          )}
+        </div>
       </div>
+
+      {/* Подтверждение: жабы уйдут в биомассу навсегда */}
+      {dissolveTargets.length > 0 && (
+        <DissolveConfirm
+          toads={dissolveTargets}
+          onCancel={() => setDissolveTargets([])}
+          onConfirm={handleDissolveConfirm}
+        />
+      )}
     </Modal>
   );
 };

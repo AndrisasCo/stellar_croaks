@@ -2,10 +2,32 @@ import React, { useState } from "react";
 
 import { EliteOrderTooltip } from "./EliteTooltip";
 import { ClickButton } from "../../../shared/ClickButton";
+import { Toad } from "../../../../models/Toad";
 
-export const AcceptButton: React.FC = (props) => {
-  const { order, handleSubmitEliteOrder } = props;
-  const [selectedOrder, setSelectedOrder] = useState<any>(null);
+/** Заказ витрины в том виде, в каком его собирает EliteTab (награда — Астро-кваксы) */
+export interface EliteOrderView {
+  id: string;
+  title: string;
+  description: string;
+  reward: number;
+  difficulty: string;
+  canComplete: boolean;
+  suitableToads: Toad[];
+}
+
+interface AcceptButtonProps {
+  order: EliteOrderView;
+  /** Принять заказ конкретной жабой из списка подходящих */
+  handleSubmitEliteOrder: (orderId: string) => (toad: Toad) => void;
+}
+
+export const AcceptButton: React.FC<AcceptButtonProps> = ({
+  order,
+  handleSubmitEliteOrder,
+}) => {
+  const [selectedOrder, setSelectedOrder] = useState<EliteOrderView | null>(
+    null
+  );
 
   return (
     <div className="relative">

@@ -18,6 +18,7 @@ import {
   willBePoweredAfterBuild,
 } from "../HexMap/colony-build";
 import { isBuiltRoom, RoomConfig } from "../HexMap/rooms-config";
+import { MAX_OWNED_SCENES } from "../../utils/constants";
 
 /**
  * Меню застройки свободного гекса (тап по пустому слоту карты).
@@ -29,13 +30,15 @@ import { isBuiltRoom, RoomConfig } from "../HexMap/rooms-config";
  */
 export default function BuildRoomModal({ slot }: { slot: RoomConfig }) {
   const { closeModal } = useModal();
-  const { account } = useToads();
+  const { account, ownedScenes } = useToads();
   const { colony, rooms, toadsByRoom, buildRoom } = useColony();
   const { addNotification } = useNotifications();
   const { playOk, playBeep } = useSoundEffects();
 
   const tokens = Math.floor(account?.tokens || 0);
   const buildable = canBuildOnSlot(slot, rooms);
+  /** Вольеры больше не покупают в магазине: их строят гексом, и их число ограничено */
+  const enclosureLimitReached = ownedScenes.length >= MAX_OWNED_SCENES;
 
   /** Соседние построенные комнаты — по ним же видно, появится ли ток. */
   const neighbourTitles = useMemo(
@@ -54,9 +57,11 @@ export default function BuildRoomModal({ slot }: { slot: RoomConfig }) {
         cost: option.getCost(colony),
         powered: willBePoweredAfterBuild(slot, option.kind, colony, toadsByRoom),
         built: getBuiltRoomsCount(colony, option.kind),
-        allowed: canBuildRoomKind(colony, option.kind),
+        allowed:
+          canBuildRoomKind(colony, option.kind) &&
+          !(option.kind === "aviary" && enclosureLimitReached),
       })),
-    [colony, slot, toadsByRoom],
+    [colony, slot, toadsByRoom, enclosureLimitReached],
   );
 
   const handleBuild = (option: BuildOption, cost: number) => {
@@ -74,6 +79,15 @@ export default function BuildRoomModal({ slot }: { slot: RoomConfig }) {
       addNotification({
         type: "warn",
         content: `${option.title} строится в колонии только одна.`,
+      });
+      return;
+    }
+
+    if (option.kind === "aviary" && ownedScenes.length >= MAX_OWNED_SCENES) {
+      playBeep();
+      addNotification({
+        type: "warn",
+        content: `В колонии уже максимум вольеров (${MAX_OWNED_SCENES}).`,
       });
       return;
     }
@@ -101,9 +115,14 @@ export default function BuildRoomModal({ slot }: { slot: RoomConfig }) {
 
     addNotification({
       type: "success",
-      content: powered
-        ? `${option.title} построена и подключена к сети ⚡`
-        : `${option.title} построена, но обесточена: нужен источник питания по соседству.`,
+      content:
+        option.kind === "aviary"
+          ? `${option.title} построен: новый вольер на 20 мест открыт 🐸`
+          : powered
+            ? `${option.title} построена и подключена к сети ⚡`
+            : option.kind === "power"
+              ? `${option.title} построена: посадите жаб — их ток запитает комнату и соседей ⚡`
+              : `${option.title} построена, но обесточена: нужен источник питания по соседству.`,
     });
 
     // Комнату построили — меню закрываем, карта перерисуется сама
@@ -175,9 +194,13 @@ export default function BuildRoomModal({ slot }: { slot: RoomConfig }) {
 
                 <div className="mt-1 flex items-center justify-between gap-2">
                   <span className="text-2xs text-gray-400">
-                    {powered
-                      ? "После постройки: под током ⚡"
-                      : "После постройки: обесточена 🔌"}
+                    {option.kind === "aviary" && enclosureLimitReached
+                      ? "В колонии максимум вольеров"
+                      : powered
+                        ? "После постройки: под током ⚡"
+                        : option.kind === "power"
+                          ? "После постройки: ток дадут жабы ⚡"
+                          : "После постройки: обесточена 🔌"}
                   </span>
                   <span className="text-2xs text-gray-500">
                     {built > 0 ? `в колонии: ${built}` : "в колонии нет"}
@@ -191,7 +214,11 @@ export default function BuildRoomModal({ slot }: { slot: RoomConfig }) {
                         : "bg-amber-600 text-white hover:bg-amber-500 active:scale-95"
                     }`}
                   >
-                    {allowed ? "Построить" : "Уже есть"}
+                    {allowed
+                      ? "Построить"
+                      : option.kind === "aviary"
+                        ? "Максимум"
+                        : "Уже есть"}
                   </ClickButton>
                 </div>
               </div>

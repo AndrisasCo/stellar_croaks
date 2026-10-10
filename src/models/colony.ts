@@ -33,6 +33,12 @@ export interface ColonyRoomState {
   kind: ColonyRoomKind;
   /** Когда комната была построена. */
   builtAt: string;
+  /**
+   * Вольер-комната: id вольера (`Scene`), который она открыла.
+   * Раньше вольеры покупали в магазине, теперь каждый построенный на гексе «Вольер»
+   * создаёт свой вольер с местами для жаб (см. `backend/colony.ts`).
+   */
+  sceneId?: number;
 }
 
 export interface ColonyState {

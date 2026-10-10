@@ -1,11 +1,7 @@
 import { useCallback, useMemo } from "react";
 import { Toad } from "../models/Toad";
 import { ColonyRoomKind, ColonyState, EMPTY_COLONY } from "../models/colony";
-import {
-  buildColonyRoom,
-  placeToadInRoom,
-  releaseToadFromRoom,
-} from "../backend/colony";
+import { buildColonyRoom, placeToadInRoom } from "../backend/colony";
 import { useGameState } from "./use-game-state";
 import {
   getPowerGrid,
@@ -31,7 +27,6 @@ export interface ColonyController {
   toadsByRoom: Record<string, Toad[]>;
   buildRoom: (slotId: string, kind: ColonyRoomKind) => void;
   placeToad: (toadId: number, roomId: string) => void;
-  releaseToad: (toadId: number) => void;
 }
 
 export const useColony = (): ColonyController => {
@@ -61,8 +56,6 @@ export const useColony = (): ColonyController => {
     [rooms, toadsByRoom],
   );
 
-  console.log({ powerGrid });
-
   const buildRoom = useCallback(
     (slotId: string, kind: ColonyRoomKind) => buildColonyRoom(slotId, kind),
     [],
@@ -73,11 +66,6 @@ export const useColony = (): ColonyController => {
     [],
   );
 
-  const releaseToad = useCallback(
-    (toadId: number) => releaseToadFromRoom(toadId),
-    [],
-  );
-
   return {
     colony,
     rooms,
@@ -85,6 +73,5 @@ export const useColony = (): ColonyController => {
     toadsByRoom,
     buildRoom,
     placeToad,
-    releaseToad,
   };
 };

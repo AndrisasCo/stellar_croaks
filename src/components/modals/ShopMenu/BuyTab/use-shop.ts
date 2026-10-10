@@ -13,13 +13,19 @@ import {
   initialItemsAmount,
   REFRESH_COOLDOWN,
   INSTANT_REFRESH_COST,
+  INSTANT_REFRESH_COOLDOWN,
 } from "../../../../backend/shop-state";
 import { useNotifications } from "../../../../hooks/use-notification";
 import { useSoundEffects } from "../../../../hooks/use-sound-effects";
-import { Items, itemsFull } from "../../../../models/user";
+import { Items, itemsFull, User } from "../../../../models/user";
+import { CurrencyType } from "../../../../utils/constants";
 import { useToads } from "../../../ToadContext";
 import { Toad, calculateSellPrice } from "../../../../models/Toad";
-import { MAX_STORED_TOADS } from "../../../../utils/constants";
+import { pickSceneForNewToad } from "../../../../utils/housing";
+import {
+  canFitInStorage,
+  getStorageCapacityInfo,
+} from "../../../../utils/storage";
 
 export type ShopItem = {
   key: Items;
@@ -42,7 +48,7 @@ export const useShop = () => {
   const [shopState, setShopState] = useState<ShopState>(getShopState());
   const [timeLeft, setTimeLeft] = useState<string>("");
   const { addNotification } = useNotifications();
-  const { playBuy } = useSoundEffects();
+  const { playBuy, playBeep } = useSoundEffects();
 
   // Таймер обратного отсчета
   useEffect(() => {
@@ -57,14 +63,14 @@ export const useShop = () => {
 
       const hours = Math.floor(timeRemaining / (1000 * 60 * 60));
       const minutes = Math.floor(
-        (timeRemaining % (1000 * 60 * 60)) / (1000 * 60)
+        (timeRemaining % (1000 * 60 * 60)) / (1000 * 60),
       );
       const seconds = Math.floor((timeRemaining % (1000 * 60)) / 1000);
 
       setTimeLeft(
         `${hours.toString().padStart(2, "0")}:${minutes
           .toString()
-          .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`
+          .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`,
       );
     };
 
@@ -80,7 +86,7 @@ export const useShop = () => {
       name: "Жабий корм x10",
       description: "Основной корм для жаб",
       rarity: "common",
-      price: 10,
+      price: 60,
       currency: "tokens",
       left: Infinity,
       quantity: 10,
@@ -90,7 +96,7 @@ export const useShop = () => {
       name: "Упаковка корма x100",
       description: "Большая упаковка корма",
       rarity: "common",
-      price: 90,
+      price: 540,
       currency: "tokens",
       quantity: 100,
       left: shopState.items[Items.food],
@@ -98,7 +104,7 @@ export const useShop = () => {
 
     {
       key: Items.battery,
-      price: 5,
+      price: 3,
       name: "Батарейки х3",
       rarity: "common",
       currency: "astro_quax",
@@ -107,7 +113,7 @@ export const useShop = () => {
     },
     {
       key: Items.sparkleFlys,
-      price: 20,
+      price: 4,
 
       name: "Сияющие мушки",
       rarity: "uncommon",
@@ -117,7 +123,7 @@ export const useShop = () => {
     },
     {
       key: Items.worms,
-      price: 10,
+      price: 4,
       name: "Протеиновые черви",
       rarity: "uncommon",
       currency: "astro_quax",
@@ -165,7 +171,7 @@ export const useShop = () => {
       key: Items.pigmentUnstable,
       name: "Нестабильный пигмент",
       rarity: "uncommon",
-      price: 15,
+      price: 8,
       currency: "astro_quax",
       left: shopState.items[Items.pigmentUnstable],
       quantity: 1,
@@ -173,8 +179,6 @@ export const useShop = () => {
   ];
 
   const updateShopStateAmount = (keyString: string) => {
-    console.log({ keyString });
-
     const newShopState = { ...shopState };
     newShopState.items[keyString] = newShopState.items[keyString] - 1;
 
@@ -186,7 +190,7 @@ export const useShop = () => {
     (
       item: Record<string, number>,
       price: Record<string, number>,
-      noAmount?: boolean
+      noAmount?: boolean,
     ) =>
     () => {
       const currency = Object.keys(price)[0];
@@ -200,13 +204,26 @@ export const useShop = () => {
         return;
       }
 
+      // Склад предметов ограничен постройками «Склад» (Часть 3.7): без места покупка
+      // не проходит — иначе игрок платил бы за предмет, который исчезнет.
+      if (!canFitInStorage(storage, { [itemName]: item[itemName] })) {
+        playBeep();
+        addNotification({
+          type: "warn",
+          content: `На складе нет места (${getStorageCapacityInfo(storage).used}/${
+            getStorageCapacityInfo(storage).capacity
+          }): постройте склад на карте колонии`,
+        });
+        return;
+      }
+
       playBuy();
       updateUser({
         [currency]: (account as any)[currency] - price[currency],
         storage: {
           ...storage,
           [itemName]: ((storage as any)?.[itemName] || 0) + item[itemName],
-        },
+        } as User["storage"],
       });
 
       if (itemName === "food") {
@@ -226,13 +243,15 @@ export const useShop = () => {
     };
 
   const shopItems = _shopItems.map((s) => ({
-    ...itemsFull[s.key],
+    ...itemsFull[s.key as Items],
     ...s,
-    disabled: account?.[s.currency] < s.price || s.left === 0,
+    disabled:
+      (account?.[s.currency as CurrencyType] ?? 0) < (s.price ?? 0) ||
+      s.left === 0,
     onClick: handleBuyItem(
-      { [s.key]: s.quantity },
-      { [s.currency]: s.price },
-      s.left === Infinity
+      { [s.key as string]: s.quantity ?? 1 },
+      { [s.currency as string]: s.price ?? 0 },
+      s.left === Infinity,
     ),
   })) as ShopItem[];
 
@@ -252,7 +271,7 @@ export const useShop = () => {
     addNotification({ content: "Рынок обновлен!", type: "success" });
   };
 
-  const refreshShop = (): ShopState => {
+  const refreshShop = (cooldownMs = REFRESH_COOLDOWN): ShopState => {
     const allToads = getGameState().toads;
 
     const newToads = getNewToads();
@@ -260,18 +279,18 @@ export const useShop = () => {
       0,
       allToads.reduce((acc, t) => acc + t.genes.rarity, 0) /
         (allToads.length || 1) -
-        3
+        3,
     );
 
     const now = Date.now();
     const newState = getShopState();
     newState.availableToads = newToads.map((t) => ({
       ...t,
-      genes: { ...t.genes, rarity: averageLevel + t.genes?.rarity || 1 },
-    }));
+      genes: { ...t.genes, rarity: averageLevel + (t.genes?.rarity ?? 1) },
+    })) as Partial<Toad>[];
     newState.items = { ...initialItemsAmount };
     newState.lastRefresh = now;
-    newState.nextRefresh = now + REFRESH_COOLDOWN;
+    newState.nextRefresh = now + cooldownMs;
 
     return newState;
   };
@@ -285,7 +304,9 @@ export const useShop = () => {
     }
 
     updateUser({ tokens: tokens - INSTANT_REFRESH_COST });
-    const newShopState = refreshShop();
+    // Платное обновление даёт короткий кулдаун (30 мин), а не полные 3 часа:
+    // иначе обновления можно было фармить без ограничений (аудит P1).
+    const newShopState = refreshShop(INSTANT_REFRESH_COOLDOWN);
     setShopState(newShopState);
     saveShopState(newShopState);
     addNotification({
@@ -299,36 +320,24 @@ export const useShop = () => {
     Math.ceil(calculateSellPrice(toad) * 2.5);
 
   const handleBuyToad = async (toad: Toad) => {
+    // Жаба всегда переезжает в вольер: склада жаб больше нет, поэтому сначала
+    // проверяем место. Нет места — предлагаем построить вольер на карте колонии.
+    const scene = pickSceneForNewToad(currentScene?.id);
+
+    if (!scene) {
+      playBeep();
+      addNotification({
+        type: "warn",
+        content: "В био-подах нет мест или недостаточно питания.",
+      });
+      return;
+    }
+
     playBuy();
     completeAchivement("buy-toad");
     completeAchivementCounter("buyToad", 1);
 
-    const allToadsOnScene =
-      getGameState().toads.filter((t) => t.scene_id === currentScene.id)
-        .length + 1;
-
-    let scene_id: number | null = currentScene?.id;
-
-    if (currentScene.capacity < allToadsOnScene) {
-      if (
-        getGameState().toads.filter((t) => t.scene_id === null).length + 1 >
-        MAX_STORED_TOADS
-      ) {
-        addNotification({
-          type: "danger",
-          content: `Все хранилища переполнены`,
-        });
-        return;
-      }
-      scene_id = null;
-      addNotification({
-        type: "warn",
-        content:
-          "Превышен лимит жаб на вольер, новая жаба была помещена на склад.",
-      });
-    }
-
-    createToad({ ...toad, scene_id });
+    createToad({ ...toad, scene_id: scene.id });
     updateUser({ tokens: tokens - calculateBuyPrice(toad) });
 
     // Помечаем жабу как купленную

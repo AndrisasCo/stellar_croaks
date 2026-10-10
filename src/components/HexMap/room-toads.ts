@@ -7,6 +7,7 @@ import {
 import { Toad } from "../../models/Toad";
 import { getTextureByType } from "../ToadCanvas/utils";
 import { updateToadAppearance } from "../ToadCanvas/update-toad";
+import { isToadVisibleInRoom } from "./rooms-config";
 import {
   ATTRACTOR_SPREAD_X,
   ATTRACTOR_SPREAD_Y,
@@ -53,7 +54,7 @@ export interface RoomToadFlock {
   /** Слой с жабами — добавляется на карту поверх комнат. */
   layer: Container;
   toads: RoomToad[];
-  /** Полная синхронизация со списком жаб вольера/гнезда. */
+  /** Полная синхронизация со списком жаб вольера/гнезда/комнаты ⚡/«Разведки». */
   sync: (toads: Toad[], spawns?: Record<number, Point>) => void;
   /** Точка притяжения (кормушка во время кормления). null — блуждают сами. */
   setAttractor: (point: Point | null) => void;
@@ -185,6 +186,9 @@ export const createRoomToads = (
   };
 
   const sync = (nextToads: Toad[], spawns?: Record<number, Point>) => {
+    // Ушедшие в поход жабы в комнате не сидят (место они освобождают): спрайт не рисуем
+    nextToads = nextToads.filter(isToadVisibleInRoom);
+
     const nextIds = new Set(nextToads.map((toad) => toad.id));
 
     toads.forEach((roomToad) => {

@@ -12,7 +12,7 @@ import { getGameState } from "../backend/localStorage";
 import { getHunger } from "./state-manager";
 import { completeAchivement } from "../backend/achivements-manager";
 import { BonusType, getBoostByScene } from "../models/scene";
-import { MAX_STORED_TOADS } from "./constants";
+import { assignToadsToScenes } from "./housing";
 import {
   canUpgradeNest,
   getBreedCooldownMs,
@@ -180,41 +180,26 @@ export const endPregnancy = async (toad: Toad, addNotification: any) => {
     throw Error("Scene for toads birth not found!");
   }
 
-  const allToadsAtStorage = getGameState().toads.filter(
-    (t) => !t.scene_id
-  ).length;
-  const allToadsOnScene =
-    getGameState().toads.filter((t) => t.scene_id === currentSceneId).length +
-    children.length;
+  // Склада жаб больше нет: потомство раскладываем по вольерам, начиная с вольера матери.
+  // Тем, кому места не хватило, вольер придётся построить — они не появляются на свет.
+  const { assigned, rejected } = assignToadsToScenes(children, currentSceneId);
 
-  if (currentScene.capacity < allToadsOnScene) {
-    children.slice(0, allToadsOnScene - currentScene.capacity).forEach((c) => {
-      c.scene_id = null;
-    });
-
-    if (
-      allToadsAtStorage + children.filter((c) => c.scene_id === null).length >
-      MAX_STORED_TOADS
-    ) {
-      addNotification({
-        type: "danger",
-        content: `${toad.name} не смогла родить, все хранилища переполнены`,
-      });
-      return;
-    }
-
+  if (rejected > 0) {
     addNotification({
       type: "warn",
-      content: `${toad.name} родила головастиков, но они не поместились в вольер! Часть была перемещена на склад.`,
+      content: `${toad.name} родила ${assigned.length} головастиков, ещё ${rejected} не поместились: постройте вольер на карте колонии.`,
     });
   } else {
     addNotification({
-      content: `${toad.name} родила  головастиков: ${children.length} `,
       type: "success",
+      content: `${toad.name} родила головастиков: ${assigned.length}`,
     });
   }
 
-  createToads(children, true);
+  if (assigned.length > 0) {
+    createToads(assigned, true);
+  }
+
   completeAchivement("first-offspring");
   // обновляем мать
   updateToadById(toad.id, { ...toad, pregnancy: null }, true);
@@ -314,7 +299,7 @@ export const performManualBreeding = async (
   if (female.sex !== "female") {
     return fail("Для спаривания нужна самка");
   }
-  if (male.scene_id === null || female.scene_id !== male.scene_id) {
+  if (female.scene_id !== male.scene_id) {
     return fail("Обе жабы должны находиться в одном вольере");
   }
   // Часть 5: выбитые (HP = 0) и ушедшие в поход жабы не размножаются

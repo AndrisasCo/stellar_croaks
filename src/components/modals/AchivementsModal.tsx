@@ -9,7 +9,8 @@ import { achievementGroups } from "../../backend/achivements-manager/achivements
 import { createToad, updateUser } from "../../backend";
 import { useNotifications } from "../../hooks/use-notification";
 import { getGameState } from "../../backend/localStorage";
-import { CURRENCY_CONFIG, MAX_STORED_TOADS } from "../../utils/constants";
+import { CURRENCY_CONFIG } from "../../utils/constants";
+import { pickSceneForNewToad } from "../../utils/housing";
 
 const AchievementModal: React.FC = () => {
   const { playClick } = useSoundEffects();
@@ -89,7 +90,7 @@ const AchievementModal: React.FC = () => {
 
   const calculateGroupProgress = (_achievements: any) => {
     const completed = _achievements.filter((a: any) =>
-      achivements.completed.includes(a.id)
+      achivements.completed.includes(a.id),
     ).length;
     const total = _achievements.length;
     return { completed, total, percentage: (completed / total) * 100 };
@@ -104,26 +105,29 @@ const AchievementModal: React.FC = () => {
     const userStorage = gameState.user.storage;
 
     group.groupReward.reward.forEach((reward) => {
-      if (reward.type === "toad") {
-        if (
-          getGameState().toads.filter((t) => t.scene_id === null).length + 1 >
-          MAX_STORED_TOADS
-        ) {
+      const content = (reward as { type: string; content: any }).content;
+
+      if (reward.type === "toad" && typeof content === "object" && content) {
+        // Склада жаб больше нет: награда ищет место в вольерах, иначе остаётся невыданной
+        const scene = pickSceneForNewToad();
+
+        if (!scene) {
           addNotification({
             type: "danger",
-            content: `Все хранилища переполнены`,
+            content: "В био-подах нет мест или недостаточно питания.",
           });
           return;
         }
 
         createToad({
-          ...reward.content,
+          ...content,
+          scene_id: scene.id,
           created_at: new Date().toISOString(),
         });
 
         addNotification({
           type: "success",
-          content: `На склад добавлена новая жаба: ${reward.content.name}`,
+          content: `Новая жаба поселилась в «${scene.name}»: ${content.name}`,
         });
       }
 
@@ -189,10 +193,10 @@ const AchievementModal: React.FC = () => {
                   {key === "earn"
                     ? `Заработано ${CURRENCY_CONFIG.tokens.icon}`
                     : key === "buyToad"
-                    ? "Куплено жаб"
-                    : key === "sellToad"
-                    ? "Продано жаб"
-                    : key}
+                      ? "Куплено жаб"
+                      : key === "sellToad"
+                        ? "Продано жаб"
+                        : key}
                 </span>
                 <span className="text-yellow-400 font-bold text-sm">
                   {value}
@@ -209,7 +213,7 @@ const AchievementModal: React.FC = () => {
           const progress = calculateGroupProgress(group.achievements);
           const isGroupCompleted = progress.percentage === 100;
           const isRewardClaimed = getAchievementState().rewards.includes(
-            group.id
+            group.id,
           );
 
           return (
@@ -227,7 +231,7 @@ const AchievementModal: React.FC = () => {
                   <div>
                     <h3
                       className={`font-semibold text-lg ${getTextColor(
-                        group.color
+                        group.color,
                       )}`}
                     >
                       {group.title}
@@ -249,7 +253,7 @@ const AchievementModal: React.FC = () => {
               <div className="w-full bg-color-main rounded-full h-2 mb-4">
                 <div
                   className={`h-2 rounded-full transition-all duration-500 ${getProgressColor(
-                    group.color
+                    group.color,
                   )}`}
                   style={{ width: `${progress.percentage}%` }}
                 />

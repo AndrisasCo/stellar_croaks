@@ -23,8 +23,8 @@ import {
   loadColliderState,
   saveColliderState,
 } from "../backend/collider-manager";
-import { MAX_STORED_TOADS } from "../utils/constants";
 import { getAutoHunger } from "../utils/get-auto-hunger";
+import { pickSceneForNewToad } from "../utils/housing";
 
 interface ToadContextType {
   toads: Toad[];
@@ -62,20 +62,16 @@ export const ToadProvider: React.FC<ToadProviderProps> = ({ children }) => {
 
   const currentScene = ownedScenes[currentSceneIndex];
 
-  const toads =
-    currentScene && allToads
-      ? allToads
-          .sort((a, b) => b.genes.rarity - a.genes.rarity)
-          .filter((t) => t.scene_id === currentScene.id)
-      : [];
+  const toads = allToads
+    .sort((a, b) => b.genes.rarity - a.genes.rarity)
+    .filter((t) => t.scene_id === currentScene.id);
 
   const [selectedToadId, setSelectedToadId] = useState<number | null>(null);
   const selectedToad = toads.find((t) => t.id === selectedToadId) || null;
 
   // В провайдере добавляем состояние коллайдера с загрузкой из localStorage
-  const [colliderState, setColliderState] = useState<ColliderState>(
-    loadColliderState()
-  );
+  const [colliderState, setColliderState] =
+    useState<ColliderState>(loadColliderState());
 
   // Сохраняем состояние коллайдера в localStorage при изменении
   useEffect(() => {
@@ -95,7 +91,7 @@ export const ToadProvider: React.FC<ToadProviderProps> = ({ children }) => {
   const startBreeding = (child: Toad) => {
     const duration = calculateBreedingTime(
       child.genes.rarity,
-      colliderState.speedMultiplier
+      colliderState.speedMultiplier,
     );
     setColliderState((prev) => ({
       ...prev,
@@ -108,7 +104,7 @@ export const ToadProvider: React.FC<ToadProviderProps> = ({ children }) => {
               duration,
               isReady: false,
             }
-          : slot
+          : slot,
       ),
     }));
   };
@@ -145,42 +141,24 @@ export const ToadProvider: React.FC<ToadProviderProps> = ({ children }) => {
       return;
     }
 
-    const currentSceneIdToCollect = slot?.child.scene_id;
-    const currentSceneToCollect = ownedScenes.find(
-      (s) => s.id === currentSceneIdToCollect
-    );
+    // Склада жаб больше нет: гибрид переезжает в вольер. Если места нет — колба
+    // остаётся в инкубаторе, а игроку нужно построить вольер на карте колонии.
+    const scene = pickSceneForNewToad(slot.child.scene_id);
 
-    const allToadsAtStorage =
-      allToads.filter((t) => t.scene_id === null).length + 1;
-
-    const allToadsOnScene =
-      allToads.filter((t) => t.scene_id === currentSceneIdToCollect).length + 1;
-
-    if (
-      !currentSceneToCollect ||
-      currentSceneToCollect.capacity < allToadsOnScene
-    ) {
-      if (allToadsAtStorage > MAX_STORED_TOADS) {
-        addNotification({
-          type: "danger",
-          content: `Все хранилища переполнены`,
-        });
-        return;
-      }
-
+    if (!scene) {
       addNotification({
-        type: "warn",
-        content: `Превышена вместимость вольера, гибрид ${slot.child.name} помещен на склад.`,
+        type: "danger",
+        content: `Все вольеры полны: постройте «Вольер» на гексе карты — ${slot.child.name} подождёт в инкубаторе.`,
       });
-      createToad({ ...slot.child, scene_id: null });
-    } else {
-      createToad(slot.child);
-
-      addNotification({
-        type: "success",
-        content: `Гибрид ${slot.child.name} помещен в ${currentSceneToCollect?.name}`,
-      });
+      return;
     }
+
+    createToad({ ...slot.child, scene_id: scene.id });
+
+    addNotification({
+      type: "success",
+      content: `Гибрид ${slot.child.name} помещен в ${scene.name}`,
+    });
 
     setColliderState((prev) => {
       return {
@@ -196,7 +174,7 @@ export const ToadProvider: React.FC<ToadProviderProps> = ({ children }) => {
                 duration: 0,
                 isReady: false,
               }
-            : s
+            : s,
         ),
       };
     });
@@ -212,7 +190,7 @@ export const ToadProvider: React.FC<ToadProviderProps> = ({ children }) => {
                 ...s,
                 isReady: true,
               }
-            : s
+            : s,
         ),
       };
     });
@@ -223,7 +201,7 @@ export const ToadProvider: React.FC<ToadProviderProps> = ({ children }) => {
 
     if (currentScene.bonuses?.autoFeeder) {
       const allHunger = getAutoHunger(
-        toads.filter((t) => toadsId.includes(t.id))
+        toads.filter((t) => toadsId.includes(t.id)),
       );
 
       newFood = (account.storage?.food || 0) - allHunger;
@@ -235,7 +213,7 @@ export const ToadProvider: React.FC<ToadProviderProps> = ({ children }) => {
       addNotification({
         type: "warn",
         content: `Недостаточно корма на складе! Не хватает: ${Math.abs(
-          newFood
+          newFood,
         )}`,
       });
       return;

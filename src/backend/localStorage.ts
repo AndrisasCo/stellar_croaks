@@ -1,6 +1,6 @@
 import { DEFAULT_SCENE, Scene } from "../models/scene";
 import { DEFAULT_TOADS, Toad } from "../models/Toad";
-import { User } from "../models/user";
+import { Items, User } from "../models/user";
 import { Expedition, ExpeditionStats } from "../models/expedition";
 import { ColonyState, EMPTY_COLONY } from "../models/colony";
 
@@ -45,9 +45,11 @@ export const getDefaultGameState = (): GameState => {
       tokens: 50,
       astro_quax: 0,
       biomass: 0,
-      storage: {
-        food: 100,
-      },
+      // Стартовая колония: корм есть, остальные полки пустые (склад предметов, Часть 3.7)
+      storage: Object.values(Items).reduce(
+        (acc, key) => ({ ...acc, [key]: key === Items.food ? 100 : 0 }),
+        {} as Record<Items, number>
+      ),
     },
     scenes: [DEFAULT_SCENE],
     toads: DEFAULT_TOADS,
@@ -64,7 +66,14 @@ export const getGameState = (): GameState => {
   try {
     const stored = localStorage.getItem(LS_KEY);
     if (stored) {
-      return JSON.parse(stored);
+      const parsed: GameState = JSON.parse(stored);
+      const migrated = migrateGameState(parsed);
+
+      if (migrated !== parsed) {
+        localStorage.setItem(LS_KEY, JSON.stringify(migrated));
+      }
+
+      return migrated;
     }
 
     // Если нет сохраненного состояния, создаем новое
@@ -76,6 +85,60 @@ export const getGameState = (): GameState => {
     return getDefaultGameState();
   }
 };
+
+/**
+ * Склад жаб отменён: у каждой жабы всегда есть вольер.
+ * Старые сейвы держали лишних жаб «на складе» (`scene_id: null`) — при загрузке
+ * расселяем их по вольерам по порядку; если мест не хватило, жабы остаются жить
+ * в переполненном вольере до постройки нового (потерять жаб нельзя).
+ */
+function migrateGameState(state: GameState): GameState {
+  if (!state.toads?.length || !state.scenes?.length) {
+    return state;
+  }
+
+  const homeless = state.toads.filter(
+    (toad) => !state.scenes.some((scene) => scene.id === toad.scene_id)
+  );
+
+  if (homeless.length === 0) {
+    return state;
+  }
+
+  const free = new Map<number, number>(
+    state.scenes.map((scene) => [
+      scene.id,
+      Math.max(
+        0,
+        scene.capacity -
+          state.toads.filter((toad) => toad.scene_id === scene.id).length
+      ),
+    ])
+  );
+  const fallbackSceneId = state.scenes[0].id;
+  let index = 0;
+
+  const toads = state.toads.map((toad) => {
+    if (state.scenes.some((scene) => scene.id === toad.scene_id)) {
+      return toad;
+    }
+
+    const scene = state.scenes.find((candidate) => (free.get(candidate.id) ?? 0) > 0);
+
+    if (!scene) {
+      return { ...toad, scene_id: fallbackSceneId };
+    }
+
+    free.set(scene.id, (free.get(scene.id) ?? 1) - 1);
+    index += 1;
+
+    return { ...toad, scene_id: scene.id };
+  });
+
+  console.info(`Склад жаб закрыт: ${index} жаб переехали в вольеры`);
+
+  return { ...state, toads };
+}
 
 // Сохранение всего состояния
 export const saveGameState = (state: GameState, syntetic: boolean): void => {

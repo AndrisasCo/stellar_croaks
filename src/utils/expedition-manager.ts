@@ -22,11 +22,14 @@ import {
 import { getIncubatingToadIds } from "./dissolve-manager";
 import { getToadDisease, infectToad } from "./disease-manager";
 import { generateRandomHexColor } from "./randomize-toad-characteristics";
+import { assignToadsToScenes } from "./housing";
+import { fitItemsInStorage } from "./storage";
 import {
   EXTRACTION_ASTRO_COST,
   EXPEDITION_BASE_EVENT_CHANCE,
   EXPEDITION_DANGER_CHANCE_PENALTY,
   EXPEDITION_EVENT_PROGRESS_STEP,
+  EXPEDITION_GOOD_FINISH_LOOT,
   EXPEDITION_MAX_EVENTS_PER_TICK,
   EXPEDITION_MIN_RETURN_HOURS,
   EXPEDITION_RETURN_RATIO,
@@ -37,8 +40,12 @@ import {
   HP_REGEN_PER_HOUR,
   TANK_DAMAGE_REDIRECT,
   getDispatchOfficeCost,
+  getAwayToadUpdate,
+  getExpeditionProfitFloor,
   getExpeditionSendCost,
+  getExpeditionSuccessChance,
   getHealCost,
+  getLootValue,
   getMaxExpeditions,
   getReturnRemainingHours,
   getRolePower,
@@ -47,6 +54,7 @@ import {
   getToadHp,
   getToadMaxHp,
   isToadDown,
+  rollExpeditionLuck,
 } from "./expedition-config";
 import {
   ExpeditionEventContext,
@@ -55,6 +63,7 @@ import {
   describeLoot,
   pickExpeditionEvent,
 } from "./expedition-events";
+import { ExpeditionTeamMember, getSectorSuccessFactor } from "./expedition-config";
 
 /**
  * ЧАСТЬ 5. Разведка (походы): отправка команд, события в пути, урон и HP,
@@ -158,8 +167,10 @@ export const getSectorUnlockStatus = (
 
 /**
  * Отправить команду в сектор.
- * Списывает биомассу на снаряжение, помечает жаб `status: "out"`
- * и заводит запись похода.
+ * Списывает биомассу на снаряжение, помечает жаб `status: "out"` и заводит запись
+ * похода. Уходя, жаба освобождает место в комнате (`roomId` сбрасывается): она в
+ * походе, а не в ⚡-комнате или «Разведке» — двух мест сразу не бывает. Вернувшись,
+ * жаба оказывается в вольере, и её сажают на место заново.
  */
 export const startExpedition = (
   sectorId: number,
@@ -202,6 +213,8 @@ export const startExpedition = (
   const seen = new Set<number>();
   const team: ExpeditionMember[] = [];
   const toads: Toad[] = [];
+  /** Та же команда, но с самими жабами — для расчёта шанса удачного завершения */
+  const successMembers: ExpeditionTeamMember[] = [];
 
   for (const member of members) {
     if (seen.has(member.toadId)) {
@@ -221,6 +234,7 @@ export const startExpedition = (
 
     team.push({ toadId: member.toadId, role: member.role });
     toads.push(toad);
+    successMembers.push({ role: member.role, toad });
   }
 
   const cost = getExpeditionSendCost(sector, team.length);
@@ -239,9 +253,9 @@ export const startExpedition = (
     biomass: Math.round(((state.user.biomass || 0) - cost) * 100) / 100,
   });
 
+  // Уход в поход освобождает место: жаба в походе, а не в комнате, спрайт скрыт
   toads.forEach((toad) => {
-    const maxHp = getToadMaxHp(toad);
-    updateToadById(toad.id, { status: "out", hp: maxHp, maxHp }, true);
+    updateToadById(toad.id, getAwayToadUpdate(toad), true);
   });
 
   const expedition: Expedition = {
@@ -252,6 +266,13 @@ export const startExpedition = (
     phase: "outbound",
     progress: 0,
     resolvedSteps: 0,
+    // Шанс удачного завершения считаем на старте (роли, сложность сектора и удача):
+    // каждая занятая роль даёт +20%, сила роли и глубина сектора множат вклад.
+    successChance: getExpeditionSuccessChance(
+      successMembers,
+      sector,
+      rollExpeditionLuck()
+    ),
     loot: createEmptyLoot(),
     log: [],
   };
@@ -260,6 +281,16 @@ export const startExpedition = (
     role: "system",
     kind: "info",
     text: `команда из ${team.length} жаб ушла в «${sector.name}» − снаряжение ${cost} 🧪`,
+  });
+
+  pushLog(expedition, {
+    role: "system",
+    kind: "info",
+    text: `шанс вернуться с удачей: ${Math.round(
+      (expedition.successChance ?? 0) * 100
+    )}% (каждая роль даёт +20%, сложность сектора ×${getSectorSuccessFactor(
+      sector
+    ).toFixed(2)})`,
   });
 
   updateGameState({ expeditions: [...expeditions, expedition] }, true);
@@ -822,7 +853,6 @@ const createSampleToads = (count: number, sector: SectorDef): Toad[] => {
     generation: 0,
     sex: Math.random() > 0.5 ? "male" : "female",
     stage: "adult",
-    scene_id: null,
     parents: null,
     pregnancy: null,
     state: {
@@ -850,7 +880,19 @@ const createSampleToads = (count: number, sector: SectorDef): Toad[] => {
     },
   }));
 
-  return createToads(data, true);
+  // Склада жаб больше нет: образец живёт только в вольере. Сколько мест — столько жаб,
+  // остальные образцы остаются в секторе (о них скажет отчёт похода).
+  const { assigned, rejected } = assignToadsToScenes(data);
+
+  if (rejected > 0) {
+    console.info(`Образцы из «${sector.name}»: ${rejected} остались в секторе — нет мест`);
+  }
+
+  if (assigned.length === 0) {
+    return [];
+  }
+
+  return createToads(assigned, true);
 };
 
 /**
@@ -866,18 +908,42 @@ const applyArrival = (
   const forced = Boolean(expedition.forced);
   const lossFactor = forced ? FORCED_LOOT_LOSS : 0;
 
+  // 0. Удачное завершение (Часть 5.4): каждая роль команды дала шанс, бросок — за нас.
+  // Удача умножает добычу и добавляет шансы на образец и Астро-кваксы.
+  const successChance = expedition.successChance ?? 0;
+  const goodFinish = !forced && Math.random() < Math.min(1, successChance);
+  const finishFactor = goodFinish ? EXPEDITION_GOOD_FINISH_LOOT : 1;
+
+  // 0.1 Норма «поход выгоднее фермы»: считаем, сколько те же жабы наработали бы
+  // дома за время отсутствия (путь туда + обратно) и добираем добычу до нормы.
+  const awayHours =
+    (Date.now() - expedition.startedAt) / HOUR_MS +
+    (expedition.returnHours ?? 0);
+  const teamToads = state.toads.filter((toad) =>
+    expedition.team.some((member) => member.toadId === toad.id)
+  );
+  const profitFloor = getExpeditionProfitFloor(
+    teamToads,
+    awayHours,
+    getExpeditionSendCost(sector, expedition.team.length)
+  );
+  const lootValue = getLootValue(expedition.loot);
+  const floorTopUp = Math.max(0, profitFloor - lootValue * finishFactor);
+
   // 1. Добыча: при экстренной эвакуации половина остаётся в секторе
   const biomass = Math.max(
     0,
-    Math.round(expedition.loot.biomass * (1 - lossFactor))
+    Math.round(expedition.loot.biomass * (1 - lossFactor) * finishFactor)
   );
   const tokens = Math.max(
     0,
-    Math.round(expedition.loot.tokens * (1 - lossFactor))
+    Math.round(
+      expedition.loot.tokens * (1 - lossFactor) * finishFactor + floorTopUp
+    )
   );
   const astro = Math.max(
     0,
-    Math.round(expedition.loot.astro_quax * (1 - lossFactor))
+    Math.round(expedition.loot.astro_quax * (1 - lossFactor) * finishFactor)
   );
   const items: Partial<Record<Items, number>> = {};
 
@@ -898,12 +964,28 @@ const applyArrival = (
   const walletBiomass = Math.max(0, (state.user.biomass || 0) + biomass);
   const paidFee = Math.min(fee, walletBiomass);
 
-  // 3. Валюта и склад
+  // 3. Валюта и склад: склад предметов ограничен постройками «Склад», поэтому
+  //    излишки, которые не влезли на полки, остаются в секторе.
   const storage = { ...state.user.storage };
-  Object.entries(items).forEach(([item, amount]) => {
+  const acceptedItems = fitItemsInStorage(storage, items);
+  Object.entries(acceptedItems).forEach(([item, amount]) => {
     const key = item as Items;
     storage[key] = (storage[key] || 0) + (amount || 0);
   });
+
+  const lostItems = Object.entries(items).reduce(
+    (sum, [item, amount]) =>
+      sum + Math.max(0, (amount || 0) - (acceptedItems[item as Items] || 0)),
+    0
+  );
+
+  if (lostItems > 0) {
+    pushLog(expedition, {
+      role: "system",
+      kind: "bad",
+      text: `на складе не нашлось места: ${lostItems} предмет(ов) осталось в секторе`,
+    });
+  }
 
   updateUser({
     biomass: walletBiomass - paidFee,
@@ -967,9 +1049,34 @@ const applyArrival = (
     items,
     sample: samples.length,
   });
-  let summary = `Команда вернулась из «${sector.name}»: ${
-    lootText || "пусто, зато живые"
-  }`;
+  let summary = goodFinish
+    ? `Удачный поход в «${sector.name}»: ${lootText || "пусто, зато живые"}`
+    : `Команда вернулась из «${sector.name}»: ${
+        lootText || "пусто, зато живые"
+      }`;
+
+  if (goodFinish) {
+    pushLog(expedition, {
+      role: "system",
+      kind: "good",
+      text: `роли сложились (шанс ${Math.round(
+        successChance * 100
+      )}%): добыча ×${EXPEDITION_GOOD_FINISH_LOOT}`,
+    });
+  }
+  if (floorTopUp > 0) {
+    pushLog(expedition, {
+      role: "system",
+      kind: "info",
+      text: `на обратном пути команда добрала норму: +${Math.round(
+        floorTopUp
+      )} 🔷 (поход всегда выгоднее фермы)`,
+    });
+    summary += `. Добор до нормы: +${Math.round(floorTopUp)} 🔷`;
+  }
+  if (lostItems > 0) {
+    summary += `. ${lostItems} предмет(ов) не влезли на склад — постройте «Склад»`;
+  }
 
   if (forced && lossFactor > 0) {
     summary += `. Половина добычи осталась в секторе (−${Math.round(

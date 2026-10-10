@@ -24,8 +24,7 @@ export type FilterByType =
   | "males"
   | "females"
   | "toadpoles"
-  | "enclosure"
-  | "storage";
+  | "enclosure";
 
 export interface FilterProps {
   toads: Toad[];
@@ -76,7 +75,6 @@ export const Filters = ({
   const malesCount = toads.filter((t) => t.sex === "male").length;
   const femalesCount = toads.filter((t) => t.sex === "female").length;
   const toadPolesCount = toads.filter((t) => t.stage === "toadpole").length;
-  const storageToads = toads.filter((t) => t.scene_id === null).length;
 
   return (
     <>
@@ -254,17 +252,6 @@ export const Filters = ({
                   }`}
                 >
                   {currentScene.name} ({currentToads.length})
-                </button>
-                <div className="w-px bg-purple-500/20 my-1"></div>
-                <button
-                  onClick={() => setFilterBy("storage")}
-                  className={`px-2 py-1 rounded text-xs font-medium transition-all ${
-                    filterBy === "storage"
-                      ? "bg-purple-600 text-white shadow-sm shadow-purple-500/30"
-                      : "text-gray-200 hover:text-purple-300"
-                  }`}
-                >
-                  Склад ({storageToads})
                 </button>
               </HorizontalScroll>
             </div>

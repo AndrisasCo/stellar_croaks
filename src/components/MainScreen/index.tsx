@@ -8,6 +8,7 @@ import { useModal } from "../ModalContext";
 import { processBreeding, TimeManager } from "../../utils/breeding-manager";
 import { processDiseases } from "../../utils/disease-manager";
 import { processCyberEvents } from "../../utils/events-manager";
+import { syncColonyScenes } from "../../backend/colony";
 import {
   processExpeditions,
   processHpRegen,
@@ -84,6 +85,9 @@ export default function ToadGame() {
       ]);
 
       await syncGameState();
+
+      // Вольеры строятся гексами: приводим карту колонии и список вольеров в согласие
+      syncColonyScenes();
 
       const timeManager = new TimeManager();
       const offlineHours = timeManager.getTimePassed();

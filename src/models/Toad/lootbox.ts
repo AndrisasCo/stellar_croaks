@@ -39,7 +39,7 @@ export const UNIQUE_TOADS_BY_RARITY: Record<LootboxRarity, Partial<Toad>[]> = {
         rarity: 3.8,
         hungerRate: 1.0,
         fertility: 1.0,
-        personality: "lazy",
+        personality: "sleepy",
       },
     },
   ],
@@ -56,7 +56,7 @@ export const UNIQUE_TOADS_BY_RARITY: Record<LootboxRarity, Partial<Toad>[]> = {
         rarity: 5,
         hungerRate: 1.0,
         fertility: 1.2,
-        personality: "active",
+        personality: "hyperactive",
       },
     },
     {
@@ -239,15 +239,30 @@ export const UNIQUE_TOADS_BY_RARITY: Record<LootboxRarity, Partial<Toad>[]> = {
   ],
 };
 
-let pityCounter = 0;
-const getToadRarity = () => {
-  pityCounter++;
-  console.log({ pityCounter });
+/**
+ * Гарантия «неудачных» открытий. Счётчик хранится в localStorage: раньше он жил
+ * в переменной модуля и обнулялся при каждой перезагрузке — жалость не работала
+ * (аудит P2). Сюда же убран лишний console.log.
+ */
+const PITY_KEY = "toad_lootbox_pity";
+
+const readPity = (): number => {
+  const stored = Number(localStorage.getItem(PITY_KEY));
+  return Number.isFinite(stored) && stored > 0 ? stored : 0;
+};
+
+const writePity = (value: number): void => {
+  localStorage.setItem(PITY_KEY, String(value));
+};
+
+const getToadRarity = (): LootboxRarity => {
+  const pityCounter = readPity() + 1;
+  writePity(pityCounter);
 
   const percent = Math.random() * 100; // [0, 100)
 
   if (pityCounter >= 50) {
-    pityCounter = 0;
+    writePity(0);
     return LootboxRarity.epic;
   }
 
@@ -257,11 +272,11 @@ const getToadRarity = () => {
   }
 
   if (percent < 0.5) {
-    pityCounter = 0;
+    writePity(0);
     return LootboxRarity.legendary;
   }
   if (percent < 3) {
-    pityCounter = 0;
+    writePity(0);
     return LootboxRarity.epic;
   }
   if (percent < 15) {
@@ -273,6 +288,19 @@ const getToadRarity = () => {
   return LootboxRarity.common;
 };
 
+/**
+ * Редкость гена по тиру лутбокса. В шаблонах у всех жаб стоял `rarity: 5`, поэтому
+ * «легендарная» жаба не отличалась редкостью от обычной (аудит P2): теперь тир коробки
+ * видно и в характеристиках, с небольшим разбросом.
+ */
+const TIER_GENE_RARITY: Record<LootboxRarity, number> = {
+  [LootboxRarity.common]: 3,
+  [LootboxRarity.uncommon]: 5,
+  [LootboxRarity.rare]: 8,
+  [LootboxRarity.epic]: 11,
+  [LootboxRarity.legendary]: 15,
+};
+
 const findToadTemplate = (rarity: LootboxRarity) => {
   const group = UNIQUE_TOADS_BY_RARITY[rarity];
   const roll = Math.floor(Math.random() * group.length);
@@ -281,7 +309,13 @@ const findToadTemplate = (rarity: LootboxRarity) => {
 };
 
 // Основная функция генерации жабы из лутбокса
-export const generateLootboxToad = (): {
+/**
+ * Жаба из лутбокса. Вольер (`sceneId`) жабе назначает вызывающий код: склада жаб нет,
+ * поэтому открывающий обязан найти свободное место (см. `utils/housing.ts`).
+ */
+export const generateLootboxToad = (
+  sceneId = 1,
+): {
   baseToad: Toad;
   rarity: LootboxRarity;
 } => {
@@ -303,7 +337,7 @@ export const generateLootboxToad = (): {
     generation: 1,
     sex,
     stage: "adult",
-    scene_id: null,
+    scene_id: sceneId,
     created_at: new Date().toISOString(),
     parents: null,
     state: {
@@ -321,7 +355,10 @@ export const generateLootboxToad = (): {
       pattern: template.genes?.pattern || "smooth",
       weight: template.genes?.weight || 18 + Math.floor(Math.random() * 8),
       speed: template.genes?.speed || 0.3 + Math.random() * 0.4,
-      rarity: template.genes?.rarity || 1,
+      rarity:
+        Math.round(
+          TIER_GENE_RARITY[rarity] * (0.9 + Math.random() * 0.2) * 10
+        ) / 10,
       hungerRate: template.genes?.hungerRate || 0.8 + Math.random() * 0.6,
       fertility: template.genes?.fertility || 0.8 + Math.random() * 0.8,
       personality: template.genes?.personality || null,

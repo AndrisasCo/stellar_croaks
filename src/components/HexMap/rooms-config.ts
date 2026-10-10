@@ -1,4 +1,5 @@
 import { ColonyRoomKind } from "../../models/colony";
+import { Toad } from "../../models/Toad";
 import { AxialCoord, hexDistance, hexRing } from "./hex-geometry";
 
 /**
@@ -168,7 +169,13 @@ const PALETTES: Record<RoomKind, RoomPalette> = {
 
 /**
  * Черновик комнаты: из него собираются и гекс на карте, и карточка в меню застройки.
- * Цены — черновые, для балансировки: правятся в одном месте, дальше расходятся сами.
+ *
+ * Цены — по ВРЕМЕНИ игры, а не «на глаз»: ранняя колония из 3-4 жаб даёт ~110 Кваксов
+ * в сутки, а на старте у игрока 50 Кваксов. Поэтому первые два гекса обучения —
+ * «Разведка» (25) и «Склад» (25) — игрок ставит сразу, не дожидаясь фермы; дальше цена
+ * растёт вместе с доходом: полдня фермы (инкубатор, лазарет), сутки (вольер, гнездо,
+ * энергокомната, магазин), несколько суток (лаборатория и коллайдер).
+ * Правятся цены здесь — отсюда их берут и карточки застройки, и сама постройка.
  */
 export interface RoomBlueprint {
   kind: ColonyRoomKind;
@@ -198,21 +205,21 @@ export const ROOM_BLUEPRINTS: Record<ColonyRoomKind, RoomBlueprint> = {
       "Даёт ток соседним комнатам: 6 жаб внутри закрывают все 6 сторон. Жаб нужно кормить.",
     palette: PALETTES.power,
     unique: false,
-    baseCost: 120,
+    baseCost: 160,
     costGrowth: 1.6,
     actions: [{ id: "power-room", icon: "⚡", title: "Энергокомната" }],
   },
   aviary: {
     kind: "aviary",
     title: "Вольер",
-    subtitle: "Дом для жаб",
+    subtitle: "Новый дом для жаб",
     icon: "🐸",
     description:
-      "Жабы живут, растут и производят биомассу. Вместимость — по текущему вольеру колонии.",
+      "Строит ещё один вольер: +20 мест для жаб. Вольеров может быть до 10 — каждый следующий дороже.",
     palette: PALETTES.aviary,
     unique: false,
-    baseCost: 400,
-    costGrowth: 2,
+    baseCost: 120,
+    costGrowth: 1.7,
     actions: [
       { id: "toad-list", icon: "📋", title: "Список жаб вольера" },
       { id: "scene-info", icon: "ⓘ", title: "О вольере" },
@@ -228,7 +235,7 @@ export const ROOM_BLUEPRINTS: Record<ColonyRoomKind, RoomBlueprint> = {
       "Беременность идёт под присмотром: жабы зреют в гнезде, потомство уходит в инкубатор.",
     palette: PALETTES.breeding,
     unique: false,
-    baseCost: 500,
+    baseCost: 150,
     costGrowth: 2,
     actions: [{ id: "nest", icon: "🥚", title: "Гнездо" }],
   },
@@ -241,7 +248,7 @@ export const ROOM_BLUEPRINTS: Record<ColonyRoomKind, RoomBlueprint> = {
       "Колбы для потомства коллайдера: гибрид дозревает здесь и оттуда отправляется в вольер.",
     palette: PALETTES.incubator,
     unique: false,
-    baseCost: 300,
+    baseCost: 80,
     costGrowth: 1.8,
     actions: [{ id: "incubator", icon: "🧫", title: "Инкубатор" }],
   },
@@ -254,7 +261,7 @@ export const ROOM_BLUEPRINTS: Record<ColonyRoomKind, RoomBlueprint> = {
       "Смешивает гены двух жаб: гибрид уходит в инкубатор. Комната — в единственном экземпляре.",
     palette: PALETTES.collider,
     unique: true,
-    baseCost: 800,
+    baseCost: 600,
     costGrowth: 1,
     actions: [{ id: "collider", icon: "🧬", title: "Коллайдер" }],
   },
@@ -264,23 +271,23 @@ export const ROOM_BLUEPRINTS: Record<ColonyRoomKind, RoomBlueprint> = {
     subtitle: "Команды жаб в походы",
     icon: "🧭",
     description:
-      "Диспетчерская колонии: собирает команды жаб и отправляет их в походы по секторам Периметра.",
+      "Диспетчерская колонии: команды уходят в походы по секторам Периметра. Поход всегда выгоднее фермы, а каждая роль в команде добавляет 20% к шансу удачного возврата.",
     palette: PALETTES.scout,
     unique: false,
-    baseCost: 350,
+    baseCost: 25,
     costGrowth: 1.8,
     actions: [{ id: "scout", icon: "🧭", title: "Разведка" }],
   },
   storage: {
     kind: "storage",
     title: "Склад",
-    subtitle: "Ресурсы и коробки",
+    subtitle: "+300 к вместимости",
     icon: "📦",
     description:
-      "Полки и коробки колонии: здесь лежат корм, биомасса, предметы и лишние жабы.",
+      "Каждый склад добавляет 300 единиц к полкам: корм, батарейки, пигменты, пыль и лутбоксы. Тап по складу открывает его содержимое.",
     palette: PALETTES.storage,
     unique: false,
-    baseCost: 250,
+    baseCost: 25,
     costGrowth: 1.7,
     actions: [{ id: "storage", icon: "📦", title: "Склад" }],
   },
@@ -290,10 +297,10 @@ export const ROOM_BLUEPRINTS: Record<ColonyRoomKind, RoomBlueprint> = {
     subtitle: "Торговля",
     icon: "🛒",
     description:
-      "Покупка и продажа жаб, элитные заказы и вольеры. Магазин в колонии один.",
+      "Покупка и продажа жаб, элитные заказы за Астро-кваксы. Магазин в колонии один.",
     palette: PALETTES.shop,
     unique: true,
-    baseCost: 600,
+    baseCost: 450,
     costGrowth: 1,
     actions: [{ id: "shop", icon: "🛒", title: "Магазин" }],
   },
@@ -306,7 +313,7 @@ export const ROOM_BLUEPRINTS: Record<ColonyRoomKind, RoomBlueprint> = {
       "Раненых жаб лечат за Кваксы, не дожидаясь, пока HP восстановится само.",
     palette: PALETTES.hospital,
     unique: false,
-    baseCost: 450,
+    baseCost: 95,
     costGrowth: 1.8,
     actions: [{ id: "hospital", icon: "🩹", title: "Лазарет" }],
   },
@@ -319,26 +326,27 @@ export const ROOM_BLUEPRINTS: Record<ColonyRoomKind, RoomBlueprint> = {
       "Жаба расщепляется на биомассу: необратимо, зато полезно. Комната в колонии одна.",
     palette: PALETTES.dissociator,
     unique: true,
-    baseCost: 700,
+    baseCost: 400,
     costGrowth: 1,
     actions: [{ id: "dissociator", icon: "🧪", title: "Диссоциатор" }],
   },
 };
 
 /**
- * Порядок комнат в меню застройки: сначала инфраструктура и базовые нужды, дальше лаборатория
- * и торговля. Список и есть порядок карточек — каталог `ROOM_BLUEPRINTS` остаётся без порядка.
+ * Порядок комнат в меню застройки: сначала то, что нужно на обучении (разведка и склад
+ * ставятся со стартовых Кваксов), дальше жильё и энергия, потом лаборатория и торговля.
+ * Список и есть порядок карточек — каталог `ROOM_BLUEPRINTS` остаётся без порядка.
  */
 export const ROOM_BLUEPRINT_ORDER: ColonyRoomKind[] = [
-  "power",
-  "aviary",
-  "breeding",
-  "incubator",
-  "collider",
   "scout",
   "storage",
-  "shop",
+  "aviary",
+  "power",
+  "breeding",
+  "incubator",
   "hospital",
+  "shop",
+  "collider",
   "dissociator",
 ];
 
@@ -439,9 +447,24 @@ export const isRoomOpen = (room: RoomConfig) => room.actions.length > 0;
 /** Комната построена, а не пустой слот под застройку. */
 export const isBuiltRoom = (room: RoomConfig) => room.kind !== "empty";
 
-/** Живут ли в комнате жабы: вольер, гнездо и построенные энергокомнаты ⚡. */
+/**
+ * Живут ли в комнате жабы: вольер, гнездо, энергокомнаты ⚡ и комнаты похода («Разведка»).
+ * У остальных комнат оборудование и товар — жабам там делать нечего.
+ */
 export const isToadRoom = (room: RoomConfig) =>
-  room.kind === "aviary" || room.kind === "breeding" || room.kind === "power";
+  room.kind === "aviary" ||
+  room.kind === "breeding" ||
+  room.kind === "power" ||
+  room.kind === "scout";
+
+/**
+ * Видна ли жаба в комнате прямо сейчас: ушедшую в поход (`status: "out"`) карта не рисует —
+ * жаба в походе, а не в комнате, и двух местах сразу не бывает. Место в комнате она при
+ * уходе освобождает (`roomId` сбрасывается при отправке, `utils/expedition-config.ts`),
+ * поэтому спрайт не вернётся «сам на старое место»: домой жаба приходит в вольер.
+ * Страховка на случай сейва, где жаба уже в походе, но место ещё старое.
+ */
+export const isToadVisibleInRoom = (toad: Toad) => toad.status !== "out";
 
 /** Кольцо, в котором стоит комната (0 — ядро, 1 и 2 — слоты вокруг). */
 export const getRoomRing = (room: RoomConfig) =>

@@ -1,18 +1,9 @@
-import React, { useState } from "react";
-import { Toad } from "../../../models/Toad";
+import { useState } from "react";
 import Modal from "../../shared/Header";
 import { useToads } from "../../ToadContext";
 import { useSoundEffects } from "../../../hooks/use-sound-effects";
-import {
-  createToad,
-  updateToadById,
-  updateToadsByIds,
-  updateUser,
-} from "../../../backend";
+import { createToad, updateUser } from "../../../backend";
 import { useNotifications } from "../../../hooks/use-notification";
-import { ToadItem } from "../../shared/ToadItem";
-import { useFilters } from "../../../hooks/use-filters";
-import { Filters } from "../../shared/Filters";
 import { randomizeToadCharacteristics } from "../../../utils/randomize-toad-characteristics";
 import { ToadTypes } from "../../../models/Toad/toad-species";
 import { getGameState } from "../../../backend/localStorage";
@@ -20,8 +11,6 @@ import {
   loadColliderState,
   saveColliderState,
 } from "../../../backend/collider-manager";
-import { MAX_STORED_TOADS } from "../../../utils/constants";
-import { usePagination } from "../../../hooks/use-pagination";
 import {
   generateLootboxToad,
   LootboxRarity,
@@ -32,12 +21,20 @@ import {
   completeAchivementCounter,
   getAchievementState,
 } from "../../../backend/achivements-manager";
-import { DissolveConfirm } from "../../shared/DissolveConfirm";
 import {
-  dissolveToads,
-  getDissolveBatchYield,
-  getDissolveYield,
-} from "../../../utils/dissolve-manager";
+  getStorageCapacityInfo,
+  STORAGE_CAPACITY_PER_ROOM,
+} from "../../../utils/storage";
+import { pickSceneForNewToad } from "../../../utils/housing";
+
+/**
+ * Склад — только предметы. Жаб здесь больше нет: каждая жаба живёт в вольере
+ * (`scene_id`), поэтому лутбокс открывается сразу в свободный вольер, а если места
+ * нет — лутбокс остаётся лежать, и игра предлагает построить вольер.
+ *
+ * Вместимость полок растёт постройками «Склад» на карте колонии: каждая постройка
+ * даёт `STORAGE_CAPACITY_PER_ROOM` единиц (см. `utils/storage.ts`).
+ */
 
 /** Сколько крафтовой пыли даёт дубликат жабы (Часть 3.7) */
 const getDuplicateDust = (rarity: LootboxRarity): number => {
@@ -50,8 +47,6 @@ const getDuplicateDust = (rarity: LootboxRarity): number => {
       return 3;
   }
 };
-
-type StorageTabType = "items" | "toads";
 
 // Типы предметов на складе
 interface StorageItem {
@@ -67,75 +62,31 @@ interface StorageItem {
 }
 
 const StorageModal: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<StorageTabType>("toads");
   const { addNotification } = useNotifications();
-  const { allToads = [], account, currentScene, toads } = useToads();
+  const { account } = useToads();
   const { playClick, playOk, playLegendary } = useSoundEffects();
-  const [selectedToads, setSelectedToads] = useState<number[]>([]);
-  // Жабы, отправленные в Диссоциатор (ждут подтверждения разбора)
-  const [dissolveTargets, setDissolveTargets] = useState<Toad[]>([]);
   const [showConfetti, setShowConfetti] = useState(0);
-  // Жабы на складе (без сцены)
-  const storedToads = allToads?.filter((toad) => toad.scene_id === null) || [];
 
-  const {
-    filteredAndSortedToads,
-    sortBy,
-    setSortBy,
-    sortDirection,
-    setSortDirection,
-    filterBy,
-    setFilterBy,
-  } = useFilters(storedToads);
-
-  const {
-    visibleItems: visibleToads,
-    hasMore,
-    loadMoreRef,
-  } = usePagination<Toad>(filteredAndSortedToads, 5);
-
-  const handleSelectAllFiltered = () => {
-    const filteredToadIds = filteredAndSortedToads.map((toad) => toad.id);
-    const allSelected = filteredToadIds.every((id) =>
-      selectedToads.includes(id)
-    );
-
-    if (allSelected) {
-      setSelectedToads(
-        selectedToads.filter((id) => !filteredToadIds.includes(id))
-      );
-    } else {
-      const newSelected = [...new Set([...selectedToads, ...filteredToadIds])];
-      setSelectedToads(newSelected);
-    }
-  };
-
-  const selectedFilteredToads = selectedToads.filter((id) =>
-    filteredAndSortedToads.some((toad) => toad.id === id)
-  );
-
-  // Жабы выборки как объекты (для Диссоциатора)
-  const selectedFilteredToadObjects = filteredAndSortedToads.filter((toad) =>
-    selectedFilteredToads.includes(toad.id)
-  );
-
-  const isAllFilteredSelected =
-    filteredAndSortedToads.length > 0 &&
-    filteredAndSortedToads.every((toad) => selectedToads.includes(toad.id));
+  const capacity = getStorageCapacityInfo(account?.storage);
 
   const handleOpenLootbox = () => {
-    const account = getGameState().user;
+    const current = getGameState().user;
 
-    if (storedToads.length + 1 > MAX_STORED_TOADS) {
+    if (!current.storage.lootbox) {
+      return;
+    }
+
+    // Лутбокс открывается в живой вольер: склада жаб больше нет
+    const scene = pickSceneForNewToad();
+
+    if (!scene) {
       addNotification({
-        type: "danger",
-        content: `На складе нет места`,
+        type: "warn",
+        content: "В био-подах нет мест или недостаточно питания.",
       });
       return;
     }
-    if (!account.storage.lootbox) {
-      return;
-    }
+
     setShowConfetti(showConfetti + 1);
     completeAchivementCounter("lootbox", 1);
     const { baseToad, rarity } = generateLootboxToad();
@@ -152,11 +103,11 @@ const StorageModal: React.FC = () => {
     }
 
     const isHighRarity = [LootboxRarity.epic, LootboxRarity.legendary].includes(
-      rarity
+      rarity,
     );
 
     updateUser({
-      storage: { ...account.storage, lootbox: account.storage.lootbox - 1 },
+      storage: { ...current.storage, lootbox: current.storage.lootbox - 1 },
     });
 
     // Часть 3.7: дубликат вида (кроме эпиков/легендарок) разбирается в крафтовую пыль
@@ -164,7 +115,7 @@ const StorageModal: React.FC = () => {
       !isHighRarity &&
       Boolean(randomToad.type) &&
       (getAchievementState().toads_collection || []).includes(
-        randomToad.type as ToadTypes
+        randomToad.type as ToadTypes,
       );
 
     if (isDuplicate) {
@@ -172,7 +123,7 @@ const StorageModal: React.FC = () => {
       updateUser({
         storage: {
           ...getGameState().user.storage,
-          [Items.craftDust]: (account.storage[Items.craftDust] || 0) + dust,
+          [Items.craftDust]: (current.storage[Items.craftDust] || 0) + dust,
         },
       });
       playOk();
@@ -185,15 +136,16 @@ const StorageModal: React.FC = () => {
 
     addNotification({
       type: "success",
-      content: `${toadLabel} жаба ${randomToad.name} добавлена на склад!`,
+      content: `${toadLabel} жаба ${randomToad.name} поселилась в «${scene.name}»!`,
     });
 
-    createToad(randomToad);
+    createToad({ ...randomToad, scene_id: scene.id });
   };
 
   const handleClickBattery = () => {
-    const account = getGameState().user;
-    if (!account.storage.battery) {
+    const current = getGameState().user;
+
+    if (!current.storage.battery) {
       return;
     }
 
@@ -221,7 +173,8 @@ const StorageModal: React.FC = () => {
     }
 
     // −10 минут: сдвигаем старт инкубации назад, приближая готовность
-    activeSlot.startTime = activeSlot.startTime - 10 * 60 * 1000; // −10 мин
+    activeSlot.startTime =
+      (activeSlot.startTime ?? Date.now()) - 10 * 60 * 1000;
     saveColliderState(collider);
     window.dispatchEvent(new Event("colliderChanged"));
 
@@ -231,7 +184,7 @@ const StorageModal: React.FC = () => {
     });
 
     updateUser({
-      storage: { ...account.storage, battery: account.storage.battery - 1 },
+      storage: { ...current.storage, battery: current.storage.battery - 1 },
     });
   };
 
@@ -251,7 +204,7 @@ const StorageModal: React.FC = () => {
       name: "Лутбокс",
       icon: "/assets/lootbox.webp",
       quantity: account?.storage?.lootbox || 0,
-      description: "Открой!",
+      description: "Открывается прямо в вольер",
       type: "tool",
       rarity: "rare",
       key: "lootbox",
@@ -273,7 +226,7 @@ const StorageModal: React.FC = () => {
       name: "Сияющие мушки",
       icon: "/assets/flies.webp",
       quantity: account?.storage?.sparkleFlys || 0,
-      description: "Ускоряют беременность жабы на 100%",
+      description: "Ускоряют беременность жабы",
       type: "material",
       rarity: "rare",
       key: "sparkleFlys",
@@ -283,7 +236,7 @@ const StorageModal: React.FC = () => {
       name: "Белковые черви",
       icon: "/assets/worms.webp",
       quantity: account?.storage?.worms || 0,
-      description: "Ускоряет рост головастика на 100%",
+      description: "Ускоряет рост головастика",
       type: "material",
       rarity: "uncommon",
       key: "worms",
@@ -291,12 +244,21 @@ const StorageModal: React.FC = () => {
   };
 
   const storageItems = Object.values(itemsFull)
-    .map((i) => ({
-      ...i,
-      quantity: account?.storage?.[i.key] || 0,
-      ..._storageItems[i.key],
-    }))
-    .filter((t) => t.quantity);
+    .map((item) => {
+      const meta = _storageItems[item.key];
+
+      return {
+        ...item,
+        ...meta,
+        id: meta?.id ?? item.key,
+        name: meta?.name ?? item.name,
+        description: meta?.description ?? item.description,
+        type: meta?.type ?? "material",
+        rarity: (meta?.rarity ?? "uncommon") as StorageItem["rarity"],
+        quantity: account?.storage?.[item.key] || 0,
+      };
+    })
+    .filter((item) => item.quantity);
 
   // Функция для получения цвета редкости предмета
   const getItemRarityColor = (rarity: StorageItem["rarity"]): string => {
@@ -322,57 +284,10 @@ const StorageModal: React.FC = () => {
     return colors[rarity];
   };
 
-  // Функция перемещения жабы на сцену
-  const handleMoveToadToScene = (toad: Toad) => {
-    playClick();
-    if (currentScene.capacity < toads.length + 1) {
-      addNotification({ type: "warn", content: "Данный вольер переполнен!" });
-      return;
-    }
-    updateToadById(toad.id, { scene_id: currentScene.id });
-  };
-
-  const handleMoveToadsToScene = () => {
-    playClick();
-
-    if (currentScene.capacity >= toads.length + selectedFilteredToads.length) {
-      updateToadsByIds(selectedFilteredToads, { scene_id: currentScene.id });
-      setSelectedToads([]);
-      return;
-    }
-    const maxCapacity = currentScene.capacity - toads.length;
-    updateToadsByIds(selectedFilteredToads.slice(0, maxCapacity), {
-      scene_id: currentScene.id,
-    });
-    setSelectedToads([]);
-
-    addNotification({ type: "warn", content: "Данный вольер переполнен!" });
-  };
-
-  /** Открыть подтверждение разбора жаб со склада в биомассу */
-  const requestDissolve = (toadsToDissolve: Toad[]) => {
-    if (toadsToDissolve.length === 0) {
-      return;
-    }
-    playClick();
-    setDissolveTargets(toadsToDissolve);
-  };
-
-  /** Подтверждённый разбор: жабы исчезают, биомасса начисляется */
-  const handleDissolveConfirm = () => {
-    const ids = dissolveTargets.map((toad) => toad.id);
-    const result = dissolveToads(ids);
-    setDissolveTargets([]);
-
-    if (!result.success) {
-      addNotification({ type: "warn", content: result.message });
-      return;
-    }
-
-    setSelectedToads(selectedToads.filter((id) => !ids.includes(id)));
-    playOk();
-    addNotification({ type: "success", content: result.message });
-  };
+  const filledPercent = Math.min(
+    100,
+    Math.round((capacity.used / capacity.capacity) * 100),
+  );
 
   const icon = (
     <svg
@@ -393,53 +308,55 @@ const StorageModal: React.FC = () => {
   return (
     <Modal icon={icon} title="Склад">
       <ConfettiAnimation trigger={showConfetti} intensity={5} />
-      {/* Табы */}
-      <div className="flex border-b border-gray-700 mb-3">
-        <button
-          onClick={() => {
-            playClick();
-            setActiveTab("toads");
-          }}
-          className={`flex-1 py-3 text-sm font-medium transition-colors ${
-            activeTab === "toads"
-              ? "text-green-400 border-b-2 border-green-400"
-              : "text-gray-300 hover:text-gray-200"
-          }`}
-        >
-          Жабы ({storedToads.length})
-        </button>
-        <button
-          onClick={() => {
-            playClick();
-            setActiveTab("items");
-          }}
-          className={`flex-1 py-3 text-sm font-medium transition-colors ${
-            activeTab === "items"
-              ? "text-blue-400 border-b-2 border-blue-400"
-              : "text-gray-300 hover:text-gray-200"
-          }`}
-        >
-          Предметы
-        </button>
+
+      {/* Полки: сколько места занято и откуда берётся вместимость */}
+      <div className="mb-3 rounded-xl border border-blue-500/30 bg-blue-950/20 p-3">
+        <div className="mb-2 flex items-center justify-between text-sm">
+          <span className="font-semibold text-blue-200">📦 Полки</span>
+          <span className="tabular-nums text-gray-200">
+            {capacity.used} / {capacity.capacity}
+          </span>
+        </div>
+        <div className="h-2 w-full overflow-hidden rounded-full bg-slate-800">
+          <div
+            className={`h-full rounded-full transition-all ${
+              filledPercent >= 100
+                ? "bg-rose-500"
+                : filledPercent > 75
+                  ? "bg-amber-500"
+                  : "bg-blue-500"
+            }`}
+            style={{ width: `${filledPercent}%` }}
+          />
+        </div>
+        <p className="mt-2 text-2xs leading-snug text-gray-300">
+          Складов в колонии: {capacity.rooms} — каждый даёт +
+          {STORAGE_CAPACITY_PER_ROOM} к вместимости. Новый склад — гекс «📦
+          Склад» на карте.
+        </p>
       </div>
 
-      {/* Вкладка предметов */}
-      {activeTab === "items" && (
-        <div className="flex flex-col gap-5">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-white px-2 font-semibold">Инвентарь</h3>
-            <div className="text-gray-300 text-sm">
-              Всего предметов:{" "}
-              {storageItems.reduce((sum, item) => sum + item.quantity, 0)}
-            </div>
+      <div className="flex flex-col gap-5">
+        <div className="flex justify-between items-center">
+          <h3 className="text-white px-2 font-semibold">Инвентарь</h3>
+          <div className="text-gray-300 text-sm">Свободно: {capacity.free}</div>
+        </div>
+
+        {storageItems.length === 0 ? (
+          <div className="text-center py-8">
+            <div className="text-gray-300 text-4xl mb-3">📦</div>
+            <p className="text-gray-300 text-sm">Полки пусты</p>
+            <p className="text-gray-500 text-xs mt-1">
+              Корм, батарейки и пигменты появятся здесь после покупок и походов
+            </p>
           </div>
-          {/* Сетка предметов 3x4 */}
+        ) : (
           <div className="grid grid-cols-3 gap-3">
             {storageItems.map((item) => (
               <div
                 key={item.id}
                 className={`relative rounded-xl p-3 border transition-all cursor-pointer group ${getItemRarityBg(
-                  item.rarity
+                  item.rarity,
                 )} border-gray-600/50 hover:border-blue-500/50`}
                 onClick={item.onClick}
               >
@@ -458,7 +375,7 @@ const StorageModal: React.FC = () => {
                 <div className="text-center">
                   <div
                     className={`text-sm font-medium mb-1 ${getItemRarityColor(
-                      item.rarity
+                      item.rarity,
                     )}`}
                   >
                     {item.name}
@@ -475,148 +392,22 @@ const StorageModal: React.FC = () => {
                       item.type === "food"
                         ? "bg-green-900/50 text-green-400"
                         : item.type === "material"
-                        ? "bg-yellow-900/50 text-yellow-400"
-                        : "bg-blue-900/50 text-blue-400"
+                          ? "bg-yellow-900/50 text-yellow-400"
+                          : "bg-blue-900/50 text-blue-400"
                     }`}
                   >
                     {item.type === "food"
                       ? "Корм"
                       : item.type === "material"
-                      ? "Материал"
-                      : "Инструмент"}
+                        ? "Материал"
+                        : "Инструмент"}
                   </div>
                 </div>
               </div>
             ))}
           </div>
-        </div>
-      )}
-
-      {/* Вкладка жаб */}
-      {activeTab === "toads" && (
-        <div className="space-y-3">
-          <div className="flex justify-between items-center mb-3">
-            <h3 className="text-white px-2 font-semibold">Жабы на складе</h3>
-            <div className="text-gray-300 text-sm">
-              {storedToads.length} из {MAX_STORED_TOADS}
-            </div>
-          </div>
-
-          <Filters
-            toads={storedToads}
-            setSortDirection={setSortDirection}
-            setSortBy={setSortBy}
-            filterBy={filterBy}
-            setFilterBy={setFilterBy}
-            sortBy={sortBy}
-            sortDirection={sortDirection}
-          />
-
-          <div className="flex gap-2 justify-end items-center">
-            {selectedFilteredToads.length > 0 && (
-              <div className="mr-auto flex gap-2">
-                <button
-                  onClick={handleMoveToadsToScene}
-                  className="px-3 py-1.5 bg-gradient-to-r from-yellow-600 to-amber-600 hover:from-yellow-500 hover:to-amber-500 text-white rounded-lg text-xs font-bold transition-all shadow-sm border border-yellow-500/30"
-                >
-                  В вольер
-                </button>
-                <button
-                  onClick={() => requestDissolve(selectedFilteredToadObjects)}
-                  className="px-3 py-1.5 bg-gradient-to-r from-amber-600 to-red-600 hover:from-amber-500 hover:to-red-500 text-white rounded-lg text-xs font-bold transition-all shadow-sm border border-amber-500/30"
-                >
-                  ♻️ +{getDissolveBatchYield(selectedFilteredToadObjects)} 🧪
-                </button>
-              </div>
-            )}
-
-            {isAllFilteredSelected ? "Снять выделение" : "Выбрать все"}
-            <button
-              onClick={handleSelectAllFiltered}
-              className={`w-8 h-8 flex items-center justify-center rounded-lg border transition-all ${
-                isAllFilteredSelected
-                  ? "bg-red-500/20 text-red-400 border-red-500/40"
-                  : "bg-green-500/10 text-green-400 border-green-500/30 hover:bg-green-500/20"
-              }`}
-            >
-              {isAllFilteredSelected ? "✕" : "▼"}
-            </button>
-          </div>
-
-          {filteredAndSortedToads.length === 0 ? (
-            <div className="text-center py-8">
-              <div className="text-gray-300 text-4xl mb-3">🐸</div>
-              <p className="text-gray-300 text-sm">Жаб не обнаружено</p>
-              <p className="text-gray-500 text-xs mt-1">
-                Попробуйте поменять фильтры
-              </p>
-            </div>
-          ) : (
-            visibleToads.map((toad) => {
-              return (
-                <ToadItem
-                  isSelected={selectedToads.includes(toad.id)}
-                  onClick={() => {
-                    if (selectedToads.includes(toad.id)) {
-                      setSelectedToads(
-                        selectedToads.filter((id) => id !== toad.id)
-                      );
-                    } else {
-                      setSelectedToads([...selectedToads, toad.id]);
-                    }
-                  }}
-                  key={toad.id}
-                  button={
-                    <div className="flex flex-col items-end gap-1">
-                      <button
-                        className="text-green-400 px-1 py-2 bg-green-400 bg-opacity-30 rounded-lg text-sm font-medium"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          handleMoveToadToScene(toad);
-                        }}
-                      >
-                        В вольер →
-                      </button>
-                      <button
-                        className="text-amber-300 px-1 py-1 bg-amber-400/20 rounded-lg text-2xs font-medium"
-                        title="Разобрать на биомассу"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          requestDissolve([toad]);
-                        }}
-                      >
-                        ♻️ +{getDissolveYield(toad)} 🧪
-                      </button>
-                    </div>
-                  }
-                  toad={toad}
-                />
-              );
-            })
-          )}
-          {/* Индикатор загрузки для бесконечного скролла */}
-          {hasMore && (
-            <div
-              ref={loadMoreRef}
-              className="flex justify-center py-4"
-              key="load-more"
-            >
-              <div className="animate-pulse text-gray-300 text-sm">
-                Загрузка жаб...
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Подтверждение: жабы уйдут в биомассу навсегда */}
-      {dissolveTargets.length > 0 && (
-        <DissolveConfirm
-          toads={dissolveTargets}
-          onCancel={() => setDissolveTargets([])}
-          onConfirm={handleDissolveConfirm}
-        />
-      )}
+        )}
+      </div>
     </Modal>
   );
 };

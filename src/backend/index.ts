@@ -2,6 +2,7 @@ import { Scene } from "../models/scene";
 import { Toad } from "../models/Toad";
 import { User } from "../models/user";
 import { getHunger } from "../utils/state-manager";
+import { getSceneWithFreeSlot } from "../utils/housing";
 import {
   ENERGY_REGEN_PER_HOUR,
   MAX_ENERGY,
@@ -33,12 +34,30 @@ export const getScenes = (): Scene[] => {
 };
 
 // Toad operations
+
+/**
+ * Вольер для новой жабы. Склада жаб больше нет: `scene_id` у жабы всегда есть,
+ * поэтому если вызвавший код не указал (или указал несуществующий) вольер,
+ * берём первый, где есть место, иначе — первый вольер колонии (страховка от
+ * сейвов старых версий; переполнение лечится постройкой нового вольера на карте).
+ */
+const resolveSceneId = (sceneId?: number | null): number => {
+  const state = getGameState();
+
+  if (sceneId && state.scenes.some((scene) => scene.id === sceneId)) {
+    return sceneId;
+  }
+
+  return getSceneWithFreeSlot()?.id ?? state.scenes[0]?.id ?? 1;
+};
+
 export const createToad = (toadData: Partial<Toad>): Toad[] => {
   const state = getGameState();
   const newToad: Toad = {
     id: Math.round(Date.now() * Math.random()),
     created_at: new Date().toISOString(),
     ...toadData,
+    scene_id: resolveSceneId(toadData.scene_id),
   } as Toad;
 
   const newToads = [...state.toads, newToad];
@@ -62,6 +81,7 @@ export const createToads = (
       id: Math.round(Math.random() * Date.now()),
       created_at: new Date().toISOString(),
       ...toadData,
+      scene_id: resolveSceneId(toadData.scene_id),
     } as Toad;
   });
 

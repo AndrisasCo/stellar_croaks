@@ -22,7 +22,7 @@ export const ALL_TOADS: Partial<Toad>[] = [
     generation: 1,
     sex: "male",
     stage: "adult",
-    scene_id: null,
+    scene_id: 1,
     state: {
       hunger: 30,
     },
@@ -44,7 +44,7 @@ export const ALL_TOADS: Partial<Toad>[] = [
     generation: 1,
     sex: "female",
     stage: "adult",
-    scene_id: null,
+    scene_id: 1,
     state: {
       hunger: 25,
     },
@@ -66,7 +66,7 @@ export const ALL_TOADS: Partial<Toad>[] = [
     generation: 1,
     sex: "female",
     stage: "adult",
-    scene_id: null,
+    scene_id: 1,
     state: {
       hunger: 35,
     },
@@ -88,7 +88,7 @@ export const ALL_TOADS: Partial<Toad>[] = [
     generation: 1,
     sex: "male",
     stage: "adult",
-    scene_id: null,
+    scene_id: 1,
     state: {
       hunger: 35,
     },
@@ -110,7 +110,7 @@ export const ALL_TOADS: Partial<Toad>[] = [
     generation: 1,
     sex: "male",
     stage: "toadpole",
-    scene_id: null,
+    scene_id: 1,
     state: {
       hunger: 28,
     },
@@ -132,7 +132,7 @@ export const ALL_TOADS: Partial<Toad>[] = [
     generation: 1,
     sex: "male",
     stage: "toadpole",
-    scene_id: null,
+    scene_id: 1,
     state: {
       hunger: 32,
     },
@@ -154,7 +154,7 @@ export const ALL_TOADS: Partial<Toad>[] = [
     generation: 1,
     sex: "female",
     stage: "adult",
-    scene_id: null,
+    scene_id: 1,
     state: {
       hunger: 20,
     },
@@ -176,7 +176,7 @@ export const ALL_TOADS: Partial<Toad>[] = [
     generation: 1,
     sex: "male",
     stage: "adult",
-    scene_id: null,
+    scene_id: 1,
     state: {
       hunger: 15,
     },
@@ -198,7 +198,7 @@ export const ALL_TOADS: Partial<Toad>[] = [
     generation: 1,
     sex: "male",
     stage: "adult",
-    scene_id: null,
+    scene_id: 1,
     state: {
       hunger: 15,
     },
@@ -219,8 +219,16 @@ export const ALL_TOADS: Partial<Toad>[] = [
 // Ключ для localStorage
 export const SHOP_STATE_KEY = "toad_shop_state9";
 export const REFRESH_COOLDOWN = 3 * 60 * 60 * 1000; // 3 часа в миллисекундах
-export const INSTANT_REFRESH_COST = 20; // Стоимость мгновенного обновления
-export const INSTANT_REFRESH_ELITE_COST = 50; // Стоимость мгновенного обновления
+/** Витрина элитных заказов обновляется реже рынка — раз в сутки */
+export const ELITE_REFRESH_COOLDOWN = 24 * 60 * 60 * 1000;
+/** Мгновенное обновление рынка: цена в Кваксах 🔷 */
+export const INSTANT_REFRESH_COST = 50;
+/** Кулдаун после платного обновления рынка — чтобы обновления не фармили бесконечно */
+export const INSTANT_REFRESH_COOLDOWN = 30 * 60 * 1000;
+/** Мгновенная витрина элитных заказов: цена в Кваксах 🔷 */
+export const INSTANT_REFRESH_ELITE_COST = 150;
+/** Кулдаун после платного обновления витрины заказов */
+export const INSTANT_REFRESH_ELITE_COOLDOWN = 60 * 60 * 1000;
 
 // Функции для работы с localStorage
 export const getShopState = (): ShopState => {
@@ -252,8 +260,10 @@ export const initializeShop = (): ShopState => {
     availableToads: getNewToads(),
     lastRefresh: now - REFRESH_COOLDOWN,
     nextRefresh: now,
-    lastRefreshElite: now - REFRESH_COOLDOWN * 8,
-    nextRefreshElite: now,
+    // Витрина заказов стартует с полным кулдауном: раньше nextRefreshElite = now давал
+    // бесплатное «первое» обновление витрины при каждом заходе (балансный баг P2).
+    lastRefreshElite: now - ELITE_REFRESH_COOLDOWN,
+    nextRefreshElite: now + ELITE_REFRESH_COOLDOWN,
     eliteOrders: getNewElite(),
     items: { ...initialItemsAmount },
   };
@@ -272,7 +282,13 @@ export const getNewElite = () => {
   return shuffled.map((e) => e.id).slice(0, 3);
 };
 
-const BASE_PRICE = 3; // Базовая стоимость = 5 токенов
+/**
+ * Награды элитных заказов — в Астро-кваксах 💎, а не в Кваксах.
+ * Награда привязана к цене заказа по времени: чистое ожидание (10 дней возраста)
+ * стоит дёшево, редкая комбинация гена и характера — дорого. До аудита награды шли
+ * лестницей 20-160💎 без связи со сложностью: самые недостижимые заказы платили
+ * меньше самых простых (аудит P0 «награда ↔ сложность перевёрнуты»).
+ */
 
 export const eliteOrders = [
   {
@@ -281,7 +297,7 @@ export const eliteOrders = [
     description: "Жаба размером более 35 с характером Романтик",
     requirement: (toad: Toad) =>
       toad.genes.weight > 35 && toad.genes.personality === "romantic",
-    reward: BASE_PRICE * 18, // 90 токенов (очень редкое сочетание)
+    reward: 400, // размер 35+ И характер Романтик: почти недостижимая мечта селекции
     difficulty: "extreme",
   },
   {
@@ -289,7 +305,7 @@ export const eliteOrders = [
     title: "Поэт болотных глубин",
     description: "Жаба с характером Мечтатель",
     requirement: (toad: Toad) => toad.genes.personality === "dreamer",
-    reward: BASE_PRICE * 4, // 20 токенов (редкий характер)
+    reward: 60, // характер Мечтатель: личность приходит лотереей из коллидера
     difficulty: "medium",
   },
   {
@@ -297,7 +313,7 @@ export const eliteOrders = [
     title: "Загадка бездны",
     description: "Жаба с полом Бесполый",
     requirement: (toad: Toad) => toad.sex === "neuter",
-    reward: BASE_PRICE * 5, // 25 токенов
+    reward: 40, // бесполый: редкий результат мутации
     difficulty: "extreme",
   },
   {
@@ -305,7 +321,7 @@ export const eliteOrders = [
     title: "Вихрь судьбы",
     description: "Жаба со скоростью более 2",
     requirement: (toad: Toad) => toad.genes.speed > 2,
-    reward: BASE_PRICE * 14, // 70 токенов (очень редкий)
+    reward: 600, // скорость 2+: почти не бывает, гены скорости упираются в 1.0
     difficulty: "hard",
   },
   {
@@ -314,7 +330,7 @@ export const eliteOrders = [
     description: "Жаба редкостью 7 и больше размером более 40",
     requirement: (toad: Toad) =>
       toad.genes.weight > 40 && toad.genes.rarity >= 7,
-    reward: BASE_PRICE * 32, // 160 токенов (почти невозможно)
+    reward: 600, // масса 40+ И редкость 7+: экстремальная селекция
     difficulty: "extreme",
   },
   {
@@ -323,7 +339,7 @@ export const eliteOrders = [
     description: "Жаба с полом Бесполый и редкостью 7+",
     requirement: (toad: Toad) =>
       toad.sex === "neuter" && toad.genes.rarity >= 7,
-    reward: BASE_PRICE * 8, // 40 токенов
+    reward: 120, // бесполый И редкость 7+
     difficulty: "extreme",
   },
   {
@@ -334,7 +350,7 @@ export const eliteOrders = [
       (toad.genes.personality === "innovator" ||
         toad.genes.personality === "energetic") &&
       toad.genes.rarity >= 6,
-    reward: BASE_PRICE * 13, // 65 токенов (сложное сочетание)
+    reward: 150, // Новатор или Энергичный И редкость 6+
     difficulty: "hard",
   },
   {
@@ -347,7 +363,7 @@ export const eliteOrders = [
       toad.genes.speed >= 0.6 &&
       toad.genes.speed <= 0.8 &&
       toad.genes.fertility >= 3,
-    reward: BASE_PRICE * 11, // 55 токенов (сбалансированная сложность)
+    reward: 120, // масса 12-16, скорость 0.6-0.8, плодовитость 3+: узкий коридор
     difficulty: "medium",
   },
   {
@@ -358,7 +374,7 @@ export const eliteOrders = [
       toad.stage === "toadpole" &&
       toad.generation >= 8 &&
       toad.genes.rarity >= 6,
-    reward: BASE_PRICE * 15, // 75 токенов (сложный для головастика)
+    reward: 25, // головастик 8+ поколения: головастиком он бывает всего час
     difficulty: "hard",
   },
   {
@@ -367,7 +383,7 @@ export const eliteOrders = [
     description: "Жаба с характером Обжора и размером более 25",
     requirement: (toad: Toad) =>
       toad.genes.personality === "glutton" && toad.genes.weight > 25,
-    reward: BASE_PRICE * 9, // 45 токенов (редкое сочетание)
+    reward: 80, // Обжора И масса 25+: две линии селекции сразу
     difficulty: "medium",
   },
   {
@@ -376,7 +392,7 @@ export const eliteOrders = [
     description: "Жаба 10+ поколения с характером Тусовщик",
     requirement: (toad: Toad) =>
       toad.generation >= 10 && toad.genes.personality === "partyAnimal",
-    reward: BASE_PRICE * 14, // 70 токенов (очень редкий)
+    reward: 160, // 10+ поколение И Тусовщик
     difficulty: "hard",
   },
   {
@@ -385,7 +401,7 @@ export const eliteOrders = [
     description: "Жаба с характером Аскет и фертильностью более 3",
     requirement: (toad: Toad) =>
       toad.genes.personality === "ascetic" && toad.genes.fertility > 3,
-    reward: BASE_PRICE * 17, // 85 токенов (парадоксальное сочетание)
+    reward: 600, // Аскет И плодовитость 3+: характер и ген тянут в разные стороны
     difficulty: "hard",
   },
   {
@@ -394,7 +410,7 @@ export const eliteOrders = [
     description: "Жаба с характером Лидер и редкостью 5+",
     requirement: (toad: Toad) =>
       toad.genes.personality === "leader" && toad.genes.rarity >= 5,
-    reward: BASE_PRICE * 12, // 60 токенов (сложное сочетание)
+    reward: 90, // Лидер И редкость 5+
     difficulty: "medium",
   },
   {
@@ -403,7 +419,7 @@ export const eliteOrders = [
     description: "Жаба с характером Философ и скоростью менее 0.5",
     requirement: (toad: Toad) =>
       toad.genes.personality === "philosopher" && toad.genes.speed < 0.5,
-    reward: BASE_PRICE * 8, // 40 токенов (средняя сложность)
+    reward: 70, // Философ И скорость меньше 0.5
     difficulty: "medium",
   },
   {
@@ -412,7 +428,7 @@ export const eliteOrders = [
     description: "Жаба с характером Страстный и фертильностью более 4",
     requirement: (toad: Toad) =>
       toad.genes.personality === "passionate" && toad.genes.fertility > 4,
-    reward: BASE_PRICE * 19, // 95 токенов (очень редкое)
+    reward: 800, // Страстный И плодовитость 4+: почти невозможно
     difficulty: "hard",
   },
   {
@@ -423,7 +439,7 @@ export const eliteOrders = [
       toad.sex === "female" &&
       toad.genes.personality === "socialite" &&
       toad.genes.rarity >= 6,
-    reward: BASE_PRICE * 13, // 65 токенов (сложное сочетание)
+    reward: 120, // самка, Светская жаба, редкость 6+
     difficulty: "medium",
   },
   {
@@ -432,7 +448,7 @@ export const eliteOrders = [
     description: "Жаба с характером Мечтатель и беременностью",
     requirement: (toad: Toad) =>
       toad.genes.personality === "dreamer" && toad.pregnancy?.isPregnant,
-    reward: BASE_PRICE * 11, // 55 токенов (средняя сложность)
+    reward: 70, // Мечтатель и беременна: заказ под окно в 10 минут
     difficulty: "medium",
   },
   {
@@ -441,7 +457,7 @@ export const eliteOrders = [
     description: "Жаба с характером Гурман и голодом менее 20%",
     requirement: (toad: Toad) =>
       toad.genes.personality === "gourmet" && toad.state.hunger < 20,
-    reward: BASE_PRICE * 15, // 75 токенов (сложное условие)
+    reward: 60, // Гурман и голод менее 20%: покормить — потерять заказ
     difficulty: "hard",
   },
   {
@@ -452,7 +468,7 @@ export const eliteOrders = [
       toad.genes.personality === "freeSpirit" &&
       Date.now() - new Date(toad.created_at).getTime() >
         3 * 24 * 60 * 60 * 1000,
-    reward: BASE_PRICE * 10,
+    reward: 20, // Свободный дух и возраст 3+ дня: чистое ожидание
     difficulty: "medium",
   },
   {
@@ -461,7 +477,7 @@ export const eliteOrders = [
     description: "Жаба с характером Трудоголик и поколением 7+",
     requirement: (toad: Toad) =>
       toad.genes.personality === "workaholic" && toad.generation >= 7,
-    reward: BASE_PRICE * 16, // 80 токенов (редкое сочетание)
+    reward: 140, // Трудоголик И 7+ поколение
     difficulty: "hard",
   },
   {
@@ -470,7 +486,7 @@ export const eliteOrders = [
     description: "Жаба с характером Обаятельный и поколением 9+",
     requirement: (toad: Toad) =>
       toad.genes.personality === "charmer" && toad.generation >= 9,
-    reward: BASE_PRICE * 18, // 90 токенов (очень редкое)
+    reward: 140, // Обаятельный И 9+ поколение
     difficulty: "hard",
   },
   {
@@ -479,7 +495,7 @@ export const eliteOrders = [
     description: "Жаба с характером Отшельник и редкостью 8+",
     requirement: (toad: Toad) =>
       toad.genes.personality === "hermit" && toad.genes.rarity >= 8,
-    reward: BASE_PRICE * 22, // 110 токенов (экстремально редкое)
+    reward: 180, // Отшельник И редкость 8+
     difficulty: "extreme",
   },
   {
@@ -489,7 +505,7 @@ export const eliteOrders = [
     requirement: (toad: Toad) =>
       Date.now() - new Date(toad.created_at).getTime() >
       10 * 24 * 60 * 60 * 1000,
-    reward: BASE_PRICE * 20,
+    reward: 25, // возраст 10+ дней: ждать долго, но делать ничего не надо
     difficulty: "extreme",
   },
   {
@@ -501,7 +517,7 @@ export const eliteOrders = [
       toad.state.genetic_fault !== undefined &&
       toad.state.genetic_fault >= 15 &&
       toad.state.genetic_fault <= 35,
-    reward: BASE_PRICE * 7, // 35 токенов
+    reward: 15, // мутация 15-35: побочный продукт коллидера
     difficulty: "medium",
   },
   {
@@ -513,7 +529,7 @@ export const eliteOrders = [
       toad.state.genetic_fault !== undefined &&
       toad.state.genetic_fault >= 50 &&
       toad.genes.rarity >= 5,
-    reward: BASE_PRICE * 16, // 80 токенов (редкое и опасное сочетание)
+    reward: 40, // мутация 50+ И редкость 5+
     difficulty: "hard",
   },
   {
@@ -526,7 +542,7 @@ export const eliteOrders = [
       toad.state.genetic_fault >= 80 &&
       (toad.genes.personality === "hermit" ||
         toad.genes.personality === "ascetic"),
-    reward: BASE_PRICE * 25, // 125 токенов (экстремально редкий мутант)
+    reward: 200, // мутант 80+ с характером Отшельник или Аскет
     difficulty: "extreme",
   },
 ];

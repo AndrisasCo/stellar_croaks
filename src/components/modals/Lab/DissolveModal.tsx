@@ -37,21 +37,14 @@ export default function DissolveModal() {
     canDissolveToad(toad, incubatingIds)
   );
 
-  // Группы: каждый вольер отдельно, затем склад
-  const groups = [
-    ...ownedScenes
-      .map((scene) => ({
-        key: `scene-${scene.id}`,
-        label: `🏠 ${scene.name}`,
-        toads: allToads.filter((toad) => toad.scene_id === scene.id),
-      }))
-      .filter((group) => group.toads.length > 0),
-    {
-      key: "storage",
-      label: "📦 Склад",
-      toads: allToads.filter((toad) => toad.scene_id === null),
-    },
-  ].filter((group) => group.toads.length > 0);
+  // Группы: каждый вольер отдельно. Склада жаб больше нет — у каждой жабы есть вольер.
+  const groups = ownedScenes
+    .map((scene) => ({
+      key: `scene-${scene.id}`,
+      label: `🏠 ${scene.name}`,
+      toads: allToads.filter((toad) => toad.scene_id === scene.id),
+    }))
+    .filter((group) => group.toads.length > 0);
 
   const toggleToad = (toad: Toad) => {
     if (selectedIds.includes(toad.id)) {

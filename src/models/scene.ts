@@ -19,7 +19,7 @@ export const MAX_CAPACITY = 50;
 
 export const DEFAULT_SCENE: Scene = {
   id: 1,
-  name: "Жабье болото",
+  name: "Био Под",
   gradient: 0,
   price: 0,
   description: "Первое болото для ваших жаб",
@@ -78,7 +78,7 @@ const bonusMap: Record<string, number[]> = {
 
 export const getBoostByScene = (
   scene_id: number | null,
-  bonusType: BonusType
+  bonusType: BonusType,
 ) => {
   if (!scene_id) {
     return 1;

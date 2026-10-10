@@ -4,11 +4,10 @@ import { CURRENCY_CONFIG } from "../../../utils/constants";
 import Modal from "../../shared/Header";
 import { useToads } from "../../ToadContext";
 import BuyTab from "./BuyTab";
-import EnclosureTab from "./EnclosureTab";
 import SellTab from "./SellTab";
 import { EliteTab } from "./EliteTab";
 
-type TabType = "buy" | "sell" | "elite" | "enclosure";
+type TabType = "buy" | "sell" | "elite";
 
 export default function ShopMenu() {
   const [activeTab, setActiveTab] = useState<TabType>("buy");
@@ -25,7 +24,6 @@ export default function ShopMenu() {
       label: "Элитные",
       color: "text-purple-400",
     },
-    { id: "enclosure" as TabType, label: "Вольеры", color: "text-blue-400" },
   ];
 
   const renderTabContent = () => {
@@ -36,8 +34,6 @@ export default function ShopMenu() {
         return <SellTab />;
       case "elite":
         return <EliteTab />;
-      case "enclosure":
-        return <EnclosureTab />;
       default:
         return null;
     }

@@ -21,7 +21,7 @@ export const INJURED_PRODUCTION_FACTOR = 0.5;
 /** Жаба в походе (разведка) — не работает на ферме и не ест биомассу */
 const isToadAway = (toad: Toad): boolean => toad.status === "out";
 
-/** Жаба работает в комнате колонии (энергокомната ⚡) — она не на ферме */
+/** Жаба работает в комнате колонии (⚡-комната, «Разведка») — она не на ферме */
 const isToadStationed = (toad: Toad): boolean => Boolean(toad.roomId);
 
 /** Множитель выработки по состоянию здоровья жабы (выбитая — 0) */
@@ -34,7 +34,7 @@ const getInjuryFactor = (toad: Toad): number => {
 
 /**
  * Суммарная выработка биомассы (за час) всеми переданными жабами.
- * Жабы, работающие в энергокомнатах, биомассу не вырабатывают: они дают ток.
+ * Жабы, живущие в комнатах колонии (⚡-комната, «Разведка»), биомассу не вырабатывают.
  */
 export const getSceneProductionRate = (toads: Toad[]): number =>
   toads.reduce(
@@ -61,10 +61,9 @@ export const processProduction = (
 ): { gross: number; upkeep: number; net: number } => {
   const state = getGameState();
   // Жабы в походе (Часть 5) дома не работают и не потребляют биомассу,
-  // а жабы в энергокомнатах колонии вместо фермы дают ток
-  const sceneToads = state.toads.filter(
-    (t) => t.scene_id !== null && !isToadAway(t) && !t.roomId
-  );
+  // а жабы в комнатах колонии (⚡, «Разведка») вместо фермы занимаются делом комнаты.
+  // Все остальные живут в вольерах: склада жаб больше нет, поэтому фильтр простой.
+  const sceneToads = state.toads.filter((t) => !isToadAway(t) && !t.roomId);
 
   const gross = getSceneProductionRate(sceneToads) * hoursPassed;
   const upkeep = getUpkeepRate(sceneToads) * hoursPassed;

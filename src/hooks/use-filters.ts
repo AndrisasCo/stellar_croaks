@@ -16,10 +16,10 @@ export const useFilters = (toads: Toad[]) => {
 
       switch (sortBy) {
         case "type":
-          aValue = Object.values(ToadTypes).includes(a.type)
+          aValue = Object.values(ToadTypes).includes(a.type as ToadTypes)
             ? a.type
             : ToadTypes.hybrid;
-          bValue = Object.values(ToadTypes).includes(b.type)
+          bValue = Object.values(ToadTypes).includes(b.type as ToadTypes)
             ? b.type
             : ToadTypes.hybrid;
           break;
@@ -82,8 +82,6 @@ export const useFilters = (toads: Toad[]) => {
         return toads.filter((t) => t.stage === "toadpole");
       case "enclosure":
         return toads.filter((t) => t.scene_id == currentScene.id);
-      case "storage":
-        return toads.filter((t) => t.scene_id === null);
       case "all":
       default:
         return toads;

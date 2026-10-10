@@ -1,6 +1,7 @@
 import { Toad } from "../../models/Toad";
-import { canBuildOnSlot } from "./colony-build";
-import { POWER_ROOM_TOAD_SLOTS } from "./colony-power";
+import { EXPEDITION_TEAM_SIZE } from "../../utils/expedition-config";
+import { canBuildOnSlot, getPowerGrid, isRoomPowered } from "./colony-build";
+import { POWER_ROOM_TOAD_SLOTS, PowerGrid } from "./colony-power";
 import { RoomConfig } from "./rooms-config";
 
 /**
@@ -14,14 +15,13 @@ import { RoomConfig } from "./rooms-config";
 export interface ToadMoveContext {
   /** Жабы, уже живущие в целевой комнате (перемещаемая сюда не входит). */
   roomToads: Toad[];
-  /** Есть ли ток в целевой комнате (энергокомнате без тока не нужны работники). */
-  roomPowered: boolean;
   /** Сколько жаб уже живёт в вольере (перемещаемая сюда не входит). */
   aviaryCount: number;
   /** Вместимость вольера текущего вольера (жаб по сцене). */
   aviaryCapacity: number;
   /** Все комнаты карты — нужны, чтобы понять, застраиваемый ли это пустой гекс. */
   rooms: RoomConfig[];
+  powerGrid: PowerGrid;
 }
 
 export interface ToadMoveCheck {
@@ -48,9 +48,13 @@ export const getToadMoveIssue = (toad: Toad): string | null => {
  *
  * Комната принимает жабу, только если у неё есть и место, и «возможность»:
  *  - вольер — пока в нём есть свободные места (по вместимости вольера);
- *  - энергокомната ⚡ — только под током, только взрослых жаб и максимум 6;
+ *  - энергокомната ⚡ — только взрослые жабы и максимум 6: внешнее питание комнате не нужно,
+ *    ток ей дают сами жабы;
+ *  - «Разведка» (комната похода) — взрослые жабы в пределах состава команды (5): в ней
+ *    собирают команду, а ушедшие в поход жабы освобождают место (`roomId` сбрасывается)
+ *    и прячутся с карты (см. `isToadVisibleInRoom`);
  *  - гнездо — беременные жабы и так живут в нём, отдельного правила нет;
- *  - рабочие комнаты (коллайдер, инкубатор, диссоциатор, склад, магазин, разведка,
+ *  - рабочие комнаты (коллайдер, инкубатор, диссоциатор, склад, магазин,
  *    лазарет) — оборудование и товар, жабам тут делать нечего;
  *  - ядро и пустые гексы жаб не принимают вовсе.
  */
@@ -65,13 +69,19 @@ export const canMoveToadToRoom = (
     return { ok: false, reason: issue };
   }
 
+  if (room.kind !== "power" && !isRoomPowered(room, context.powerGrid)) {
+    return {
+      ok: false,
+      reason: "В комнате нет электричества",
+    };
+  }
+
   switch (room.kind) {
     case "power": {
       if (toad.stage !== "adult") {
         return {
           ok: false,
-          reason:
-            "В энергокомнате работают только взрослые жабы: головастик ток не даёт.",
+          reason: "В энергокомнате могут работать только взрослые жабы",
         };
       }
 
@@ -89,7 +99,7 @@ export const canMoveToadToRoom = (
       if (context.aviaryCount >= context.aviaryCapacity) {
         return {
           ok: false,
-          reason: `В вольере нет свободных мест (${context.aviaryCount}/${context.aviaryCapacity}).`,
+          reason: `В био-поде нет свободных мест (${context.aviaryCount}/${context.aviaryCapacity}).`,
         };
       }
 
@@ -107,13 +117,30 @@ export const canMoveToadToRoom = (
       return { ok: true };
     }
 
+    case "scout": {
+      if (toad.stage !== "adult") {
+        return {
+          ok: false,
+          reason: "В разведку могут попасть только взрослые жабы",
+        };
+      }
+
+      if (context.roomToads.length >= EXPEDITION_TEAM_SIZE) {
+        return {
+          ok: false,
+          reason: `В «Разведке» заняты все ${EXPEDITION_TEAM_SIZE} мест команды.`,
+        };
+      }
+
+      return { ok: true };
+    }
+
     // Рабочие комнаты колонии: оборудование и товар — жабам здесь жить негде
     case "collider":
     case "incubator":
     case "dissociator":
     case "storage":
     case "shop":
-    case "scout":
     case "hospital": {
       return {
         ok: false,

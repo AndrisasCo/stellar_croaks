@@ -22,7 +22,8 @@ import { RoomConfig } from "../HexMap/rooms-config";
  *
  * Внутри до 6 жаб (по одной на каждую сторону гекса): кормлённая взрослая жаба
  * даёт одну единицу тока одной соседней комнате, значит 6 жаб закрывают все 6
- * соседей. Голодная жаба ток не даёт, а обесточенная комната не работает вовсе.
+ * соседей. Голодная жаба ток не даёт, а комната без работающих жаб никого не
+ * питает — но внешнее питание ей и не нужно: ток ей дают сами жабы.
  */
 const HungerBar = ({ value }: { value: number }) => (
   <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-700/60">
@@ -47,9 +48,8 @@ export default function PowerRoomModal({ room }: { room: RoomConfig }) {
   const [showPicker, setShowPicker] = useState(false);
 
   const roomToads = toadsByRoom[room.id] ?? [];
-  const powered =
-    isRoomPowered(room, powerGrid) ||
-    (room.kind === "power" && toadsByRoom[room.id].length);
+  // Ток комнаты считает сеть: у ⚡ с работающими жабами он есть даже без подачи извне
+  const powered = isRoomPowered(room, powerGrid);
   const output = getToadPowerCapacity(roomToads);
   const hungryToads = roomToads.filter((toad) => !isToadPowering(toad));
   const freeSlots = POWER_ROOM_TOAD_SLOTS - roomToads.length;
@@ -86,16 +86,6 @@ export default function PowerRoomModal({ room }: { room: RoomConfig }) {
     if (issue) {
       playBeep();
       addNotification({ type: "warn", content: issue });
-      return;
-    }
-
-    if (!powered) {
-      playBeep();
-      addNotification({
-        type: "warn",
-        content:
-          "Комната обесточена: сначала подведите ток от ядра или соседней ⚡-комнаты.",
-      });
       return;
     }
 
@@ -148,7 +138,7 @@ export default function PowerRoomModal({ room }: { room: RoomConfig }) {
           <p className="mt-1 text-2xs leading-snug text-gray-200">
             {powered
               ? "Каждая кормлённая жаба внутри даёт одну единицу тока соседней комнате."
-              : "Рядом нет источника питания. Постройте энергокомнату по соседству или подключитесь к ядру 🏛."}
+              : "Внешнее питание комнате не нужно: посадите взрослых жаб и накормите их — каждая даст одну единицу тока соседнему гексу."}
           </p>
         </div>
 

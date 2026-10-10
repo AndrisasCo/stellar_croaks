@@ -10,6 +10,8 @@ import {
   getSceneProductionRate,
   getUpkeepRate,
 } from "../../utils/production-manager";
+import { getHousingInfo } from "../../utils/housing";
+import { getStorageCapacityInfo } from "../../utils/storage";
 import { useModal } from "../ModalContext";
 import { useToads } from "../ToadContext";
 import { BurgerMenu } from "../modals/BurgerMenuModal";
@@ -27,7 +29,7 @@ import ToadListModal from "../modals/ToadListModal";
 import { ToadInfo } from "../modals/ToadInfoModal";
 import { useFeedToads } from "../ToadCanvas/use-feed-toads";
 import { ClickButton } from "../shared/ClickButton";
-import { canBuildOnSlot } from "./colony-build";
+import { canBuildOnSlot, isRoomPowered } from "./colony-build";
 import HexMapCanvas from "./HexMapCanvas";
 import { isRoomOpen, RoomActionId, RoomConfig } from "./rooms-config";
 import { canMoveToadToRoom, ToadMoveCheck } from "./toad-move-rules";
@@ -111,15 +113,9 @@ export default function HexMapScreen() {
   } = useFeedToads();
 
   // Колония: построенные комнаты игрока, энергосеть и жабы в комнатах
-  const {
-    rooms,
-    powerGrid,
-    toadsByRoom: roomToads,
-    placeToad,
-    releaseToad,
-  } = useColony();
+  const { rooms, powerGrid, toadsByRoom: roomToads, placeToad } = useColony();
 
-  /** Жабы вольера — те, кто не ушёл работать в комнату колонии (⚡-комнату). */
+  /** Жабы вольера — те, кто не ушёл работать в комнату колонии (⚡-комната, «Разведка»). */
   const aviaryToads = useMemo(
     () => toads.filter((toad) => !toad.roomId),
     [toads],
@@ -135,7 +131,7 @@ export default function HexMapScreen() {
   const sceneFarmRate =
     getSceneProductionRate(aviaryToads) - getUpkeepRate(aviaryToads);
 
-  // Жабы по комнатам: вольер, гнездо и энергокомнаты ⚡
+  // Жабы по комнатам: вольер, гнездо, энергокомнаты ⚡ и «Разведка»
   const toadsByRoom = useMemo(
     () => ({
       ...roomToads,
@@ -175,6 +171,10 @@ export default function HexMapScreen() {
   // Вид карты: обзорный (тап по комнате) или приближенный (жабы кликаются по отдельности)
   const [zoomedIn, setZoomedIn] = useState(false);
 
+  // Жильё жаб и полки склада: раньше это были «сцены» и склад жаб, теперь — гексы построек
+  const housing = getHousingInfo();
+  const storage = getStorageCapacityInfo(account?.storage);
+
   // Чипы ресурсов для HUD над картой (раньше жили в подвале экрана)
   const resources = useMemo(
     () => [
@@ -209,6 +209,20 @@ export default function HexMapScreen() {
         tone: "text-cyan-200",
       },
       {
+        // Места в вольерах: склада жаб больше нет, места дают только вольеры
+        key: "housing",
+        icon: "🏠",
+        value: `${housing.used}/${housing.capacity}`,
+        tone: housing.free > 0 ? "text-cyan-200" : "text-rose-300",
+      },
+      {
+        // Склад предметов: полки дают постройки «Склад»
+        key: "storage",
+        icon: "📦",
+        value: `${storage.used}/${storage.capacity}`,
+        tone: storage.free > 0 ? "text-blue-200" : "text-rose-300",
+      },
+      {
         // Энергия колонии: под током столько-то построенных комнат
         key: "power",
         icon: "⚡",
@@ -222,6 +236,12 @@ export default function HexMapScreen() {
       account?.tokens,
       account?.astro_quax,
       allToads.length,
+      housing.used,
+      housing.capacity,
+      housing.free,
+      storage.used,
+      storage.capacity,
+      storage.free,
       poweredRooms,
       builtRooms,
     ],
@@ -292,7 +312,8 @@ export default function HexMapScreen() {
   /** Жабы, живущие в комнате прямо сейчас — нужно правилам переноса. */
   const getRoomOccupants = useCallback(
     (room: RoomConfig): Toad[] => {
-      if (room.kind === "power") {
+      // ⚡-комната и «Разведка»: жабы сидят в самой комнате (по `Toad.roomId`)
+      if (room.kind === "power" || room.kind === "scout") {
         return roomToads[room.id] ?? [];
       }
 
@@ -317,21 +338,15 @@ export default function HexMapScreen() {
     (toad: Toad, room: RoomConfig): ToadMoveCheck =>
       canMoveToadToRoom(toad, room, {
         roomToads: getRoomOccupants(room).filter((item) => item.id !== toad.id),
-        roomPowered: powerGrid.powered[room.id] === true,
         aviaryCount: aviaryToads.filter((item) => item.id !== toad.id).length,
         aviaryCapacity: currentScene?.capacity ?? 0,
         rooms,
+        powerGrid,
       }),
-    [
-      aviaryToads,
-      currentScene?.capacity,
-      getRoomOccupants,
-      powerGrid.powered,
-      rooms,
-    ],
+    [aviaryToads, currentScene?.capacity, getRoomOccupants, rooms],
   );
 
-  /** Жабу перенесли: вольер принимает жильца, энергокомната ⚡ — работника. */
+  /** Жабу перенесли: вольер принимает жильца, ⚡-комната — работника, «Разведка» — бойца. */
   const handleToadDrop = useCallback(
     (toad: Toad, room: RoomConfig) => {
       if (room.kind === "power") {
@@ -344,16 +359,30 @@ export default function HexMapScreen() {
         return;
       }
 
-      if (room.kind === "aviary") {
-        releaseToad(toad.id);
-        playOk();
+      // «Разведка» — комната похода: в ней стоит команда, отсюда жабы уходят в походы
+      if (room.kind === "scout") {
+        placeToad(toad.id, room.id);
+        playCroakSmall();
         addNotification({
-          type: "info",
-          content: `${toad.name ?? "Жаба"} вернулась в вольер.`,
+          type: "success",
+          content: `${toad.name ?? "Жаба"} встала в команду в «Разведке» 🧭`,
         });
+        return;
+      }
+
+      if (room.kind === "aviary") {
+        placeToad(toad.id, room.id);
+        playCroakSmall();
+        // playOk();
+      }
+
+      if (room.kind === "breeding") {
+        placeToad(toad.id, room.id);
+        playCroakSmall();
+        // playOk();
       }
     },
-    [addNotification, placeToad, playCroakSmall, playOk, releaseToad],
+    [addNotification, placeToad, playCroakSmall, playOk],
   );
 
   /** Перенести жабу не вышло: она уже летит назад — показываем причину. */

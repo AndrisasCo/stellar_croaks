@@ -11,7 +11,9 @@ import { RoomKind } from "./rooms-config";
 export const ROOM_BACKGROUNDS: Partial<Record<RoomKind, string>> = {
   // aviary: "/bg/med.png",
   aviary: "/bg/vivarium.png",
-  core: "/bg/med.png",
+  core: "/bg/core.png",
+  breeding: "/bg/nest.png",
+  shop: "/bg/market.png",
   // med: "/bg/vivarium.png",
 };
 

@@ -10,7 +10,7 @@ export interface Toad {
   generation: number;
   name: string | null;
   parents: number[] | null; // ?
-  scene_id: number | null; //  null это в инвентаре
+  scene_id: number; // вольер (Scene), в котором живёт жаба: склада жаб больше нет
   /**
    * id комнаты колонии, в которой жаба сидит физически (сейчас — энергокомната ⚡).
    * Пусто — жаба живёт в вольере, как раньше.

@@ -17,11 +17,15 @@ import {
   EXPEDITION_RETURN_RATIO,
   EXPEDITION_TEAM_SIZE,
   EXTRACTION_ASTRO_COST,
+  ExpeditionTeamMember,
   getDispatchOfficeCost,
+  getExpeditionProfitFloor,
   getExpeditionSendCost,
+  getExpeditionSuccessChance,
   getHealCost,
   getRolePower,
   getRoleStat,
+  getSectorSuccessFactor,
   getSpeedUpReturnCost,
   getToadHp,
   getToadHpStatusLabel,
@@ -242,14 +246,28 @@ const ExpeditionModal: React.FC<{
     (toad) => getToadHp(toad) < getToadMaxHp(toad)
   );
 
-  /** Средняя сила собранной команды (для превью шансов) */
-  const avgPower =
-    members.length === 0
-      ? 0
-      : members.reduce((sum, member) => {
-          const toad = state.toads.find((item) => item.id === member.toadId);
-          return sum + (toad ? getRolePower(toad, member.role) : 0);
-        }, 0) / members.length;
+  /** Команда с самими жабами: по ней считаем шанс удачного завершения */
+  const team: ExpeditionTeamMember[] = members
+    .map((member) => {
+      const toad = state.toads.find((item) => item.id === member.toadId);
+      return toad ? { role: member.role, toad } : null;
+    })
+    .filter((member): member is ExpeditionTeamMember => member !== null);
+
+  /**
+   * Шанс вернуться с удачей: каждая занятая роль даёт +20% от своей силы,
+   * глубина сектора режет вклад, удача гуляет ±10%.
+   */
+  const successChance = getExpeditionSuccessChance(team, selectedSector);
+  const sectorSuccessFactor = getSectorSuccessFactor(selectedSector);
+  /** Поход всегда выгоднее фермы: норма добычи за путь туда-обратно + снаряжение */
+  const awayHours =
+    selectedSector.durationHours * (1 + EXPEDITION_RETURN_RATIO);
+  const profitNorm = getExpeditionProfitFloor(
+    team.map((member) => member.toad),
+    awayHours,
+    sendCost
+  );
 
   const notify = (result: { success: boolean; message: string }) =>
     addNotification({
@@ -569,9 +587,32 @@ const ExpeditionModal: React.FC<{
                 {selectedSector.icon} {selectedSector.name}: путь туда{" "}
                 {selectedSector.durationHours} ч, обратно ~
                 {Math.round(selectedSector.durationHours * EXPEDITION_RETURN_RATIO * 10) / 10} ч
-                {members.length > 0 &&
-                  ` · средняя сила команды ${Math.round(avgPower * 100)}%`}
               </p>
+
+              {/* Итог по ролям: шанс удачного возврата и норма добычи против фермы */}
+              <div className="flex items-center justify-between rounded-lg bg-slate-800/50 px-2 py-1.5 text-2xs">
+                <span className="text-gray-300">🎯 Шанс удачного возврата</span>
+                <span
+                  className={`font-bold ${
+                    successChance >= 1 ? "text-emerald-300" : "text-amber-200"
+                  }`}
+                >
+                  {Math.round(successChance * 100)}%
+                  {successChance >= 1 ? " (гарантия)" : ""}
+                </span>
+              </div>
+              <p className="text-2xs leading-snug text-gray-400">
+                Каждая роль даёт +20% (сила роли умножает вклад, глубина сектора —
+                ×{sectorSuccessFactor.toFixed(2)}). Удачное завершение умножает
+                добычу.
+              </p>
+              {team.length > 0 && (
+                <p className="text-2xs leading-snug text-lime-300">
+                  Поход принесёт не меньше {Math.round(profitNorm)} в
+                  🔷-эквиваленте: это выгоднее фермы за{" "}
+                  {awayHours.toFixed(1)} ч и окупает снаряжение.
+                </p>
+              )}
 
               {expeditions.length >= teamLimit && (
                 <p className="text-2xs text-amber-300">

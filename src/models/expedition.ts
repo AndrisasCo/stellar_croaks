@@ -15,15 +15,6 @@ export type ExpeditionRole =
   | "hacker"
   | "negotiator";
 
-/** Порядок слотов команды в UI */
-export const EXPEDITION_ROLE_ORDER: ExpeditionRole[] = [
-  "scout",
-  "tank",
-  "medic",
-  "hacker",
-  "negotiator",
-];
-
 /** Фаза похода: идём наружу или возвращаемся */
 export type ExpeditionPhase = "outbound" | "returning";
 
@@ -82,6 +73,11 @@ export interface Expedition {
   returnHours?: number;
   /** Команду выбили: возврат принудительный, с платой за эвакуацию */
   forced?: boolean;
+  /**
+   * Шанс завершить поход удачно (Часть 5.4): каждая роль даёт +20% + сложность сектора
+   * и удача. Считается на старте, бросок — на возврате: удача множит добычу.
+   */
+  successChance?: number;
   /** Сколько раз ускоряли возврат */
   speedups?: number;
   loot: ExpeditionLoot;
@@ -163,7 +159,8 @@ export const SECTORS: SectorDef[] = [
     id: 4,
     name: "Орбитальный обломок",
     icon: "🛰️",
-    description: "Кусок орбитальной лаборатории. Данные уцелели, гравитация — нет.",
+    description:
+      "Кусок орбитальной лаборатории. Данные уцелели, гравитация — нет.",
     depth: 4,
     durationHours: 7,
     lootMultiplier: 2.3,
@@ -185,7 +182,8 @@ export const SECTORS: SectorDef[] = [
     id: 6,
     name: "Реактор «Квак-7»",
     icon: "☢️",
-    description: "Течёт охлаждайка, светится биомасса. Идеальное место для рейда.",
+    description:
+      "Течёт охлаждайка, светится биомасса. Идеальное место для рейда.",
     depth: 6,
     durationHours: 12,
     lootMultiplier: 3.4,
@@ -216,6 +214,18 @@ export const SECTORS: SectorDef[] = [
   },
 ];
 
+/**
+ * Порядок ролей команды: он же порядок слотов в интерфейсе разведки.
+ * Пять ролей — пять вкладов в шанс удачного завершения похода (Часть 5.4).
+ */
+export const EXPEDITION_ROLE_ORDER: ExpeditionRole[] = [
+  "scout",
+  "tank",
+  "medic",
+  "hacker",
+  "negotiator",
+];
+
 /** Сектор по ID (с фолбэком на стартовый) */
 export const getSectorById = (sectorId: number): SectorDef =>
   SECTORS.find((sector) => sector.id === sectorId) ?? SECTORS[0];
@@ -223,5 +233,6 @@ export const getSectorById = (sectorId: number): SectorDef =>
 /** Открыт ли сектор по статистике игрока */
 export const isSectorUnlocked = (
   sector: SectorDef,
-  stats: ExpeditionStats = DEFAULT_EXPEDITION_STATS
-): boolean => Boolean(sector.starter) || stats.completed >= sector.unlockExpeditions;
+  stats: ExpeditionStats = DEFAULT_EXPEDITION_STATS,
+): boolean =>
+  Boolean(sector.starter) || stats.completed >= sector.unlockExpeditions;

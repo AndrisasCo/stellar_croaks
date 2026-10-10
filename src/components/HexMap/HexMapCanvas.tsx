@@ -792,8 +792,6 @@ export default function HexMapCanvas(props: HexMapCanvasProps) {
       spawnHintsRef.current[drag.toad.id] = { ...point };
       drag.flock.endDrag(drag.toad.id, { target: point, fly: false });
       propsRef.current.onToadDrop(drag.toad, room);
-      // Показываем комнату, в которой жаба оказалась
-      tweenCamera(getRoomCamera(room));
     };
 
     /** Отмена переноса: жаба возвращается, но состояние игры не меняется. */

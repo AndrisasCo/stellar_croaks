@@ -8,20 +8,22 @@ import {
   eliteOrders,
   getNewElite,
   getShopState,
+  ELITE_REFRESH_COOLDOWN,
+  INSTANT_REFRESH_ELITE_COOLDOWN,
   INSTANT_REFRESH_ELITE_COST,
-  REFRESH_COOLDOWN,
   saveShopState,
   ShopState,
 } from "../../../../backend/shop-state";
 import { useNotifications } from "../../../../hooks/use-notification";
 import { AcceptButton } from "./AcceptButton";
 
-const refreshShop = (): ShopState => {
+/** Новые заказы на витрину: платное обновление даёт короткий кулдаун вместо суток */
+const refreshShop = (cooldownMs = ELITE_REFRESH_COOLDOWN): ShopState => {
   const now = Date.now();
   const newState = getShopState();
   newState.eliteOrders = getNewElite();
   newState.lastRefreshElite = now;
-  newState.nextRefreshElite = now + REFRESH_COOLDOWN * 8;
+  newState.nextRefreshElite = now + cooldownMs;
   return newState;
 };
 
@@ -68,13 +70,13 @@ export const EliteTab: React.FC = () => {
     if (tokens < INSTANT_REFRESH_ELITE_COST) {
       addNotification({
         type: "warn",
-        content: `Недостаточно астрокваксов! Нужно ${INSTANT_REFRESH_ELITE_COST}`,
+        content: `Недостаточно Кваксов! Нужно ${INSTANT_REFRESH_ELITE_COST} ${CURRENCY_CONFIG.tokens.icon}`,
       });
       return;
     }
 
     updateUser({ tokens: tokens - INSTANT_REFRESH_ELITE_COST });
-    const newShopState = refreshShop();
+    const newShopState = refreshShop(INSTANT_REFRESH_ELITE_COOLDOWN);
     setShopState(newShopState);
     saveShopState(newShopState);
     addNotification({
@@ -119,7 +121,7 @@ export const EliteTab: React.FC = () => {
     if (now < shopState.nextRefreshElite) {
       addNotification({
         type: "warn",
-        content: "Рынок можно обновить только раз в 3 часа",
+        content: "Витрина заказов обновляется раз в сутки",
       });
       return;
     }

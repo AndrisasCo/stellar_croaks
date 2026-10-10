@@ -112,23 +112,31 @@ export const getProductionFactor = (hunger: number): number => {
 };
 
 /**
- * Выработка биомассы жабой в час.
- * Зависит от редкости, веса, характера, голода и кибер-болезни (Часть 3.6).
+ * Потенциальная выработка жабы в час (до голода, болезней и ранений).
+ * По ней считаются «нормы» вне фермы: например, сколько та же команда принесла бы
+ * биомассы за время похода (Часть 5.4: поход обязан быть выгоднее фермы).
  */
-export const getBiomassRate = (toad: Toad): number => {
+export const getBiomassPotentialRate = (toad: Toad): number => {
   if (toad.stage !== "adult") return 0;
 
   const { weightMultiplier } = getPersonalityMultipliers(toad.genes.personality);
 
-  const rate =
+  return (
     BIOMASS_PER_TOAD_HOUR *
     (1 + toad.genes.rarity / 10) *
     (1 + toad.genes.weight / 50) *
-    weightMultiplier *
-    getDiseasePenaltyMultiplier(toad.state?.diseaseId);
-
-  return rate * getProductionFactor(toad.state.hunger);
+    weightMultiplier
+  );
 };
+
+/**
+ * Выработка биомассы жабой в час.
+ * Зависит от редкости, веса, характера, голода и кибер-болезни (Часть 3.6).
+ */
+export const getBiomassRate = (toad: Toad): number =>
+  getBiomassPotentialRate(toad) *
+  getDiseasePenaltyMultiplier(toad.state?.diseaseId) *
+  getProductionFactor(toad.state.hunger);
 
 /** Число доступных родильных слотов купола */
 export const getNestSlots = (scene?: Scene | null): number =>
@@ -136,13 +144,17 @@ export const getNestSlots = (scene?: Scene | null): number =>
 
 /** Максимум родильных слотов купола (постройка «Гнездо» апгрейдится за Кваксы) */
 export const NEST_MAX_SLOTS = 6;
-/** Базовая цена первого апгрейда Гнезда в Кваксах */
-export const NEST_SLOT_UPGRADE_BASE_COST = 40;
+/** Базовая цена первого апгрейда Гнезда в Кваксах (аудит: было 40 — почти бесплатно) */
+export const NEST_SLOT_UPGRADE_BASE_COST = 150;
+/** Во сколько раз дорожает каждый следующий родильный слот */
+export const NEST_SLOT_UPGRADE_GROWTH = 2.4;
 
 /** Цена следующего родильного слота в Кваксах (дорожает с каждым апгрейдом) */
 export const getNestSlotUpgradeCost = (scene?: Scene | null): number => {
   const steps = Math.max(0, getNestSlots(scene) - NEST_BASE_SLOTS);
-  return Math.round(NEST_SLOT_UPGRADE_BASE_COST * Math.pow(1.8, steps));
+  return Math.round(
+    NEST_SLOT_UPGRADE_BASE_COST * Math.pow(NEST_SLOT_UPGRADE_GROWTH, steps)
+  );
 };
 
 /** Можно ли ещё расширить Гнездо вольера */
