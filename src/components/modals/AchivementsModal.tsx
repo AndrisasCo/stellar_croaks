@@ -5,7 +5,10 @@ import {
   claimReward,
   getAchievementState,
 } from "../../backend/achivements-manager";
-import { achievementGroups } from "../../backend/achivements-manager/achivements-list";
+import {
+  achievementGroups,
+  type Achievement,
+} from "../../backend/achivements-manager/achivements-list";
 import { createToad, updateUser } from "../../backend";
 import { useNotifications } from "../../hooks/use-notification";
 import { getGameState } from "../../backend/localStorage";
@@ -40,7 +43,7 @@ const AchievementModal: React.FC = () => {
   };
 
   // Функция для получения прогресса ачивки
-  const getAchievementProgress = (achievement: any) => {
+  const getAchievementProgress = (achievement: Achievement) => {
     if (!achievement.taskType || !achievement.taskValue) {
       return { current: 0, target: 0, percentage: 0 };
     }
@@ -88,8 +91,8 @@ const AchievementModal: React.FC = () => {
     return colors[color as keyof typeof colors] || colors.green;
   };
 
-  const calculateGroupProgress = (_achievements: any) => {
-    const completed = _achievements.filter((a: any) =>
+  const calculateGroupProgress = (_achievements: Achievement[]) => {
+    const completed = _achievements.filter((a) =>
       achivements.completed.includes(a.id),
     ).length;
     const total = _achievements.length;
@@ -105,7 +108,7 @@ const AchievementModal: React.FC = () => {
     const userStorage = gameState.user.storage;
 
     group.groupReward.reward.forEach((reward) => {
-      const content = (reward as { type: string; content: any }).content;
+      const content = reward.content;
 
       if (reward.type === "toad" && typeof content === "object" && content) {
         // Склада жаб больше нет: награда ищет место в вольерах, иначе остаётся невыданной
@@ -131,7 +134,7 @@ const AchievementModal: React.FC = () => {
         });
       }
 
-      if (reward.type === "lootbox") {
+      if (reward.type === "lootbox" && typeof reward.content === "number") {
         updateUser({
           storage: {
             ...userStorage,
@@ -387,7 +390,7 @@ const AchievementModal: React.FC = () => {
                 <div className="flex items-center gap-3">
                   <div className="text-2xl">
                     {isGroupCompleted ? (
-                      group.groupReward.icon
+                      group.groupReward?.icon
                     ) : (
                       <div className="w-8 h-8 rounded-full bg-gray-600 flex items-center justify-center border border-gray-500">
                         <span className="text-gray-200 text-lg">?</span>
@@ -405,12 +408,12 @@ const AchievementModal: React.FC = () => {
                       }`}
                     >
                       {isGroupCompleted
-                        ? group.groupReward.name
+                        ? group.groupReward?.name
                         : "Секретная награда"}
                     </div>
                     <div className="text-sm text-gray-500">
                       {isGroupCompleted
-                        ? group.groupReward.description
+                        ? group.groupReward?.description
                         : "Завершите все достижения группы чтобы открыть"}
                     </div>
                   </div>

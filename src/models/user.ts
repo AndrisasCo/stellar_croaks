@@ -1,6 +1,17 @@
 export type User = {
-  tg_id: number;
+  /**
+   * id пользователя Telegram. `null` в веб-версии: ключом аккаунта он больше не
+   * является (см. `id` ниже), остаётся только «визиткой» — уведомления из бота и
+   * ссылка на профиль.
+   */
+  tg_id: number | null;
   username: string;
+  /**
+   * Ключ аккаунта во всех облачных таблицах (`game_state`, `leaderboard`,
+   * `credits`): для игрока в Telegram — uuid Supabase Auth, выданный после
+   * серверной проверки `initData`; для веб-игрока — uuid анонимной сессии.
+   * До появления сессии здесь лежит локальный `user_<timestamp>`.
+   */
   id: string;
   tokens: number;
   astro_quax: number;

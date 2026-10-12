@@ -51,7 +51,7 @@ const LeaderboardModal: React.FC = () => {
     {
       dedupingInterval: 30000,
       keepPreviousData: true,
-      fallbackData: account.tg_id
+      fallbackData: account.id
         ? [
             {
               username: account.username,
@@ -215,7 +215,9 @@ const LeaderboardModal: React.FC = () => {
   const sortedPlayers = getSortedPlayers();
 
   const isCurrentUser = (player: LeaderboardItemType): boolean => {
-    return account?.tg_id === player.tg_id;
+    // Сравниваем по ключу аккаунта, а не по tg_id: в вебе его нет вовсе, и «моя»
+    // строка раньше не подсвечивалась.
+    return Boolean(account?.id) && account?.id === player.user_id;
   };
 
   // Функция для получения заголовка вкладки
@@ -338,7 +340,7 @@ const LeaderboardModal: React.FC = () => {
   );
 
   const getRank = () => {
-    return 1 + sortedPlayers.findIndex((p) => p.tg_id === account.tg_id);
+    return 1 + sortedPlayers.findIndex((p) => p.user_id === account.id);
   };
 
   // Компонент для отображения информации о жабе по параметру

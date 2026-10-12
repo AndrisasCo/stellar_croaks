@@ -1,6 +1,13 @@
-import { ColonyRoomKind } from "../../models/colony";
+import { ColonyRoomKind, ColonyRoomState } from "../../models/colony";
 import { Toad } from "../../models/Toad";
-import { AxialCoord, hexDistance, hexRing } from "./hex-geometry";
+import { NEST_ROOM_ID } from "../../utils/constants";
+import {
+  AxialCoord,
+  hexCoordKey,
+  hexDistance,
+  hexNeighbors,
+  hexRing,
+} from "./hex-geometry";
 
 /**
  * Конфиг гексагональной карты колонии.
@@ -307,10 +314,10 @@ export const ROOM_BLUEPRINTS: Record<ColonyRoomKind, RoomBlueprint> = {
   hospital: {
     kind: "hospital",
     title: "Лазарет",
-    subtitle: "Лечение жаб",
+    subtitle: "6 коек, быстрое лечение",
     icon: "🩹",
     description:
-      "Раненых жаб лечат за Кваксы, не дожидаясь, пока HP восстановится само.",
+      "Койки для шести жаб: здесь HP идёт +24 в час вместо 1, болезнь проходит втрое быстрее и не передаётся соседям. Мгновенное лечение за Кваксы — самый дорогой способ.",
     palette: PALETTES.hospital,
     unique: false,
     baseCost: 95,
@@ -371,6 +378,9 @@ export const createColonyRoom = (
   };
 };
 
+/** Центр колонии в axial-координатах: точка отсчёта колец (ядро, расстояние, соседи «наружу»). */
+const ORIGIN: AxialCoord = { q: 0, r: 0 };
+
 /** Центр колонии — белое ядро: у него нет черновика, второго ядра не построить. */
 const CORE_ROOM: RoomConfig = {
   id: "core",
@@ -378,7 +388,7 @@ const CORE_ROOM: RoomConfig = {
   title: "Ядро",
   subtitle: "Центр колонии",
   icon: "🏛",
-  coord: { q: 0, r: 0 },
+  coord: ORIGIN,
   palette: PALETTES.core,
   actions: [{ id: "menu", icon: "☰", title: "Меню колонии" }],
 };
@@ -414,28 +424,84 @@ const RING_ONE_SLOTS: RoomConfig[] = [
 ];
 
 /**
- * Свободные слоты второго кольца — территория колонии под расширение. id остаются
- * «outpost-N» с прошлых версий: сейвы помнят id построек, переименование их бы потеряло.
+ * Свободные слоты второго кольца: последнее кольцо со «старыми» id — «outpost-N» с прошлых
+ * версий. Сейвы помнят id построек, поэтому переименование этих слотов их бы потеряло;
+ * с третьего кольца id несёт номер кольца (см. `ringSlots`).
  */
 const RING_TWO_SLOTS: RoomConfig[] = hexRing(2).map((coord, index) =>
   emptySlot(`outpost-${index}`, coord),
 );
 
-/** Полный список гексов карты (без сортировки — порядок отрисовки задаёт канвас). */
-export const HEX_ROOMS: RoomConfig[] = [
+/**
+ * Стартовый радиус колонии: ядро, вольер и гнездо на первом кольце и свободные слоты
+ * второго. Дальше карта растёт от построек фронтом застройки — см. `getUnlockedRooms`.
+ */
+export const BASE_COLONY_RADIUS = 2;
+
+/**
+ * Предел роста колонии: дальше гексов нет (внешнее кольцо — шестое, 36 слотов, вся карта —
+ * 127 гексов), поэтому у постройки на предельном кольце новых соседей не открывается.
+ * Слотов заведомо больше, чем игрок успеет застроить, а карта остаётся лёгкой для рендера.
+ */
+export const MAX_COLONY_RADIUS = 6;
+
+/** Гексы, которые стоят на карте с начала игры: ядро, базовые комнаты и слоты 1–2 колец. */
+const BASE_ROOMS: RoomConfig[] = [
   CORE_ROOM,
   baseRoom("aviary", "aviary", { q: -1, r: 0 }),
-  baseRoom("breeding", "breeding", { q: 1, r: 0 }),
+  // id гнезда — общая константа: в него уходит пара на ухаживание (utils/constants.ts)
+  baseRoom(NEST_ROOM_ID, "breeding", { q: 1, r: 0 }),
   ...RING_ONE_SLOTS,
   ...RING_TWO_SLOTS,
 ];
 
-export const HEX_ROOM_BY_ID: Record<string, RoomConfig> = HEX_ROOMS.reduce<
+/**
+ * Свободные слоты кольца: с третьего кольца id несёт его номер, чтобы слоты разных колец
+ * не путались (`outpost-3-0`). Сейвы помнят id построек, поэтому старое имя слотов второго
+ * кольца (`outpost-N`) остаётся как есть.
+ */
+const ringSlots = (ring: number): RoomConfig[] =>
+  hexRing(ring).map((coord, index) =>
+    emptySlot(`outpost-${ring}-${index}`, coord),
+  );
+
+/**
+ * Каталог гексов карты до кольца `radius` включительно: базовые комнаты и слоты колец.
+ * Живую карту собирает `getUnlockedRooms`, а каталог нужен как справочник id и координат:
+ * карта растёт фронтом от построек, поэтому «радиус до кольца» её форму больше не описывает.
+ */
+export const getColonyRooms = (
+  radius: number = MAX_COLONY_RADIUS,
+): RoomConfig[] => {
+  const rooms = [...BASE_ROOMS];
+  const outer = Math.min(radius, MAX_COLONY_RADIUS);
+
+  for (let ring = BASE_COLONY_RADIUS + 1; ring <= outer; ring += 1) {
+    rooms.push(...ringSlots(ring));
+  }
+
+  return rooms;
+};
+
+/**
+ * Все возможные гексы карты: по ним ищутся комнаты сейва (`HEX_ROOM_BY_ID`) — слот кольца,
+ * до которого колония ещё не доросла, тоже должен находиться.
+ */
+export const ALL_HEX_ROOMS: RoomConfig[] = getColonyRooms();
+
+export const HEX_ROOM_BY_ID: Record<string, RoomConfig> = ALL_HEX_ROOMS.reduce<
   Record<string, RoomConfig>
 >((acc, room) => {
   acc[room.id] = room;
   return acc;
 }, {});
+
+/** Гекс каталога по координате: по нему фронт застройки находит слоты соседних колец. */
+export const HEX_ROOM_BY_COORD: Record<string, RoomConfig> =
+  ALL_HEX_ROOMS.reduce<Record<string, RoomConfig>>((acc, room) => {
+    acc[hexCoordKey(room.coord)] = room;
+    return acc;
+  }, {});
 
 /** Черновик комнаты: цена, «единственная в колонии», описание (см. colony-build). */
 export const getRoomBlueprint = (kind: ColonyRoomKind): RoomBlueprint =>
@@ -448,14 +514,19 @@ export const isRoomOpen = (room: RoomConfig) => room.actions.length > 0;
 export const isBuiltRoom = (room: RoomConfig) => room.kind !== "empty";
 
 /**
- * Живут ли в комнате жабы: вольер, гнездо, энергокомнаты ⚡ и комнаты похода («Разведка»).
- * У остальных комнат оборудование и товар — жабам там делать нечего.
+ * Живут ли в комнате жабы: вольер, гнездо, энергокомнаты ⚡, «Лазарет» и комнаты похода
+ * («Разведка»). У остальных комнат оборудование и товар — жабам там делать нечего.
+ *
+ * «Лазарет» тоже принимает жаб (`canMoveToadToRoom`, койки), поэтому его обитатели —
+ * раненые и больные — рисуются спрайтами прямо на гексе комнаты, как в остальных
+ * «жабьих» комнатах (`HexMapCanvas` создаёт стайку только для `isToadRoom`).
  */
 export const isToadRoom = (room: RoomConfig) =>
   room.kind === "aviary" ||
   room.kind === "breeding" ||
   room.kind === "power" ||
-  room.kind === "scout";
+  room.kind === "scout" ||
+  room.kind === "hospital";
 
 /**
  * Видна ли жаба в комнате прямо сейчас: ушедшую в поход (`status: "out"`) карта не рисует —
@@ -466,15 +537,68 @@ export const isToadRoom = (room: RoomConfig) =>
  */
 export const isToadVisibleInRoom = (toad: Toad) => toad.status !== "out";
 
-/** Кольцо, в котором стоит комната (0 — ядро, 1 и 2 — слоты вокруг). */
+/** Кольцо, в котором стоит комната (0 — ядро, дальше — кольца слотов вокруг него). */
 export const getRoomRing = (room: RoomConfig) =>
-  hexDistance(room.coord, { q: 0, r: 0 });
+  hexDistance(room.coord, ORIGIN);
 
 /**
- * Внешнее кольцо колонии: дальше начинается свободная территория.
- * По нему фон решает, где рисовать медовую сетку: внутри колонии её нет, иначе линия
- * сетки просвечивала бы сквозь полупрозрачный пустой слот рядом с его пунктиром и
- * контур читался бы сдвоенным (см. `HONEYCOMB_FROM_RING` в `hex-honeycomb.ts`).
+ * Дальнее кольцо карты: самый удалённый от ядра гекс списка (пустые слоты фронта тоже
+ * считаются). Карта растёт фронтом, поэтому радиус — не форма карты, а «радиус по дальнему
+ * гексу»: по нему удобно сравнивать карты между собой (проверки роста, отладка).
  */
-export const COLONY_RADIUS = Math.max(...HEX_ROOMS.map(getRoomRing));
+export const getRoomsRadius = (rooms: RoomConfig[]): number =>
+  rooms.reduce((max, room) => Math.max(max, getRoomRing(room)), 0);
 
+/**
+ * Открытые гексы колонии: базовая карта плюс фронт застройки вокруг построенных комнат.
+ *
+ * Карта растёт не кольцами, а от самих комнат: у каждой постройки открываются только те
+ * соседи, что лежат на кольцо дальше от ядра — таких у гекса два или три (остальные соседи
+ * ведут вбок по своему кольцу и внутрь). Поэтому одна комната даёт максимум **+3 гекса**
+ * под застройку, а карта ползёт наружу там, где игрок строит, и не раздувается целым кольцом.
+ *
+ * Ниже `BASE_COLONY_RADIUS` новых слотов нет (карта и так открыта), а на предельном кольце
+ * `MAX_COLONY_RADIUS` соседей наружу уже не существует — рост останавливается.
+ *
+ * Постройки из сейва попадают на карту всегда, даже если их слот открылся не по этим
+ * правилам: карта не должна терять то, что игрок уже построил. Чужие id каталогу
+ * неизвестны и карту не трогают.
+ */
+export const getUnlockedRooms = (
+  builtRooms: ColonyRoomState[],
+): RoomConfig[] => {
+  const unlocked = new Map<string, RoomConfig>();
+
+  BASE_ROOMS.forEach((room) => unlocked.set(room.id, room));
+
+  builtRooms.forEach((built) => {
+    const room = HEX_ROOM_BY_ID[built.id];
+
+    // Слот мог исчезнуть из каталога — чужой id карту не расширяет
+    if (!room) {
+      return;
+    }
+
+    // Свой гекс на карте есть всегда: постройку игрока карта не забывает
+    unlocked.set(room.id, room);
+
+    const ring = getRoomRing(room);
+
+    if (ring < BASE_COLONY_RADIUS || ring >= MAX_COLONY_RADIUS) {
+      return;
+    }
+
+    // Фронт застройки: три соседа «наружу» — только они и открываются
+    hexNeighbors(room.coord)
+      .filter((coord) => hexDistance(coord, ORIGIN) === ring + 1)
+      .forEach((coord) => {
+        const slot = HEX_ROOM_BY_COORD[hexCoordKey(coord)];
+
+        if (slot) {
+          unlocked.set(slot.id, slot);
+        }
+      });
+  });
+
+  return [...unlocked.values()];
+};

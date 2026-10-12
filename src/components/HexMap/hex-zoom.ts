@@ -1,5 +1,5 @@
 import { hexMapBounds, hexWidth, HEX_SIZE, Point } from "./hex-geometry";
-import { HEX_ROOMS } from "./rooms-config";
+import { RoomConfig } from "./rooms-config";
 
 /**
  * Чистая математика камеры гекс-карты.
@@ -9,6 +9,9 @@ import { HEX_ROOMS } from "./rooms-config";
  *  - приближенный — один гекс занимает почти всю ширину экрана.
  * Порог — середина между ними: приблизил сильнее половины → включаются детали
  * (кликаются жабы и хотспоты), иначе тап открывает комнату целиком.
+ *
+ * Габариты карты считаются по её текущим гексам: колония растёт фронтом застройки,
+ * поэтому список гексов приходит аргументом (см. `rooms-config` → `getUnlockedRooms`).
  *
  * Держим формулы отдельно от Pixi, чтобы проверять их без рендера.
  */
@@ -45,11 +48,11 @@ export const clampScale = (value: number, maxScale: number) =>
   Math.min(maxScale, Math.max(MIN_SCALE, value));
 
 /** Габариты всей колонии в мировых пикселях (без учёта зума). */
-export const getMapBounds = () =>
+export const getMapBounds = (rooms: RoomConfig[]) =>
   hexMapBounds(
-    HEX_ROOMS.map((room) => room.coord),
+    rooms.map((room) => room.coord),
     HEX_SIZE,
-    HEX_SIZE * 0.8
+    HEX_SIZE * 0.8,
   );
 
 /** Приближенный зум: гекс занимает почти всю ширину экрана. */
@@ -63,9 +66,10 @@ export const getDetailScale = (screenWidth: number) =>
 export const getOverviewScale = (
   screenWidth: number,
   screenHeight: number,
-  maxScale: number
+  maxScale: number,
+  rooms: RoomConfig[]
 ) => {
-  const bounds = getMapBounds();
+  const bounds = getMapBounds(rooms);
 
   return clampScale(
     Math.min(
@@ -79,10 +83,11 @@ export const getOverviewScale = (
 /** Оба вида под текущий размер экрана + порог между ними. */
 export const getZoomLevels = (
   screenWidth: number,
-  screenHeight: number
+  screenHeight: number,
+  rooms: RoomConfig[]
 ): ZoomLevels => {
   const detail = getDetailScale(screenWidth);
-  const overview = getOverviewScale(screenWidth, screenHeight, detail);
+  const overview = getOverviewScale(screenWidth, screenHeight, detail, rooms);
 
   return {
     overview,

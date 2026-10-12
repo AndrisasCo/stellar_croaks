@@ -37,7 +37,6 @@ import {
   EXPEDITION_TEAM_SIZE,
   FORCED_EXTRACTION_FEE_PER_TOAD,
   FORCED_LOOT_LOSS,
-  HP_REGEN_PER_HOUR,
   TANK_DAMAGE_REDIRECT,
   getDispatchOfficeCost,
   getAwayToadUpdate,
@@ -64,6 +63,7 @@ import {
   pickExpeditionEvent,
 } from "./expedition-events";
 import { ExpeditionTeamMember, getSectorSuccessFactor } from "./expedition-config";
+import { getHpRegenPerHour, getHospitalRoomIds } from "./hospital";
 
 /**
  * ЧАСТЬ 5. Разведка (походы): отправка команд, события в пути, урон и HP,
@@ -146,6 +146,10 @@ export const canSendToad = (
   }
   if (toad.pregnancy?.isPregnant) {
     return { ok: false, reason: "вынашивает потомство" };
+  }
+  // Пара в гнезде: жаба занята ухаживанием (Часть 3.2)
+  if (toad.mating) {
+    return { ok: false, reason: "ухаживает в гнезде" };
   }
   if (getIncubatingToadIds().includes(toad.id)) {
     return { ok: false, reason: "в инкубаторе" };
@@ -1109,6 +1113,10 @@ const applyArrival = (
 /**
  * Пассивное восстановление HP у жаб, которые не в походе, и снятие «залипших»
  * статусов после рейда. Возвращает число жаб, которых подлечили.
+ *
+ * Скорость зависит от места: на койке лазарета HP идёт в разы быстрее, чем дома
+ * (`getHpRegenPerHour` из `utils/hospital.ts`) — без лазарета раны затягиваются
+ * очень медленно.
  */
 export const processHpRegen = (hoursPassed: number): number => {
   if (!Number.isFinite(hoursPassed) || hoursPassed <= 0) {
@@ -1117,6 +1125,7 @@ export const processHpRegen = (hoursPassed: number): number => {
 
   const state = getGameState();
   const expeditions = state.expeditions ?? [];
+  const hospitalIds = getHospitalRoomIds(state.colony);
   let touched = 0;
 
   const toads = state.toads.map((toad) => {
@@ -1128,7 +1137,9 @@ export const processHpRegen = (hoursPassed: number): number => {
     const hp = getToadHp(toad);
     const nextHp = Math.min(
       maxHp,
-      Math.round((hp + HP_REGEN_PER_HOUR * hoursPassed) * 100) / 100
+      Math.round(
+        (hp + getHpRegenPerHour(toad, hospitalIds) * hoursPassed) * 100
+      ) / 100
     );
     const nextStatus: ToadStatus = nextHp > 0 ? "ok" : "injured";
 

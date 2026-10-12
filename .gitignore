@@ -47,3 +47,6 @@ dist-ssr/
 .env
 .env.*
 .DS_Store
+
+# Шаблон окружения — единственный env-файл, который должен быть в VCS
+!.env.example

@@ -1,4 +1,11 @@
-import { ReactElement, useCallback, useEffect, useMemo, useState } from "react";
+import {
+  ReactElement,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { MenuIcons } from "../../assets/icons";
 import { useColony } from "../../hooks/use-colony";
 import { useGameState } from "../../hooks/use-game-state";
@@ -6,12 +13,14 @@ import { useNotifications } from "../../hooks/use-notification";
 import { useSoundEffects } from "../../hooks/use-sound-effects";
 import { Toad } from "../../models/Toad";
 import { CURRENCY_CONFIG } from "../../utils/constants";
+import { checkNestCourtship } from "../../utils/breeding-manager";
 import {
   getSceneProductionRate,
   getUpkeepRate,
 } from "../../utils/production-manager";
 import { getHousingInfo } from "../../utils/housing";
 import { getStorageCapacityInfo } from "../../utils/storage";
+import { platform } from "../../platform";
 import { useModal } from "../ModalContext";
 import { useToads } from "../ToadContext";
 import { BurgerMenu } from "../modals/BurgerMenuModal";
@@ -31,12 +40,29 @@ import { useFeedToads } from "../ToadCanvas/use-feed-toads";
 import { ClickButton } from "../shared/ClickButton";
 import { canBuildOnSlot, isRoomPowered } from "./colony-build";
 import HexMapCanvas from "./HexMapCanvas";
+import { getRoomToadLists } from "./room-toad-lists";
 import { isRoomOpen, RoomActionId, RoomConfig } from "./rooms-config";
 import { canMoveToadToRoom, ToadMoveCheck } from "./toad-move-rules";
 
 /** Локальные часы колонии для HUD (показываются в шапке, обновляются раз в полминуты). */
 const formatClock = (date: Date) =>
   date.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+
+/** Склонение слова «гекс» для уведомления о расширении колонии (как «жабы» в коллайдере). */
+const pluralizeHexes = (count: number): string => {
+  const mod10 = count % 10;
+  const mod100 = count % 100;
+
+  if (mod10 === 1 && mod100 !== 11) {
+    return "гекс";
+  }
+
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
+    return "гекса";
+  }
+
+  return "гексов";
+};
 
 /** Модалка, которую открывает действие комнаты, и фон для неё (лаборатория — свой). */
 type RoomModalEntry = { render: () => ReactElement; bg?: string } | null;
@@ -52,6 +78,8 @@ const ROOM_MODAL_BY_ACTION: Record<RoomActionId, RoomModalEntry> = {
   "toad-list": { render: () => <ToadListModal /> },
   "scene-info": null,
   feed: null,
+  // Гнёзд в колонии может быть несколько: гекс открывает модалку сам (см. обработчик клика),
+  // здесь — запасной путь для базового гнезда `NEST_ROOM_ID`.
   nest: { render: () => <NestModal />, bg: "/bg/bg-lab.webp" },
   collider: { render: () => <ToadCollider />, bg: "/bg/bg-lab.webp" },
   incubator: { render: () => <ToadSlotModal />, bg: "/bg/bg-lab.webp" },
@@ -113,7 +141,13 @@ export default function HexMapScreen() {
   } = useFeedToads();
 
   // Колония: построенные комнаты игрока, энергосеть и жабы в комнатах
-  const { rooms, powerGrid, toadsByRoom: roomToads, placeToad } = useColony();
+  const {
+    rooms,
+    powerGrid,
+    toadsByRoom: roomToads,
+    placeToad,
+    releaseToad,
+  } = useColony();
 
   /** Жабы вольера — те, кто не ушёл работать в комнату колонии (⚡-комната, «Разведка»). */
   const aviaryToads = useMemo(
@@ -121,25 +155,49 @@ export default function HexMapScreen() {
     [toads],
   );
 
-  /** Беременные жабы видны в гнезде (в комнатах колонии их не бывает). */
-  const pregnantToads = useMemo(
-    () => aviaryToads.filter((toad) => toad.pregnancy?.isPregnant),
-    [aviaryToads],
+  // Жабы по комнатам: вольер, гнездо, энергокомнаты ⚡ и «Разведка».
+  // Чистая сборка списков — в room-toad-lists (базовый гекс «aviary» сливается
+  // с жильцами вольера, иначе жаба пропадала с карты; гнездо показывает только тех,
+  // кто в нём сидит — жабы из гнезда сами не уходят).
+  const toadsByRoom = useMemo(
+    () => getRoomToadLists(rooms, roomToads, { aviaryToads }),
+    [roomToads, rooms, aviaryToads],
   );
+
+  /**
+   * Территория колонии растёт фронтом застройки: у новой комнаты открываются три соседних
+   * гекса следующего кольца (см. `getUnlockedRooms`), поэтому о расширении говорим по числу
+   * новых гексов, а не по радиусу. Число открытых гексов — это длина списка комнат карты:
+   * в нём только открытые слоты и постройки.
+   */
+  const unlockedCount = rooms.length;
+  const prevUnlockedRef = useRef(unlockedCount);
+
+  useEffect(() => {
+    const previous = prevUnlockedRef.current;
+
+    prevUnlockedRef.current = unlockedCount;
+
+    // Первый проход (загрузка сейва) и снос расширением не считаются
+    if (unlockedCount <= previous) {
+      return;
+    }
+
+    // Новая постройка открыла соседей — 3 гекса за комнату (меньше, если фронты пересеклись)
+    const opened = unlockedCount - previous;
+
+    addNotification({
+      type: "success",
+      content: `Территория колонии расширилась: под застройку открыто ${opened} ${pluralizeHexes(
+        opened,
+      )}.`,
+      timeout: 6000,
+    });
+  }, [addNotification, unlockedCount]);
 
   // Ферма считает только жаб вольера: жабы в энергокомнатах не фармят биомассу
   const sceneFarmRate =
     getSceneProductionRate(aviaryToads) - getUpkeepRate(aviaryToads);
-
-  // Жабы по комнатам: вольер, гнездо, энергокомнаты ⚡ и «Разведка»
-  const toadsByRoom = useMemo(
-    () => ({
-      ...roomToads,
-      aviary: aviaryToads,
-      breeding: pregnantToads,
-    }),
-    [roomToads, aviaryToads, pregnantToads],
-  );
 
   // Энергия колонии для HUD: сколько построенных комнат реально под током
   const poweredRooms = useMemo(
@@ -291,6 +349,12 @@ export default function HexMapScreen() {
         return;
       }
 
+      // Гнездо: гнёзд в колонии может быть несколько — модалка знает, какой гекс открыли
+      if (room.kind === "breeding") {
+        openModal(() => <NestModal roomId={room.id} />, { bg: "/bg/bg-lab.webp" });
+        return;
+      }
+
       const actionId = room.actions[0]?.id;
       const modal = actionId ? ROOM_MODAL_BY_ACTION[actionId] : null;
 
@@ -309,25 +373,14 @@ export default function HexMapScreen() {
     [currentScene],
   );
 
-  /** Жабы, живущие в комнате прямо сейчас — нужно правилам переноса. */
+  /**
+   * Жабы, живущие в комнате прямо сейчас — нужно правилам переноса:
+   * вольер — жильцы вольера, гнездо — пара на ухаживание и беременные,
+   * ⚡-комната и «Разведка» — те, кого посадили в гекс.
+   */
   const getRoomOccupants = useCallback(
-    (room: RoomConfig): Toad[] => {
-      // ⚡-комната и «Разведка»: жабы сидят в самой комнате (по `Toad.roomId`)
-      if (room.kind === "power" || room.kind === "scout") {
-        return roomToads[room.id] ?? [];
-      }
-
-      if (room.kind === "aviary") {
-        return aviaryToads;
-      }
-
-      if (room.kind === "breeding") {
-        return pregnantToads;
-      }
-
-      return [];
-    },
-    [aviaryToads, pregnantToads, roomToads],
+    (room: RoomConfig): Toad[] => toadsByRoom[room.id] ?? [],
+    [toadsByRoom],
   );
 
   /**
@@ -371,18 +424,41 @@ export default function HexMapScreen() {
       }
 
       if (room.kind === "aviary") {
-        placeToad(toad.id, room.id);
+        // Жабу вернули в вольер: `roomId` сбрасывается, ферма снова её считает
+        releaseToad(toad.id);
         playCroakSmall();
-        // playOk();
+        addNotification({
+          type: "success",
+          content: `${toad.name ?? "Жаба"} вернулась в вольер 🐸`,
+          timeout: 4000,
+        });
+        return;
       }
 
+      // Гнездо вмещает пару: посадили самца и самку — ухаживание заводит игрок кнопкой
       if (room.kind === "breeding") {
         placeToad(toad.id, room.id);
         playCroakSmall();
-        // playOk();
+
+        // Пара собралась — подсказываем про кнопку в модалке гнезда. Пока пары нет
+        // (посадили одну жабу), молчим: кого не хватает, скажет модалка гнезда.
+        if (checkNestCourtship(room.id).ready) {
+          addNotification({
+            type: "success",
+            content:
+              "Пара в гнезде ♥ Откройте гнездо и нажмите «Начать ухаживание»",
+            timeout: 6000,
+          });
+        }
       }
     },
-    [addNotification, placeToad, playCroakSmall, playOk],
+    [
+      addNotification,
+      placeToad,
+      playCroakSmall,
+      playOk,
+      releaseToad,
+    ],
   );
 
   /** Перенести жабу не вышло: она уже летит назад — показываем причину. */
@@ -409,7 +485,8 @@ export default function HexMapScreen() {
         playCroakSmall();
       }
 
-      window.Telegram?.WebApp?.HapticFeedback?.impactOccurred?.("light");
+      // Отклик удержания: в Telegram это вибрация, в вебе — тихий no-op (см. src/platform)
+      platform.haptic("light");
     },
     [playBeep, playCroakSmall],
   );

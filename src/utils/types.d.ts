@@ -189,6 +189,26 @@ export declare namespace TelegramWebApps {
      */
     disableClosingConfirmation(): void;
     /**
+     * `Bot API 7.7+` A method that disables vertical swipes to close or minimize the Web App.
+     *
+     * Важно для игры: свайп вниз по карте не должен сворачивать мини-приложение
+     * (жесты карты — зум и перенос жабы — остаются внутри игры).
+     *
+     * Метода нет в клиентах старше Bot API 7.7 — перед вызовом проверяйте
+     * `typeof telegramApp.disableVerticalSwipes === 'function'` (см. hooks/use-tg.ts).
+     */
+    disableVerticalSwipes(): void;
+    /**
+     * `Bot API 7.7+` A method that enables vertical swipes to close or minimize the Web App.
+     * Default for Web Apps and Mini Apps.
+     */
+    enableVerticalSwipes(): void;
+    /**
+     * `Bot API 7.7+` *True*, if vertical swipes are enabled. *False*, if the user can only
+     * close or minimize the Web App with the header button (swipes are disabled).
+     */
+    readonly isVerticalSwipesEnabled: boolean;
+    /**
      * A method that sets the app event handler.
      *
      * Event occurs whenever theme settings are changed in the user's Telegram app (including

@@ -367,6 +367,15 @@ export default function ToadCollider() {
                           </span>
                         )}
 
+                        {toad.mating && (
+                          <span
+                            className="absolute -top-1 -left-1 text-xs"
+                            title="Ухаживает в гнезде: беременность стартует через 15–30 мин"
+                          >
+                            🫧
+                          </span>
+                        )}
+
                         <div className="flex items-center gap-1 mb-1 w-full justify-center min-h-[20px]">
                           <ToadGender gender={toad.sex} />
                           <span className="truncate font-medium text-1xs">
@@ -636,6 +645,11 @@ export default function ToadCollider() {
                     {toad.pregnancy?.isPregnant && (
                       <span className="text-2xs text-pink-300 shrink-0">
                         🍼 потомство пропадёт
+                      </span>
+                    )}
+                    {toad.mating && (
+                      <span className="text-2xs text-pink-300 shrink-0">
+                        🫧 ухаживание прервётся
                       </span>
                     )}
                   </li>

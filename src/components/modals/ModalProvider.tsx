@@ -151,11 +151,14 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({
         <div className="overlay">
           <div
             style={options.bg ? { backgroundImage: `url(${options.bg})` } : {}}
-            className={`"text-white h-full  w-full max-w-2xl max-h-[100vh] overflow-hidden bg-[url('/bg/bg-shop.webp')] cover`}
+            className={`"text-white h-full  w-full max-w-2xl max-h-[100dvh] overflow-hidden bg-[url('/bg/bg-shop.webp')] cover`}
           >
+            {/* no-overscroll: свайп по списку не уходит в pull-to-refresh — иначе
+                iOS Safari перезагружал страницу и «шторка» будто закрывалась сама.
+                100dvh вместо 100vh: модалка не залезает под панель браузера. */}
             <div
               id="modal"
-              className="h-[100vh]  overflow-auto py-4 flex flex-col  bg-slate-900/50 backdrop-blur-[2px] px-1"
+              className="h-[100dvh] no-overscroll overflow-auto py-4 flex flex-col  bg-slate-900/50 backdrop-blur-[2px] px-1"
             >
               <ClickButton
                 onClick={closeModal}

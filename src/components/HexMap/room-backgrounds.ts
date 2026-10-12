@@ -5,17 +5,27 @@ import { RoomKind } from "./rooms-config";
  * Фоны комнат: картинка, которая лежит под цветом гекса.
  *
  * Палитра остаётся главным «значком» карты (тип комнаты, тусклость без тока), фон — только
- * фактура самой комнаты. Файлы — как и все картинки игры, webp из `/public/bg`; исходники
- * (jpg/avif) лежат рядом в `/public/source` и в рантайме не грузятся.
+ * фактура самой комнаты. Файлы — webp из `/public/bg/rooms`, собранные из исходных PNG
+ * скриптом `scripts/optimize-images.mjs` (исходники переезжают в `design-src/bg` и в
+ * рантайме не грузятся: 13.4 МБ PNG превращаются в 1 МБ webp).
+ *
+ * Папка `rooms/` отдельная не для красоты: в `public/bg` уже лежат `incubator.webp` и
+ * `vivarium.webp` другого назначения (фоны модалок) — те же имена перезаписали бы их.
  */
 export const ROOM_BACKGROUNDS: Partial<Record<RoomKind, string>> = {
-  // aviary: "/bg/med.png",
-  aviary: "/bg/vivarium.png",
-  core: "/bg/core.png",
-  breeding: "/bg/nest.png",
-  shop: "/bg/market.png",
-  // med: "/bg/vivarium.png",
+  aviary: "/bg/rooms/vivarium.webp",
+  core: "/bg/rooms/core.webp",
+  breeding: "/bg/rooms/nest.webp",
+  shop: "/bg/rooms/market.webp",
+  storage: "/bg/rooms/storage.webp",
+  collider: "/bg/rooms/collider.webp",
+  dissociator: "/bg/rooms/dissosiator.webp",
+  power: "/bg/rooms/power.webp",
+  incubator: "/bg/rooms/incubator.webp",
+  scout: "/bg/rooms/scout.webp",
+  hospital: "/bg/rooms/med.webp",
 };
+
 
 /**
  * Грузит фоны комнат. Если что-то не приехало — отдаём то, что успело: карта просто

@@ -302,6 +302,55 @@ body {
   background: rgba(32, 48, 71, 0.75);
 }
 
+/* ===== Тач и iOS Safari: игра — одноэкранное приложение =====
+   Страница не скроллится, а жесты (зум, панорама, удержание жабы) обрабатывает карта.
+   Поэтому на уровне документа гасим то, что Safari делает по умолчанию и из-за чего
+   игра «сворачивается» вместо действий с жабами:
+   - overflow/overscroll — свайп вниз уходил в pull-to-refresh и перезагружал игру,
+     а «резинка» вытягивала панель браузера («шторку») с URL-баром;
+   - touch-action: manipulation — двойной тап приближал страницу, а не гекс;
+   - user-select / touch-callout — долгое нажатие на жабу поднимало системное меню
+     выделения («Скопировать / Поделиться») вместо того, чтобы взять жабу в руку.
+   Браузерный щипок страницы гасится из JS (см. src/utils/touch-guards.ts). */
+html,
+body {
+  height: 100%;
+  overflow: hidden; /* страница не скроллится — панель браузера не выезжает */
+  overscroll-behavior: none; /* без «резинки» и pull-to-refresh (перезагрузки игры) */
+  touch-action: manipulation; /* без 300 мс задержки и без двойного тапа = зум страницы */
+  -webkit-text-size-adjust: 100%; /* поворот экрана не меняет размер шрифта */
+  background: #070c14;
+}
+
+body {
+  position: fixed; /* Safari не может сдвинуть страницу — «шторка» не ездит */
+  inset: 0;
+  -webkit-user-select: none; /* удержание жабы не выделяет текст */
+  user-select: none;
+  -webkit-touch-callout: none; /* и не открывает меню «Скопировать / Поделиться» */
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Поля ввода оставляем обычными: в них нужны выделение, курсор и клавиатура */
+input,
+textarea,
+select {
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
+}
+
+/* Списки с внутренним скроллом (модалки) не тянут за собой страницу:
+   иначе свайп по списку уходил в pull-to-refresh и приложение перезагружалось */
+.no-overscroll {
+  overscroll-behavior: contain;
+}
+
+/* Область, где жест целиком принадлежит игре: у канваса карты touch-action ставится из Pixi */
+.no-touch-zoom {
+  touch-action: none;
+}
+
 @keyframes complexIncubation {
   0% {
     transform: scale(0.97) translateY(5px);

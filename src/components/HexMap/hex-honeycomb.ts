@@ -1,5 +1,4 @@
-import { AxialCoord, hexRing } from "./hex-geometry";
-import { COLONY_RADIUS } from "./rooms-config";
+import { AxialCoord, hexCoordKey, hexNeighbors } from "./hex-geometry";
 
 /**
  * Медовая сетка территории колонии — фон под картой.
@@ -8,31 +7,52 @@ import { COLONY_RADIUS } from "./rooms-config";
  * линия сетки (0.96 гекса) шла рядом с контуром слота (пунктир 0.92 гекса) — сквозь
  * полупрозрачный пустой слот второго кольца просвечивали обе, и контур читался сдвоенным.
  *
+ * Карта растёт фронтом вокруг построек (см. `rooms-config` → `getUnlockedRooms`), поэтому
+ * сетка — не кольцо от радиуса, а венок вокруг открытых гексов: клетка встаёт на каждый
+ * гекс, соседний с колонией. Так сетка обступает колонию по её настоящей форме — с выступами
+ * там, где игрок строил, — и не оставляет пустоты между краем карты и кольцом сетки.
+ *
  * Держим формулы отдельно от Pixi (как `hex-zoom.ts`), чтобы проверять их без рендера.
  */
 
-/** Кольцо, с которого начинается сетка: сразу за внешним кольцом колонии. */
-export const HONEYCOMB_FROM_RING = COLONY_RADIUS + 1;
-
-/** Сколько колец сетки уходит в территорию за комнатами колонии. */
+/** Сколько колец сетки уходит в территорию за гексами колонии. */
 export const HONEYCOMB_RINGS = 1;
 
 /** Клетка сетки чуть меньше гекса комнаты: между клетками остаётся зазор, сетка читается кружевом. */
 export const HONEYCOMB_CELL_SCALE = 1;
 
-/** Координаты клеток сетки — всё, что фон рисует за колонией. */
+/**
+ * Координаты клеток сетки — всё, что фон рисует за открытыми гексами колонии.
+ * Клетки никогда не совпадают с гексами колонии и не повторяются между кольцами.
+ */
 export const getHoneycombCoords = (
+  colony: AxialCoord[],
   rings: number = HONEYCOMB_RINGS,
 ): AxialCoord[] => {
-  const coords: AxialCoord[] = [];
+  const taken = new Set(colony.map((coord) => hexCoordKey(coord)));
+  const frame: AxialCoord[] = [];
+  let frontier = colony;
 
-  for (
-    let radius = HONEYCOMB_FROM_RING;
-    radius < HONEYCOMB_FROM_RING + rings;
-    radius += 1
-  ) {
-    coords.push(...hexRing(radius));
+  for (let layer = 0; layer < rings; layer += 1) {
+    const next: AxialCoord[] = [];
+
+    frontier.forEach((coord) => {
+      hexNeighbors(coord).forEach((neighbour) => {
+        const key = hexCoordKey(neighbour);
+
+        // Гекс колонии и уже занятую клетку сетки второй раз не берём
+        if (taken.has(key)) {
+          return;
+        }
+
+        taken.add(key);
+        frame.push(neighbour);
+        next.push(neighbour);
+      });
+    });
+
+    frontier = next;
   }
 
-  return coords;
+  return frame;
 };

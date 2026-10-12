@@ -3,6 +3,9 @@ import Modal from "../shared/Header";
 import { ClickButton } from "../shared/ClickButton";
 import { useNotifications } from "../../hooks/use-notification";
 import { useGameState } from "../../hooks/use-game-state";
+import { useColony } from "../../hooks/use-colony";
+import { Toad } from "../../models/Toad";
+import { getDiseaseCureCost, getToadDisease } from "../../models/disease";
 import {
   DEFAULT_EXPEDITION_STATS,
   Expedition,
@@ -50,6 +53,19 @@ import {
   withdrawExpedition,
 } from "../../utils/expedition-manager";
 import { getMaxExpeditions } from "../../utils/expedition-config";
+import { cureToadForTokens } from "../../utils/disease-manager";
+import {
+  HOSPITAL_DISEASE_SPEED,
+  HOSPITAL_HP_REGEN_PER_HOUR,
+  HOSPITAL_ROOM_TOAD_SLOTS,
+  getHospitalPatients,
+  getHoursToFullHp,
+  getToadsNeedingCare,
+  isToadInHospital,
+  needsHospitalCare,
+} from "../../utils/hospital";
+import { RoomConfig } from "../HexMap/rooms-config";
+import { canMoveToadToRoom, getToadMoveIssue } from "../HexMap/toad-move-rules";
 
 /** Часы/минуты/секунды до события похода */
 const formatDuration = (ms: number): string => {
@@ -241,10 +257,78 @@ const ExpeditionModal: React.FC<{
     biomass >= sendCost &&
     expeditions.length < teamLimit;
 
-  // Лазарет: жабы дома, потерявшие HP после походов
-  const patients = state.toads.filter(
-    (toad) => getToadHp(toad) < getToadMaxHp(toad)
+  // Лазарет: койки комнаты и два списка — кто лежит и кому ещё нужна помощь.
+  // Комнаты и жаб по комнатам берём из колонии теми же вычислениями, что и карта.
+  const { rooms, powerGrid, toadsByRoom, placeToad, releaseToad } = useColony();
+
+  const hospitalRooms = useMemo(
+    () => rooms.filter((room) => room.kind === "hospital"),
+    [rooms]
   );
+  const hospitalIds = useMemo(
+    () => hospitalRooms.map((room) => room.id),
+    [hospitalRooms]
+  );
+
+  /** Жабы в походе: их не лечат и не переносят, пока команда не вернётся */
+  const awayToads = useMemo(
+    () => state.toads.filter((toad) => isToadOnExpedition(toad.id, expeditions)),
+    [state.toads, expeditions]
+  );
+  const homeToads = useMemo(
+    () => state.toads.filter((toad) => !isToadOnExpedition(toad.id, expeditions)),
+    [state.toads, expeditions]
+  );
+
+  /** Первый список лазарета: жабы, которые лежат на койках прямо сейчас */
+  const patients = getHospitalPatients(homeToads, hospitalIds);
+
+  /** Второй список: все раненые и больные дома, кого ещё не положили в лазарет */
+  const needingCare = getToadsNeedingCare(homeToads).filter(
+    (toad) => !isToadInHospital(toad, hospitalIds)
+  );
+
+  /** Сколько коек в колонии: в каждом лазарете по шесть */
+  const hospitalCapacity = hospitalIds.length * HOSPITAL_ROOM_TOAD_SLOTS;
+
+  /** Раненые и больные в походе: ими займёмся, когда команда вернётся */
+  const awayWounded = awayToads.filter((toad) => needsHospitalCare(toad)).length;
+
+  /**
+   * Куда положить жабу из списка «нужна помощь»: первый лазарет, который её принимает.
+   * Проверяем теми же правилами, что и перенос по карте (`canMoveToadToRoom`): место
+   * на койке, ток в комнате, возраст, поход — чтобы кнопка не обещала лишнего.
+   */
+  const getAdmission = (
+    toad: Toad
+  ): { room: RoomConfig | null; issue: string | null } => {
+    if (hospitalRooms.length === 0) {
+      return { room: null, issue: "в колонии нет лазарета" };
+    }
+
+    let firstIssue: string | null = null;
+
+    for (const room of hospitalRooms) {
+      const check = canMoveToadToRoom(toad, room, {
+        roomToads: (toadsByRoom[room.id] ?? []).filter(
+          (item) => item.id !== toad.id
+        ),
+        // Переносим в лазарет, а не в вольер: жильё тут не считается
+        aviaryCount: 0,
+        aviaryCapacity: 0,
+        rooms,
+        powerGrid,
+      });
+
+      if (check.ok) {
+        return { room, issue: null };
+      }
+
+      firstIssue = firstIssue ?? check.reason ?? null;
+    }
+
+    return { room: null, issue: firstIssue };
+  };
 
   /** Команда с самими жабами: по ней считаем шанс удачного завершения */
   const team: ExpeditionTeamMember[] = members
@@ -290,6 +374,152 @@ const ExpeditionModal: React.FC<{
     notify(extractExpedition(id, addNotification));
   const handleHeal = (toadId: number) => notify(healToad(toadId));
   const handleBuyDispatch = () => notify(buyDispatchOffice());
+
+  /** Мгновенный курс от болезни за Кваксы — самый дорогой способ, зато сразу */
+  const handleCure = (toadId: number) => notify(cureToadForTokens(toadId));
+
+  /** Положить жабу на койку лазарета (место и ток проверила `getAdmission`) */
+  const handleAdmit = (toad: Toad, room: RoomConfig) => {
+    placeToad(toad.id, room.id);
+    addNotification({
+      type: "success",
+      content: `${toad.name} на койке в «Лазарете» — здесь жабы поправляются быстро 🛏️`,
+    });
+  };
+
+  /**
+   * Выписать жабу из лазарета в вольер. Жильё при этом не меняется (жаба остаётся
+   * в своём вольере), поэтому проверяем только «жива и не в походе».
+   */
+  const handleDischarge = (toad: Toad) => {
+    releaseToad(toad.id);
+    addNotification({
+      type: "success",
+      content: `${toad.name} выписана из лазарета в вольер`,
+    });
+  };
+
+  /** Карточка жабы в списках лазарета: HP, болезнь, прогноз и кнопки помощи */
+  const renderCareCard = (toad: Toad, options: { inBed: boolean }) => {
+    const maxHp = getToadMaxHp(toad);
+    const hp = getToadHp(toad);
+    const missingHp = Math.max(0, maxHp - hp);
+    const wounded = missingHp > 0;
+    const disease = getToadDisease(toad);
+    const healCost = getHealCost(toad);
+    const cureCost = getDiseaseCureCost(toad);
+    const inBed = options.inBed;
+    const admission = inBed ? null : getAdmission(toad);
+    // Выписывают в вольер по любым причинам, поэтому выбитого пациента тоже отпускаем:
+    // правило «сначала подлечите» здесь не мешает (allowDown) — это же лазарет
+    const dischargeIssue = inBed
+      ? getToadMoveIssue(toad, { allowDown: true })
+      : null;
+    const affordable = tokens >= healCost;
+    const cureAffordable = tokens >= cureCost;
+
+    return (
+      <div
+        key={toad.id}
+        className="bg-color-main rounded-2xl p-3 border border-gray-600/30 flex flex-col gap-1.5"
+      >
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-bold text-white">
+            {toad.name}{" "}
+            <span className="text-2xs font-normal text-gray-400">
+              · {getToadHpStatusLabel(toad)}
+              {disease && ` · ${disease.icon} ${disease.name}`}
+              {inBed && " · на койке"}
+            </span>
+          </p>
+          <span className="text-2xs text-gray-300">
+            {Math.round(hp)}/{maxHp} HP
+          </span>
+        </div>
+
+        <HpBar hp={hp} maxHp={maxHp} />
+
+        {wounded && (
+          <p className="text-2xs text-gray-400">
+            До полного HP:{" "}
+            {inBed
+              ? `${getHoursToFullHp(missingHp, true)} ч на койке`
+              : `дома ~${getHoursToFullHp(
+                  missingHp,
+                  false
+                )} ч · в лазарете ~${getHoursToFullHp(missingHp, true)} ч`}
+          </p>
+        )}
+
+        {!wounded && disease && (
+          <p className="text-2xs text-gray-400">
+            Раны зажили — осталась болезнь: на койке срок идёт в{" "}
+            {HOSPITAL_DISEASE_SPEED} раза быстрее, а пациент никого не заражает.
+          </p>
+        )}
+
+        {wounded && (
+          <ClickButton
+            onClick={() => handleHeal(toad.id)}
+            disabled={!affordable}
+            className={`w-full py-2 rounded-xl text-2xs font-bold border transition-colors duration-300 ${
+              affordable
+                ? "bg-emerald-900/50 border-emerald-500/50 text-emerald-100 hover:bg-emerald-800/60"
+                : "bg-slate-800/40 border-gray-700/40 text-gray-500"
+            }`}
+          >
+            🩹 Мгновенно вылечить за {healCost} 🔷
+          </ClickButton>
+        )}
+
+        {disease && (
+          <ClickButton
+            onClick={() => handleCure(toad.id)}
+            disabled={!cureAffordable}
+            className={`w-full py-2 rounded-xl text-2xs font-bold border transition-colors duration-300 ${
+              cureAffordable
+                ? "bg-sky-900/50 border-sky-500/50 text-sky-100 hover:bg-sky-800/60"
+                : "bg-slate-800/40 border-gray-700/40 text-gray-500"
+            }`}
+          >
+            💊 Мгновенный курс от болезни за {cureCost} 🔷
+          </ClickButton>
+        )}
+
+        {!inBed && (
+          <ClickButton
+            onClick={() => admission?.room && handleAdmit(toad, admission.room)}
+            disabled={!admission?.room}
+            className={`w-full py-2 rounded-xl text-2xs font-bold border transition-colors duration-300 ${
+              admission?.room
+                ? "bg-amber-900/50 border-amber-500/50 text-amber-100 hover:bg-amber-800/60"
+                : "bg-slate-800/40 border-gray-700/40 text-gray-500"
+            }`}
+          >
+            {admission?.room
+              ? "🛏️ Положить в лазарет"
+              : `🛏️ В лазарет нельзя: ${admission?.issue ?? "некуда"}`}
+          </ClickButton>
+        )}
+
+        {inBed && (
+          <ClickButton
+            onClick={() => handleDischarge(toad)}
+            disabled={Boolean(dischargeIssue)}
+            className={`w-full py-2 rounded-xl text-2xs font-bold border transition-colors duration-300 ${
+              dischargeIssue
+                ? "bg-slate-800/40 border-gray-700/40 text-gray-500"
+                : "bg-slate-800/60 border-gray-500/50 text-gray-200 hover:bg-slate-700/70"
+            }`}
+          >
+            {dischargeIssue
+              ? `🚪 Выписать нельзя: ${dischargeIssue}`
+              : "🚪 Выписать в вольер"}
+          </ClickButton>
+        )}
+      </div>
+    );
+  };
 
   /** Одна жаба — одна роль: занимая слот, освобождаем её из других */
   const setSlot = (role: ExpeditionRole, toadId: number | "") => {
@@ -341,7 +571,9 @@ const ExpeditionModal: React.FC<{
               { id: "send", label: "🎯 Новый поход" },
               {
                 id: "infirmary",
-                label: `🩹 Лазарет${patients.length ? ` (${patients.length})` : ""}`,
+                label: `🩹 Лазарет${
+                  hospitalCapacity ? ` (${patients.length}/${hospitalCapacity})` : ""
+                }`,
               },
             ] as { id: ExpeditionTab; label: string }[]
           ).map((item) => (
@@ -641,71 +873,64 @@ const ExpeditionModal: React.FC<{
           </div>
         )}
 
-        {/* ВКЛАДКА: лазарет */}
+        {/* ВКЛАДКА: лазарет — койки и список всех, кому нужна помощь */}
         {tab === "infirmary" && (
           <div className="flex flex-col gap-2">
             <p className="text-2xs text-gray-400">
-              Дома жабы восстанавливают {HP_REGEN_PER_HOUR} HP в час. Раненая
-              жаба даёт вдвое меньше биомассы, выбитая — не работает совсем и не
-              может идти в поход.
+              Дома жаба восстанавливает всего {HP_REGEN_PER_HOUR} HP в час. Койка в
+              лазарете лечит +{HOSPITAL_HP_REGEN_PER_HOUR} HP в час (в{" "}
+              {HOSPITAL_HP_REGEN_PER_HOUR / HP_REGEN_PER_HOUR} раз быстрее), а
+              срок болезни там идёт в {HOSPITAL_DISEASE_SPEED} раза быстрее — и
+              пациент никого не заражает. Мгновенное лечение за Кваксы самое
+              дорогое: это способ пропустить ожидание.
             </p>
 
-            {patients.length === 0 && (
-              <p className="text-xs text-gray-400 text-center py-3">
-                Лазарет пуст: все жабы в форме.
+            {hospitalRooms.length === 0 && (
+              <p className="text-2xs text-amber-200/90 bg-amber-950/30 border border-amber-500/30 rounded-xl px-3 py-2">
+                🏥 В колонии нет «Лазарета»: постройте комнату на свободном гексе
+                карты — только на койке жабы выздоравливают быстро.
               </p>
             )}
 
-            {patients.map((toad) => {
-              const onRun = isToadOnExpedition(toad.id, expeditions);
-              const maxHp = getToadMaxHp(toad);
-              const hp = getToadHp(toad);
-              const cost = getHealCost(toad);
-              const affordable = tokens >= cost;
+            {/* СПИСОК 1: кто лежит на койках прямо сейчас */}
+            <div className="flex items-center justify-between pt-1">
+              <p className="text-2xs font-bold text-amber-200 uppercase tracking-wide">
+                🛏️ В лазарете ({patients.length}/{hospitalCapacity})
+              </p>
+              <span className="text-2xs text-gray-500">🔷 {tokens} в запасе</span>
+            </div>
 
-              return (
-                <div
-                  key={toad.id}
-                  className="bg-color-main rounded-2xl p-3 border border-gray-600/30 flex flex-col gap-1.5"
-                >
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs font-bold text-white">
-                      {toad.name}{" "}
-                      <span className="text-2xs font-normal text-gray-400">
-                        · {getToadHpStatusLabel(toad)}
-                        {onRun && " · в походе"}
-                      </span>
-                    </p>
-                    <span className="text-2xs text-gray-300">
-                      {Math.round(hp)}/{maxHp} HP
-                    </span>
-                  </div>
+            {patients.length === 0 && (
+              <p className="text-2xs text-gray-500">
+                {hospitalRooms.length
+                  ? "Койки свободны: перенесите сюда раненых и больных — здесь они поправятся в разы быстрее."
+                  : "Койки появятся вместе с лазаретом."}
+              </p>
+            )}
 
-                  <HpBar hp={hp} maxHp={maxHp} />
+            {patients.map((toad) => renderCareCard(toad, { inBed: true }))}
 
-                  <div className="flex items-center justify-between text-2xs text-gray-400">
-                    <span>
-                      До полного HP: {Math.round((maxHp - hp) / HP_REGEN_PER_HOUR * 10) / 10} ч
-                    </span>
-                    <span className="text-gray-500">🔷 {tokens} в запасе</span>
-                  </div>
+            {/* СПИСОК 2: все жабы с ранами и болезнями — лечить или переносить в лазарет */}
+            <div className="flex items-center justify-between pt-1">
+              <p className="text-2xs font-bold text-amber-200 uppercase tracking-wide">
+                📋 Нуждаются в помощи ({needingCare.length})
+              </p>
+            </div>
 
-                  <ClickButton
-                    onClick={() => handleHeal(toad.id)}
-                    disabled={onRun || !affordable}
-                    className={`w-full py-2 rounded-xl text-2xs font-bold border ${
-                      onRun || !affordable
-                        ? "bg-slate-800/40 border-gray-700/40 text-gray-500"
-                        : "bg-emerald-900/50 border-emerald-500/50 text-emerald-100 hover:bg-emerald-800/60"
-                    }`}
-                  >
-                    {onRun
-                      ? "Ждём возвращения команды"
-                      : `🩹 Лечить за ${cost} 🔷 (есть ${tokens})`}
-                  </ClickButton>
-                </div>
-              );
-            })}
+            {awayWounded > 0 && (
+              <p className="text-2xs text-gray-500">
+                Ещё {awayWounded} жаб(ы) с ранами в походе: займёмся ими, когда
+                команда вернётся домой.
+              </p>
+            )}
+
+            {needingCare.length === 0 && (
+              <p className="text-2xs text-gray-500">
+                Все жабы в форме: ни ран, ни кибер-болезней.
+              </p>
+            )}
+
+            {needingCare.map((toad) => renderCareCard(toad, { inBed: false }))}
           </div>
         )}
       </div>

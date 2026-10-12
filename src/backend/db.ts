@@ -1,20 +1,40 @@
-import { createClient } from "@supabase/supabase-js";
+import { ensureAccount } from "./auth";
+import { applyPendingCredits } from "./purchases";
 import { Toad } from "../models/Toad";
-import { getGameState, updateGameState } from "./localStorage";
+import { attachIdentity, getGameState, updateGameState } from "./localStorage";
 import {
   getAchievementState,
   saveAchievementState,
 } from "./achivements-manager";
 import { loadColliderState, saveColliderState } from "./collider-manager";
+import { getShopState, saveShopState } from "./shop-state";
+import { isCloudSyncEnabled, supabase } from "./supabase";
 
-const REACT_APP_SUPABASE_URL = "https://fltghltrbknxqvdngnda.supabase.co";
-const REACT_APP_SUPABASE_ANON_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZsdGdobHRyYmtueHF2ZG5nbmRhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI4NTc1OTMsImV4cCI6MjA3ODQzMzU5M30.pED4_xBj5Xa9yPPsV_Vg24vtON0zzAmI5ng__AF2Gis";
-// Create a single supabase client for interacting with your database
-export const supabase = createClient<any>(
-  REACT_APP_SUPABASE_URL,
-  REACT_APP_SUPABASE_ANON_KEY
-);
+// Клиент Supabase и флаг «облако настроено» переехали в ./supabase (чтобы вход не
+// тянул циклический импорт), но исторически импортировались отсюда — оставляем
+// реэкспорт, чтобы никого не ломать.
+export { isCloudSyncEnabled, supabase };
+
+/**
+ * Ключ аккаунта для всех облачных таблиц. `null` означает «облака нет»: креды не
+ * заданы или вход не удался — тогда каждая функция молча ничего не делает, и игра
+ * спокойно идёт на localStorage.
+ *
+ * Заодно аккаунт «дошивается» в сейв (`attachIdentity`), чтобы `user.id` в
+ * localStorage всегда совпадал с ключом строк в таблицах.
+ */
+const resolveAccountId = async (): Promise<string | null> => {
+  const account = await ensureAccount();
+
+  if (!account) {
+    return null;
+  }
+
+  attachIdentity(account.id);
+
+  return account.id;
+};
+
 
 export type ToadCollection = {
   rarest_toad: Toad;
@@ -29,21 +49,29 @@ export type ToadCollection = {
 };
 
 export type LeaderboardItemType = {
-  tg_id: number;
+  /** Визитка Telegram: `null` у игроков, которые в Telegram не заходили. */
+  tg_id: number | null;
   username: string;
   tokens: number;
   total_toads: number;
   total_species: number;
+  /** Ключ аккаунта (uuid сессии) — по нему ищется «моя» строка. */
   user_id: string;
   toads_collection: ToadCollection;
 };
 
-export const createLeaderbord = async () => {
-  const { user, toads } = getGameState();
-  if (!user.tg_id) {
+export const createLeaderbord = async (accountId?: string) => {
+  if (!isCloudSyncEnabled) {
     return;
   }
-  const ldData = await getLeaderboardByTg();
+
+  const id = accountId ?? (await resolveAccountId());
+  if (!id) {
+    return;
+  }
+
+  const { user, toads } = getGameState();
+  const ldData = await getLeaderboardByUser(id);
 
   if (ldData?.data) {
     return;
@@ -53,7 +81,9 @@ export const createLeaderbord = async () => {
     username: user.username,
     tokens: user.tokens,
     total_toads: toads.length,
-    user_id: user.id,
+    // user_id — ключ аккаунта: работает и в вебе (анонимная сессия), и в Telegram.
+    user_id: id,
+    // tg_id — только «визитка» для уведомлений бота; в вебе её нет.
     tg_id: user.tg_id,
     total_species: new Set(toads.map((t) => t.type)).size,
     toads_collection: {
@@ -86,18 +116,23 @@ export const createLeaderbord = async () => {
   return { data, error };
 };
 
-export const updateLeaderbord = async () => {
-  const { user, toads } = getGameState();
-  if (!user.tg_id) {
+export const updateLeaderbord = async (accountId?: string) => {
+  if (!isCloudSyncEnabled) {
     return;
   }
 
-  const ldData = await getLeaderboardByTg();
+  const id = accountId ?? (await resolveAccountId());
+  if (!id) {
+    return;
+  }
+
+  const { user, toads } = getGameState();
+  const ldData = await getLeaderboardByUser(id);
 
   if (!ldData?.data) {
     console.log("Created Leaderboard");
 
-    await createLeaderbord();
+    await createLeaderbord(id);
     return;
   }
 
@@ -105,6 +140,9 @@ export const updateLeaderbord = async () => {
     username: user.username,
     tokens: user.tokens,
     total_toads: toads.length,
+    // Визитку Telegram обновляем вместе со строкой: по ней бот находит игрока,
+    // чтобы прислать уведомление.
+    tg_id: user.tg_id,
     total_species: getAchievementState().toads_collection?.length || 0,
     toads_collection: {
       rarest_toad: toads.sort((a, b) => b.genes.rarity - a.genes.rarity)[0],
@@ -127,48 +165,65 @@ export const updateLeaderbord = async () => {
     },
   };
 
-  await supabase
-    .from("leaderboard")
-    .update(leaderbordData)
-    .eq("tg_id", user.tg_id);
+  await supabase.from("leaderboard").update(leaderbordData).eq("user_id", id);
 
   console.log("Updated leaderboard");
 };
 
 export const getAllLeaderboards = async () => {
+  if (!isCloudSyncEnabled) {
+    return [];
+  }
+
   await updateLeaderbord();
   const { data } = await supabase.from("leaderboard").select();
 
   return data;
 };
 
-export const getLeaderboardByTg = async () => {
-  const { user } = getGameState();
-
-  if (!user.tg_id) {
+/**
+ * Строка лидерборда аккаунта.
+ *
+ * Раньше строка искалась по `tg_id`: веб-игрок (или любой, чей `tg_id` не успел
+ * появиться) не мог ни создать, ни обновить свою запись — поиск всегда «не находил».
+ * Теперь ключ — `user_id`, один и тот же в вебе и в Telegram.
+ */
+export const getLeaderboardByUser = async (accountId: string) => {
+  if (!isCloudSyncEnabled) {
     return;
   }
+
   const data = await supabase
     .from("leaderboard")
     .select()
-    .eq("tg_id", user.tg_id)
+    .eq("user_id", accountId)
     .maybeSingle();
 
   return data;
 };
 
-export const createGameStateDB = async () => {
-  const { user } = getGameState();
-
-  if (!user.tg_id) {
+export const createGameStateDB = async (accountId?: string) => {
+  if (!isCloudSyncEnabled) {
     return;
   }
 
+  const id = accountId ?? (await resolveAccountId());
+  if (!id) {
+    return;
+  }
+
+  const { user } = getGameState();
+
   const gameData = {
+    // user_id — ключ аккаунта (uuid сессии); tg_id — только визитка для бота.
+    user_id: id,
     tg_id: user.tg_id,
     content: getGameState(),
     achievements: getAchievementState(),
     collider: loadColliderState(),
+    // Состояние магазина раньше не синхронизировалось вовсе: ассортимент и
+    // кулдауны обновлений терялись при смене устройства. Колонка `shop` (jsonb).
+    shop: getShopState(),
   };
 
   const { data, error } = await supabase
@@ -181,42 +236,53 @@ export const createGameStateDB = async () => {
   return { data, error };
 };
 
-export const updateGameStateDB = async () => {
+export const updateGameStateDB = async (accountId?: string) => {
+  if (!isCloudSyncEnabled) {
+    return;
+  }
+
+  const id = accountId ?? (await resolveAccountId());
+  if (!id) {
+    return;
+  }
+
   const { user } = getGameState();
 
   const allState = {
     ...getGameState(),
   };
 
-  if (!user.tg_id) {
-    return;
-  }
-
   const { data, error } = await supabase
     .from("game_state")
     .update({
       content: allState,
+      // Визитку Telegram держим свежей: по ней бот находит игрока для уведомлений.
+      tg_id: user.tg_id,
       achievements: getAchievementState(),
       collider: loadColliderState(),
+      shop: getShopState(),
     })
-    .eq("tg_id", user.tg_id)
+    .eq("user_id", id)
     .select();
 
   console.log("updated GameState");
   return { data, error };
 };
 
-export const getGameStateDB = async () => {
-  const { user } = getGameState();
+export const getGameStateDB = async (accountId?: string) => {
+  if (!isCloudSyncEnabled) {
+    return;
+  }
 
-  if (!user.tg_id) {
+  const id = accountId ?? (await resolveAccountId());
+  if (!id) {
     return;
   }
 
   const { data, error } = await supabase
     .from("game_state")
     .select()
-    .eq("tg_id", user.tg_id)
+    .eq("user_id", id)
     .maybeSingle();
 
   console.log("get GameState");
@@ -225,21 +291,38 @@ export const getGameStateDB = async () => {
 };
 
 export const syncGameState = async () => {
-  const currentGS = getGameState();
-  const { user } = currentGS;
-
-  if (!user.tg_id) {
+  if (!isCloudSyncEnabled) {
     return;
   }
 
-  const data = await getGameStateDB();
+  // Аккаунт (uuid сессии) появляется один раз на старте: вход через Telegram либо
+  // анонимная сессия веб-версии. Раньше здесь «дошивался» tg_id, и без него синк
+  // молча пропускался — веб-версия не могла синхронизироваться вовсе.
+  const accountId = await resolveAccountId();
+
+  if (!accountId) {
+    return;
+  }
+
+  await mergeGameState(accountId);
+
+  // Покупки за звёзды бот кладёт мимо сейва (см. purchases.ts) — забираем их
+  // последними, чтобы они не «перетёрлись» пришедшим из облака состоянием.
+  await applyPendingCredits(accountId);
+};
+
+/** Сливает локальный сейв с облачным по времени последнего сохранения. */
+const mergeGameState = async (accountId: string) => {
+  const currentGS = getGameState();
+
+  const data = await getGameStateDB(accountId);
 
   if (data?.error) {
     return;
   }
 
   if (!data?.data) {
-    await createGameStateDB();
+    await createGameStateDB(accountId);
 
     return;
   }
@@ -264,6 +347,9 @@ export const syncGameState = async () => {
       saveColliderState(gameStateStored.collider);
       window.dispatchEvent(new Event("colliderChanged"));
     }
+    if (gameStateStored.shop && Object.keys(gameStateStored.shop).length) {
+      saveShopState(gameStateStored.shop);
+    }
     console.log("sync GameState");
 
     return;
@@ -285,7 +371,7 @@ export const syncGameState = async () => {
 
   if (lastVisitLs > lastVisitDb) {
     console.log("sync GameState db");
-    await updateGameStateDB();
+    await updateGameStateDB(accountId);
     return;
   }
 
@@ -300,5 +386,8 @@ export const syncGameState = async () => {
   if (Object.keys(gameStateStored.collider).length) {
     saveColliderState(gameStateStored.collider);
     window.dispatchEvent(new Event("colliderChanged"));
+  }
+  if (gameStateStored.shop && Object.keys(gameStateStored.shop).length) {
+    saveShopState(gameStateStored.shop);
   }
 };

@@ -118,6 +118,10 @@ export const syncColonyScenes = (): number => {
   return created;
 };
 
-/** Помещает жабу в комнату колонии (энергокомната). */
+/** Помещает жабу в комнату колонии (энергокомната, гнездо, «Разведка»). */
 export const placeToadInRoom = (toadId: number, roomId: string) =>
   updateToadById(toadId, { roomId });
+
+/** Возвращает жабу из комнаты колонии обратно в вольер (`roomId` сбрасывается). */
+export const releaseToadFromRoom = (toadId: number) =>
+  updateToadById(toadId, { roomId: null });

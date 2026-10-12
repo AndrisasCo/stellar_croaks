@@ -55,7 +55,12 @@ export default function BuildRoomModal({ slot }: { slot: RoomConfig }) {
       BUILD_OPTIONS.map((option) => ({
         option,
         cost: option.getCost(colony),
-        powered: willBePoweredAfterBuild(slot, option.kind, colony, toadsByRoom),
+        powered: willBePoweredAfterBuild(
+          slot,
+          option.kind,
+          colony,
+          toadsByRoom,
+        ),
         built: getBuiltRoomsCount(colony, option.kind),
         allowed:
           canBuildRoomKind(colony, option.kind) &&
@@ -78,7 +83,7 @@ export default function BuildRoomModal({ slot }: { slot: RoomConfig }) {
       playBeep();
       addNotification({
         type: "warn",
-        content: `${option.title} строится в колонии только одна.`,
+        content: `${option.title} уже построена.`,
       });
       return;
     }
@@ -143,8 +148,12 @@ export default function BuildRoomModal({ slot }: { slot: RoomConfig }) {
             </span>
           </div>
           <p className="text-2xs leading-snug text-amber-100">
-            На любом свободном гексе — любая комната. Чтобы комната заработала, по
-            соседству нужен источник питания: ядро или энергокомната ⚡.
+            На любом свободном гексе — любая комната. Чтобы комната заработала,
+            по соседству нужен источник питания: ядро или энергокомната ⚡.
+          </p>
+          <p className="mt-1 text-2xs leading-snug text-amber-100/80">
+            Новая комната расширяет колонию: наружу от неё открываются соседние
+            гексы — до трёх под застройку.
           </p>
           {neighbourTitles.length > 0 && (
             <p className="mt-1 text-2xs text-emerald-300">
@@ -229,4 +238,3 @@ export default function BuildRoomModal({ slot }: { slot: RoomConfig }) {
     </Modal>
   );
 }
-

@@ -170,6 +170,14 @@ export default function DissolveModal() {
                           {toad.pregnancy?.isPregnant && (
                             <span className="text-pink-300">🍼</span>
                           )}
+                          {toad.mating && (
+                            <span
+                              className="text-pink-300"
+                              title="Ухаживает в гнезде: беременность стартует через 15–30 мин"
+                            >
+                              🫧
+                            </span>
+                          )}
                           {isToadSick(toad) && (
                             <span title="Кибер-заражение: выход биомассы снижен">
                               🦠

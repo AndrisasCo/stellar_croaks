@@ -16,6 +16,61 @@ export const BREED_BIOMASS_BASE = 8;
 export const BREED_COOLDOWN_BASE_MS = 10 * 60 * 1000;
 /** Базовое число родильных слотов на купол (постройка «Гнездо») */
 export const NEST_BASE_SLOTS = 2;
+/** Сколько жаб влезает в гекс «Гнездо»: пара (самец + самка) на ухаживание */
+export const NEST_ROOM_TOAD_SLOTS = 2;
+
+// === Ухаживание в гнезде: беременность стартует не сразу (Часть 3.2) ===
+
+/**
+ * Окно ухаживания: беременность стартует через случайные 15–30 минут после
+ * спаривания («шанс раньше/позже»). Характер пары сдвигает окно: страстные
+ * и энергичные успевают быстрее, сонные и аскеты — позже.
+ */
+export const MATING_MIN_MINUTES = 15;
+export const MATING_MAX_MINUTES = 30;
+
+/** Сдвиг окна ухаживания по характеру: быстрые < 1, медленные > 1 */
+const MATING_PERSONALITY: Record<string, number> = {
+  hyperactive: 0.75,
+  energetic: 0.8,
+  passionate: 0.8,
+  playboy: 0.85,
+  robot: 1.1,
+  hermit: 1.2,
+  ascetic: 1.25,
+  zombie: 1.35,
+  sleepy: 1.4,
+};
+
+/** Множитель окна ухаживания по характеру жабы (неизвестный — 1) */
+export const getMatingPersonalityFactor = (
+  personality?: string | null
+): number => MATING_PERSONALITY[personality ?? ""] ?? 1;
+
+/** Идёт ли ухаживание прямо сейчас */
+export const isToadCourting = (toad: Toad): boolean => Boolean(toad.mating);
+
+/**
+ * Сколько минут займёт ухаживание пары: случайные 15–30 мин × характер пары.
+ * Считается один раз при спаривании — потом живёт в `Toad.mating.startAt`.
+ */
+export const getMatingMinutes = (female: Toad, male?: Toad | null): number => {
+  const base =
+    MATING_MIN_MINUTES +
+    Math.random() * (MATING_MAX_MINUTES - MATING_MIN_MINUTES);
+  const factor = male
+    ? (getMatingPersonalityFactor(female.genes?.personality) +
+        getMatingPersonalityFactor(male.genes?.personality)) /
+      2
+    : getMatingPersonalityFactor(female.genes?.personality);
+
+  return Math.max(1, Math.round(base * factor));
+};
+
+/** Сколько осталось ухаживать (мс) — для отсчёта в интерфейсе */
+export const getMatingTimeLeft = (toad: Toad, now = Date.now()): number =>
+  Math.max(0, (toad.mating?.startAt ?? now) - now);
+
 
 // === Фарм биомассы (Часть 3.3) ===
 
@@ -101,6 +156,8 @@ export const getBreedCooldownMs = (
 export const isToadReadyToBreed = (toad: Toad, now = Date.now()): boolean => {
   if (toad.stage !== "adult") return false;
   if (toad.pregnancy?.isPregnant) return false;
+  // Пара уже в гнезде: пока идёт ухаживание, жаба занята (Часть 3.2)
+  if (toad.mating) return false;
   if ((toad.breedCooldownUntil ?? 0) > now) return false;
   return getToadEnergy(toad) >= getEnergyCost(toad);
 };

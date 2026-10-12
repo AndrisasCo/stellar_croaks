@@ -5,11 +5,30 @@
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
   <link rel="icon" type="image/png" href="/favicon.ico" />
-  <link rel="apple-touch-icon" href="/apple-touch-icon.webp" />
+  <!-- Манифест делает веб-версию устанавливаемой: Telegram перестаёт быть единственным
+       способом «поставить» игру на телефон (иконки — public/icons, см. scripts/optimize-images.mjs) -->
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <!-- apple-touch-icon: файл в public лежит в PNG (раньше расширение было указано неверно) -->
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
   <meta name="theme-color" content="#10B981" />
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!--
+    Игра — одноэкранное приложение, жесты (зум, панорама, удержание жабы) обрабатывает
+    карта. Поэтому страница не должна ни масштабироваться, ни скроллиться: иначе на
+    iPhone Safari зумит и перезагружает игру вместо действий с жабами (см. src/index.css
+    и src/utils/touch-guards.ts). viewport-fit=cover оставляет место под «шторку»
+    браузера, а safe-area учитывается в вёрстке.
+  -->
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <meta name="telegram-web-app-mode" content="fullscreen">
+  <!-- Полноэкранный запуск с домашнего экрана: без панели Safari жесты не перехватываются -->
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <!-- status-bar-style: default — контент не заезжает под строку статуса, HUD-кнопки на месте -->
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <!-- Долгое нажатие на телефоны/адреса в тексте не должно поднимать меню Safari -->
+  <meta name="format-detection" content="telephone=no,date=no,address=no,email=no" />
   <title>Stellar Croak</title>
 </head>
 

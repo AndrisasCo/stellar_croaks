@@ -1,5 +1,7 @@
 import { Toad } from "../../models/Toad";
 import { EXPEDITION_TEAM_SIZE } from "../../utils/expedition-config";
+import { NEST_ROOM_TOAD_SLOTS } from "../../utils/gamification-config";
+import { HOSPITAL_ROOM_TOAD_SLOTS } from "../../utils/hospital";
 import { canBuildOnSlot, getPowerGrid, isRoomPowered } from "./colony-build";
 import { POWER_ROOM_TOAD_SLOTS, PowerGrid } from "./colony-power";
 import { RoomConfig } from "./rooms-config";
@@ -31,13 +33,24 @@ export interface ToadMoveCheck {
 }
 
 /** Чем жаба не годится для переноса (null — годится). */
-export const getToadMoveIssue = (toad: Toad): string | null => {
+export const getToadMoveIssue = (
+  toad: Toad,
+  options?: {
+    /** Лазарет принимает и выбитых: туда жабу как раз и несут. */
+    allowDown?: boolean;
+  },
+): string | null => {
   if (toad.status === "out") {
     return "Жаба в походе: сначала дождитесь её возвращения в вольер.";
   }
 
-  if ((toad.hp ?? 1) <= 0) {
+  if ((toad.hp ?? 1) <= 0 && !options?.allowDown) {
     return "Жаба выбита из строя — сначала подлечите её.";
+  }
+
+  // Пара в гнезде на ухаживании: жабу не уносят из гнезда, пока идёт таймер
+  if (toad.mating) {
+    return "Жаба ухаживает в гнезде — дождитесь беременности или прервите ухаживание в модалке «Гнездо».";
   }
 
   return null;
@@ -53,9 +66,14 @@ export const getToadMoveIssue = (toad: Toad): string | null => {
  *  - «Разведка» (комната похода) — взрослые жабы в пределах состава команды (5): в ней
  *    собирают команду, а ушедшие в поход жабы освобождают место (`roomId` сбрасывается)
  *    и прячутся с карты (см. `isToadVisibleInRoom`);
- *  - гнездо — беременные жабы и так живут в нём, отдельного правила нет;
- *  - рабочие комнаты (коллайдер, инкубатор, диссоциатор, склад, магазин,
- *    лазарет) — оборудование и товар, жабам тут делать нечего;
+ *  - гнездо — до двух взрослых жаб: пара живёт там с ухаживания до родов, пока
+ *    игрок не перенесёт её (плюс головастики, рождённые в гнезде, — они мест не занимают);
+ *  - лазарет — до шести жаб на койках (HOSPITAL_ROOM_TOAD_SLOTS): туда кладут раненых
+ *    и больных, и там они выздоравливают в разы быстрее. Выбитую жабу в лазарет несут
+ *    как раз для лечения, поэтому правило «сначала подлечите» на него не действует
+ *    (`allowDown`), а вот ток в комнате нужен — как и всем постройкам;
+ *  - прочие рабочие комнаты (коллайдер, инкубатор, диссоциатор, склад, магазин) —
+ *    оборудование и товар, жабам тут делать нечего;
  *  - ядро и пустые гексы жаб не принимают вовсе.
  */
 export const canMoveToadToRoom = (
@@ -63,7 +81,7 @@ export const canMoveToadToRoom = (
   room: RoomConfig,
   context: ToadMoveContext,
 ): ToadMoveCheck => {
-  const issue = getToadMoveIssue(toad);
+  const issue = getToadMoveIssue(toad, { allowDown: room.kind === "hospital" });
 
   if (issue) {
     return { ok: false, reason: issue };
@@ -107,10 +125,25 @@ export const canMoveToadToRoom = (
     }
 
     case "breeding": {
-      if (context.roomToads.length >= 2) {
+      // Гнездо вмещает пару взрослых жаб: туда садят и самца, и самку — ухаживание
+      // запускает кнопка «Начать ухаживание» в модалке гнезда. Головастики,
+      // рождённые в гнезде, мест не занимают: они переполняют гнездо, пока игрок
+      // не перенесёт их в вольер.
+      if (toad.stage !== "adult") {
         return {
           ok: false,
-          reason: `В вольере нет свободных мест (2/2).`,
+          reason: "В гнезде сидят только взрослые жабы: головастику там нечего делать.",
+        };
+      }
+
+      const adultsInside = context.roomToads.filter(
+        (item) => item.stage === "adult"
+      ).length;
+
+      if (adultsInside >= NEST_ROOM_TOAD_SLOTS) {
+        return {
+          ok: false,
+          reason: `В гнезде нет свободных мест (${adultsInside}/${NEST_ROOM_TOAD_SLOTS}).`,
         };
       }
 
@@ -135,13 +168,24 @@ export const canMoveToadToRoom = (
       return { ok: true };
     }
 
+    // Лазарет — койки для раненых и больных: до шести жаб, туда кладут и выбитых
+    case "hospital": {
+      if (context.roomToads.length >= HOSPITAL_ROOM_TOAD_SLOTS) {
+        return {
+          ok: false,
+          reason: `В лазарете заняты все ${HOSPITAL_ROOM_TOAD_SLOTS} коек.`,
+        };
+      }
+
+      return { ok: true };
+    }
+
     // Рабочие комнаты колонии: оборудование и товар — жабам здесь жить негде
     case "collider":
     case "incubator":
     case "dissociator":
     case "storage":
-    case "shop":
-    case "hospital": {
+    case "shop": {
       return {
         ok: false,
         reason: `«${room.title}» — рабочая комната: жабам здесь жить негде.`,

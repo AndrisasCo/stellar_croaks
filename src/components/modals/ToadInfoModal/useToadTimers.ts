@@ -17,6 +17,21 @@ export const useToadTimers = (toad: any) => {
     };
   };
 
+  /**
+   * Ухаживание в гнезде (Часть 3.2): беременность стартует не сразу — через
+   * 15–30 минут после спаривания, поэтому показываем отдельный отсчёт.
+   */
+  const getMatingInfo = () => {
+    if (!toad.mating) return null;
+    const { startedAt, startAt } = toad.mating;
+    const duration = Math.max(1, startAt - startedAt);
+    const elapsed = Date.now() - startedAt;
+    return {
+      progress: Math.min((elapsed / duration) * 100, 100),
+      timeLeft: Math.max(Math.ceil((startAt - Date.now()) / 60000), 0),
+    };
+  };
+
   const getGrowthInfo = () => {
     if (toad.stage !== "toadpole") return null;
     const boost = getBoostByScene(toad.scene_id, "grow");
@@ -31,6 +46,7 @@ export const useToadTimers = (toad: any) => {
   return {
     age: calculateAge(),
     pregnancy: getPregnancyInfo(),
+    mating: getMatingInfo(),
     growth: getGrowthInfo(),
   };
 };

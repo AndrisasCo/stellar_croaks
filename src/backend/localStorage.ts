@@ -3,6 +3,7 @@ import { DEFAULT_TOADS, Toad } from "../models/Toad";
 import { Items, User } from "../models/user";
 import { Expedition, ExpeditionStats } from "../models/expedition";
 import { ColonyState, EMPTY_COLONY } from "../models/colony";
+import { platform } from "../platform";
 
 // Интерфейс для всего состояния игры
 export interface GameState {
@@ -21,28 +22,29 @@ export interface GameState {
 
 const LS_KEY = "Game_State6";
 
-const getWAData = () => {
-  try {
-    return window.Telegram.WebApp.initDataUnsafe;
-  } catch (e) {
-    // ignore
-    return {} as any;
-  }
-};
+/**
+ * Доступ к сохранению идёт через платформу: в обеих реализациях это localStorage
+ * устройства (src/platform/device-storage.ts), но теперь ядро игры не знает, где
+ * именно лежит сейв — путь к общему хранилищу (Telegram CloudStorage) открыт.
+ */
+const storage = platform.storage;
 
-export const webAppData = getWAData();
+
 // Инициализация состояния по умолчанию
 export const getDefaultGameState = (): GameState => {
+  const identity = platform.identity();
+  const localId = `user_${Date.now()}`;
+
   return {
     user: {
-      id: `user_${Date.now()}`,
-      username: webAppData.user?.id
-        ? `${webAppData.user?.first_name} ${webAppData.user?.last_name}`
-        : `user_${Date.now()}`,
-      tg_id: webAppData.user?.id || 0,
-      // tg_id: webAppData.user?.id || 234525388,
-      // tg_id: webAppData.user?.id || 857360604,
+      // Локальный id до первого входа в облако. Настоящий ключ аккаунта (uuid
+      // сессии) подставляет attachIdentity, когда сессия появится.
+      id: localId,
+      username: identity.username || localId,
+      // В Telegram id есть сразу — это «визитка» для бота; вне Telegram его нет.
+      tg_id: identity.tgId,
       tokens: 50,
+
       astro_quax: 0,
       biomass: 0,
       // Стартовая колония: корм есть, остальные полки пустые (склад предметов, Часть 3.7)
@@ -64,13 +66,13 @@ export const getDefaultGameState = (): GameState => {
 // Получение текущего состояния
 export const getGameState = (): GameState => {
   try {
-    const stored = localStorage.getItem(LS_KEY);
+    const stored = storage.get(LS_KEY);
     if (stored) {
       const parsed: GameState = JSON.parse(stored);
       const migrated = migrateGameState(parsed);
 
       if (migrated !== parsed) {
-        localStorage.setItem(LS_KEY, JSON.stringify(migrated));
+        storage.set(LS_KEY, JSON.stringify(migrated));
       }
 
       return migrated;
@@ -78,7 +80,7 @@ export const getGameState = (): GameState => {
 
     // Если нет сохраненного состояния, создаем новое
     const defaultState = getDefaultGameState();
-    localStorage.setItem(LS_KEY, JSON.stringify(defaultState));
+    storage.set(LS_KEY, JSON.stringify(defaultState));
     return defaultState;
   } catch (error) {
     console.error("Error loading game state:", error);
@@ -148,7 +150,7 @@ export const saveGameState = (state: GameState, syntetic: boolean): void => {
       // не обновляем время, если событие было вызвано gameLoop
       lastSaved: syntetic ? state.lastSaved : new Date().toISOString(),
     };
-    localStorage.setItem(LS_KEY, JSON.stringify(stateToSave));
+    storage.set(LS_KEY, JSON.stringify(stateToSave));
 
     const event = new CustomEvent("gameStateUpdated", {
       detail: {
@@ -174,4 +176,49 @@ export const updateGameState = (
 
   saveGameState(newState, syntetic);
   return newState;
+};
+
+/**
+ * Приводит «визитку» аккаунта в соответствие с окружением.
+ *
+ * Раньше аккаунт держался на `tg_id`, который терялся, если состояние создавалось
+ * до готовности WebApp, — облачный синк и лидерборд молча пропускались. Теперь
+ * личность собирается из двух независимых источников:
+ *  - `accountId` — uuid сессии Supabase (проверенный сервером `initData` либо
+ *    анонимная сессия веб-версии). Это ключ аккаунта во всех облачных таблицах;
+ *  - платформа — `tg_id` и имя для отображения (в вебе их нет, и это нормально).
+ *
+ * @returns актуальное состояние после возможного обновления
+ */
+export const attachIdentity = (accountId?: string | null): GameState => {
+  const state = getGameState();
+  const identity = platform.identity();
+  const user = { ...state.user };
+  const changes: string[] = [];
+
+  // 1. Ключ аккаунта: uuid сессии вместо локального `user_<timestamp>`.
+  if (accountId && user.id !== accountId) {
+    user.id = accountId;
+    changes.push(`id=${accountId}`);
+  }
+
+  // 2. Визитка Telegram. Чужой tg_id не перезаписываем, чтобы не «склеить» аккаунты.
+  if (identity.tgId && !user.tg_id) {
+    user.tg_id = identity.tgId;
+    changes.push(`tg_id=${identity.tgId}`);
+  }
+
+  // 3. Имя: автогенерённое `user_…` меняем на имя из Telegram; выбранное игроком не трогаем.
+  if (identity.username && user.username?.startsWith("user_")) {
+    user.username = identity.username;
+    changes.push(`username=${identity.username}`);
+  }
+
+  if (!changes.length) {
+    return state;
+  }
+
+  console.info(`[localStorage] Аккаунт обновлён: ${changes.join(", ")}`);
+
+  return updateGameState({ user });
 };

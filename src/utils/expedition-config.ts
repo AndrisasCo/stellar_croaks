@@ -119,8 +119,12 @@ export const EXPEDITION_BASE_HP = 70;
 export const EXPEDITION_HP_PER_WEIGHT = 2;
 /** Прибавка HP за единицу редкости */
 export const EXPEDITION_HP_PER_RARITY = 3;
-/** Пассивное восстановление HP в час */
-export const HP_REGEN_PER_HOUR = 5;
+/**
+ * Пассивное восстановление HP в час ВНЕ лазарета. Намеренно низкое: без лазарета
+ * раны затягиваются очень медленно, койка лечит в разы быстрее
+ * (`HOSPITAL_HP_REGEN_PER_HOUR` в `utils/hospital.ts`).
+ */
+export const HP_REGEN_PER_HOUR = 1;
 /** Минимум урона за одно провалившееся событие */
 export const EXPEDITION_MIN_DAMAGE = 6;
 /** Максимальный HP (страховка от абсурдных значений) */
@@ -167,10 +171,14 @@ export const getToadHpRatio = (toad: Toad): number => {
   return maxHp > 0 ? getToadHp(toad) / maxHp : 0;
 };
 
-/** Стоимость мгновенного лечения (Кваксы): за каждую потерянную единицу HP */
-export const HEAL_TOKENS_PER_HP = 0.4;
-/** Минимальная цена лечения */
-export const HEAL_MIN_COST = 1;
+/**
+ * Стоимость мгновенного лечения (Кваксы): за каждую потерянную единицу HP.
+ * Цена намеренно высокая — мгновенное лечение это «пропустить ожидание»,
+ * альтернатива койке в лазарете, где HP идёт +24 в час.
+ */
+export const HEAL_TOKENS_PER_HP = 2;
+/** Минимальная цена мгновенного лечения */
+export const HEAL_MIN_COST = 8;
 
 /** Сколько Кваксов стоит вылечить жабу до полного HP */
 export const getHealCost = (toad: Toad): number => {

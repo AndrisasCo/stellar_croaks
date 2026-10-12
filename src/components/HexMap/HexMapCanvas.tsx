@@ -10,7 +10,7 @@ import {
   Point,
   pointInHex,
 } from "./hex-geometry";
-import { getHoneycombCoords, HONEYCOMB_CELL_SCALE } from "./hex-honeycomb";
+import { getHoneycombCoords } from "./hex-honeycomb";
 import {
   DOUBLE_TAP_MS,
   getToadPickRadius,
@@ -129,14 +129,32 @@ const FALLBACK_ZOOM_LEVELS: ZoomLevels = {
   threshold: 2,
 };
 
+/** Запас тёмной подложки за медовой сеткой: подложка шире габаритов колонии (пиксели). */
+const BACKDROP_MARGIN = 600;
+
 /**
- * Медовая сетка на фоне — обозначает территорию колонии.
+ * Фон карты: тёмная подложка + медовая сетка территории колонии.
  *
- * Рисуется только за пределами колонии: под её гексами живут комнаты и слоты, и там линия
- * пустым слотом второго кольца обе просвечивали и контур выглядел сдвоенным.
+ * Сетка рисуется только за открытыми гексами: под ними живут комнаты и свободные слоты,
+ * и там линия сетки шла рядом с контуром слота — сквозь полупрозрачный пустой слот
+ * просвечивали обе, и контур выглядел сдвоенным. Карта растёт фронтом вокруг новых
+ * построек, поэтому клетки сетки встают на все гексы, соседние с колонией (`getHoneycombCoords`):
+ * сетка обступает колонию по её форме, а не кольцом по радиусу (см. `rebuildRooms`).
  */
-const drawHoneycomb = (graphics: Graphics) => {
-  getHoneycombCoords().forEach((coord) => {
+const drawBackdrop = (graphics: Graphics, rooms: RoomConfig[]) => {
+  const bounds = getMapBounds(rooms);
+
+  graphics.clear();
+  graphics
+    .rect(
+      bounds.minX - BACKDROP_MARGIN,
+      bounds.minY - BACKDROP_MARGIN,
+      bounds.width + BACKDROP_MARGIN * 2,
+      bounds.height + BACKDROP_MARGIN * 2,
+    )
+    .fill({ color: 0x070c14 });
+
+  getHoneycombCoords(rooms.map((room) => room.coord)).forEach((coord) => {
     graphics
       .poly(hexPolygon(axialToPixel(coord, HEX_SIZE), HEX_SIZE))
       // Сетка — фоновая фактура: комнаты и живой ток должны читаться сильнее неё
@@ -232,20 +250,14 @@ export default function HexMapCanvas(props: HexMapCanvasProps) {
       const world = new Container();
       app.stage.addChild(world);
 
-      const bounds = getMapBounds();
-
-      // Фон: тёмная подложка + медовая сетка территории колонии
+      // Фон: тёмная подложка + медовая сетка территории колонии.
+      // Перерисовывается, когда карта растёт (см. rebuildRooms → drawBackdrop).
       const backdrop = new Graphics();
-      backdrop
-        .rect(
-          bounds.minX - 600,
-          bounds.minY - 600,
-          bounds.width + 1200,
-          bounds.height + 1200,
-        )
-        .fill({ color: 0x070c14 });
-      drawHoneycomb(backdrop);
+      drawBackdrop(backdrop, propsRef.current.rooms);
       world.addChild(backdrop);
+
+      /** Сколько гексов было под фоном: по числу видно, что карта выросла. */
+      let drawnCount = propsRef.current.rooms.length;
 
       // Два слоя: комнаты и жабы поверх них. Оба пересобираются, когда игрок
       // строит новую комнату (см. rebuildRooms → resolveColonyRooms).
@@ -287,6 +299,14 @@ export default function HexMapCanvas(props: HexMapCanvasProps) {
         // Пересборка рвёт стаи: жабу в руке возвращать некуда — просто отпускаем
         cancelDrag(false);
         cancelPendingTap();
+
+        // Карта могла вырасти (или сжаться) — фон подстраиваем под новую форму колонии:
+        // у новой постройки открылись соседние гексы, а медовая сетка обступила их венком
+        const count = propsRef.current.rooms.length;
+        const grown = count > drawnCount;
+
+        drawnCount = count;
+        drawBackdrop(backdrop, propsRef.current.rooms);
 
         roomsLayer
           .removeChildren()
@@ -332,6 +352,14 @@ export default function HexMapCanvas(props: HexMapCanvasProps) {
         syncRoomVisuals();
         // Комнаты собраны заново — фон (если уже загружен) возвращаем им сразу
         applyRoomBackgrounds();
+
+        // Карта выросла — показываем колонию целиком: это событие игрока («территория
+        // расширилась»), поэтому обзор возвращаем даже из приближенного вида. Без роста
+        // камеру не трогаем: смотрит обзор — вписываем колонию, приближенный вид не сбиваем.
+        if (grown || autoFitRef.current) {
+          autoFitRef.current = true;
+          fitToView();
+        }
       };
 
       rebuildRoomsRef.current = rebuildRooms;
@@ -399,6 +427,7 @@ export default function HexMapCanvas(props: HexMapCanvasProps) {
       zoomLevelsRef.current = getZoomLevels(
         app.screen.width,
         app.screen.height,
+        propsRef.current.rooms,
       );
     };
 
@@ -431,7 +460,7 @@ export default function HexMapCanvas(props: HexMapCanvasProps) {
     const getOverviewCamera = () => {
       syncZoomLevels();
 
-      const bounds = getMapBounds();
+      const bounds = getMapBounds(propsRef.current.rooms);
       const scale = zoomLevelsRef.current.overview;
 
       return {
@@ -1111,7 +1140,13 @@ export default function HexMapCanvas(props: HexMapCanvasProps) {
       canvas.style.cursor = "grab";
       // Удержание жабы не должно выделять страницу и вызывать системное меню
       canvas.style.setProperty("-webkit-user-select", "none");
+      canvas.style.setProperty("user-select", "none");
       canvas.style.setProperty("-webkit-touch-callout", "none");
+      // Все жесты (панорама, щипок, удержание) обрабатывает игра: браузер не должен
+      // перехватывать их зумом/скроллом страницы (второй раз — на случай, если
+      // канвас пересоздали и inline-стиль потерялся)
+      canvas.style.setProperty("touch-action", "none");
+      canvas.style.setProperty("overscroll-behavior", "none");
       fitToView();
     };
 

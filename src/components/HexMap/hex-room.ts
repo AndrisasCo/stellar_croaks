@@ -170,7 +170,7 @@ export const createRoomView = (
     powered = next;
     outage.visible = !next;
     // Обесточенная комната теряет цвет, но остаётся на карте
-    body.alpha = next ? 1 : 0.55;
+    body.alpha = next ? 1 : 0.65;
   };
 
   // 5. Подсветка при переносе жабы: зелёная — жабу примут, красная — нет
@@ -241,24 +241,12 @@ export const createRoomView = (
     background = sprite;
   };
 
-  // Пульс ядра — карта не выглядит статичной, даже когда жабы спят
-  let pulse = 0;
-  let pulseAlpha = 0;
-
   const update = (deltaTime: number) => {
     // Подсвеченная комната «дышит» — видно, куда жаба прилетит
     if (dropTarget) {
       dropPulse += deltaTime * 0.09;
       dropRing.alpha = 0.72 + Math.abs(Math.sin(dropPulse)) * 0.28;
     }
-
-    if (room.kind !== "core") {
-      return;
-    }
-
-    // pulse += deltaTime * 0.02;
-    // pulseAlpha = 0.25 + Math.abs(Math.sin(pulse)) * 0.35;
-    // glow.alpha = Math.max(glow.alpha, pulseAlpha);
   };
 
   return {

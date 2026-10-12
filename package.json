@@ -4,11 +4,17 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "bot": "node bot.js",
+    "bot": "node --env-file-if-exists=.env bot.js",
+    "notify": "node --env-file-if-exists=.env bot/notify.js",
     "dev": "vite --host",
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0 --port 4173",
-    "start": "vite preview"
+    "start": "vite preview",
+    "optimize:images": "node scripts/optimize-images.mjs",
+    "verify:init-data": "node tmp-verify-init-data.mjs",
+    "verify:stars": "node tmp-verify-stars.mjs",
+    "verify:platform": "node tmp-verify-platform.mjs",
+    "verify": "npm run verify:init-data && npm run verify:stars && npm run verify:platform"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.81.0",

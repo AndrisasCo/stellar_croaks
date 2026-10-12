@@ -3,6 +3,23 @@ import { toadTypeMap, ToadTypes } from "./toad-species";
 /** Статус жабы (используется разведкой/экспедициями) */
 export type ToadStatus = "ok" | "injured" | "out";
 
+/**
+ * Ухаживание в гнезде (Часть 3.2): после посадки пары в гнездо беременность стартует
+ * не сразу, а через случайные 15–30 минут (`MATING_MIN_MINUTES`–`MATING_MAX_MINUTES`).
+ * Пока таймер идёт, пара живёт в гнезде и занята: по окончании самка становится
+ * беременной (игроку приходит уведомление). Из гнезда жабы не уходят сами — и самец,
+ * и самка остаются там, пока игрок не перенесёт их (даже после родов).
+ * Есть у обеих жаб пары: `partnerId` у самки — самец, у самца — самка.
+ */
+export interface MatingState {
+  /** Когда началось ухаживание (мс) */
+  startedAt: number;
+  /** Когда стартует беременность (мс) */
+  startAt: number;
+  /** Партнёр: у самки — самец, у самца — самка */
+  partnerId: number;
+}
+
 export interface Toad {
   id: number;
   stage: string; // 'toadpole' | 'adult'
@@ -41,6 +58,8 @@ export interface Toad {
     father: Toad;
     offspringCount: number;
   };
+  /** Ухаживание в гнезде: беременность стартует по таймеру (см. `MatingState`) */
+  mating?: MatingState | null;
   genes: {
     hungerRate: number;
     fertility: number;

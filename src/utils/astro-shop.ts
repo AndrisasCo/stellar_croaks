@@ -62,19 +62,42 @@ export const resetBreedCooldown = (toadId: number): AstroPurchaseResult => {
   };
 };
 
-/** Ускорение беременности вдвое за астро-кваксы */
+/** Ускорение беременности вдвое за астро-кваксы (и ухаживания — до нуля) */
 export const acceleratePregnancy = (toadId: number): AstroPurchaseResult => {
   const state = getGameState();
   const toad = state.toads.find((t) => t.id === toadId);
+  const mating = toad?.mating ?? null;
 
-  if (!toad?.pregnancy?.isPregnant) {
-    return { success: false, message: "Эта жаба не вынашивает потомство" };
+  if (!toad) {
+    return { success: false, message: "Жаба не найдена" };
+  }
+
+  if (!mating && !toad.pregnancy?.isPregnant) {
+    return {
+      success: false,
+      message: "Эта жаба не ухаживает и не вынашивает потомство",
+    };
   }
   if (!spendAstro(ASTRO_PRICES.acceleratePregnancy)) {
     return {
       success: false,
       message: `Нужно ${ASTRO_PRICES.acceleratePregnancy} ★, у вас ${getAstroBalance()}`,
     };
+  }
+
+  // Ухаживание: за астро-кваксы оно заканчивается сразу — беременность стартует
+  // в ближайший тик `processBreeding` (раз в минуту), с обычным уведомлением
+  if (mating) {
+    updateToadById(toadId, { mating: { ...mating, startAt: Date.now() } }, true);
+
+    return {
+      success: true,
+      message: `Ухаживание ${toad.name} ускорено: беременность вот-вот начнётся (−${ASTRO_PRICES.acceleratePregnancy} ★)`,
+    };
+  }
+
+  if (!toad.pregnancy) {
+    return { success: false, message: "Эта жаба не вынашивает потомство" };
   }
 
   const { pregnancyStart, pregnancyDuration } = toad.pregnancy;

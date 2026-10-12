@@ -1,6 +1,67 @@
+import { Toad } from "../../models/Toad";
 import { ToadTypes } from "../../models/Toad/toad-species";
 
-export const achievementGroups = [
+/** Тип прогрессивного счётчика достижения (см. `completeAchivementCounter`). */
+export type AchievementTaskType =
+  | "earn"
+  | "buyToad"
+  | "lootbox"
+  | "dissolve"
+  | "expedition";
+
+/** Условия «генетического» достижения (проверяются в `checkGeneticAchievements`). */
+export interface AchievementTaskConditions {
+  rarity?: { min?: number; max?: number };
+  weight?: { min?: number; max?: number };
+  speed?: { min?: number; max?: number };
+  genetic_fault?: { min?: number; max?: number };
+  generation?: { min?: number; max?: number };
+}
+
+/** Награда достижения: жаба (объект для `createToad`) или число (например, лутбоксы). */
+export interface AchievementReward {
+  type: "toad" | "lootbox";
+  content: Partial<Toad> | number;
+}
+
+/** Групповая награда за выполнение всех достижений группы. */
+export interface AchievementGroupReward {
+  icon: string;
+  name: string;
+  description: string;
+  reward: AchievementReward[];
+}
+
+/**
+ * Достижение внутри группы.
+ *
+ * `completed` оставлен для обратной совместимости и в UI не используется:
+ * реальный прогресс хранится в `AchivementsState.completed`. Поэтому поле опционально.
+ */
+export interface Achievement {
+  id: DynamicAchievementId;
+  icon: string;
+  name: string;
+  description: string;
+  completed?: boolean;
+  /** Для прогрессивных достижений: тип счётчика и целевое значение. */
+  taskType?: AchievementTaskType;
+  taskValue?: number;
+  /** Для генетических достижений: пороги характеристик жабы. */
+  task?: AchievementTaskConditions;
+}
+
+/** Группа достижений с общей наградой. */
+export interface AchievementGroup {
+  id: DynamicGroupId;
+  title: string;
+  description: string;
+  color: string;
+  achievements: Achievement[];
+  groupReward?: AchievementGroupReward;
+}
+
+export const achievementGroups: AchievementGroup[] = [
   {
     id: "first-steps2",
     title: "🫡 Первые шаги жабовода",
@@ -312,6 +373,7 @@ export const achievementGroups = [
             },
             genes: {
               colors: ["#228B22", "#90EE90", "#006400"], // лесная зелень, светло-зеленый, темно-зеленый
+              pattern: "stripes",
               weight: 28,
               speed: 0.3, // Очень медленная из-за паразита
               rarity: 5,

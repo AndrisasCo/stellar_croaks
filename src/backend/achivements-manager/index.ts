@@ -2,6 +2,7 @@ import { Toad } from "../../models/Toad";
 import { ToadTypes } from "../../models/Toad/toad-species";
 import {
   achievementGroups,
+  AchievementTaskType,
   DynamicAchievementId,
   DynamicGroupId,
 } from "./achivements-list";
@@ -39,7 +40,7 @@ export const completeAchivement = (id: DynamicAchievementId) => {
 };
 
 export const completeAchivementCounter = (
-  action: "earn" | "buyToad" | "lootbox" | "dissolve" | "expedition",
+  action: AchievementTaskType,
   value: number
 ) => {
   const currentState = getAchievementState();
@@ -63,7 +64,7 @@ export const completeAchivementCounter = (
     );
 
   achivements.forEach((achivement) => {
-    completeAchivement(achivement.id as DynamicAchievementId);
+    completeAchivement(achivement.id);
   });
 };
 
@@ -115,6 +116,12 @@ export const checkGeneticAchievements = (toad: Toad) => {
 
   achievements.forEach((achievement) => {
     const conditions = achievement.task;
+
+    // Прогрессивные/дефолтные ачивки не несут `task` — генетические проверки к ним не применимы.
+    if (!conditions) {
+      return;
+    }
+
     let matches = true;
 
     // Проверяем каждое условие

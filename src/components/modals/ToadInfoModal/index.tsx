@@ -33,6 +33,10 @@ import {
   getHealCost,
   HP_REGEN_PER_HOUR,
 } from "../../../utils/expedition-config";
+import {
+  HOSPITAL_DISEASE_SPEED,
+  HOSPITAL_HP_REGEN_PER_HOUR,
+} from "../../../utils/hospital";
 import { ToadAvatar } from "../../shared/ToadAvatar";
 import { ProgressBar } from "./ProgressBar";
 import { StatCard } from "./StatCard";
@@ -83,7 +87,7 @@ export const ToadInfo = () => {
 
   // Logic Hooks
   const { relatives, inbreedingRisk } = useToadRelatives(toad, allToads);
-  const { age, pregnancy, growth } = useToadTimers(toad);
+  const { age, pregnancy, mating, growth } = useToadTimers(toad);
 
   if (!toad) return null;
 
@@ -99,11 +103,14 @@ export const ToadInfo = () => {
   const energyCost = getEnergyCost(toad);
   const cooldownLeft = Math.max(0, (toad.breedCooldownUntil ?? 0) - Date.now());
   const isPregnant = Boolean(toad.pregnancy?.isPregnant);
+  const isCourting = Boolean(toad.mating);
   const cooldownMult = getPersonalityCooldownMultiplier(
     toad.genes?.personality
   );
   const breedStatus = isPregnant
     ? "🍼 вынашивает"
+    : isCourting
+    ? `🫧 ухаживает${mating ? ` ${mating.timeLeft} мин` : ""}`
     : cooldownLeft > 0
     ? `🛏️ отдых ${formatCooldownLeft(cooldownLeft)}`
     : energy >= energyCost
@@ -416,10 +423,13 @@ export const ToadInfo = () => {
                   >
                     <p className="text-sm text-gray-200">
                       Сейчас жаба {hpStatusLabel}. Походы за Периметр ранят жаб:
-                      провалы событий снимают HP. Дома здоровье восстанавливается
-                      само (+{HP_REGEN_PER_HOUR} в час), а в «Лазарете» его можно
-                      мгновенно восстановить за{" "}
-                      {getHealCost(toad) || 0} Кваксов. Раненая жаба даёт вдвое
+                      провалы событий снимают HP. Дома здоровье капает очень
+                      медленно (+{HP_REGEN_PER_HOUR} в час), на койке «Лазарета»
+                      оно идёт +{HOSPITAL_HP_REGEN_PER_HOUR} в час, а срок
+                      болезни там короче в {HOSPITAL_DISEASE_SPEED} раза.
+                      Мгновенно поднять жабу можно за{" "}
+                      {getHealCost(toad) || 0} Кваксов — это самый дорогой
+                      способ. Раненая жаба даёт вдвое
                       меньше биомассы, выбитая — не работает совсем и не может
                       идти в поход.
                     </p>
@@ -432,7 +442,7 @@ export const ToadInfo = () => {
               label="Разведение"
               value={breedStatus}
               colorClass={
-                isPregnant || cooldownLeft > 0
+                isPregnant || isCourting || cooldownLeft > 0
                   ? "text-amber-400"
                   : energy >= energyCost
                   ? "text-green-400"
@@ -549,6 +559,15 @@ export const ToadInfo = () => {
                 handler: () => handleAccelerate("growth"),
                 timeLeft: growth.timeLeft,
               }}
+            />
+          )}
+
+          {mating && (
+            <ProgressBar
+              label="Ухаживание"
+              current={mating.progress}
+              max={100}
+              color="pink"
             />
           )}
 

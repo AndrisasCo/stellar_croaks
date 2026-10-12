@@ -12,7 +12,7 @@ import {
   addToadToCollection,
   checkGeneticAchievements,
 } from "./achivements-manager";
-import { getGameState, updateGameState, webAppData } from "./localStorage";
+import { getGameState, updateGameState } from "./localStorage";
 
 export const createScene = (sceneData: Partial<Scene>): Scene[] => {
   const state = getGameState();
@@ -64,7 +64,10 @@ export const createToad = (toadData: Partial<Toad>): Toad[] => {
   updateGameState({ toads: newToads });
 
   checkGeneticAchievements(newToad);
-  addToadToCollection(newToad.type);
+
+  if (newToad.type) {
+    addToadToCollection(newToad.type);
+  }
 
   return [newToad];
 };
@@ -75,8 +78,12 @@ export const createToads = (
 ): Toad[] => {
   const state = getGameState();
   const newToads: Toad[] = toadsData.map((toadData) => {
-    checkGeneticAchievements(toadData);
-    addToadToCollection(toadData.type);
+    checkGeneticAchievements(toadData as Toad);
+
+    if (toadData.type) {
+      addToadToCollection(toadData.type);
+    }
+
     return {
       id: Math.round(Math.random() * Date.now()),
       created_at: new Date().toISOString(),

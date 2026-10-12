@@ -1,7 +1,13 @@
+import { Toad } from "./Toad";
+
 /**
  * КИБЕР-БОЛЕЗНИ (Часть 3.6).
- * Чистые описания дебаффов: заражение, контагиозность, срез выработки, длительность.
- * Состояние жаб хранится в `Toad.state.diseaseId` / `Toad.state.diseaseUntil`.
+ * Чистые описания дебаффов: заражение, контагиозность, срез выработки, длительность
+ * и цена мгновенного курса лечения.
+ * Состояние жаб хранится в `Toad.state.diseaseId` / `Toad.state.diseaseUntil`, поэтому
+ * селекторы «больна ли жаба» живут здесь же (без обращения к сохранению): их читают и
+ * `utils/disease-manager.ts`, и `utils/hospital.ts` — лазарет ускоряет срок болезни
+ * и изолирует пациента от вольера.
  */
 
 export interface DiseaseDef {
@@ -15,6 +21,8 @@ export interface DiseaseDef {
   productionPenalty: number;
   /** Длительность в часах */
   durationHours: number;
+  /** Сколько Кваксов стоит мгновенный курс лечения от этой болезни */
+  cureTokens: number;
 }
 
 export const DISEASES: DiseaseDef[] = [
@@ -26,6 +34,7 @@ export const DISEASES: DiseaseDef[] = [
     contagionPerHour: 0.03,
     productionPenalty: 0.3,
     durationHours: 6,
+    cureTokens: 150,
   },
   {
     id: "nano_infection",
@@ -35,6 +44,7 @@ export const DISEASES: DiseaseDef[] = [
     contagionPerHour: 0.08,
     productionPenalty: 0.5,
     durationHours: 10,
+    cureTokens: 250,
   },
   {
     id: "mutation_cascade",
@@ -44,6 +54,7 @@ export const DISEASES: DiseaseDef[] = [
     contagionPerHour: 0.12,
     productionPenalty: 0.75,
     durationHours: 16,
+    cureTokens: 400,
   },
 ];
 
@@ -56,6 +67,31 @@ export const getDiseaseIndex = (id: string): number =>
 
 export const getDiseaseByIndex = (index: number): DiseaseDef | null =>
   DISEASES[index] ?? null;
+
+/** Текущая болезнь жабы (или null) */
+export const getToadDisease = (toad: Toad): DiseaseDef | null => {
+  const id = toad.state?.diseaseId;
+  if (id === undefined || id === null || id < 0) {
+    return null;
+  }
+  return getDiseaseByIndex(id);
+};
+
+/** Больна ли жаба прямо сейчас (срок болезни ещё не вышел) */
+export const isToadSick = (toad: Toad, now = Date.now()): boolean => {
+  const disease = getToadDisease(toad);
+  if (!disease) {
+    return false;
+  }
+  return (toad.state?.diseaseUntil ?? 0) > 0 && (toad.state?.diseaseUntil ?? 0) > now;
+};
+
+/**
+ * Сколько Кваксов стоит мгновенный курс лечения (0 — жаба здорова).
+ * Цена живёт в таблице болезней (`cureTokens`): долгие и злые болезни дороже.
+ */
+export const getDiseaseCureCost = (toad: Toad, now = Date.now()): number =>
+  isToadSick(toad, now) ? getToadDisease(toad)?.cureTokens ?? 0 : 0;
 
 /**
  * Множитель выработки биомассы по индексу болезни (1 = здоров,
