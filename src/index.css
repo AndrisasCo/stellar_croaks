@@ -346,6 +346,55 @@ select {
   overscroll-behavior: contain;
 }
 
+/* Появление модалки: панель «подъезжает» на пару пикселей вместо резкого хлопка.
+   Класс собирается из ModalOptions.animation (см. ModalProvider): «fade» из App.tsx,
+   остальные варианты — на будущее. transform живёт только время анимации, поэтому
+   position: fixed внутри модалок (диалоги подтверждения) остаются привязаны к экрану. */
+@keyframes modal-fade {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes modal-zoom {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes modal-slide {
+  from {
+    opacity: 0;
+    transform: translateY(32px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.modal-anim-fade {
+  animation: modal-fade 0.18s ease-out;
+}
+
+.modal-anim-zoom {
+  animation: modal-zoom 0.18s ease-out;
+}
+
+.modal-anim-slide {
+  animation: modal-slide 0.22s ease-out;
+}
+
 /* Область, где жест целиком принадлежит игре: у канваса карты touch-action ставится из Pixi */
 .no-touch-zoom {
   touch-action: none;

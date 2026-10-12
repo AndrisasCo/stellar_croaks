@@ -25,13 +25,13 @@ import { useModal } from "../ModalContext";
 import { useToads } from "../ToadContext";
 import { BurgerMenu } from "../modals/BurgerMenuModal";
 import BuildRoomModal from "../modals/BuildRoomModal";
+import RoomUpgradeModal from "../modals/RoomUpgradeModal";
 import ExpeditionModal from "../modals/ExpeditionModal";
 import DissolveModal from "../modals/Lab/DissolveModal";
 import ToadCollider from "../modals/Lab/ToadColliderModal";
 import ToadSlotModal from "../modals/Lab/ToadSlotModal";
 import NestModal from "../modals/Lab/NestModal";
 import PowerRoomModal from "../modals/PowerRoomModal";
-import SceneInfoModal from "../modals/SceneInfoModal";
 import ShopMenu from "../modals/ShopMenu";
 import StorageModal from "../modals/StorageModal";
 import ToadListModal from "../modals/ToadListModal";
@@ -40,7 +40,6 @@ import { useFeedToads } from "../ToadCanvas/use-feed-toads";
 import { ClickButton } from "../shared/ClickButton";
 import { canBuildOnSlot, isRoomPowered } from "./colony-build";
 import HexMapCanvas from "./HexMapCanvas";
-import { getRoomToadLists } from "./room-toad-lists";
 import { isRoomOpen, RoomActionId, RoomConfig } from "./rooms-config";
 import { canMoveToadToRoom, ToadMoveCheck } from "./toad-move-rules";
 
@@ -74,8 +73,12 @@ type RoomModalEntry = { render: () => ReactElement; bg?: string } | null;
  * новое действие в каталог — компилятор напомнит про модалку.
  */
 const ROOM_MODAL_BY_ACTION: Record<RoomActionId, RoomModalEntry> = {
-  menu: { render: () => <BurgerMenu /> },
-  "toad-list": { render: () => <ToadListModal /> },
+  // Ядро: улучшение жилой комнаты — модалка сама показывает список комнат и берёт апгрейды
+  // из состояния колонии, поэтому ей ничего передавать не нужно.
+  "room-upgrade": { render: () => <RoomUpgradeModal /> },
+  // Вольер открывается сам: модалке нужен вольер гекса (`RoomConfig.sceneId`), а не общий
+  // «текущий вольер» — см. обработчик клика. Здесь запасной путь без привязки к гексу.
+  "toad-list": null,
   "scene-info": null,
   feed: null,
   // Гнёзд в колонии может быть несколько: гекс открывает модалку сам (см. обработчик клика),
@@ -102,7 +105,7 @@ const ROOM_MODAL_BY_ACTION: Record<RoomActionId, RoomModalEntry> = {
  * Гексы — только цвет: иконок, подписей и кнопок внутри комнат нет, в центре гекса
  * живут сами жабы. Поэтому тап по гексу открывает действие комнаты из каталога
  * (`rooms-config.ts` → `ROOM_MODAL_BY_ACTION`):
- *  - ядро        → меню колонии;
+ *  - ядро        → улучшение комнаты (автокормушка для жилой комнаты);
  *  - вольер      → список жаб и кормление;
  *  - гнездо      → размножение;
  *  - коллайдер / инкубатор / диссоциатор → лаборатория;
@@ -119,16 +122,7 @@ const ROOM_MODAL_BY_ACTION: Record<RoomActionId, RoomModalEntry> = {
 export default function HexMapScreen() {
   const { openModal } = useModal();
   const { addNotification } = useNotifications();
-  const {
-    account,
-    allToads,
-    toads,
-    selectToad,
-    currentScene,
-    currentSceneIndex,
-    ownedScenes,
-    setCurrentSceneId,
-  } = useToads();
+  const { account, allToads, ownedScenes, selectToad } = useToads();
   const { playCroak, playCroakBig, playCroakSmall, playBeep, playOk } =
     useSoundEffects();
   const {
@@ -140,33 +134,22 @@ export default function HexMapScreen() {
     isFoodActive,
   } = useFeedToads();
 
-  // Колония: построенные комнаты игрока, энергосеть и жабы в комнатах
-  const {
-    rooms,
-    powerGrid,
-    toadsByRoom: roomToads,
-    placeToad,
-    releaseToad,
-  } = useColony();
+  // Колония: построенные комнаты, энергосеть и жабы по гексам
+  const { rooms, powerGrid, toadsByRoom, placeToad, releaseToad } = useColony();
 
-  /** Жабы вольера — те, кто не ушёл работать в комнату колонии (⚡-комната, «Разведка»). */
+  /**
+   * Жабы вольеров: те, кто не работает в комнатах колонии (⚡, «Разведка», гнездо).
+   * Свой список у каждого гекса-вольера — его собирает `useColony` (`getRoomToadLists`),
+   * потому что у каждого гекса «Вольер» свой вольер (`RoomConfig.sceneId`).
+   */
   const aviaryToads = useMemo(
-    () => toads.filter((toad) => !toad.roomId),
-    [toads],
-  );
-
-  // Жабы по комнатам: вольер, гнездо, энергокомнаты ⚡ и «Разведка».
-  // Чистая сборка списков — в room-toad-lists (базовый гекс «aviary» сливается
-  // с жильцами вольера, иначе жаба пропадала с карты; гнездо показывает только тех,
-  // кто в нём сидит — жабы из гнезда сами не уходят).
-  const toadsByRoom = useMemo(
-    () => getRoomToadLists(rooms, roomToads, { aviaryToads }),
-    [roomToads, rooms, aviaryToads],
+    () => allToads.filter((toad) => !toad.roomId),
+    [allToads],
   );
 
   /**
-   * Территория колонии растёт фронтом застройки: у новой комнаты открываются три соседних
-   * гекса следующего кольца (см. `getUnlockedRooms`), поэтому о расширении говорим по числу
+   * Территория колонии растёт фронтом застройки: у новой комнаты открываются все её соседние
+   * гексы (см. `getUnlockedRooms`), поэтому о расширении говорим по числу
    * новых гексов, а не по радиусу. Число открытых гексов — это длина списка комнат карты:
    * в нём только открытые слоты и постройки.
    */
@@ -355,6 +338,18 @@ export default function HexMapScreen() {
         return;
       }
 
+      // Вольер: список жаб именно этого гекса — вольер его сцены, а не общий «текущий»
+      if (room.kind === "aviary") {
+        const sceneId = room.sceneId;
+
+        if (sceneId === undefined) {
+          return;
+        }
+
+        openModal(() => <ToadListModal sceneId={sceneId} />);
+        return;
+      }
+
       const actionId = room.actions[0]?.id;
       const modal = actionId ? ROOM_MODAL_BY_ACTION[actionId] : null;
 
@@ -365,12 +360,6 @@ export default function HexMapScreen() {
       openModal(modal.render, modal.bg ? { bg: modal.bg } : undefined);
     },
     [addNotification, openModal, rooms],
-  );
-
-  /** Счётчик походов — задел на будущую комнату разведки. */
-  const expeditionsLabel = useMemo(
-    () => (currentScene ? `${currentScene.name}` : "Колония"),
-    [currentScene],
   );
 
   /**
@@ -386,17 +375,31 @@ export default function HexMapScreen() {
   /**
    * Перенос жабы (удержание + бросок на карте): можно ли посадить её в комнату.
    * Правила — в toad-move-rules, карта только спрашивает и подсвечивает гекс.
+   *
+   * Вместимость вольера считается у **того** гекса, куда жабу несут: у каждого вольера
+   * своя (`RoomConfig.sceneId`), поэтому перенос в переполненный чужой вольер отклоняется.
    */
   const handleCanDropToad = useCallback(
-    (toad: Toad, room: RoomConfig): ToadMoveCheck =>
-      canMoveToadToRoom(toad, room, {
+    (toad: Toad, room: RoomConfig): ToadMoveCheck => {
+      const aviaryScene =
+        room.kind === "aviary" && room.sceneId !== undefined
+          ? ownedScenes.find((scene) => scene.id === room.sceneId) ?? null
+          : null;
+
+      return canMoveToadToRoom(toad, room, {
         roomToads: getRoomOccupants(room).filter((item) => item.id !== toad.id),
-        aviaryCount: aviaryToads.filter((item) => item.id !== toad.id).length,
-        aviaryCapacity: currentScene?.capacity ?? 0,
+        aviaryCount: aviaryScene
+          ? allToads.filter(
+              (item) =>
+                item.scene_id === aviaryScene.id && item.id !== toad.id
+            ).length
+          : 0,
+        aviaryCapacity: aviaryScene?.capacity ?? 0,
         rooms,
         powerGrid,
-      }),
-    [aviaryToads, currentScene?.capacity, getRoomOccupants, rooms],
+      });
+    },
+    [allToads, getRoomOccupants, ownedScenes, powerGrid, rooms]
   );
 
   /** Жабу перенесли: вольер принимает жильца, ⚡-комната — работника, «Разведка» — бойца. */
@@ -424,12 +427,19 @@ export default function HexMapScreen() {
       }
 
       if (room.kind === "aviary") {
-        // Жабу вернули в вольер: `roomId` сбрасывается, ферма снова её считает
-        releaseToad(toad.id);
+        // Вольер гекса: свой дом жаба сохраняет, чужой вольер становится её новым домом.
+        // `roomId` сбрасывается — жаба идёт в вольер, и ферма снова её считает.
+        const movedToOtherAviary =
+          room.sceneId !== undefined && room.sceneId !== toad.scene_id;
+        const aviaryScene = ownedScenes.find((s) => s.id === room.sceneId);
+
+        releaseToad(toad.id, room.sceneId ?? null);
         playCroakSmall();
         addNotification({
           type: "success",
-          content: `${toad.name ?? "Жаба"} вернулась в вольер 🐸`,
+          content: movedToOtherAviary
+            ? `${toad.name ?? "Жаба"} переехала в ${aviaryScene?.name ?? "другой вольер"} 🏠`
+            : `${toad.name ?? "Жаба"} вернулась в вольер 🐸`,
           timeout: 4000,
         });
         return;
@@ -454,6 +464,7 @@ export default function HexMapScreen() {
     },
     [
       addNotification,
+      ownedScenes,
       placeToad,
       playCroakSmall,
       playOk,
@@ -513,19 +524,17 @@ export default function HexMapScreen() {
       {/* HUD: панель колонии, меню и ресурсы поверх карты */}
       <header className="pointer-events-none absolute inset-x-0 top-0 z-20 flex flex-col gap-2 p-3">
         <div className="flex items-start justify-between gap-2">
-          <ClickButton
-            title="Статистика вольера"
-            onClick={() => openModal(() => <SceneInfoModal />)}
-            className="pointer-events-auto min-w-0 rounded-2xl border border-cyan-400/25 bg-slate-950/65 px-3 py-2 text-left shadow-lg backdrop-blur-md duration-300 active:scale-[0.98]"
-          >
+          {/* Панель колонии — только сводка: у вольеров больше нет общего «текущего»,
+              поэтому про сам вольер рассказывает его гекс (тап по вольеру → список жаб) */}
+          <div className="pointer-events-auto min-w-0 rounded-2xl border border-cyan-400/25 bg-slate-950/65 px-3 py-2 text-left shadow-lg backdrop-blur-md">
             <span className="backgroundDark block text-xl leading-none">
               Stellar Croak
             </span>
             <span className="mt-1 block text-[10px] leading-tight text-cyan-200/80">
-              День {colonyDay} · {clock} · {expeditionsLabel}
+              День {colonyDay} · {clock} · Колония
             </span>
             <span className="block text-[10px] leading-tight text-cyan-200/60">
-              {toads.length}/{currentScene?.capacity ?? 0} жаб ·{" "}
+              {allToads.length} жаб ·{" "}
               <span
                 className={
                   sceneFarmRate >= 0 ? "text-lime-300/90" : "text-rose-300/90"
@@ -535,11 +544,15 @@ export default function HexMapScreen() {
                 {sceneFarmRate.toFixed(1)} 🧪/ч
               </span>
             </span>
-          </ClickButton>
+          </div>
 
           <ClickButton
             title="Меню колонии"
-            onClick={() => openModal(() => <BurgerMenu />)}
+            // Меню — столбик кнопок, ему широкая карточка десктопа (md:max-w-5xl в
+            // ModalProvider) ни к чему: просим узкую, как телефонную.
+            onClick={() =>
+              openModal(() => <BurgerMenu />, { className: "md:max-w-lg" })
+            }
             className="pointer-events-auto rounded-xl border-2 border-purple-300/70 bg-slate-950/65 p-2 text-purple-200 backdrop-blur-md duration-300 active:scale-95"
           >
             {MenuIcons.menu}
@@ -578,25 +591,6 @@ export default function HexMapScreen() {
             );
           })}
         </div>
-
-        {/* Переключение вольеров — если вольеров больше одного */}
-        {ownedScenes.length > 1 && (
-          <div className="pointer-events-none flex gap-2 overflow-x-auto pb-1">
-            {ownedScenes.map((scene, index) => (
-              <ClickButton
-                key={scene.id}
-                onClick={() => setCurrentSceneId(index)}
-                className={`pointer-events-auto shrink-0 rounded-full border px-3 py-1 text-[11px] backdrop-blur-sm transition-colors ${
-                  index === currentSceneIndex
-                    ? "border-cyan-300 bg-cyan-400/20 text-cyan-100"
-                    : "border-slate-500/50 bg-slate-900/60 text-slate-300"
-                }`}
-              >
-                {scene.name}
-              </ClickButton>
-            ))}
-          </div>
-        )}
       </header>
 
       {/* Подсказка по управлению картой — зависит от текущего вида */}

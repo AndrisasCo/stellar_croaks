@@ -3,16 +3,32 @@ import { useToads } from "../../ToadContext";
 import Modal from "../../shared/Header";
 import { getGameState, updateGameState } from "../../../backend/localStorage";
 import { InfoIcons } from "../../../assets/icons";
-import { bonuses, BonusType, INITIAL_CAPACITY } from "../../../models/scene";
-import { updateScene, updateUser } from "../../../backend";
-import { CURRENCY_CONFIG } from "../../../utils/constants";
-import { useNotifications } from "../../../hooks/use-notification";
 
-const SceneInfoModal: React.FC = () => {
-  const { currentScene, toads, account } = useToads();
+/**
+ * «Статистика вольера» — карточка гекса-вольера: название, население и средние гены.
+ *
+ * Улучшений здесь больше нет: улучшение комнаты одно (автокормушка) и ставится из модалки
+ * «Улучшение комнаты» — её открывает ядро карты (`modals/RoomUpgradeModal.tsx`). Прежние
+ * панели «Улучшение вольера» (+10 мест за Кваксы) и «Буст» (ускоренный рост, ускоренная
+ * беременность, кормушка с автопроцессором) удалены как легаси.
+ */
+const SceneInfoModal: React.FC<{ sceneId: number }> = ({ sceneId }) => {
+  const { ownedScenes, allToads } = useToads();
+  /**
+   * Вольер, статистику которого открыли. Общего «текущего вольера» больше нет: id вольера
+   * приходит от гекса карты (`RoomConfig.sceneId`) — его помнит модалка списка жаб вольера.
+   */
+  const currentScene =
+    ownedScenes.find((scene) => scene.id === sceneId) ?? null;
+  /** Жабы вольера: дом жабы — её `scene_id` (по нему же считается вместимость) */
+  const toads = allToads.filter((toad) => toad.scene_id === sceneId);
   const [isEditing, setIsEditing] = useState(false);
   const [sceneName, setSceneName] = useState(currentScene?.name || "");
-  const { addNotification } = useNotifications();
+
+  // Вольера может уже не быть (сейв сменился, пока модалка была открыта)
+  if (!currentScene) {
+    return null;
+  }
 
   // Обработчик сохранения названия
   const handleSaveName = () => {
@@ -36,56 +52,6 @@ const SceneInfoModal: React.FC = () => {
       console.error("Ошибка при обновлении названия:", error);
       setSceneName(currentScene.name || ""); // Возвращаем старое название при ошибке
     }
-  };
-
-  // Обработчик улучшения уровня вольера
-  const handleUpgrade = () => {
-    const newTokens = account.tokens - upgradeCost;
-
-    if (isMaxLevel) {
-      return;
-    }
-
-    if (newTokens < 0) {
-      addNotification({
-        type: "danger",
-        content: `Не хватает ${Math.abs(newTokens)} ${
-          CURRENCY_CONFIG.tokens.icon
-        }`,
-      });
-      return;
-    }
-
-    // Здесь будет логика списания токенов и улучшения уровня
-    console.log(
-      `Улучшаем вольер до уровня ${sceneLevel + 1} за ${upgradeCost} токенов`
-    );
-    updateScene(currentScene.id, { capacity: currentScene.capacity + 10 });
-    updateUser({ tokens: newTokens });
-  };
-
-  // Обработчик покупки бонусов
-  const handleBuyBonus = (
-    bonusType: BonusType,
-    level: number,
-    price: number,
-    currency = "astro_quax"
-  ) => {
-    const newQuax = account[currency] - price;
-    if (newQuax < 0) {
-      addNotification({
-        type: "danger",
-        content: `Не хватает ${Math.abs(newQuax)} ${
-          CURRENCY_CONFIG[currency].icon
-        }`,
-      });
-      return;
-    }
-    const bonuses = currentScene.bonuses || {};
-    bonuses[bonusType] = level;
-
-    updateScene(currentScene.id, { bonuses });
-    updateUser({ [currency]: newQuax });
   };
 
   // Обработчик отмены редактирования
@@ -158,74 +124,6 @@ const SceneInfoModal: React.FC = () => {
           ).toFixed(1)
         : "0.0",
   };
-
-  // Уровень вольера и стоимость улучшения
-  const sceneLevel = (currentScene.capacity - INITIAL_CAPACITY) / 10 || 0;
-  const isMaxLevel = sceneLevel >= 3;
-  const baseCapacity = INITIAL_CAPACITY;
-  const capacity = baseCapacity + sceneLevel * 10;
-
-  // Стоимость улучшения в зависимости от текущего уровня
-  const upgradeCost = (sceneLevel + 1) * 10;
-
-  // Получение текущего уровня бонуса
-  const getCurrentBonusLevel = (bonusType: BonusType) => {
-    return currentScene.bonuses?.[bonusType] || 0;
-  };
-
-  // Проверка доступности уровня бонуса
-  const isBonusLevelAvailable = (bonusType: BonusType, targetLevel: number) => {
-    const currentLevel = getCurrentBonusLevel(bonusType);
-    return currentLevel >= targetLevel - 1;
-  };
-
-  // Проверка, куплен ли уровень бонуса
-  const isBonusLevelPurchased = (bonusType: BonusType, targetLevel: number) => {
-    const currentLevel = getCurrentBonusLevel(bonusType);
-    return currentLevel >= targetLevel;
-  };
-
-  const icons = [
-    <svg
-      className="w-5 h-5"
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
-      />
-    </svg>,
-    <svg
-      className="w-5 h-5"
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-      />
-    </svg>,
-    <svg
-      className="w-5 h-5"
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-      />
-    </svg>,
-  ];
 
   const StatItem = ({
     label,
@@ -360,6 +258,11 @@ const SceneInfoModal: React.FC = () => {
               value={toadStats.total}
               color="text-white"
             />
+            <StatItem
+              label="Мест в вольере"
+              value={`${toads.length}/${currentScene.capacity}`}
+              color="text-cyan-400"
+            />
 
             <div className="grid grid-cols-3 gap-2">
               <StatItem
@@ -434,317 +337,12 @@ const SceneInfoModal: React.FC = () => {
           </div>
         </div>
 
-        {/* Плашка улучшения вольера */}
-        <div
-          className={`relative overflow-hidden rounded-lg border-2 mt-4 ${
-            isMaxLevel
-              ? "border-purple-500/50 bg-gradient-to-r from-purple-600/20 to-indigo-600/20"
-              : "border-green-500/50 bg-gradient-to-r from-green-600/20 to-cyan-600/20"
-          }`}
-        >
-          <div className="p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div
-                  className={`p-2 rounded-lg ${
-                    isMaxLevel ? "bg-purple-500/20" : "bg-green-500/20"
-                  }`}
-                >
-                  {isMaxLevel ? (
-                    <svg
-                      className="w-6 h-6 text-purple-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                      />
-                    </svg>
-                  ) : (
-                    <svg
-                      className="w-6 h-6 text-green-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
-                      />
-                    </svg>
-                  )}
-                </div>
-                <div>
-                  <h3
-                    className={`font-bold text-sm ${
-                      isMaxLevel ? "text-purple-200" : "text-green-200"
-                    }`}
-                  >
-                    {isMaxLevel ? "Максимальный уровень" : "Улучшение вольера"}
-                  </h3>
-                  <p
-                    className={`text-sm ${
-                      isMaxLevel ? "text-purple-300" : "text-green-300"
-                    }`}
-                  >
-                    Вместимость {capacity} жаб
-                  </p>
-                </div>
-              </div>
-
-              <div
-                className={`text-right ${
-                  isMaxLevel ? "text-purple-300" : "text-green-300"
-                }`}
-              >
-                <div className="text-lg font-bold">Ур. {sceneLevel}</div>
-                <div className="text-xs">
-                  {isMaxLevel ? "Макс." : "След.: " + (sceneLevel + 1)}
-                </div>
-              </div>
-            </div>
-
-            {!isMaxLevel && (
-              <button
-                onClick={handleUpgrade}
-                className="w-full bg-gradient-to-r mt-3 from-green-500 to-cyan-500 hover:from-green-600 hover:to-cyan-600 text-white font-bold py-3 px-4 rounded-lg transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-lg hover:shadow-green-500/25 flex gap-3 items-center text-left justify-between"
-              >
-                <svg
-                  className="w-5 h-5 animate-bounce"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M13 10V3L4 14h7v7l9-11h-7z"
-                  />
-                </svg>
-                Улучшить +10 к вместимости
-                <span className="text-green-200 text-xs bg-green-700/30 px-2 py-1 rounded text-center">
-                  {upgradeCost} {CURRENCY_CONFIG.tokens.icon}
-                </span>
-              </button>
-            )}
-          </div>
-
-          {/* Анимированные элементы фона */}
-          {!isMaxLevel && (
-            <>
-              <div className="absolute top-0 left-0 w-20 h-20 bg-green-400/10 rounded-full -translate-x-10 -translate-y-10"></div>
-              <div className="absolute bottom-0 right-0 w-16 h-16 bg-cyan-400/10 rounded-full translate-x-8 translate-y-8"></div>
-              <div className="absolute top-1/2 right-1/4 w-2 h-2 bg-green-400/30 rounded-full animate-ping"></div>
-            </>
-          )}
-
-          {isMaxLevel && (
-            <>
-              <div className="absolute top-0 right-0 w-24 h-24 bg-purple-400/10 rounded-full translate-x-12 -translate-y-12"></div>
-              <div className="absolute bottom-0 left-0 w-20 h-20 bg-indigo-400/10 rounded-full -translate-x-10 translate-y-10"></div>
-            </>
-          )}
-        </div>
-
-        {/* Плашка бонусов вольера */}
-        <div className="mb-6">
-          <div className="relative overflow-hidden rounded-lg border-2 border-amber-500/50 bg-gradient-to-r from-amber-600/20 to-orange-600/20">
-            <div className="p-4">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="p-2 rounded-lg bg-amber-500/20">
-                  <svg
-                    className="w-6 h-6 text-amber-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"
-                    />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="font-bold text-sm text-amber-200">Буст</h3>
-                  <p className="text-xs text-amber-300">
-                    Улучшите характеристики вольера
-                  </p>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <div className="bg-amber-500/10 rounded-lg p-3 border border-amber-500/30">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <div className="text-amber-400">{icons[2]}</div>
-                      <span className="text-amber-200 text-sm font-medium">
-                        Кормушка с автопроцессором
-                      </span>
-                    </div>
-                    <span className="text-amber-300 text-xs">
-                      {getCurrentBonusLevel(BonusType.autoFeeder) > 0
-                        ? `Есть`
-                        : "Не улучшено"}
-                    </span>
-                  </div>
-
-                  <button
-                    onClick={() =>
-                      handleBuyBonus(BonusType.autoFeeder, 1, 1000, "tokens")
-                    }
-                    disabled={false}
-                    className={`w-full
-                                relative text-xs font-bold py-2 px-1 rounded   shadow
-                                bg-gradient-to-br  text-white from-amber-500 to-orange-500
-                              `}
-                  >
-                    <span>Умное распределение корма</span>
-                    {getCurrentBonusLevel(BonusType.autoFeeder) > 0 ? (
-                      <div className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-400 rounded-full flex items-center justify-center">
-                        <svg
-                          className="w-2 h-2 text-white"
-                          fill="currentColor"
-                          viewBox="0 0 20 20"
-                        >
-                          <path
-                            fillRule="evenodd"
-                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
-                      </div>
-                    ) : (
-                      <div className={`text-sm text-amber-100`}>
-                        1000 {CURRENCY_CONFIG.tokens.icon}
-                      </div>
-                    )}
-                  </button>
-                </div>
-
-                {bonuses.map((bonus, index) => {
-                  const currentLevel = getCurrentBonusLevel(bonus.type);
-
-                  return (
-                    <div
-                      key={bonus.type}
-                      className="bg-amber-500/10 rounded-lg p-3 border border-amber-500/30"
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <div className="text-amber-400">{icons[index]}</div>
-                          <span className="text-amber-200 text-sm font-medium">
-                            {bonus.name}
-                          </span>
-                        </div>
-                        <span className="text-amber-300 text-xs">
-                          {currentLevel > 0
-                            ? `Ур. ${currentLevel}`
-                            : "Не улучшено"}
-                        </span>
-                      </div>
-
-                      <div className="grid grid-cols-3 gap-2">
-                        {bonus.levels.map((bonusLevel) => {
-                          const isPurchased = isBonusLevelPurchased(
-                            bonus.type,
-                            bonusLevel.level
-                          );
-                          const isAvailable = isBonusLevelAvailable(
-                            bonus.type,
-                            bonusLevel.level
-                          );
-                          const isDisabled = !isAvailable || isPurchased;
-
-                          return (
-                            <button
-                              key={bonusLevel.level}
-                              onClick={() =>
-                                handleBuyBonus(
-                                  bonus.type,
-                                  bonusLevel.level,
-                                  bonusLevel.cost
-                                )
-                              }
-                              disabled={isDisabled}
-                              className={`
-                                relative text-xs font-bold py-2 px-1 rounded   shadow
-                                bg-gradient-to-br  text-white from-amber-500 to-orange-500
-                              `}
-                            >
-                              {isPurchased && (
-                                <div className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-400 rounded-full flex items-center justify-center">
-                                  <svg
-                                    className="w-2 h-2 text-white"
-                                    fill="currentColor"
-                                    viewBox="0 0 20 20"
-                                  >
-                                    <path
-                                      fillRule="evenodd"
-                                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                                      clipRule="evenodd"
-                                    />
-                                  </svg>
-                                </div>
-                              )}
-
-                              <div className="font-bold text-sm">
-                                +{bonusLevel.bonus}%
-                              </div>
-                              {!isPurchased && (
-                                <div
-                                  className={`text-sm ${
-                                    isAvailable
-                                      ? "text-amber-100"
-                                      : "text-gray-200"
-                                  }`}
-                                >
-                                  {bonusLevel.cost}{" "}
-                                  {CURRENCY_CONFIG.astro_quax.icon}
-                                </div>
-                              )}
-
-                              {!isAvailable && (
-                                <div className="absolute inset-0 bg-gray-600/50 backdrop-blur-sm  rounded flex items-center justify-center">
-                                  <svg
-                                    className="w-6 h-6 text-white"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth={2}
-                                      d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                                    />
-                                  </svg>
-                                </div>
-                              )}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Анимированные элементы фона */}
-            <div className="absolute top-0 right-0 w-20 h-20 bg-amber-400/10 rounded-full translate-x-10 -translate-y-10"></div>
-            <div className="absolute bottom-0 left-0 w-16 h-16 bg-orange-400/10 rounded-full -translate-x-8 translate-y-8"></div>
-            <div className="absolute top-1/3 right-1/3 w-1 h-1 bg-amber-400/40 rounded-full animate-pulse"></div>
-          </div>
-        </div>
+        {/* Улучшения комнаты живут в отдельной модалке: их ставит ядро карты */}
+        <p className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-2xs leading-snug text-amber-100">
+          Улучшение комнаты — автокормушка: жабы комнаты кормятся со склада сами.
+          Поставить её можно из модалки «Улучшение комнаты» — тап по ядру в центре
+          карты.
+        </p>
       </div>
     </Modal>
   );

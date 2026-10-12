@@ -21,21 +21,44 @@ import { useModal } from "../../ModalContext";
 import { DissolveConfirm } from "../../shared/DissolveConfirm";
 import { dissolveToads } from "../../../utils/dissolve-manager";
 import { getHousingInfo } from "../../../utils/housing";
+import SceneInfoModal from "../SceneInfoModal";
 
-const ToadListModal: React.FC = () => {
+/**
+ * Список жаб одного вольера.
+ *
+ * Вольер приходит от гекса карты, по которому тапнули (`RoomConfig.sceneId`): общего
+ * «текущего вольера» больше нет, поэтому и закреплён за модалкой гекс. Стрелки листают
+ * вольеры прямо здесь (`ownedScenes`), не трогая состояние игры.
+ */
+const ToadListModal: React.FC<{ sceneId: number }> = ({ sceneId }) => {
   const { openModal, modals } = useModal();
   const { playCrunchShort, playClick } = useSoundEffects();
   const {
     handleFeedToads,
     ownedScenes,
-    currentScene,
-    currentSceneIndex,
-    setCurrentSceneId,
     selectToad,
-    toads,
+    allToads,
     selectedToad,
   } = useToads();
   const { addNotification } = useNotifications();
+
+  // Вольер списка: гекс задаёт стартовый, стрелки листают остальные
+  const [sceneIndex, setSceneIndex] = useState(() => {
+    const index = ownedScenes.findIndex((scene) => scene.id === sceneId);
+
+    return index >= 0 ? index : 0;
+  });
+  const scene = ownedScenes[sceneIndex] ?? ownedScenes[0] ?? null;
+
+  /** Жабы открытого вольера: дом жабы — её `scene_id`, где бы она ни работала. */
+  const toads = React.useMemo(
+    () =>
+      allToads
+        .filter((toad) => toad.scene_id === scene?.id)
+        .sort((a, b) => b.genes.rarity - a.genes.rarity),
+    [allToads, scene?.id]
+  );
+
   const {
     filteredAndSortedToads,
     sortBy,
@@ -128,7 +151,9 @@ const ToadListModal: React.FC = () => {
     setSelectedToads(new Set());
   };
 
-  // Переместить выделенных: вольер обязателен — склада жаб больше нет
+  // Переместить выделенных: вольер обязателен — склада жаб больше нет.
+  // Переезд — это новый дом и выход из комнаты: жаба идёт в вольер (`scene_id`), а место
+  // в комнате колонии освобождается (`roomId` сбрасывается).
   const moveSelected = (sceneId: number) => {
     if (selectedToads.size === 0) return;
 
@@ -142,7 +167,10 @@ const ToadListModal: React.FC = () => {
       return;
     }
 
-    updateToadsByIds(Array.from(selectedToads), { scene_id: sceneId });
+    updateToadsByIds(Array.from(selectedToads), {
+      scene_id: sceneId,
+      roomId: null,
+    });
 
     setSelectedToads(new Set());
     setShowMoveTooltip(false);
@@ -197,16 +225,13 @@ const ToadListModal: React.FC = () => {
     starving: toads.filter((t) => t.state.hunger < 50).length,
   };
 
-  const isFirstScene = currentSceneIndex === 0;
-  const isLastScene = currentSceneIndex === ownedScenes.length - 1;
+  const isFirstScene = sceneIndex === 0;
+  const isLastScene = sceneIndex === ownedScenes.length - 1;
 
-  const onNextScene = () => {
-    setCurrentSceneId(currentSceneIndex + 1);
-  };
+  const onNextScene = () =>
+    setSceneIndex((index) => Math.min(ownedScenes.length - 1, index + 1));
 
-  const onPrevScene = () => {
-    setCurrentSceneId(currentSceneIndex - 1);
-  };
+  const onPrevScene = () => setSceneIndex((index) => Math.max(0, index - 1));
 
   return (
     <Modal icon={icon} title={"Все жабы"}>
@@ -252,7 +277,17 @@ const ToadListModal: React.FC = () => {
             disabled={isFirstScene}
             onClick={onPrevScene}
           />
-          <span className="text-sm truncate w-[90px]">{currentScene.name}</span>
+          {/* Вольер списка: по нему же открывается его статистика (переименование, бонусы) */}
+          <button
+            onClick={() =>
+              scene &&
+              openModal(() => <SceneInfoModal sceneId={scene.id} />)
+            }
+            className="max-w-[120px] truncate text-sm underline decoration-dotted decoration-cyan-400/50 hover:text-cyan-200"
+            title="Статистика вольера"
+          >
+            🏠 {scene?.name ?? "Вольер"}
+          </button>
 
           <ArrowRightButtonCompact
             className="w-6 h-6"
@@ -317,7 +352,7 @@ const ToadListModal: React.FC = () => {
                   >
                     <div className="space-y-1 h-40 overflow-auto">
                       {ownedScenes
-                        .filter((s) => s.id !== currentScene.id)
+                        .filter((s) => s.id !== scene?.id)
                         .map((s) => (
                           <button
                             key={s.id}

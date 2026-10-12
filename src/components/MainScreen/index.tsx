@@ -9,6 +9,10 @@ import { processBreeding, TimeManager } from "../../utils/breeding-manager";
 import { processDiseases } from "../../utils/disease-manager";
 import { processCyberEvents } from "../../utils/events-manager";
 import { syncColonyScenes } from "../../backend/colony";
+import { EMPTY_COLONY } from "../../models/colony";
+import { resolveColonyRooms } from "../HexMap/colony-build";
+import { getRoomToadLists } from "../HexMap/room-toad-lists";
+import { processAutoFeeders } from "../../utils/auto-feeder";
 import {
   processExpeditions,
   processHpRegen,
@@ -51,6 +55,22 @@ const UPDATES_LOG = [
     msg: "Добавлены ЕЩЕ достижения! 🥇",
   },
 ];
+
+/**
+ * Тик голода вместе с автокормушками.
+ *
+ * Автокормушка кормит жаб комнаты со склада, едва их голод доходит до 20 % (`utils/auto-feeder.ts`),
+ * поэтому она идёт сразу за тиком голода — и при оффлайн-догоне, и в игровом цикле. Жильцов
+ * комнат считает карта, а состояние берём из сейва, а не из React: таймеры живут вне рендера.
+ */
+const runHungerTick = (hoursPassed: number) => {
+  processHunger(hoursPassed);
+
+  const state = getGameState();
+  const rooms = resolveColonyRooms(state.colony ?? EMPTY_COLONY, state.scenes);
+
+  processAutoFeeders(rooms, getRoomToadLists(rooms, state.toads));
+};
 
 /**
  * Домашний экран игры.
@@ -99,7 +119,7 @@ export default function ToadGame() {
       processBreeding(offlineHours, delayNotification);
 
       if (offlineHours > 0.09) {
-        processHunger(offlineHours);
+        runHungerTick(offlineHours);
         // Оффлайн-доход фермы и восстановление сил жаб (Часть 3.3)
         processProduction(offlineHours);
         processEnergyRegen(offlineHours);
@@ -132,7 +152,8 @@ export default function ToadGame() {
       processEnergyRegen(0.25);
     }, 5 * 60 * 1000);
 
-    const hungerLoop = setInterval(() => processHunger(0.1), 5 * 60 * 1000);
+    // Голод и автокормушки (см. `runHungerTick`): раз в 5 минут, как и ферма
+    const hungerLoop = setInterval(() => runHungerTick(0.1), 5 * 60 * 1000);
 
     // Кибер-события и болезни (Часть 3.6): раз в час игрового времени
     const cyberLoop = setInterval(() => {

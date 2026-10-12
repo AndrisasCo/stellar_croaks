@@ -1,18 +1,28 @@
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import { useToads } from "../ToadContext";
 import { completeAchivement } from "../../backend/achivements-manager";
 import { useSoundEffects } from "../../hooks/use-sound-effects";
-import { getAutoHunger } from "../../utils/get-auto-hunger";
+import { getFeedCost } from "../../utils/feeding";
 
+/**
+ * Кормление жаб из HUD карты.
+ *
+ * Чип 🍎 кормит всю колонию: раньше он кормил жаб «текущего вольера» и считал корм
+ * по бонусу этого вольера, но общего вольера у карты больше нет. Стоимость корма
+ * считает `getFeedCost`: один корм на жабу (автокормушка комнат кормит сама —
+ * см. `utils/auto-feeder.ts`).
+ */
 export const useFeedToads = () => {
   const [isFoodActive, setIsFoodActive] = useState(false);
   const [showFoodTooltip, setShowFoodTooltip] = useState(false);
-  const { toads, handleFeedToads, account, currentScene } = useToads();
+  const { allToads, handleFeedToads, account } = useToads();
 
-  useEffect(() => {
-    setIsFoodActive(false);
-    setShowFoodTooltip(false);
-  }, [currentScene.id]);
+  /** Кого кормит чип: все жабы колонии, кроме тех, кто в походе — их дома нет. */
+  const feedableToads = useMemo(
+    () => allToads.filter((toad) => toad.status !== "out"),
+    [allToads],
+  );
+  const feedCost = getFeedCost(feedableToads);
 
   const { playCrunch, playExited } = useSoundEffects();
 
@@ -21,37 +31,30 @@ export const useFeedToads = () => {
   };
 
   const getTooltipMessage = () => {
-    const newFood = currentScene.bonuses?.autoFeeder
-      ? getAutoHunger(toads)
-      : toads.length;
-
-    if ((account?.storage?.food || 0) < newFood) {
+    if ((account?.storage?.food || 0) < feedCost) {
       return {
         message: `Не хватает: ${Math.abs(
-          (account?.storage?.food || 0) - newFood
+          (account?.storage?.food || 0) - feedCost,
         )} корма`,
         disabled: true,
       };
     }
 
-    return { message: `Потратить: ${newFood} корма?`, disabled: false };
+    return { message: `Потратить: ${feedCost} корма?`, disabled: false };
   };
 
   const handleConfirmFeed = () => {
     if (isFoodActive) {
       return;
     }
-    const newFood = currentScene.bonuses?.autoFeeder
-      ? getAutoHunger(toads)
-      : toads.length;
 
-    if ((account?.storage?.food || 0) < newFood) {
+    if ((account?.storage?.food || 0) < feedCost) {
       return;
     }
     completeAchivement("feed-all");
     setIsFoodActive(true);
     setShowFoodTooltip(false);
-    handleFeedToads(toads.map((t) => t.id));
+    handleFeedToads(feedableToads.map((t) => t.id));
     playExited();
     setTimeout(() => {
       playCrunch();

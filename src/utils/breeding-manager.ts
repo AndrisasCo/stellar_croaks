@@ -16,7 +16,6 @@ import { getHoursFromNow } from "./date";
 import { getGameState } from "../backend/localStorage";
 import { getHunger } from "./state-manager";
 import { completeAchivement } from "../backend/achivements-manager";
-import { BonusType, getBoostByScene } from "../models/scene";
 import { assignToadsToScenes } from "./housing";
 import { NEST_ROOM_ID } from "./constants";
 import {
@@ -114,17 +113,14 @@ const processSceneBreeding = async (
   // смотрим нужно ли жабе вырасти
   const toadpoles = sceneToads.filter((t) => t.stage === "toadpole");
 
-  const boost = getBoostByScene(toadpoles[0]?.scene_id, BonusType.grow);
-
-  const boostedTimeToGrow = HOURS_TO_GROW_UP / boost;
-
+  // Рост без ускорений: бонусы вольера («ускоренный рост») — легаси и удалены
   const grownToadpoles: number[] = [];
   toadpoles.forEach((t) => {
-    if (getHoursFromNow(t.created_at) >= boostedTimeToGrow) {
+    if (getHoursFromNow(t.created_at) >= HOURS_TO_GROW_UP) {
       const hunger = getHunger(
         t.state.hunger,
         t.genes.hungerRate,
-        boostedTimeToGrow
+        HOURS_TO_GROW_UP
       );
 
       if (t.state.hunger - hunger < 0) {
@@ -314,12 +310,14 @@ const processMating = (
 };
 
 export const startPregnancy = async (toad: Toad, father: Toad) => {
-  const boost = getBoostByScene(toad.scene_id, BonusType.pregnancy);
+  // Беременность без ускорений: бонус вольера («ускоренная беременность») — легаси
   toad.pregnancy = {
     isPregnant: true,
     pregnancyStart: Date.now(),
-    pregnancyDuration:
-      Math.min(getPregnancyDuration() + toad.genes.rarity / 2, 8) / boost,
+    pregnancyDuration: Math.min(
+      getPregnancyDuration() + toad.genes.rarity / 2,
+      8
+    ),
     fatherId: father.id,
     father,
     offspringCount: calculateOffspringCount(toad),

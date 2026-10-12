@@ -1,4 +1,4 @@
-import { Assets, Texture, TextureSource } from "pixi.js";
+import { Assets, Texture } from "pixi.js";
 import { ToadTypes } from "../../models/Toad/toad-species";
 
 export function makeColorWhiter(hexColor: string, percent: number) {
@@ -60,51 +60,46 @@ export const createTextures = (
   return result;
 };
 
-// Предзагружаем текстуры и создаем текстуры для анимации один раз
+/** Лист спрайтов головастика: отдельная картинка, а не кадры взрослой жабы. */
+const TOADPOLE_SPRITES_URL = "/sprites/toadpole.webp";
+
+/**
+ * Лист спрайтов взрослой жабы: имя файла совпадает со значением `ToadTypes`.
+ * Правило одно на всех потребителей — статичную картинку в интерфейсе собирает так же
+ * `ToadAvatar`.
+ */
+export const toadSpriteUrl = (type: ToadTypes) => `/sprites/${type}.webp`;
+
+/**
+ * Предзагружаем текстуры жаб и создаём кадры анимации (один раз на запуск карты).
+ *
+ * Грузим каждый лист отдельно и глушим ошибку только у него. Раньше здесь стоял один
+ * `Promise.all` внутри общего `try`, поэтому один битый путь уносил все текстуры сразу:
+ * жабы на карте рисовались белыми квадратами, а тинт делал из них цветные прямоугольники
+ * (см. `HexMap/room-toads.ts`). Сейчас пропавшее имя видно в консоли, остальные жабы
+ * рисуются как обычно.
+ */
 export const preloadTextures = async () => {
-  try {
-    const [
-      toadpoleSpriteSheet,
-      foodSpritesheet,
-      foodSpritesheet2,
-      backgroundTexture,
-      fenceTexture,
-    ] = await Promise.all([
-      Assets.load("/sprites/toadpole.webp"),
-      Assets.load("/assets/bowl.webp"),
-      Assets.load("/assets/bowl2.webp"),
-      Assets.load("/bg/bg.webp"),
-      Assets.load("/bg/fence.webp"),
-    ]);
+  const res: Record<string, Texture[]> = {};
 
-    const foodTextures1 = createTextures(foodSpritesheet, false, 2, 1);
-    const foodTextures2 = createTextures(foodSpritesheet2, false, 2, 1);
+  const loadSpriteSheet = async (key: string, url: string) => {
+    try {
+      const spriteSheet = await Assets.load(url);
 
-    const toadpoleTextures = createTextures(toadpoleSpriteSheet.source);
-    const res: Record<string, Texture<TextureSource<any>>[]> = {
-      toadpoleTextures,
-      foodTextures1,
-      foodTextures2,
-      backgroundTexture,
-      fenceTexture,
-    };
+      res[key] = createTextures(spriteSheet.source);
+    } catch (error) {
+      console.warn(`Не загрузился спрайт жабы: ${url}`, error);
+    }
+  };
 
-    const typeArray = Object.values(ToadTypes);
+  await Promise.all([
+    loadSpriteSheet("toadpoleTextures", TOADPOLE_SPRITES_URL),
+    ...Object.values(ToadTypes).map((type) =>
+      loadSpriteSheet(type, toadSpriteUrl(type))
+    ),
+  ]);
 
-    const promises = typeArray.map((type) =>
-      Assets.load(`/sprites/${type}.webp`)
-    );
-
-    const allSpriteshits = await Promise.all(promises);
-
-    allSpriteshits.forEach((s, index) => {
-      res[typeArray[index]] = createTextures(s.source);
-    });
-
-    return res;
-  } catch (error) {
-    return {};
-  }
+  return res;
 };
 
 export const getTextureByType = (texturesRef: any, type: ToadTypes | null) => {

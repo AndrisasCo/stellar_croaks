@@ -155,6 +155,12 @@ globalThis.localStorage = {
   },
 };
 
+/**
+ * Платформенный слой (`src/platform`) читает localStorage через `window.localStorage` —
+ * в браузере это один и тот же объект, отдаём его в заглушку window.
+ */
+globalThis.window.localStorage = globalThis.localStorage;
+
 // === Модули проекта ===
 const hospital = bundle("src/utils/hospital.ts", "hospital");
 const cfg = bundle("src/utils/expedition-config.ts", "expedition-config");

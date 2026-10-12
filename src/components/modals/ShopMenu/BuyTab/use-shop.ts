@@ -42,7 +42,7 @@ export type ShopItem = {
 };
 
 export const useShop = () => {
-  const { account, currentScene } = useToads();
+  const { account } = useToads();
 
   const { tokens = 0, storage = { food: 0 } } = account || {};
   const [shopState, setShopState] = useState<ShopState>(getShopState());
@@ -322,7 +322,8 @@ export const useShop = () => {
   const handleBuyToad = async (toad: Toad) => {
     // Жаба всегда переезжает в вольер: склада жаб больше нет, поэтому сначала
     // проверяем место. Нет места — предлагаем построить вольер на карте колонии.
-    const scene = pickSceneForNewToad(currentScene?.id);
+    // Желаемого вольера нет: покупка идёт из магазина, а не с гекса вольера.
+    const scene = pickSceneForNewToad();
 
     if (!scene) {
       playBeep();

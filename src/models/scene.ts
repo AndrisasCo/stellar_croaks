@@ -1,5 +1,3 @@
-import { getGameState } from "../backend/localStorage";
-
 export interface Scene {
   created_at: string;
   description: string | null;
@@ -8,21 +6,25 @@ export interface Scene {
   name: string | null;
   price: number | null;
   texture: string | null;
-  bonuses?: Record<BonusType, number>;
+  /**
+   * @deprecated Легаси-бонусы вольера. Апгрейды комнаты живут в `ColonyState.upgrades`
+   * (`utils/room-upgrades.ts`), а автокормушку, купленную вольеру в старой версии игры,
+   * дочитывает `getRoomUpgrades` (`backend/colony.ts`) — поле не пишется и однажды уйдёт.
+   */
+  bonuses?: { autoFeeder?: number };
   capacity: number;
   /** Число родильных слотов купола (постройка «Гнездо»), по умолчанию NEST_BASE_SLOTS */
   nestSlots?: number;
 }
 
-export const INITIAL_CAPACITY = 20;
-export const MAX_CAPACITY = 50;
+export const INITIAL_CAPACITY = 12;
 
 export const DEFAULT_SCENE: Scene = {
   id: 1,
   name: "Био Под",
   gradient: 0,
   price: 0,
-  description: "Первое болото для ваших жаб",
+  description: "",
   created_at: new Date().toISOString(),
   texture: null,
   capacity: INITIAL_CAPACITY,
@@ -42,54 +44,3 @@ export const GRADIENTS = [
     { offset: 1, color: 0x4d8b68 }, // Светлый хвойный
   ],
 ];
-
-export enum BonusType {
-  grow = "grow",
-  pregnancy = "pregnancy",
-  autoFeeder = "autoFeeder",
-}
-
-// Бонусы вольера
-export const bonuses = [
-  {
-    type: BonusType.grow,
-    name: "Ускоренный рост",
-    levels: [
-      { level: 1, bonus: 5, cost: 30 },
-      { level: 2, bonus: 10, cost: 70 },
-      { level: 3, bonus: 20, cost: 150 },
-    ],
-  },
-  {
-    type: BonusType.pregnancy,
-    name: "Ускоренная беременность",
-    levels: [
-      { level: 1, bonus: 5, cost: 50 },
-      { level: 2, bonus: 10, cost: 100 },
-      { level: 3, bonus: 20, cost: 200 },
-    ],
-  },
-];
-
-const bonusMap: Record<string, number[]> = {
-  [BonusType.pregnancy]: [5, 10, 20],
-  [BonusType.grow]: [5, 10, 20],
-};
-
-export const getBoostByScene = (
-  scene_id: number | null,
-  bonusType: BonusType,
-) => {
-  if (!scene_id) {
-    return 1;
-  }
-  const currentScene = getGameState().scenes.find((s) => s.id === scene_id);
-
-  if (!currentScene || !currentScene.bonuses?.[bonusType]) {
-    return 1;
-  }
-
-  const boost = currentScene.bonuses[bonusType];
-
-  return bonusMap[bonusType][boost - 1] / 100 + 1;
-};

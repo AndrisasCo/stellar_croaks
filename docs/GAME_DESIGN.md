@@ -51,8 +51,8 @@
 `speed`, `weight`, `rarity`, `colors[]`, `pattern`, `personality`). Есть ~55
 «характеров» (личности) с множителями.
 
-**Сцена/вольер** (`scene.ts`): `capacity` (старт 20, макс 50), `bonuses` по типам
-`grow` / `pregnancy` / `autoFeeder` (уровни 1–3 дают ускорение +5/10/20 %).
+**Сцена/вольер** (`scene.ts`): `capacity` (всегда 20: апгрейды вместимости — легаси),
+`bonuses.autoFeeder` — легаси-флаг старой покупки (апгрейды комнат живут в `ColonyState.upgrades`).
 
 **Редкость** (`RARITY_CONFIG`): пороги common 0 / uncommon 3 / rare 10 / epic 30 /
 legendary 50; множитель цены ×1…×50.
@@ -439,7 +439,7 @@ hungerPenalty`, потолок `0.9`. Фактически при хороших
 | Инкубация по таймеру | `endPregnancy`, `processBreeding` (роды)         | Оставляем роды>, убираем авто-запрос беременности                                                        |
 | Фарм биомассы        | `calculateSellPrice`, склад предметов            | Новый ресурс в `storage`/модель, цикл `processProduction`                                                |
 | Мягкий голод         | `getHunger`, `processHunger`                     | Понизить коэффициент, добавить порог выработки                                                           |
-| Бонусы сцены         | `getBoostByScene`, `bonuses`                     | Добавить типы `production`, `energyRegen`, `nestSlots`                                                   |
+| Апгрейды комнаты     | `ColonyState.upgrades`, `ROOM_UPGRADES`          | Новые апгрейды жилых комнат (сейчас один — автокормушка); легаси-бонусы сцены (`getBoostByScene`) удалены |
 | Породы, ярусы        | —                                                | ⛔ Выпилены из игры (08.10.2026): файлы удалены, бонусов в расчётах нет                                  |
 | События/болезни      | `events-manager.ts`, `genetic_fault`             | Подключить к циклу, статусы жабы, кибер-тексты                                                           |
 | Ротация заказов      | `eliteOrders`, `getNewElite`                     | Расширить пул + борд по времени                                                                          |

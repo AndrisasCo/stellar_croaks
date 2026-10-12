@@ -1,5 +1,4 @@
 import { HOURS_TO_GROW_UP } from "../../../models/Toad";
-import { getBoostByScene } from "../../../models/scene";
 
 export const useToadTimers = (toad: any) => {
   const calculateAge = () => {
@@ -34,8 +33,8 @@ export const useToadTimers = (toad: any) => {
 
   const getGrowthInfo = () => {
     if (toad.stage !== "toadpole") return null;
-    const boost = getBoostByScene(toad.scene_id, "grow");
-    const duration = (HOURS_TO_GROW_UP / boost) * 3600000;
+    // Рост без ускорений: бонус вольера «ускоренный рост» — легаси и удалён
+    const duration = HOURS_TO_GROW_UP * 3600000;
     const elapsed = Date.now() - new Date(toad.created_at).getTime();
     return {
       progress: Math.min((elapsed / duration) * 100, 100),

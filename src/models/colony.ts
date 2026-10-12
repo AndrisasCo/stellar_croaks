@@ -41,8 +41,25 @@ export interface ColonyRoomState {
   sceneId?: number;
 }
 
+/**
+ * Апгрейды жилой комнаты: пока один — автокормушка.
+ *
+ * Апгрейд принадлежит комнате (гексу), а не вольеру: улучшить можно любую комнату, где живут
+ * жабы — и «Био Под», и ⚡-энергокомнату (`components/HexMap/rooms-config.ts` → `isToadRoom`),
+ * поэтому он хранится по id гекса, а не в `Scene` (у энергокомнаты вольера нет вовсе).
+ */
+export interface RoomUpgrades {
+  /** Автокормушка: жабы комнаты едят со склада сами (см. `utils/auto-feeder.ts`). */
+  autoFeeder?: boolean;
+}
+
+/** Комната без апгрейдов: общий пустой ответ (объект не мутируется). */
+export const EMPTY_UPGRADES: RoomUpgrades = {};
+
 export interface ColonyState {
   rooms: ColonyRoomState[];
+  /** Апгрейды комнат по id гекса: `{ aviary: { autoFeeder: true } }`. */
+  upgrades?: Record<string, RoomUpgrades>;
 }
 
 /** Пустая колония: кроме базовых комнат ничего не построено. */

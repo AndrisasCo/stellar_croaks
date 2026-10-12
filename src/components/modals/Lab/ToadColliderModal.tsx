@@ -67,10 +67,11 @@ export default function ToadCollider() {
   const [showWarning, setShowWarning] = useState(false);
 
   const { closeModal, openModal } = useModal();
-  const { startBreeding, updateBreeding, toads } = useToads();
+  const { startBreeding, updateBreeding, allToads } = useToads();
 
-  // Часть 5: жабы в походе недоступны для коллайдера (они на Периметре)
-  const availableToads = toads.filter(
+  // Часть 5: жабы в походе недоступны для коллайдера (они на Периметре).
+  // Список — вся колония: коллайдер работает с генами, а не с вольером.
+  const availableToads = allToads.filter(
     (t) => t.stage === "adult" && t.status !== "out"
   );
   const { playBubble2 } = useSoundEffects();

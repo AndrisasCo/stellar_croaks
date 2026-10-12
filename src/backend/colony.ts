@@ -3,6 +3,8 @@ import {
   ColonyRoomState,
   ColonyState,
   EMPTY_COLONY,
+  EMPTY_UPGRADES,
+  RoomUpgrades,
 } from "../models/colony";
 import { DEFAULT_SCENE, INITIAL_CAPACITY, Scene } from "../models/scene";
 import { MAX_OWNED_SCENES } from "../utils/constants";
@@ -27,6 +29,54 @@ export const saveColonyState = (colony: ColonyState): ColonyState => {
   updateGameState({ colony });
 
   return colony;
+};
+
+/**
+ * Апгрейды комнаты: они лежат в `ColonyState.upgrades` по id гекса, поэтому комнату
+ * передаём целиком — гексу-вольеру апгрейд может отдать ещё и его вольер.
+ *
+ * Легаси: раньше автокормушку покупали «вольеру», и она жила в `Scene.bonuses.autoFeeder`.
+ * Покупка теперь всегда пишет в `ColonyState.upgrades`, а старый бонус вольера читается
+ * здесь как апгрейд его гекса — апгрейд, купленный до переезда, продолжает работать.
+ * Связь «гекс ↔ вольер» знает карта (`RoomConfig.sceneId`), поэтому `sceneId` приходит
+ * параметром, а не ищется здесь.
+ */
+export const getRoomUpgrades = (room: {
+  id: string;
+  sceneId?: number;
+}): RoomUpgrades => {
+  const state = getGameState();
+  const stored = state.colony?.upgrades?.[room.id] ?? EMPTY_UPGRADES;
+
+  if (stored.autoFeeder || room.sceneId === undefined) {
+    return stored;
+  }
+
+  const scene = state.scenes.find((item) => item.id === room.sceneId);
+
+  return scene?.bonuses?.autoFeeder ? { ...stored, autoFeeder: true } : stored;
+};
+
+/** Ставит комнате апгрейд: чужие апгрейды и постройки комнаты не трогает. */
+export const upgradeColonyRoom = (
+  roomId: string,
+  upgrades: RoomUpgrades,
+): RoomUpgrades => {
+  const state = getGameState();
+  const colony = state.colony ?? EMPTY_COLONY;
+  const upgraded = {
+    ...(colony.upgrades?.[roomId] ?? EMPTY_UPGRADES),
+    ...upgrades,
+  };
+
+  updateGameState({
+    colony: {
+      ...colony,
+      upgrades: { ...(colony.upgrades ?? {}), [roomId]: upgraded },
+    },
+  });
+
+  return upgraded;
 };
 
 /** Новый вольер для построенной на гексе комнаты «Вольер» */
@@ -118,10 +168,26 @@ export const syncColonyScenes = (): number => {
   return created;
 };
 
-/** Помещает жабу в комнату колонии (энергокомната, гнездо, «Разведка»). */
+/**
+ * Помещает жабу в комнату колонии (энергокомната, гнездо, «Разведка»).
+ *
+ * `scene_id` при этом не трогаем: это дом жабы (её вольер), по нему гекс вольера
+ * находит своих жильцов, когда жаба вернётся из комнаты или из похода.
+ */
 export const placeToadInRoom = (toadId: number, roomId: string) =>
   updateToadById(toadId, { roomId });
 
-/** Возвращает жабу из комнаты колонии обратно в вольер (`roomId` сбрасывается). */
+/**
+ * Возвращает жабу из комнаты колонии обратно в вольер (`roomId` сбрасывается).
+ * Место определит сам вольер жабы — её `scene_id`.
+ */
 export const releaseToadFromRoom = (toadId: number) =>
   updateToadById(toadId, { roomId: null });
+
+/**
+ * Переселяет жабу в конкретный вольер: `scene_id` становится её новым домом,
+ * `roomId` сбрасывается — физически жаба идёт в вольер, а не остаётся в комнате.
+ * Так гекс вольера, на который жабу перенесли, показывает её у себя.
+ */
+export const moveToadToAviary = (toadId: number, sceneId: number) =>
+  updateToadById(toadId, { roomId: null, scene_id: sceneId });

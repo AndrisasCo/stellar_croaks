@@ -3,7 +3,7 @@ import { getRarityConfig, Toad } from "../../models/Toad";
 import { useColony } from "../../hooks/use-colony";
 import { useNotifications } from "../../hooks/use-notification";
 import { useSoundEffects } from "../../hooks/use-sound-effects";
-import { getAutoHunger } from "../../utils/get-auto-hunger";
+import { getFeedCost } from "../../utils/feeding";
 import { useToads } from "../ToadContext";
 import { ClickButton } from "../shared/ClickButton";
 import Modal from "../shared/Header";
@@ -39,7 +39,7 @@ const HungerBar = ({ value }: { value: number }) => (
 );
 
 export default function PowerRoomModal({ room }: { room: RoomConfig }) {
-  const { toads, account, currentScene, handleFeedToads } = useToads();
+  const { allToads, account, handleFeedToads } = useToads();
   const { powerGrid, toadsByRoom, placeToad, releaseToad } = useColony();
   const { addNotification } = useNotifications();
   const { playOk, playBeep, playCrunchShort, playCroakSmall } =
@@ -53,22 +53,25 @@ export default function PowerRoomModal({ room }: { room: RoomConfig }) {
   const output = getToadPowerCapacity(roomToads);
   const hungryToads = roomToads.filter((toad) => !isToadPowering(toad));
   const freeSlots = POWER_ROOM_TOAD_SLOTS - roomToads.length;
-  const feedCost = currentScene?.bonuses?.autoFeeder
-    ? getAutoHunger(roomToads)
-    : roomToads.length;
+  // Корм считает `getFeedCost`: один корм на жабу
+  const feedCost = getFeedCost(roomToads);
   const food = Math.floor(account?.storage?.food || 0);
 
-  /** Кого можно подсадить: свободные здоровые взрослые жабы текущего вольера. */
+  /**
+   * Кого можно подсадить: свободные здоровые взрослые жабы колонии. Раньше список
+   * ограничивался «текущим вольером», но энергокомната — рабочая комната всей колонии:
+   * в неё берут жаб из любого вольера.
+   */
   const candidates = useMemo(
     () =>
-      toads.filter(
+      allToads.filter(
         (toad) =>
           !toad.roomId &&
           toad.stage === "adult" &&
           toad.status !== "out" &&
           (toad.hp ?? 1) > 0,
       ),
-    [toads],
+    [allToads],
   );
 
   const handleFeed = () => {

@@ -2,7 +2,6 @@ import { useState } from "react";
 import { SortArrowIcon } from "./SortArrowIcon";
 import React from "react";
 import { Toad } from "../../models/Toad";
-import { useToads } from "../ToadContext";
 import { HorizontalScroll } from "./HorizontalScroll";
 
 export type SortDirection = "asc" | "desc";
@@ -19,12 +18,7 @@ export type SortByType =
   | "genetic_fault"
   | "appetite";
 
-export type FilterByType =
-  | "all"
-  | "males"
-  | "females"
-  | "toadpoles"
-  | "enclosure";
+export type FilterByType = "all" | "males" | "females" | "toadpoles";
 
 export interface FilterProps {
   toads: Toad[];
@@ -68,8 +62,6 @@ export const Filters = ({
       setSortDirection("desc");
     }
   };
-
-  const { currentScene, toads: currentToads } = useToads();
 
   // Статистика для фильтров
   const malesCount = toads.filter((t) => t.sex === "male").length;
@@ -241,17 +233,6 @@ export const Filters = ({
                   }`}
                 >
                   Все ({toads.length})
-                </button>
-                <div className="w-px bg-purple-500/20 my-1"></div>
-                <button
-                  onClick={() => setFilterBy("enclosure")}
-                  className={`px-2 py-1 truncate rounded text-xs font-medium transition-all ${
-                    filterBy === "enclosure"
-                      ? "bg-purple-600 text-white shadow-sm shadow-purple-500/30"
-                      : "text-gray-200 hover:text-purple-300"
-                  }`}
-                >
-                  {currentScene.name} ({currentToads.length})
                 </button>
               </HorizontalScroll>
             </div>

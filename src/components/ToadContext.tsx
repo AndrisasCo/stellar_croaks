@@ -23,11 +23,14 @@ import {
   loadColliderState,
   saveColliderState,
 } from "../backend/collider-manager";
-import { getAutoHunger } from "../utils/get-auto-hunger";
+import { getFeedCost } from "../utils/feeding";
 import { pickSceneForNewToad } from "../utils/housing";
 
 interface ToadContextType {
-  toads: Toad[];
+  /**
+   * Все жабы колонии. «Своих» жаб экран берёт сам: гекс вольера — по `scene_id`,
+   * комната — по `roomId` (см. `getRoomToadLists`). Общего «текущего вольера» больше нет.
+   */
   allToads: Toad[];
   selectedToad: Toad | null;
   colliderState: ColliderState | ExtendedColliderState;
@@ -37,10 +40,8 @@ interface ToadContextType {
   startBreeding: (child: Toad) => void;
   collectChild: (slotId: number) => void;
   setSlotReady: (slotId: number) => void;
-  setCurrentSceneId: (id: number) => void;
-  currentScene: Scene;
+  /** Вольеры колонии: по ним гексы карты находят своих жильцов (`RoomConfig.sceneId`). */
   ownedScenes: Scene[];
-  currentSceneIndex: number;
   account: User;
   handleFeedToads: (toadsId: number[]) => void;
 }
@@ -52,7 +53,6 @@ interface ToadProviderProps {
 }
 
 export const ToadProvider: React.FC<ToadProviderProps> = ({ children }) => {
-  const [currentSceneIndex, setCurrentSceneIndex] = useState(0);
   const { addNotification } = useNotifications();
   const {
     user: account,
@@ -60,14 +60,9 @@ export const ToadProvider: React.FC<ToadProviderProps> = ({ children }) => {
     toads: allToads,
   } = useGameState();
 
-  const currentScene = ownedScenes[currentSceneIndex];
-
-  const toads = allToads
-    .sort((a, b) => b.genes.rarity - a.genes.rarity)
-    .filter((t) => t.scene_id === currentScene.id);
-
   const [selectedToadId, setSelectedToadId] = useState<number | null>(null);
-  const selectedToad = toads.find((t) => t.id === selectedToadId) || null;
+  // Карточку жабы можно открыть с любого гекса: ищем выбранную жабу среди всех жаб
+  const selectedToad = allToads.find((t) => t.id === selectedToadId) || null;
 
   // В провайдере добавляем состояние коллайдера с загрузкой из localStorage
   const [colliderState, setColliderState] =
@@ -196,18 +191,10 @@ export const ToadProvider: React.FC<ToadProviderProps> = ({ children }) => {
     });
   };
 
-  const handleFeedToads = async (toadsId: number[]) => {
-    let newFood;
-
-    if (currentScene.bonuses?.autoFeeder) {
-      const allHunger = getAutoHunger(
-        toads.filter((t) => toadsId.includes(t.id)),
-      );
-
-      newFood = (account.storage?.food || 0) - allHunger;
-    } else {
-      newFood = (account.storage?.food || 0) - toadsId.length;
-    }
+  const handleFeedToads = (toadsId: number[]) => {
+    const fedToads = allToads.filter((toad) => toadsId.includes(toad.id));
+    // Один корм на жабу (см. `getFeedCost`): автокормушка кормит сама, но корм не экономит
+    const newFood = (account.storage?.food || 0) - getFeedCost(fedToads);
 
     if (newFood < 0) {
       addNotification({
@@ -227,9 +214,6 @@ export const ToadProvider: React.FC<ToadProviderProps> = ({ children }) => {
   const value: ToadContextType = {
     updateBreeding,
     handleFeedToads,
-    setCurrentSceneId: setCurrentSceneIndex,
-    currentScene,
-    toads,
     allToads,
     setSlotReady,
     startBreeding,
@@ -239,7 +223,6 @@ export const ToadProvider: React.FC<ToadProviderProps> = ({ children }) => {
     clearSelection,
     colliderState,
     ownedScenes,
-    currentSceneIndex,
     account,
   };
 

@@ -9,7 +9,7 @@ import { useModal } from "../../ModalContext";
 import { ColliderMenu } from "./LabMenu";
 
 export default function ColliderButton() {
-  const { colliderState, toads, allToads } = useToads();
+  const { colliderState, allToads } = useToads();
   const { playClickCollider } = useSoundEffects();
   const { openModal, closeModal } = useModal();
 

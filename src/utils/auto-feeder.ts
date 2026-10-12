@@ -1,0 +1,94 @@
+import { updateToadStateByIds, updateUser } from "../backend";
+import { getRoomUpgrades } from "../backend/colony";
+import { getGameState } from "../backend/localStorage";
+import { Toad } from "../models/Toad";
+import { PRODUCTION_MIN_HUNGER } from "./gamification-config";
+
+/**
+ * Автокормушка — апгрейд жилой комнаты (`ColonyState.upgrades`, покупка — `utils/room-upgrades.ts`).
+ *
+ * Механика: пока на складе есть корм, кормушка сама кормит жаб комнаты, когда голод доходит
+ * до `AUTO_FEED_HUNGER` (20 %), и списывает корм со склада — один корм на жабу. Апгрейд стоит
+ * у комнаты, а не у вольера: кормятся и жильцы «Био Пода», и работяги ⚡-энергокомнаты.
+ *
+ * Тик идёт сразу после тика голода (оффлайн-догон и игровой цикл, см. `MainScreen`), поэтому
+ * видит уже просевший голод. Корм кончился — жабы просто остаются голодными: кормушка ничего
+ * не «одалживает», а ждёт пополнения склада.
+ */
+
+/**
+ * Голод, при котором кормушка кормит жабу, %.
+ * Держим равным порогу выработки биомассы (`PRODUCTION_MIN_HUNGER`): кормушка доливает жабу
+ * до того, как её выработка успевает упасть в ноль, — у комнаты с апгрейдом нет «мёртвой зоны»,
+ * когда жаба уже ест со склада, но ещё (или уже) ничего не производит.
+ */
+export const AUTO_FEED_HUNGER = PRODUCTION_MIN_HUNGER;
+/** Сколько корма уходит на одну жабу */
+export const AUTO_FEED_COST = 1;
+
+/** Гекс-комната, у которой может стоять апгрейд (структурно совпадает с `RoomConfig`). */
+export interface AutoFeedRoom {
+  id: string;
+  sceneId?: number;
+}
+
+export interface AutoFeedResult {
+  /** Сколько жаб покормили */
+  fed: number;
+  /** Сколько корма ушло со склада */
+  spent: number;
+}
+
+/**
+ * Кормит жаб комнат с автокормушкой и списывает корм со склада.
+ *
+ * `rooms` и `toadsByRoom` передаёт вызывающий: кто живёт в какой комнате, знает карта
+ * (`getRoomToadLists`), а не состояние игры — у вольера жильцов ищут по дому (`scene_id`),
+ * у энергокомнаты — по `roomId`.
+ */
+export const processAutoFeeders = (
+  rooms: AutoFeedRoom[],
+  toadsByRoom: Record<string, Toad[]>,
+): AutoFeedResult => {
+  const autoFeederRooms = rooms.filter(
+    (room) => getRoomUpgrades(room).autoFeeder,
+  );
+
+  if (autoFeederRooms.length === 0) {
+    return { fed: 0, spent: 0 };
+  }
+
+  const state = getGameState();
+  const foodOnStack = state.user.storage?.food ?? 0;
+  // Корм кончился — дальше кормить нечем; жабы в походе (`status: "out"`) дома не едят
+  let foodLeft = Math.floor(foodOnStack);
+  const hungry: number[] = [];
+
+  autoFeederRooms.forEach((room) => {
+    (toadsByRoom[room.id] ?? []).forEach((toad) => {
+      if (foodLeft <= 0 || toad.status === "out") {
+        return;
+      }
+
+      if (toad.state.hunger > AUTO_FEED_HUNGER) {
+        return;
+      }
+
+      foodLeft -= AUTO_FEED_COST;
+      hungry.push(toad.id);
+    });
+  });
+
+  if (hungry.length === 0) {
+    return { fed: 0, spent: 0 };
+  }
+
+  const spent = hungry.length * AUTO_FEED_COST;
+
+  updateToadStateByIds(hungry, { hunger: 100 });
+  updateUser({
+    storage: { ...state.user.storage, food: foodOnStack - spent },
+  });
+
+  return { fed: hungry.length, spent };
+};

@@ -11,7 +11,7 @@ let interval;
 
 export default function ToadSlotModal() {
   const [slotProgress, setSlotProgress] = useState(0);
-  const { collectChild, setSlotReady, colliderState, toads } = useToads();
+  const { collectChild, setSlotReady, colliderState } = useToads();
   const { closeModal } = useModal();
 
   const activeSlot = colliderState.slots.find((slot) => slot.child);

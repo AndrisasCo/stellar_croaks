@@ -151,7 +151,7 @@ interface NestModalProps {
 }
 
 export default function NestModal({ roomId = NEST_ROOM_ID }: NestModalProps) {
-  const { allToads, account, currentScene } = useToads();
+  const { allToads, account } = useToads();
   const { addNotification } = useNotifications();
   const { playOk, playExited } = useSoundEffects();
   const gameState = useGameState();
@@ -176,6 +176,16 @@ export default function NestModal({ roomId = NEST_ROOM_ID }: NestModalProps) {
   const nestAdults = nestToads.filter((toad) => toad.stage === "adult");
   /** …а головастики, рождённые в гнезде, живут поверх мест, пока их не вынесут */
   const nestChildren = nestToads.filter((toad) => toad.stage !== "adult");
+
+  /**
+   * Вольер, к которому относится гнездо: родильные слоты, карантин и апгрейды — свойства
+   * вольера, а пара приходит в гнездо из своего дома. Раньше это был «текущий вольер»
+   * игрока; теперь берём дом пары в гнезде, а если гнездо пусто — первый вольер колонии.
+   */
+  const hostScene =
+    scenes.find((scene) => scene.id === nestAdults[0]?.scene_id) ??
+    scenes[0] ??
+    null;
 
   /** Два места гнезда: занятые жабами и пустые (нажатие на пустое открывает список) */
   const slots = Array.from(
@@ -246,11 +256,11 @@ export default function NestModal({ roomId = NEST_ROOM_ID }: NestModalProps) {
     return builtRoom ? COLONY_ROOM_TITLES[builtRoom.kind] : "Гнездо";
   })();
 
-  const occupancy = getNestOccupancy(currentScene?.id ?? null);
+  const occupancy = getNestOccupancy(hostScene?.id ?? null);
   const nestSlotsFull = occupancy.used >= occupancy.limit;
   const pregnant = allToads.filter(
     (toad) =>
-      toad.scene_id === (currentScene?.id ?? null) &&
+      toad.scene_id === (hostScene?.id ?? null) &&
       Boolean(toad.pregnancy?.isPregnant)
   );
   const courting = nestAdults.filter(
@@ -259,8 +269,8 @@ export default function NestModal({ roomId = NEST_ROOM_ID }: NestModalProps) {
   const biomass = Math.floor(account?.biomass || 0);
   const astro = Math.floor(getAstroBalance());
   const tokens = Math.floor(account?.tokens || 0);
-  const canUpgrade = canUpgradeNest(currentScene);
-  const nestUpgradeCost = getNestSlotUpgradeCost(currentScene);
+  const canUpgrade = canUpgradeNest(hostScene);
+  const nestUpgradeCost = getNestSlotUpgradeCost(hostScene);
 
   // Пара в гнезде может быть неполной: по ней считаем цену ухаживания и подсказки
   const nestMale = nestAdults.find((toad) => toad.sex === "male") ?? null;
@@ -367,7 +377,7 @@ export default function NestModal({ roomId = NEST_ROOM_ID }: NestModalProps) {
 
   /** Кваксы: апгрейд постройки «Гнездо» — больше родильных слотов вольера */
   const handleUpgradeNest = () => {
-    const result = upgradeNestSlots(currentScene?.id ?? null);
+    const result = upgradeNestSlots(hostScene?.id ?? null);
     addNotification({
       type: result.success ? "success" : "warn",
       content: result.message,
@@ -389,7 +399,7 @@ export default function NestModal({ roomId = NEST_ROOM_ID }: NestModalProps) {
 
   /** Астро-кваксы: карантин вольера (Часть 3.6/3.7) */
   const handleQuarantine = () => {
-    const result = buyQuarantine(currentScene?.id ?? null);
+    const result = buyQuarantine(hostScene?.id ?? null);
     addNotification({
       type: result.success ? "success" : "warn",
       content: result.message,

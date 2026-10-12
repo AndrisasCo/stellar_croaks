@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { TYPE_ICONS } from "../../../utils/constants";
 import {
   getPersonalityMultipliers,
@@ -13,6 +13,7 @@ import { InfoIcons } from "../../../assets/icons";
 import Modal from "../../shared/Header";
 import { useSoundEffects } from "../../../hooks/use-sound-effects";
 import { updateToadById, updateUserStorage } from "../../../backend";
+import { moveToadToAviary } from "../../../backend/colony";
 import { completeAchivement } from "../../../backend/achivements-manager";
 import { nameGenerator } from "../../../utils/name-generator";
 import { Tooltip } from "../../shared/Tooltip";
@@ -21,6 +22,7 @@ import { useNotifications } from "../../../hooks/use-notification";
 import { endPregnancy } from "../../../utils/breeding-manager";
 import {
   MAX_ENERGY,
+  PRODUCTION_MIN_HUNGER,
   getEnergyCost,
   getPersonalityCooldownMultiplier,
   getToadEnergy,
@@ -66,17 +68,25 @@ const formatCooldownLeft = (ms: number): string => {
 export const ToadInfo = () => {
   const {
     selectedToad: toad,
-    toads,
     allToads,
     selectToad,
     handleFeedToads,
     ownedScenes,
-    currentScene,
     account,
   } = useToads();
   const { playCrunchShort, playCrunch } = useSoundEffects();
   const { addNotification } = useNotifications();
   const { closeModal } = useModal();
+
+  /**
+   * Жабы для листания карточки стрелками: вся колония, самые редкие — первыми.
+   * Раньше листались только жабы «текущего вольера», но карточку открывают с любого
+   * гекса, в том числе из списка чужого вольера.
+   */
+  const toads = useMemo(
+    () => [...allToads].sort((a, b) => b.genes.rarity - a.genes.rarity),
+    [allToads]
+  );
 
   // Local State
   const [isEditingName, setIsEditingName] = useState(false);
@@ -176,18 +186,20 @@ export const ToadInfo = () => {
     }
   };
 
-  const handleMove = (sceneId: number | null) => {
-    if (sceneId !== null) {
-      const scene = getGameState().scenes.find((s) => s.id === sceneId);
-      const count = getGameState().toads.filter(
-        (t) => t.scene_id === sceneId
-      ).length;
-      if (!scene || scene.capacity <= count) {
-        addNotification({ type: "warn", content: "Вольер переполнен!" });
-        return;
-      }
+  /**
+   * Переселение жабы в другой вольер: он становится её новым домом (`scene_id`),
+   * а комната колонии освобождается — физически жаба идёт в вольер.
+   */
+  const handleMove = (sceneId: number) => {
+    const scene = getGameState().scenes.find((s) => s.id === sceneId);
+    const count = getGameState().toads.filter((t) => t.scene_id === sceneId).length;
+
+    if (!scene || scene.capacity <= count) {
+      addNotification({ type: "warn", content: "Вольер переполнен!" });
+      return;
     }
-    updateToadById(toad.id, { scene_id: sceneId });
+
+    moveToadToAviary(toad.id, sceneId);
     handleNav("next");
   };
 
@@ -540,11 +552,14 @@ export const ToadInfo = () => {
           </div>
 
           {/* PROGRESS BARS */}
+          {/* Полоса «Сытость»: красная у жаб, которые уже не вырабатывают биомассу (голод ≤ порога) */}
           <ProgressBar
             label="Сытость"
             current={toad.state?.hunger || 0}
             max={100}
-            color={(toad.state?.hunger || 0) < 30 ? "red" : "green"}
+            color={
+              (toad.state?.hunger || 0) <= PRODUCTION_MIN_HUNGER ? "red" : "green"
+            }
             icon={InfoIcons.hunger}
           />
 
@@ -611,14 +626,9 @@ export const ToadInfo = () => {
                   isOpen
                   onClose={() => toggleTooltip("scenes")}
                 >
-                  <button
-                    onClick={() => handleMove(null)}
-                    className="w-full text-left p-2 hover:bg-gray-600 rounded text-xs"
-                  >
-                    📦 На склад
-                  </button>
+                  {/* Склада жаб больше нет: у каждой жабы есть вольер, и он — её дом */}
                   {ownedScenes
-                    .filter((s) => s.id !== currentScene.id)
+                    .filter((s) => s.id !== toad.scene_id)
                     .map((s) => (
                       <button
                         key={s.id}

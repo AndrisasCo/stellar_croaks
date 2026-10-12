@@ -1,5 +1,6 @@
 import { Toad } from "../../models/Toad";
 import { ColonyRoomKind, ColonyState } from "../../models/colony";
+import { Scene } from "../../models/scene";
 import { hexCoordKey, hexNeighbors } from "./hex-geometry";
 import {
   computePowerGrid,
@@ -22,7 +23,7 @@ import {
  * Правила застройки:
  *  - вид комнаты к гексу не привязан: любую комнату можно поставить на любой свободный
  *    гекс колонии, ядро в центре занято с начала игры; карта растёт фронтом — у новой
- *    постройки открываются три гекса следующего кольца (см. `getUnlockedRooms`);
+ *    постройки открываются все шесть соседних гексов (см. `getUnlockedRooms`);
  *  - коллайдер, магазин и диссоциатор — единственные в колонии: второй такой не поставить;
  *  - остальные комнаты строятся сколько угодно раз, каждая следующая дороже;
  *  - сразу после постройки комната обесточена — ток появится, когда рядом окажется ядро
@@ -102,16 +103,39 @@ export const BUILD_OPTIONS: BuildOption[] = ROOM_BLUEPRINT_ORDER.map((kind) => {
  * Карта колонии: базовые комнаты плюс всё, что игрок возвёл сам.
  *
  * Открытые гексы считает `getUnlockedRooms`: к базовой карте добавляется фронт застройки —
- * три гекса следующего кольца у каждой постройки. Поэтому застройка расширяет карту не
+ * все шесть соседних гексов у каждой постройки. Поэтому застройка расширяет карту не
  * кольцом, а локально, вокруг новой комнаты, и медовая сетка территории обступает колонию
  * по её форме (см. `HexMapCanvas` → `drawBackdrop`).
  */
-export const resolveColonyRooms = (colony: ColonyState): RoomConfig[] => {
+export const resolveColonyRooms = (
+  colony: ColonyState,
+  scenes: Scene[] = [],
+): RoomConfig[] => {
+  /**
+   * Вольеры карты: постройка-вольер помнит свой вольер (`ColonyRoomState.sceneId`),
+   * а базовому гексу «Вольер» достаётся вольер, который не заняла ни одна постройка, —
+   * так у каждого гекса-вольера есть свой `Scene` и он показывает своих жильцов.
+   * Мирные вызовы (прогноз тока, проверки) сцены не передают — тогда вольеры стоят без
+   * вольера: их жильцы не рисуются, но и не мешают (ток от вольера не зависит).
+   */
+  const claimedScenes = new Set(
+    colony.rooms
+      .map((room) => room.sceneId)
+      .filter((sceneId): sceneId is number => sceneId !== undefined),
+  );
+  const freeScene = scenes.find((scene) => !claimedScenes.has(scene.id));
   const rooms = getUnlockedRooms(colony.rooms).map((room) => {
     const built = colony.rooms.find((item) => item.id === room.id);
 
     // Слот застроили — на карте стоит комната того вида, который выбрал игрок
-    return built ? createColonyRoom(room, built.kind) : room;
+    if (!built) {
+      // Базовый гекс «Вольер»: его вольер — свободный `Scene` (сейвы строек помнят свои)
+      return room.kind === "aviary" && freeScene
+        ? { ...room, sceneId: freeScene.id }
+        : room;
+    }
+
+    return createColonyRoom(room, built.kind, built.sceneId);
   });
 
   // Свободные гексы, доступные под застройку, помечаем плюсом — их видно на карте

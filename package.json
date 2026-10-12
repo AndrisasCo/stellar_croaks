@@ -14,7 +14,8 @@
     "verify:init-data": "node tmp-verify-init-data.mjs",
     "verify:stars": "node tmp-verify-stars.mjs",
     "verify:platform": "node tmp-verify-platform.mjs",
-    "verify": "npm run verify:init-data && npm run verify:stars && npm run verify:platform"
+    "verify:assets": "node tmp-verify-assets.mjs",
+    "verify": "npm run verify:init-data && npm run verify:stars && npm run verify:platform && npm run verify:assets"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.81.0",

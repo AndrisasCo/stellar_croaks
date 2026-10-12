@@ -105,6 +105,23 @@ const createState = (toad: Toad, spawn: Point, hexSize: number): ToadState => ({
   lastBounce: -1,
 });
 
+/**
+ * Спрайта нет — жабу не нарисовать. Сообщаем об этом один раз: пустая жабa выглядит как
+ * загадка, а в консоли сразу видно, что дело в текстурах (обычно это битый путь ассета,
+ * см. `ToadCanvas/utils.ts`).
+ */
+let warnedAboutMissingSprite = false;
+const warnAboutMissingSprite = (toad: Toad) => {
+  if (warnedAboutMissingSprite) {
+    return;
+  }
+
+  warnedAboutMissingSprite = true;
+  console.warn(
+    `Нет текстуры жабы (тип: ${toad.type}, стадия: ${toad.stage}) — проверьте спрайты в public/sprites`,
+  );
+};
+
 const createToad = (
   toad: Toad,
   state: ToadState,
@@ -117,8 +134,14 @@ const createToad = (
     ? texturesRef.current?.toadpoleTextures
     : getTextureByType(texturesRef, toad.type);
 
+  if (!textures?.length) {
+    warnAboutMissingSprite(toad);
+  }
+
   const container = new Container() as ToadContainer;
-  const sprite = new Sprite(textures?.[0] ?? Texture.WHITE);
+  // Без спрайта рисуем пустую текстуру, а не `Texture.WHITE`: белый квадрат под тинтом
+  // выглядит как «цветной прямоугольник» и прячет настоящую причину
+  const sprite = new Sprite(textures?.[0] ?? Texture.EMPTY);
 
   sprite.anchor.set(0.5);
   container.addChild(sprite);

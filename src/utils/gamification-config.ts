@@ -1,5 +1,5 @@
 import { getPersonalityMultipliers, Toad } from "../models/Toad";
-import { BonusType, getBoostByScene, Scene } from "../models/scene";
+import { Scene } from "../models/scene";
 import { getDiseasePenaltyMultiplier } from "../models/disease";
 
 // === Размножение: энергия и cooldown (Часть 3.2) ===
@@ -80,8 +80,13 @@ export const HUNGER_PER_DAY = 40;
 export const BIOMASS_PER_TOAD_HOUR = 2.1;
 /** Расход биомассы на содержание одной жабы в час (апкипинг) */
 export const UPKEEP_PER_TOAD_HOUR = 0.6;
-/** При голоде ниже порога выработка падает до нуля */
-export const PRODUCTION_MIN_HUNGER = 30;
+/**
+ * При голоде не выше порога выработка падает до нуля.
+ * Порог держим на уровне кормления автокормушки (см. `AUTO_FEED_HUNGER` в `utils/auto-feeder.ts`):
+ * кормушка доливает жабу раньше, чем её выработка успевает упасть, — у комнаты с апгрейдом
+ * нет «мёртвой зоны», когда жаба ест, но ничего не производит.
+ */
+export const PRODUCTION_MIN_HUNGER = 20;
 /** Курс обмена биомассы на Кваксы (2 биомассы = 1 квакс) */
 export const BIOMASS_TO_TOKENS_RATE = 0.5;
 
@@ -134,22 +139,16 @@ export const getBreedBiomassCost = (toad: Toad): number =>
 export const getBreedPairBiomassCost = (male: Toad, female: Toad): number =>
   getBreedBiomassCost(male) + getBreedBiomassCost(female);
 
-/** Отдых после скрещивания: base × (1 + rarity/10) × характер / бонус сцены */
-export const getBreedCooldownMs = (
-  toad: Toad,
-  withSceneBoost = true
-): number => {
+/**
+ * Отдых после скрещивания: `base × (1 + rarity/10) × характер`.
+ * Ускорения от бонусов вольера («ускоренная беременность») удалены как легаси.
+ */
+export const getBreedCooldownMs = (toad: Toad): number => {
   const personalityMult = getPersonalityCooldownMultiplier(
     toad.genes.personality
   );
-  const base =
-    BREED_COOLDOWN_BASE_MS * (1 + toad.genes.rarity / 10) * personalityMult;
-  if (!withSceneBoost) {
-    return base;
-  }
 
-  const boost = getBoostByScene(toad.scene_id, BonusType.pregnancy);
-  return base / boost;
+  return BREED_COOLDOWN_BASE_MS * (1 + toad.genes.rarity / 10) * personalityMult;
 };
 
 /** Готова ли жаба к скрещиванию прямо сейчас */

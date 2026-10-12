@@ -95,6 +95,14 @@ globalThis.localStorage = {
   },
 };
 
+/**
+ * Заглушки браузера: платформенный слой (`src/platform`) читает localStorage через
+ * `window.localStorage`. Без этого чтения возвращали null и проверки видели пустое
+ * состояние игры (склады, вольеры и т.д.).
+ */
+globalThis.window ||= { dispatchEvent: () => true, addEventListener: () => {} };
+globalThis.window.localStorage = globalThis.localStorage;
+
 const cfg = bundle("src/utils/expedition-config.ts", "expedition-config");
 const models = bundle("src/models/expedition.ts", "models-expedition");
 const storage = bundle("src/utils/storage.ts", "storage");

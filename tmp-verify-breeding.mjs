@@ -10,7 +10,8 @@
  *      беременности с уведомлением, а уход в поход/выбывание срывает пару;
  *   4) слоты гнезда заняты ухаживанием и беременностью;
  *   5) гнездо как комната: 2 взрослые жабы, обесточенная комната жаб не принимает,
- *      ухаживающую жабу с карты не унести;
+ *      ухаживающую жабу с карты не унести, а каждый гекс-вольер показывает своих жильцов
+ *      (`RoomConfig.sceneId`), а не один общий список жаб;
  *   6) астро-кваксы ускоряют ухаживание, «Прервать» оставляет пару в гнезде;
  *   7) роды: в гнезде головастики остаются у матери, в вольере — расходятся по вольерам.
  *
@@ -141,6 +142,13 @@ globalThis.localStorage = {
     raw = "";
   },
 };
+
+/**
+ * Платформенный слой (`src/platform`) читает localStorage через `window.localStorage`:
+ * в браузере это один и тот же объект, поэтому в заглушке тоже отдаём его туда.
+ * Без этого сохранение игры молча падало и проверки гнезда видели пустое состояние.
+ */
+globalThis.window.localStorage = globalThis.localStorage;
 
 /** Сброс состояния игры между проверками */
 const reset = (patch) => {
@@ -362,7 +370,15 @@ check("самец остался в гнезде", findToad(1).roomId, constants
 console.log("\n[5] Гнездо как комната на карте");
 console.log("─".repeat(60));
 reset();
-const colonyRooms = colonyBuild.resolveColonyRooms({ rooms: [] });
+// Вольеры карты: базовый гекс «Вольер» показывает вольер колонии, постройка — свой
+// (`ColonyRoomState.sceneId` → `RoomConfig.sceneId`), иначе один список жаб рисовался бы
+// на всех гексах-вольерах сразу.
+const baseScene = { id: 1, name: "Био Под", capacity: 20, created_at: "" };
+const secondScene = { id: 99, name: "Вольер #2", capacity: 20, created_at: "" };
+const colonyRooms = colonyBuild.resolveColonyRooms(
+  { rooms: [{ id: "outpost-0", kind: "aviary", builtAt: "", sceneId: secondScene.id }] },
+  [baseScene, secondScene]
+);
 const grid = colonyBuild.getPowerGrid(colonyRooms, {});
 const nest = rooms.HEX_ROOM_BY_ID[constants.NEST_ROOM_ID];
 check("id гнезда совпадает с картой", nest.kind, "breeding");
@@ -370,6 +386,16 @@ check(
   "гнездо под током (ядро питает кольцо 1)",
   colonyBuild.isRoomPowered(nest, grid),
   true
+);
+check(
+  "базовый гекс вольера показывает вольер колонии",
+  colonyRooms.find((room) => room.id === "aviary").sceneId,
+  baseScene.id
+);
+check(
+  "построенный гекс вольера показывает свой вольер",
+  colonyRooms.find((room) => room.id === "outpost-0").sceneId,
+  secondScene.id
 );
 
 const adult = toad();
@@ -406,11 +432,14 @@ checkText(
   /ухаживает в гнезде/
 );
 
-const mapLists = toadLists.getRoomToadLists(
-  colonyRooms,
-  { [constants.NEST_ROOM_ID]: [toad({ id: 2 }), toad({ id: 7 })] },
-  { aviaryToads: [toad({ id: 1 })] }
-);
+// Гексы рисуют каждый своих жаб: вольер — жильцов своего вольера (`scene_id`),
+// комнаты — тех, кто физически в них сидит (`roomId`)
+const mapLists = toadLists.getRoomToadLists(colonyRooms, [
+  toad({ id: 1, scene_id: baseScene.id }),
+  toad({ id: 20, scene_id: secondScene.id }),
+  toad({ id: 2, scene_id: baseScene.id, roomId: constants.NEST_ROOM_ID }),
+  toad({ id: 7, scene_id: baseScene.id, roomId: constants.NEST_ROOM_ID }),
+]);
 check(
   "гнездо рисует только тех, кого туда посадили",
   mapLists[constants.NEST_ROOM_ID].length,
@@ -433,8 +462,26 @@ checkText(
   mapLists[constants.NEST_ROOM_ID].some((item) => item.id === 7) ? "да" : "нет",
   /да/
 );
-check("вольер рисует жильцов без дублей", mapLists.aviary.length, 1);
-check("у пустых гексов жаб нет", Boolean(mapLists["outpost-0"]), false);
+check("вольер показывает жильцов своего вольера", mapLists.aviary.length, 1);
+check("второй вольер показывает своих жильцов", mapLists["outpost-0"].length, 1);
+checkText(
+  "жаба из вольера не висит ещё и в гнезде",
+  mapLists[constants.NEST_ROOM_ID].some((item) => item.id === 1) ? "да" : "нет",
+  /нет/
+);
+check(
+  "в вольере не видно жаб из комнаты",
+  mapLists.aviary.some((item) => item.roomId) ? "да" : "нет",
+  "нет"
+);
+check("у пустых гексов жаб нет", Boolean(mapLists["slot-north"]), false);
+
+// Страховка: вольер без своего гекса (старые сейвы покупали вольеры в магазине)
+// показывает базовый гекс — жаба не пропадает с карты вовсе
+const orphanLists = toadLists.getRoomToadLists(colonyRooms, [
+  toad({ id: 300, scene_id: 12345 }),
+]);
+check("жаба из вольера без гекса видна на базовом вольере", orphanLists.aviary.length, 1);
 
 const darkColony = colonyBuild.resolveColonyRooms({
   rooms: [{ id: "outpost-0", kind: "storage", builtAt: "" }],

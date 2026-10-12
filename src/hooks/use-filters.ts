@@ -2,10 +2,13 @@ import { useState } from "react";
 import { SortByType, FilterByType } from "../components/shared/Filters";
 import { calculateSellPrice, Toad } from "../models/Toad";
 import { ToadTypes } from "../models/Toad/toad-species";
-import { useToads } from "../components/ToadContext";
 
+/**
+ * Сортировка и фильтрация списка жаб.
+ * Фильтры работают по тому списку, который передали (`toads`): список вольера приходит
+ * от гекса (`sceneId`), поэтому «текущего вольера» здесь больше нет.
+ */
 export const useFilters = (toads: Toad[]) => {
-  const { currentScene } = useToads();
   const [sortBy, setSortBy] = useState<SortByType>("rarity");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [filterBy, setFilterBy] = useState<FilterByType>("all");
@@ -80,8 +83,6 @@ export const useFilters = (toads: Toad[]) => {
         return toads.filter((t) => t.sex === "female");
       case "toadpoles":
         return toads.filter((t) => t.stage === "toadpole");
-      case "enclosure":
-        return toads.filter((t) => t.scene_id == currentScene.id);
       case "all":
       default:
         return toads;

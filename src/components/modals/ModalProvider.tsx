@@ -141,45 +141,90 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({
 
   const currentModal = modals.length > 0 ? modals[modals.length - 1] : null;
 
+  /**
+   * Оболочка модалки.
+   *
+   * Телефон: панель занимает весь экран (h-full по оверлею, без скруглений) — как и раньше,
+   * тут скрывать нечего. Десктоп (≥768px, брейкпоинт проекта): панель превращается в карточку
+   * по центру — `md:h-auto` снимает «на всю высоту», `md:max-w-5xl` делает пошире,
+   * появляются скругление, рамка и тень, чтобы окно читалось окном, а не ещё одним экраном.
+   *
+   * Фоновую картинку магазина (`bg-shop.webp`) убрали: панель — полупрозрачная (`bg-color-main`
+   * + blur), так что карта просвечивает, и колония не исчезает за «шторкой». Закрывающий крестик
+   * позиционируется от самой панели (relative), а не от экрана: на десктопе он стоит в углу
+   * карточки, а не сбоку за её пределами.
+   *
+   * Скроллится только тело `#modal` (grow + min-h-0), кнопка «Закрыть» остаётся под рукой.
+   *
+   * Ширину карточки на десктопе можно переопределить под содержимое:
+   * `openModal(<X/>, { className: "md:max-w-lg" })` — узкие меню просят себе узкую
+   * карточку, широкие списки (жабопедия, склад) остаются на общей `md:max-w-5xl`.
+   */
   const renderModal = () => {
     if (!modalRoot || !currentModal || !currentModal.isOpen) return null;
 
     const { component: Component, options = {} } = currentModal;
 
+    /** Клик мимо панели закрывает верхнюю модалку (`closeOnOverlayClick` из App.tsx). */
+    const handleOverlayClick = (event: React.MouseEvent<HTMLDivElement>) => {
+      if (event.target === event.currentTarget) {
+        closeModal();
+      }
+    };
+
     const modalContent = (
-      <>
-        <div className="overlay">
+      <div
+        className={`overlay md:p-4 ${options.overlayClassName ?? ""}`}
+        onClick={options.closeOnOverlayClick ? handleOverlayClick : undefined}
+      >
+        <div
+          style={options.bg ? { backgroundImage: `url(${options.bg})` } : {}}
+          className={[
+            // Каркас: колонка, всё внутри обрезается по скруглению панели
+            "relative flex h-full w-full flex-col overflow-hidden text-white",
+            "bg-color-main shadow-2xl backdrop-blur-md",
+            // Десктоп: карточка по центру — уже не во всю высоту, пошире, со скруглением
+            "md:h-auto md:max-h-[85dvh] md:max-w-5xl md:rounded-3xl md:border md:border-white/20",
+            // Анимация появления (index.css); без значения панель появляется без неё
+            options.animation ? `modal-anim-${options.animation}` : "",
+            options.className ?? "",
+          ]
+            .filter(Boolean)
+            .join(" ")}
+        >
+          {/* Полоска-акцент: тот же градиент, что у заголовков модалок (shared/Header) */}
+          <div className="h-1 w-full shrink-0 bg-gradient-to-r from-green-400 via-teal-500 to-purple-500" />
+
+          {/* no-overscroll: свайп по списку не уходит в pull-to-refresh — иначе
+              iOS Safari перезагружал страницу и «шторка» будто закрывалась сама.
+              grow + min-h-0 вместо фиксированной высоты: тело занимает остаток панели
+              на телефоне, а на пределе карточки скроллится само. */}
           <div
-            style={options.bg ? { backgroundImage: `url(${options.bg})` } : {}}
-            className={`"text-white h-full  w-full max-w-2xl max-h-[100dvh] overflow-hidden bg-[url('/bg/bg-shop.webp')] cover`}
+            id="modal"
+            className="no-overscroll flex min-h-0 grow flex-col overflow-y-auto px-1 py-4 md:px-6 md:py-5"
           >
-            {/* no-overscroll: свайп по списку не уходит в pull-to-refresh — иначе
-                iOS Safari перезагружал страницу и «шторка» будто закрывалась сама.
-                100dvh вместо 100vh: модалка не залезает под панель браузера. */}
-            <div
-              id="modal"
-              className="h-[100dvh] no-overscroll overflow-auto py-4 flex flex-col  bg-slate-900/50 backdrop-blur-[2px] px-1"
-            >
+            {options.showCloseButton && (
               <ClickButton
                 onClick={closeModal}
-                className="text-gray-300 z-50 absolute right-2 top-0 hover:text-green-400 text-5xl transition-colors duration-300 p-1 hover:scale-110"
+                aria-label="Закрыть"
+                className="absolute right-2 top-2 z-50 flex h-10 w-10 items-center justify-center rounded-full text-3xl leading-none text-gray-300 transition-colors duration-300 hover:scale-110 hover:bg-white/10 hover:text-green-400 md:right-3 md:top-3"
               >
                 ×
               </ClickButton>
+            )}
 
-              <Component {...options?.props} onClose={closeModal} />
+            <Component {...options?.props} onClose={closeModal} />
 
-              <div className="min-h-4" />
-              <ClickButton
-                className="w-full mt-auto relative bg-color-second hover:bg-slate-800/70 text-gray-200 py-3 rounded-xl "
-                onClick={closeModal}
-              >
-                Закрыть
-              </ClickButton>
-            </div>
+            <div className="min-h-4" />
+            <ClickButton
+              className="w-full mt-auto relative bg-color-second hover:bg-slate-800/70 text-gray-200 py-3 rounded-xl "
+              onClick={closeModal}
+            >
+              Закрыть
+            </ClickButton>
           </div>
         </div>
-      </>
+      </div>
     );
 
     return createPortal(modalContent, modalRoot);
