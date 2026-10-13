@@ -1,0 +1,205 @@
+import { useMemo } from "react";
+import { updateUser } from "../../backend";
+import { getRoomUpgrades } from "../../backend/colony";
+import { useColony } from "../../hooks/use-colony";
+import { useNotifications } from "../../hooks/use-notification";
+import { useSoundEffects } from "../../hooks/use-sound-effects";
+import { CURRENCY_CONFIG, DEMOLISH_ROOM_COST } from "../../utils/constants";
+import { useModal } from "../ModalContext";
+import { useToads } from "../ToadContext";
+import { ClickButton } from "../shared/ClickButton";
+import Modal from "../shared/Header";
+import {
+  getRoomCost,
+  getRoomCostAfterDemolish,
+  getRoomDemolishIssue,
+} from "../HexMap/colony-build";
+import {
+  getBuiltRoomKind,
+  RoomConfig,
+} from "../HexMap/rooms-config";
+
+/**
+ * Подтверждение сноса комнаты — модалка-развилка перед необратимым шагом.
+ *
+ * Снос платный (`DEMOLISH_ROOM_COST`) и всегда через подтверждение: за постройку Кваксы не
+ * возвращаются, улучшения комнаты сгорают (автокормушку не вернуть), а вернуть комнату можно
+ * только новой постройкой. Взамен гекс остаётся на карте свободным слотом — земля не теряется,
+ * а следующая комната того же вида дешевеет: цена считается по числу построенных
+ * (`colony-build.ts` → `getRoomCostAfterDemolish`), поэтому снос делает шаг назад.
+ *
+ * Модалку открывает список комнат ядра (`RoomUpgradeModal`): там же видно, что построено и
+ * где живут жабы. Правила сноса (не ядро и ни одной жабы внутри) — в `getRoomDemolishIssue`:
+ * они должны сходиться с тем, что игрок видит на гексе.
+ */
+export default function RoomDemolishModal({ room }: { room: RoomConfig }) {
+  const { closeModal } = useModal();
+  const { account, ownedScenes } = useToads();
+  const { colony, toadsByRoom, demolishRoom } = useColony();
+  const { addNotification } = useNotifications();
+  const { playOk, playBeep } = useSoundEffects();
+
+  const tokens = Math.floor(account?.tokens || 0);
+  const roomToads = toadsByRoom[room.id] ?? [];
+  const issue = getRoomDemolishIssue(room, roomToads);
+  const upgraded = Object.values(getRoomUpgrades(room)).some(Boolean);
+  const sceneName =
+    room.sceneId === undefined
+      ? null
+      : ownedScenes.find((scene) => scene.id === room.sceneId)?.name ?? null;
+  /** Вид комнаты из каталога построек: у гекса он шире (ядро и пустой слот сюда не попадают) */
+  const kind = getBuiltRoomKind(room);
+
+  /**
+   * Цены вокруг сноса: столько комната того же вида стоит сейчас и столько — после сноса.
+   * Считается по состоянию колонии, а не по сейву: список обновляется после каждой постройки.
+   */
+  const price = useMemo(() => {
+    // Открыть снос можно только у построенной комнаты: вид сужаем до каталога построек
+    if (!kind) {
+      return { now: 0, after: 0, saving: 0 };
+    }
+
+    const now = getRoomCost(colony, kind);
+    const after = getRoomCostAfterDemolish(colony, { id: room.id, kind });
+
+    return { now, after, saving: Math.max(0, now - after) };
+  }, [colony, kind, room.id]);
+
+  const affordable = tokens >= DEMOLISH_ROOM_COST;
+  const blocked = issue !== null || !affordable;
+
+  const handleDemolish = () => {
+    if (issue) {
+      playBeep();
+      addNotification({ type: "warn", content: issue });
+      return;
+    }
+
+    if (!affordable) {
+      playBeep();
+      addNotification({
+        type: "danger",
+        content: `Не хватает ${DEMOLISH_ROOM_COST - tokens} ${
+          CURRENCY_CONFIG.tokens.icon
+        }`,
+      });
+      return;
+    }
+
+    demolishRoom(room.id);
+    updateUser({ tokens: tokens - DEMOLISH_ROOM_COST });
+    playOk();
+    addNotification({
+      type: "success",
+      content: `${room.icon} ${room.title || "Комната"} снесена: гекс свободен${
+        price.saving > 0
+          ? `, следующая такая комната дешевле на ${price.saving} ${CURRENCY_CONFIG.tokens.icon}`
+          : ""
+      }.`,
+    });
+
+    // Сноса больше нет — модалка закрывается, карта перерисуется сама
+    closeModal();
+  };
+
+  return (
+    <Modal icon={<span className="text-2xl">🗑</span>} title="Снос комнаты">
+      <div className="px-2 pb-2">
+        <div className="mb-3 rounded-xl border border-rose-500/40 bg-rose-900/20 p-2">
+          <div className="mb-1 flex items-center justify-between text-xs">
+            <span className="font-bold text-rose-200">Шаг необратимый</span>
+            <span className="text-amber-200">
+              {CURRENCY_CONFIG.tokens.icon} {tokens}
+            </span>
+          </div>
+          <p className="text-2xs leading-snug text-rose-100">
+            Комната уходит с карты навсегда: Кваксы за постройку не возвращаются, улучшения
+            сгорают. Взамен гекс остаётся свободным слотом — его можно застроить заново.
+          </p>
+        </div>
+
+        <div className="mb-2 rounded-xl border border-gray-600/40 bg-color-second p-2">
+          <div className="flex items-center gap-2">
+            <span className="text-2xl">{room.icon}</span>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-1 text-sm font-semibold text-amber-100">
+                {room.title}
+                {sceneName && (
+                  <span className="text-2xs font-normal text-gray-400">
+                    «{sceneName}»
+                  </span>
+                )}
+              </div>
+              <div className="text-2xs leading-snug text-gray-400">
+                {room.subtitle} · жаб в комнате: {roomToads.length}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="mb-2 space-y-1 rounded-xl border border-gray-600/40 bg-color-second p-2 text-2xs leading-snug text-gray-300">
+          <div>
+            🗺 Гекс останется на карте свободным слотом: территорию снос не отбирает, гексы
+            вокруг него тоже остаются открытыми.
+          </div>
+          <div>
+            🐸 Жабы:{" "}
+            {roomToads.length > 0
+              ? `${roomToads.length} — сначала переселите их в вольер.`
+              : "в комнате пусто"}
+          </div>
+          {upgraded && (
+            <div className="text-rose-300">
+              🍎 Улучшения комнаты сгорят: автокормушка уйдёт вместе с ней.
+            </div>
+          )}
+          {price.saving > 0 ? (
+            <div className="text-emerald-300">
+              💰 Следующая «{room.title}» будет стоить {price.after} вместо {price.now}{" "}
+              {CURRENCY_CONFIG.tokens.icon} — снос делает шаг назад по цене.
+            </div>
+          ) : (
+            <div>
+              💰 Цена комнаты того же вида после сноса не изменится (шаг роста у неё
+              единичный).
+            </div>
+          )}
+        </div>
+
+        {issue && (
+          <p className="mb-2 rounded-xl border border-rose-500/40 bg-rose-900/20 p-2 text-2xs leading-snug text-rose-100">
+            {issue}
+          </p>
+        )}
+
+        <div className="flex items-center justify-between gap-2">
+          <span
+            className={`text-sm ${affordable ? "text-amber-200" : "text-rose-300"}`}
+          >
+            {DEMOLISH_ROOM_COST} {CURRENCY_CONFIG.tokens.icon}
+          </span>
+          <div className="flex items-center gap-2">
+            <ClickButton
+              onClick={closeModal}
+              className="rounded-lg bg-gray-700/60 px-3 py-1 text-xs font-bold text-gray-200 transition-all hover:bg-gray-600/60 active:scale-95"
+            >
+              Оставить
+            </ClickButton>
+            <ClickButton
+              onClick={handleDemolish}
+              disabled={blocked}
+              className={`rounded-lg px-3 py-1 text-xs font-bold transition-all ${
+                blocked
+                  ? "cursor-not-allowed bg-gray-700/60 text-gray-400"
+                  : "bg-rose-600 text-white hover:bg-rose-500 active:scale-95"
+              }`}
+            >
+              Уничтожить
+            </ClickButton>
+          </div>
+        </div>
+      </div>
+    </Modal>
+  );
+}

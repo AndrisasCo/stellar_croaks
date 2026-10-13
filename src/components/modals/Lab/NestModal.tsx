@@ -26,7 +26,11 @@ import {
   upgradeNestSlots,
 } from "../../../utils/breeding-manager";
 import { placeToadInRoom, releaseToadFromRoom } from "../../../backend/colony";
-import { CURRENCY_CONFIG, NEST_ROOM_ID, TYPE_ICONS } from "../../../utils/constants";
+import {
+  CURRENCY_CONFIG,
+  NEST_ROOM_ID,
+  TYPE_ICONS,
+} from "../../../utils/constants";
 import {
   ASTRO_PRICES,
   acceleratePregnancy,
@@ -104,12 +108,12 @@ const CandidateRow = ({
   const status = isDown
     ? "выбита из строя"
     : isPregnant
-    ? "🍼 вынашивает"
-    : cooldownLeft > 0
-    ? `отдых: ${formatCooldown(cooldownLeft)}`
-    : energy < cost
-    ? `нужно ⚡${cost}`
-    : "готова к паре";
+      ? "🍼 вынашивает"
+      : cooldownLeft > 0
+        ? `отдых: ${formatCooldown(cooldownLeft)}`
+        : energy < cost
+          ? `нужно ⚡${cost}`
+          : "готова к паре";
 
   return (
     <button
@@ -120,8 +124,8 @@ const CandidateRow = ({
         isDown
           ? "opacity-50 cursor-not-allowed border-gray-600/40 bg-color-main"
           : isReady
-          ? "border-emerald-500/40 bg-color-main hover:border-emerald-400"
-          : "border-gray-600/50 bg-color-main hover:border-emerald-400/50"
+            ? "border-emerald-500/40 bg-color-main hover:border-emerald-400"
+            : "border-gray-600/50 bg-color-main hover:border-emerald-400/50"
       }`}
     >
       <div className="flex items-center justify-between gap-1">
@@ -170,7 +174,7 @@ export default function NestModal({ roomId = NEST_ROOM_ID }: NestModalProps) {
 
   /** Жабы, которые физически стоят в этом гнезде: их и показывают слоты */
   const nestToads = allToads.filter(
-    (toad) => toad.roomId === roomId && toad.status !== "out"
+    (toad) => toad.roomId === roomId && toad.status !== "out",
   );
   /** Взрослые занимают места гнезда… */
   const nestAdults = nestToads.filter((toad) => toad.stage === "adult");
@@ -190,14 +194,16 @@ export default function NestModal({ roomId = NEST_ROOM_ID }: NestModalProps) {
   /** Два места гнезда: занятые жабами и пустые (нажатие на пустое открывает список) */
   const slots = Array.from(
     { length: NEST_ROOM_TOAD_SLOTS },
-    (_, index) => nestAdults[index] ?? null
+    (_, index) => nestAdults[index] ?? null,
   );
   const hasFreeSlot = nestAdults.length < NEST_ROOM_TOAD_SLOTS;
 
   /** Статус жабы в гнезде: ухаживает / вынашивает / ждёт пару */
   const toadStatus = (toad: Toad): string => {
     if (toad.mating) {
-      const partner = allToads.find((item) => item.id === toad.mating?.partnerId);
+      const partner = allToads.find(
+        (item) => item.id === toad.mating?.partnerId,
+      );
 
       return `🫧 ухаживает: ${formatWait(getMatingTimeLeft(toad))} с ${
         partner?.name ?? "партнёром"
@@ -221,7 +227,7 @@ export default function NestModal({ roomId = NEST_ROOM_ID }: NestModalProps) {
       (toad) =>
         toad.stage === "adult" &&
         toad.status !== "out" &&
-        !isNestRoomId(toad.roomId)
+        !isNestRoomId(toad.roomId),
     )
     .sort((a, b) => b.genes.rarity - a.genes.rarity);
 
@@ -261,10 +267,10 @@ export default function NestModal({ roomId = NEST_ROOM_ID }: NestModalProps) {
   const pregnant = allToads.filter(
     (toad) =>
       toad.scene_id === (hostScene?.id ?? null) &&
-      Boolean(toad.pregnancy?.isPregnant)
+      Boolean(toad.pregnancy?.isPregnant),
   );
   const courting = nestAdults.filter(
-    (toad) => toad.sex === "female" && toad.mating
+    (toad) => toad.sex === "female" && toad.mating,
   );
   const biomass = Math.floor(account?.biomass || 0);
   const astro = Math.floor(getAstroBalance());
@@ -292,10 +298,10 @@ export default function NestModal({ roomId = NEST_ROOM_ID }: NestModalProps) {
   const nestHint = ((): string | null => {
     if (courtingToad) {
       const partner = allToads.find(
-        (toad) => toad.id === courtingToad.mating?.partnerId
+        (toad) => toad.id === courtingToad.mating?.partnerId,
       );
       return `🫧 Ухаживание идёт: ${partner?.name ?? "пара"} — старт беременности через ${formatWait(
-        getMatingTimeLeft(courtingToad)
+        getMatingTimeLeft(courtingToad),
       )}`;
     }
 
@@ -304,7 +310,7 @@ export default function NestModal({ roomId = NEST_ROOM_ID }: NestModalProps) {
     }
 
     if (nestAdults.length === 0) {
-      return "Посадите в гнездо самца и самку — потом жмите «Начать ухаживание».";
+      return "Посадите в гнездо самца и самку ";
     }
 
     if (!nestMale || !nestFemale) {
@@ -436,11 +442,12 @@ export default function NestModal({ roomId = NEST_ROOM_ID }: NestModalProps) {
         </div>
 
         <p className="text-1xs text-gray-400 text-center leading-snug">
-          Посадите в гнездо самца и самку и нажмите «Начать ухаживание»: ухаживание
-          занимает {MATING_MIN_MINUTES}–{MATING_MAX_MINUTES} мин, и только потом у
-          самки стартует беременность. Из гнезда жабы не уходят — и после ухаживания,
-          и после родов их выносит игрок. Головастики, рождённые в гнезде, остаются
-          рядом с матерью, даже если гнездо переполнено.
+          Посадите в гнездо самца и самку и нажмите «Начать ухаживание»:
+          ухаживание занимает {MATING_MIN_MINUTES}–{MATING_MAX_MINUTES} мин, и
+          только потом у самки стартует беременность. Из гнезда жабы не уходят —
+          и после ухаживания, и после родов их выносит игрок. Головастики,
+          рождённые в гнезде, остаются рядом с матерью, даже если гнездо
+          переполнено.
         </p>
 
         {/* Места гнезда: занятые жабы и пустые слоты */}
@@ -524,11 +531,13 @@ export default function NestModal({ roomId = NEST_ROOM_ID }: NestModalProps) {
               >
                 ＋ Свободный слот — посадить жабу
               </button>
-            )
+            ),
           )}
 
           {nestHint && (
-            <div className="text-2xs text-amber-200 leading-snug">{nestHint}</div>
+            <div className="text-2xs text-amber-200 leading-snug">
+              {nestHint}
+            </div>
           )}
         </div>
 

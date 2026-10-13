@@ -83,12 +83,15 @@ const ROOM_MODAL_BY_ACTION: Record<RoomActionId, RoomModalEntry> = {
   feed: null,
   // Гнёзд в колонии может быть несколько: гекс открывает модалку сам (см. обработчик клика),
   // здесь — запасной путь для базового гнезда `NEST_ROOM_ID`.
-  nest: { render: () => <NestModal />, bg: "/bg/bg-lab.webp" },
-  collider: { render: () => <ToadCollider />, bg: "/bg/bg-lab.webp" },
-  incubator: { render: () => <ToadSlotModal />, bg: "/bg/bg-lab.webp" },
-  dissociator: { render: () => <DissolveModal />, bg: "/bg/bg-lab.webp" },
+  nest: { render: () => <NestModal /> },
+  collider: { render: () => <ToadCollider /> },
+  incubator: { render: () => <ToadSlotModal /> },
+  dissociator: { render: () => <DissolveModal /> },
   shop: { render: () => <ShopMenu /> },
   storage: { render: () => <StorageModal /> },
+  // «Разведка» на карте открывается по гексу (модалке нужен `roomId`: команду собирают из жаб
+  // этой комнаты — см. обработчик клика). Здесь — запасной путь из бургер-меню: модалка сама
+  // найдёт «Разведку» с жабами внутри, а если такой нет — первую построенную.
   scout: { render: () => <ExpeditionModal /> },
   hospital: { render: () => <ExpeditionModal initialTab="infirmary" /> },
   // ⚡-комната открывается отдельно: её модалке нужна сама комната
@@ -109,7 +112,8 @@ const ROOM_MODAL_BY_ACTION: Record<RoomActionId, RoomModalEntry> = {
  *  - вольер      → список жаб и кормление;
  *  - гнездо      → размножение;
  *  - коллайдер / инкубатор / диссоциатор → лаборатория;
- *  - магазин, склад, разведка, лазарет → их собственные модалки;
+ *  - магазин, склад, лазарет → их собственные модалки;
+ *  - разведка    → походы: модалке передаётся гекс, а команду собирают из жаб этой комнаты;
  *  - ⚡-комната   → жабы-энергетики внутри;
  *  - свободный гекс → меню застройки (любую комнату — на любой гекс);
  *  - панель колонии в HUD → статистика вольера, чип 🍎 — покормить всех.
@@ -166,7 +170,8 @@ export default function HexMapScreen() {
       return;
     }
 
-    // Новая постройка открыла соседей — 3 гекса за комнату (меньше, если фронты пересеклись)
+    // Новая постройка открыла соседей: её гекс, боковые слоты того же кольца и гексы наружу —
+    // до пяти за комнату (меньше, если часть соседей уже открыта фронтом других комнат)
     const opened = unlockedCount - previous;
 
     addNotification({
@@ -334,7 +339,7 @@ export default function HexMapScreen() {
 
       // Гнездо: гнёзд в колонии может быть несколько — модалка знает, какой гекс открыли
       if (room.kind === "breeding") {
-        openModal(() => <NestModal roomId={room.id} />, { bg: "/bg/bg-lab.webp" });
+        openModal(() => <NestModal roomId={room.id} />);
         return;
       }
 
@@ -347,6 +352,13 @@ export default function HexMapScreen() {
         }
 
         openModal(() => <ToadListModal sceneId={sceneId} />);
+        return;
+      }
+
+      // «Разведка»: модалке нужен её гекс — команду собирают из жаб этой комнаты
+      // (тап по жабе комнаты ставит её на сильную роль, «Собрать команду» занимает роли)
+      if (room.kind === "scout") {
+        openModal(() => <ExpeditionModal roomId={room.id} />);
         return;
       }
 
@@ -383,15 +395,14 @@ export default function HexMapScreen() {
     (toad: Toad, room: RoomConfig): ToadMoveCheck => {
       const aviaryScene =
         room.kind === "aviary" && room.sceneId !== undefined
-          ? ownedScenes.find((scene) => scene.id === room.sceneId) ?? null
+          ? (ownedScenes.find((scene) => scene.id === room.sceneId) ?? null)
           : null;
 
       return canMoveToadToRoom(toad, room, {
         roomToads: getRoomOccupants(room).filter((item) => item.id !== toad.id),
         aviaryCount: aviaryScene
           ? allToads.filter(
-              (item) =>
-                item.scene_id === aviaryScene.id && item.id !== toad.id
+              (item) => item.scene_id === aviaryScene.id && item.id !== toad.id,
             ).length
           : 0,
         aviaryCapacity: aviaryScene?.capacity ?? 0,
@@ -399,7 +410,7 @@ export default function HexMapScreen() {
         powerGrid,
       });
     },
-    [allToads, getRoomOccupants, ownedScenes, powerGrid, rooms]
+    [allToads, getRoomOccupants, ownedScenes, powerGrid, rooms],
   );
 
   /** Жабу перенесли: вольер принимает жильца, ⚡-комната — работника, «Разведка» — бойца. */

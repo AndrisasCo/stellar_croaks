@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import Modal from "../shared/Header";
 import { ClickButton } from "../shared/ClickButton";
+import { SwipeSlides } from "../shared/SwipeSlides";
 import { useNotifications } from "../../hooks/use-notification";
 import { useGameState } from "../../hooks/use-game-state";
 import { useColony } from "../../hooks/use-colony";
@@ -26,7 +27,6 @@ import {
   getExpeditionSendCost,
   getExpeditionSuccessChance,
   getHealCost,
-  getRolePower,
   getRoleStat,
   getSectorSuccessFactor,
   getSpeedUpReturnCost,
@@ -66,6 +66,18 @@ import {
 } from "../../utils/hospital";
 import { RoomConfig } from "../HexMap/rooms-config";
 import { canMoveToadToRoom, getToadMoveIssue } from "../HexMap/toad-move-rules";
+import {
+  assignToadToRole,
+  emptyExpeditionSlots,
+  ExpeditionSlots,
+  fillTeamFromCrew,
+  getAssignedRole,
+  getBestRole,
+  getCrewTapRole,
+  getRolePowerPercent,
+  removeToadFromTeam,
+  sortToadsByRolePower,
+} from "../../utils/expedition-crew";
 
 /** Часы/минуты/секунды до события похода */
 const formatDuration = (ms: number): string => {
@@ -190,30 +202,266 @@ const TeamStatusList: React.FC<{ expedition: Expedition }> = ({
   </div>
 );
 
+/** Группа жаб в выпадающем списке роли: «В «Разведке»» / «Жабы колонии» */
+interface RoleToadGroup {
+  label: string;
+  toads: Toad[];
+}
+
+/** Высота панели списка (max-h-60 = 15rem) — по ней решаем, открывать список вверх или вниз */
+const ROLE_MENU_HEIGHT = 240;
+
+/**
+ * Выпадающий список жабы для слота роли.
+ *
+ * Список отсортирован по силе роли (`sortToadsByRolePower`): сверху те, кому роль подходит
+ * больше, — рядом с каждой жабой её характеристика роли, сила в процентах и полоска.
+ * Жаба, занятая **другой** ролью, подсвечена янтарным и подписана ролью, в которой стоит:
+ * выбор перенесёт её сюда (одна жаба — одна роль, `assignToadToRole`); жаба «на этой роли» —
+ * зелёная. Родной `<select>` так не умеет: цвет строки, полоску и подпись роли в нём
+ * не нарисовать, а на iOS список рисует система.
+ *
+ * Правила поведения: список закрывается тапом мимо и клавишей Esc (Esc гасим в
+ * capture-фазе, иначе нажатие закрыло бы всю модалку — `ModalProvider` слушает ту же клавишу),
+ * а если снизу не хватает места — раскрывается вверх, не уезжая за край экрана.
+ */
+const RoleToadPicker: React.FC<{
+  role: ExpeditionRole;
+  /** id выбранной жабы или "" — слот пуст */
+  value: string;
+  /** Жаба в слоте (для строки-заголовка) */
+  picked?: Toad;
+  groups: RoleToadGroup[];
+  /** Какая роль занята жабой (undefined — жаба свободна) */
+  assignedRole: (toadId: number) => ExpeditionRole | undefined;
+  /** Куда сообщить выбор ("" — снять жабу с роли) */
+  onPick: (value: string) => void;
+}> = ({ role, value, picked, groups, assignedRole, onPick }) => {
+  const [open, setOpen] = useState(false);
+  /** Не хватает места снизу — список раскрывается вверх: иначе он уходит за край экрана */
+  const [dropUp, setDropUp] = useState(false);
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const config = ROLE_CONFIG[role];
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    const measure = () => {
+      const rect = rootRef.current?.getBoundingClientRect();
+
+      if (rect) {
+        setDropUp(window.innerHeight - rect.bottom < ROLE_MENU_HEIGHT);
+      }
+    };
+
+    measure();
+
+    const handlePointerDown = (event: MouseEvent | TouchEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("touchstart", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown, true);
+    window.addEventListener("resize", measure);
+    // Тело модалки скроллится: список едет вместе с ним, поэтому направление пересчитываем
+    window.addEventListener("scroll", measure, true);
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("touchstart", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown, true);
+      window.removeEventListener("resize", measure);
+      window.removeEventListener("scroll", measure, true);
+    };
+  }, [open]);
+
+  const toadsCount = groups.reduce((sum, group) => sum + group.toads.length, 0);
+
+  return (
+    <div ref={rootRef} className="relative min-w-0 flex-1">
+      <ClickButton
+        onClick={() => setOpen((prev) => !prev)}
+        aria-expanded={open}
+        title={
+          picked
+            ? `Заменить жабу в роли «${config.label}»`
+            : `Поставить жабу в роль «${config.label}»`
+        }
+        className={`flex w-full items-center gap-2 rounded-lg border px-2 py-1.5 transition-colors duration-300 ${
+          open
+            ? "border-amber-400/60 bg-slate-800/90"
+            : "border-gray-600/40 bg-slate-800/70 hover:bg-slate-700/70"
+        }`}
+      >
+        <span className="shrink-0 text-2xs">{config.icon}</span>
+        <span
+          className={`min-w-0 flex-1 truncate text-left text-2xs ${
+            picked ? "text-gray-100" : "text-gray-400"
+          }`}
+        >
+          {picked ? picked.name : "— пусто —"}
+        </span>
+        {picked && (
+          <span className="shrink-0 text-2xs font-bold text-amber-200">
+            {getRolePowerPercent(picked, role)}%
+          </span>
+        )}
+        <span
+          className={`shrink-0 text-3xs text-gray-400 transition-transform duration-300 ${
+            open ? "rotate-180" : ""
+          }`}
+        >
+          ▼
+        </span>
+      </ClickButton>
+
+      {open && (
+        <div
+          className={`no-overscroll absolute left-0 right-0 z-30 max-h-60 overflow-y-auto rounded-xl border border-gray-600/50 bg-slate-900/95 shadow-xl backdrop-blur-md ${
+            dropUp ? "bottom-full mb-1" : "top-full mt-1"
+          }`}
+        >
+          <p className="sticky top-0 z-10 bg-slate-900/95 px-2 py-1.5 text-3xs leading-snug text-gray-400">
+            Сверху — сильнее для роли «{config.label}» ({config.statLabel}).
+            Янтарная жаба уже в другой роли: выбор перенесёт её сюда.
+          </p>
+
+          {value !== "" && (
+            <ClickButton
+              onClick={() => {
+                onPick("");
+                setOpen(false);
+              }}
+              className="w-full border-b border-gray-700/40 px-2 py-1.5 text-left text-2xs text-gray-400 transition-colors duration-300 hover:bg-slate-700/60"
+            >
+              ✕ Снять жабу с роли
+            </ClickButton>
+          )}
+
+          {toadsCount === 0 && (
+            <p className="px-2 py-3 text-2xs leading-snug text-gray-400">
+              Нет доступных жаб: остальные в походе, ранены или ещё не выросли.
+            </p>
+          )}
+
+          {groups.map((group) => (
+            <div key={group.label}>
+              <p className="bg-slate-800/80 px-2 py-1 text-3xs uppercase tracking-wide text-amber-200/80">
+                {group.label}
+              </p>
+
+              {group.toads.map((toad) => {
+                const other = assignedRole(toad.id);
+                const own = other === role || String(toad.id) === value;
+                const percent = getRolePowerPercent(toad, role);
+
+                return (
+                  <ClickButton
+                    key={toad.id}
+                    onClick={() => {
+                      onPick(String(toad.id));
+                      setOpen(false);
+                    }}
+                    title={
+                      other && !own
+                        ? `Сейчас ${ROLE_CONFIG[other].label}: выбор перенесёт жабу в «${config.label}»`
+                        : `Поставить ${toad.name} в роль «${config.label}»`
+                    }
+                    className={`flex w-full items-center gap-2 border-b border-gray-700/30 px-2 py-1.5 text-left transition-colors duration-300 last:border-0 ${
+                      own
+                        ? "bg-emerald-900/40 hover:bg-emerald-800/50"
+                        : other
+                        ? "bg-amber-900/30 hover:bg-amber-800/40"
+                        : "hover:bg-slate-700/60"
+                    }`}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-2xs font-semibold text-gray-100">
+                        {toad.name}
+                      </p>
+                      <p className="truncate text-3xs text-gray-400">
+                        {getRoleStat(toad, role).toFixed(2)} {config.statLabel} ·{" "}
+                        {getToadHpStatusLabel(toad)}
+                        {own
+                          ? " · ✓ на этой роли"
+                          : other
+                          ? ` · в команде: ${ROLE_CONFIG[other].icon} ${
+                              ROLE_CONFIG[other].label
+                            }`
+                          : ""}
+                      </p>
+                    </div>
+
+                    <div className="w-12 shrink-0 text-right">
+                      <p className="text-2xs font-bold text-amber-200">
+                        {percent}%
+                      </p>
+                      <div className="mt-0.5 h-1 w-full overflow-hidden rounded-full bg-gray-700">
+                        <div
+                          className={`h-full rounded-full ${
+                            percent >= 70
+                              ? "bg-emerald-400"
+                              : percent >= 40
+                              ? "bg-amber-400"
+                              : "bg-red-400"
+                          }`}
+                          style={{ width: `${Math.min(100, percent)}%` }}
+                        />
+                      </div>
+                    </div>
+                  </ClickButton>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 type ExpeditionTab = "runs" | "send" | "infirmary";
 
-/** Пустые слоты команды (роль → id жабы) */
-const emptySlots = (): Record<ExpeditionRole, number | ""> => ({
-  scout: "",
-  tank: "",
-  medic: "",
-  hacker: "",
-  negotiator: "",
-});
-
+/**
+ * Модалка разведки: походы, сборка новой команды и лазарет.
+ *
+ * Команду собирают **из жаб комнаты «Разведка»**: гекс, из которого открыли модалку, приходит
+ * в `roomId`, и его жильцы идут первым списком — тап по жабе ставит её на сильную роль,
+ * повторный тап выводит из команды, а «Собрать команду» занимает все свободные роли
+ * (`utils/expedition-crew.ts`). В списках ролей жабы комнаты тоже идут первыми группой,
+ * а внутри группы — по силе роли (`sortToadsByRolePower`), как и в выпадающем списке роли
+ * (`RoleToadPicker`).
+ *
+ * Сектора Периметра — **горизонтальный слайдер**: на странице один поход (`SwipeSlides`),
+ * листается свайпом вправо-влево, стрелками и точками, и страница сразу выбирает сектор —
+ * «на экране» и «что отправят» не расходятся.
+ */
 const ExpeditionModal: React.FC<{
   onClose?: () => void;
   /** Вкладка, с которой открывается модалка: комната «Лазарет» открывает свою вкладку. */
   initialTab?: ExpeditionTab;
-}> = ({ initialTab = "runs" }) => {
+  /** Гекс «Разведки», из которого открыли модалку: его жильцы — экипаж для команды. */
+  roomId?: string;
+}> = ({ initialTab = "runs", roomId }) => {
   const { addNotification } = useNotifications();
   const state = useGameState();
   const [, setTick] = useState(0);
 
   const [tab, setTab] = useState<ExpeditionTab>(initialTab);
   const [sectorId, setSectorId] = useState<number>(SECTORS[0].id);
-  const [slots, setSlots] =
-    useState<Record<ExpeditionRole, number | "">>(emptySlots());
+  const [slots, setSlots] = useState<ExpeditionSlots>(emptyExpeditionSlots());
 
   // Походы живут по реальному времени — обновляем отсчёты раз в секунду
   useEffect(() => {
@@ -238,6 +486,19 @@ const ExpeditionModal: React.FC<{
 
   const selectedSector =
     SECTORS.find((item) => item.id === sectorId) ?? SECTORS[0];
+  /** Страница слайдера = выбранный сектор: свайп и стрелки двигают выбор сектора */
+  const sectorIndex = Math.max(
+    0,
+    SECTORS.findIndex((item) => item.id === selectedSector.id)
+  );
+  /**
+   * Сектор открыт? Листать закрытые можно (видно, что впереди), а отправлять — нет:
+   * без этой проверки свайп на закрытую страницу отправлял бы команду в закрытый сектор.
+   */
+  const sectorUnlocked = isSectorUnlocked(selectedSector, stats);
+  const unlockedSectors = SECTORS.filter((item) =>
+    isSectorUnlocked(item, stats)
+  ).length;
 
   const availableToads = useMemo(
     () => state.toads.filter((toad) => canSendToad(toad, expeditions).ok),
@@ -255,7 +516,8 @@ const ExpeditionModal: React.FC<{
   const canSend =
     members.length > 0 &&
     biomass >= sendCost &&
-    expeditions.length < teamLimit;
+    expeditions.length < teamLimit &&
+    sectorUnlocked;
 
   // Лазарет: койки комнаты и два списка — кто лежит и кому ещё нужна помощь.
   // Комнаты и жаб по комнатам берём из колонии теми же вычислениями, что и карта.
@@ -268,6 +530,72 @@ const ExpeditionModal: React.FC<{
   const hospitalIds = useMemo(
     () => hospitalRooms.map((room) => room.id),
     [hospitalRooms]
+  );
+
+  /**
+   * Комната «Разведка», из которой открыли модалку: её жильцы — экипаж, из которого
+   * собирают команду. Из бургер-меню гекса нет — берём «Разведку» с жабами внутри, а если
+   * и такой нет — первую построенную: пустую комнату модалка тоже показывает, чтобы игрок
+   * знал, куда сажать команду (построек «Разведки» может и не быть — тогда блока нет).
+   */
+  const crewRoom = useMemo(() => {
+    const scoutRooms = rooms.filter((room) => room.kind === "scout");
+
+    if (roomId) {
+      return scoutRooms.find((room) => room.id === roomId) ?? null;
+    }
+
+    return (
+      scoutRooms.find((room) => (toadsByRoom[room.id] ?? []).length > 0) ??
+      scoutRooms[0] ??
+      null
+    );
+  }, [rooms, roomId, toadsByRoom]);
+
+  /** Экипаж комнаты: те же жабы, что рисует карта (ушедшие в поход комнату покинули) */
+  const crew = useMemo(
+    () => (crewRoom ? toadsByRoom[crewRoom.id] : undefined) ?? [],
+    [crewRoom, toadsByRoom]
+  );
+
+  /** Кого из экипажа можно взять в поход — правило то же, что и у команды (`canSendToad`) */
+  const crewSendable = crew.filter((toad) => canSendToad(toad, expeditions).ok);
+
+  /**
+   * Жабы комнаты — отдельной группой вверху списков ролей: команду собирают из экипажа,
+   * а жабы всей колонии остаются ниже. Команда из одних экипажных жаб собирается в один тап.
+   */
+  const { crewAvailable, otherAvailable } = useMemo(() => {
+    const crewIds = new Set(crew.map((toad) => toad.id));
+
+    return {
+      crewAvailable: availableToads.filter((toad) => crewIds.has(toad.id)),
+      otherAvailable: availableToads.filter((toad) => !crewIds.has(toad.id)),
+    };
+  }, [availableToads, crew]);
+
+  /**
+   * Списки жаб для выпадающих списков ролей: группы те же (экипаж «Разведки» сверху),
+   * но внутри группы жабы отсортированы по силе роли — сверху тот, кому роль подходит
+   * больше (`sortToadsByRolePower`). Пустые группы в список не попадают.
+   */
+  const roleGroups = useMemo(
+    () =>
+      EXPEDITION_ROLE_ORDER.reduce((acc, role) => {
+        acc[role] = [
+          {
+            label: `🧭 В «Разведке» (${crewAvailable.length})`,
+            toads: sortToadsByRolePower(crewAvailable, role),
+          },
+          {
+            label: "Жабы колонии",
+            toads: sortToadsByRolePower(otherAvailable, role),
+          },
+        ].filter((group) => group.toads.length > 0);
+
+        return acc;
+      }, {} as Record<ExpeditionRole, RoleToadGroup[]>),
+    [crewAvailable, otherAvailable]
   );
 
   /** Жабы в походе: их не лечат и не переносят, пока команда не вернётся */
@@ -363,7 +691,7 @@ const ExpeditionModal: React.FC<{
     const result = startExpedition(sectorId, members);
     notify(result);
     if (result.success) {
-      setSlots(emptySlots());
+      setSlots(emptyExpeditionSlots());
       setTab("runs");
     }
   };
@@ -521,21 +849,227 @@ const ExpeditionModal: React.FC<{
     );
   };
 
-  /** Одна жаба — одна роль: занимая слот, освобождаем её из других */
-  const setSlot = (role: ExpeditionRole, toadId: number | "") => {
-    setSlots((prev) => {
-      const next = { ...prev };
-      if (toadId !== "") {
-        EXPEDITION_ROLE_ORDER.forEach((item) => {
-          if (next[item] === toadId) {
-            next[item] = "";
+  /**
+   * Строка экипажа комнаты: кто живёт в «Разведке» и что с ним можно сделать.
+   * Свободная жаба показывает свою сильную роль, жаба в команде — занятую ею роль;
+   * тап по кнопке ставит жабу в команду или выводит её оттуда.
+   */
+  const renderCrewCard = (toad: Toad) => {
+    const assigned = getAssignedRole(slots, toad.id);
+    const check = canSendToad(toad, expeditions);
+    // Подсказка — та же роль, куда жабу поставит тап, чтобы кнопка не обещала другого
+    const role = assigned ?? getCrewTapRole(slots, toad);
+    const config = ROLE_CONFIG[role];
+    /**
+     * Жаба уже в команде, но не на своей сильнейшей роли — карточка янтарная:
+     * видно, кого стоит переставить (тап уберёт жабу из команды, дальше — новый тап).
+     */
+    const best = getBestRole(toad);
+    const offRole = Boolean(assigned) && assigned !== best;
+
+    return (
+      <div
+        key={toad.id}
+        className={`rounded-xl px-2 py-1.5 border flex items-center gap-2 ${
+          !assigned
+            ? "bg-slate-800/40 border-gray-600/30"
+            : offRole
+            ? "bg-amber-950/30 border-amber-500/40"
+            : "bg-emerald-950/30 border-emerald-500/40"
+        }`}
+      >
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-semibold text-gray-100 truncate">
+            {toad.name}
+          </p>
+          <p className="text-2xs text-gray-400 truncate">
+            {!check.ok && !assigned
+              ? `⚠️ ${check.reason}`
+              : assigned
+              ? `в команде: ${config.icon} ${config.label} ${getRolePowerPercent(
+                  toad,
+                  assigned
+                )}%${
+                  offRole
+                    ? ` · сильнее: ${ROLE_CONFIG[best].icon} ${
+                        ROLE_CONFIG[best].label
+                      }`
+                    : ""
+                }`
+              : `пойдёт на роль: ${config.icon} ${config.label} ${getRolePowerPercent(
+                  toad,
+                  role
+                )}%`}
+          </p>
+        </div>
+
+        <ClickButton
+          onClick={() => handleCrewTap(toad)}
+          disabled={!assigned && !check.ok}
+          title={
+            assigned
+              ? `Убрать из команды (${config.label})`
+              : check.ok
+              ? `В команду: ${config.label}`
+              : check.reason
           }
-        });
-      }
-      next[role] = toadId;
-      return next;
+          className={`shrink-0 py-1.5 px-2 rounded-lg text-2xs font-bold border transition-colors duration-300 ${
+            assigned
+              ? "bg-amber-800/60 border-amber-400/70 text-amber-50 hover:bg-amber-700/70"
+              : check.ok
+              ? "bg-slate-800/60 border-gray-500/50 text-gray-200 hover:bg-slate-700/70"
+              : "bg-slate-800/40 border-gray-700/40 text-gray-500"
+          }`}
+        >
+          {assigned ? "✓ В команде" : "→ В команду"}
+        </ClickButton>
+      </div>
+    );
+  };
+
+  /** Тап по жабе комнаты: в команде — вывести, свободна — поставить на сильную роль */
+  const handleCrewTap = (toad: Toad) => {
+    if (getAssignedRole(slots, toad.id)) {
+      setSlots((prev) => removeToadFromTeam(prev, toad.id));
+      return;
+    }
+
+    const check = canSendToad(toad, expeditions);
+
+    if (!check.ok) {
+      addNotification({
+        type: "warn",
+        content: `${toad.name}: ${check.reason}`,
+      });
+      return;
+    }
+
+    setSlots((prev) =>
+      assignToadToRole(prev, toad.id, getCrewTapRole(prev, toad))
+    );
+  };
+
+  /** «Собрать команду»: свободные роли занимают самые сильные жабы комнаты */
+  const handleFillFromRoom = () => {
+    const next = fillTeamFromCrew(slots, crewSendable);
+    const filled = EXPEDITION_ROLE_ORDER.filter(
+      (role) => slots[role] === "" && next[role] !== ""
+    ).length;
+
+    if (filled === 0) {
+      addNotification({
+        type: "info",
+        content: "Все роли команды заняты: свободных мест нет.",
+      });
+      return;
+    }
+
+    setSlots(next);
+    addNotification({
+      type: "success",
+      content: `В команду из «Разведки» встали ${filled} жаб(ы) 🧭`,
     });
   };
+
+  /**
+   * Выбор жабы в списке роли: пусто — снять жабу с роли, иначе поставить её туда
+   * (одна жаба — одна роль, поэтому из прежней роли она уходит).
+   */
+  const handleRolePick = (role: ExpeditionRole, value: string) => {
+    setSlots((prev) => {
+      if (value === "") {
+        const current = prev[role];
+
+        return current === "" ? prev : removeToadFromTeam(prev, current);
+      }
+
+      return assignToadToRole(prev, Number(value), role);
+    });
+  };
+
+  /**
+   * Страницы слайдера секторов: один сектор — одна страница.
+   *
+   * Страница **и есть** выбор сектора (свайп вправо-влево, стрелки ‹ › и точки), поэтому
+   * на экране всегда тот сектор, который полетит в поход. Закрытые сектора листать можно —
+   * видно, что впереди, — но отправить туда не даст `canSend` (`sectorUnlocked`).
+   */
+  const sectorSlides = SECTORS.map((item) => {
+    const unlocked = isSectorUnlocked(item, stats);
+    const selected = item.id === selectedSector.id;
+    const sectorCost = getExpeditionSendCost(item, Math.max(1, members.length));
+    const backHours =
+      Math.round(item.durationHours * EXPEDITION_RETURN_RATIO * 10) / 10;
+
+    return (
+      <div
+        key={item.id}
+        className={`flex h-full flex-col gap-2 rounded-2xl border p-3 ${
+          !unlocked
+            ? "border-gray-700/40 bg-slate-900/40 text-gray-500"
+            : selected
+            ? "border-amber-400/70 bg-amber-900/50 text-amber-50"
+            : "border-gray-600/40 bg-slate-800/50 text-gray-200"
+        }`}
+      >
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <p className="text-sm font-bold">
+              {item.icon} {item.name}
+            </p>
+            <p className="text-2xs text-gray-400">{item.description}</p>
+          </div>
+          <span
+            className={`shrink-0 rounded-lg px-2 py-1 text-2xs font-bold ${
+              !unlocked
+                ? "bg-slate-900/60 text-gray-400"
+                : selected
+                ? "bg-amber-400/20 text-amber-100"
+                : "bg-slate-900/50 text-gray-300"
+            }`}
+          >
+            {!unlocked ? "🔒 закрыт" : selected ? "✓ выбран" : "открыт"}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-3 gap-1.5 text-center text-2xs">
+          <div className="rounded-lg bg-slate-900/40 px-1 py-1">
+            <p className="text-gray-400">Путь туда</p>
+            <p className="font-bold">{item.durationHours} ч</p>
+          </div>
+          <div className="rounded-lg bg-slate-900/40 px-1 py-1">
+            <p className="text-gray-400">Добыча</p>
+            <p className="font-bold">×{item.lootMultiplier}</p>
+          </div>
+          <div className="rounded-lg bg-slate-900/40 px-1 py-1">
+            <p className="text-gray-400">Риск</p>
+            <p className="font-bold">×{item.dangerMultiplier}</p>
+          </div>
+        </div>
+
+        <p className="text-2xs text-gray-400">
+          Глубина {item.depth} · обратно ~{backHours} ч · снаряжение {sectorCost} 🧪
+          на команду из {Math.max(1, members.length)} жаб
+        </p>
+
+        <p
+          className={`mt-auto text-2xs leading-snug ${
+            !unlocked
+              ? "text-amber-200/90"
+              : selected
+              ? "text-lime-300"
+              : "text-gray-500"
+          }`}
+        >
+          {!unlocked
+            ? `🔒 Откроется после ${item.unlockExpeditions} завершённых походов (сейчас ${stats.completed}). Разглядывать можно — отправить нет.`
+            : selected
+            ? "Команда полетит отсюда: соберём её в слотах ролей ниже."
+            : "Листайте вправо-влево — на странице один поход."}
+        </p>
+      </div>
+    );
+  });
 
   return (
     <Modal title="Разведка Периметра" icon={<span className="text-xl">🧭</span>}>
@@ -702,50 +1236,26 @@ const ExpeditionModal: React.FC<{
         {/* ВКЛАДКА: отправка новой команды */}
         {tab === "send" && (
           <div className="flex flex-col gap-3">
-            <div className="flex flex-col gap-1.5">
-              {SECTORS.map((item) => {
-                const unlocked = isSectorUnlocked(item, stats);
-                const selected = item.id === sectorId;
-
-                return (
-                  <ClickButton
-                    key={item.id}
-                    disabled={!unlocked}
-                    onClick={() => setSectorId(item.id)}
-                    className={`w-full text-left rounded-xl p-2 border transition-colors duration-300 ${
-                      !unlocked
-                        ? "bg-slate-900/40 border-gray-700/40 text-gray-500"
-                        : selected
-                        ? "bg-amber-900/50 border-amber-400/70 text-amber-50"
-                        : "bg-slate-800/50 border-gray-600/40 text-gray-200 hover:bg-slate-700/60"
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <p className="text-xs font-bold">
-                          {item.icon} {item.name}
-                          {!unlocked && (
-                            <span className="text-2xs font-normal">
-                              {" "}
-                              🔒 {stats.completed}/{item.unlockExpeditions}{" "}
-                              походов
-                            </span>
-                          )}
-                        </p>
-                        <p className="text-2xs text-gray-400">
-                          {item.description}
-                        </p>
-                      </div>
-                      <div className="text-2xs text-right shrink-0">
-                        <p>🕒 {item.durationHours} ч туда</p>
-                        <p>🎒 добыча ×{item.lootMultiplier}</p>
-                        <p>💥 риск ×{item.dangerMultiplier}</p>
-                      </div>
-                    </div>
-                  </ClickButton>
-                );
-              })}
-            </div>
+            {/* Секторы: горизонтальный слайдер — одна страница на один поход.
+                Страница выбирает сектор, поэтому свайп вправо-влево = выбор похода. */}
+            <SwipeSlides
+              index={sectorIndex}
+              onIndexChange={(page) => setSectorId(SECTORS[page].id)}
+              labels={SECTORS.map(
+                (item) =>
+                  `${item.icon} ${item.name}${
+                    isSectorUnlocked(item, stats) ? "" : " (закрыт)"
+                  }`
+              )}
+              hint={
+                <p className="text-2xs text-gray-400">
+                  🗺️ Секторы Периметра: открыто {unlockedSectors} из{" "}
+                  {SECTORS.length}. На странице один поход — листайте
+                  вправо-влево.
+                </p>
+              }
+              slides={sectorSlides}
+            />
 
             {/* Слоты ролей команды */}
             <div className="bg-color-main rounded-2xl p-3 border border-gray-600/30 flex flex-col gap-2">
@@ -775,31 +1285,15 @@ const ExpeditionModal: React.FC<{
                       </p>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                      <select
-                        value={pickedId}
-                        onChange={(event) =>
-                          setSlot(
-                            role,
-                            event.target.value === ""
-                              ? ""
-                              : Number(event.target.value)
-                          )
-                        }
-                        className="flex-1 bg-slate-800/70 text-gray-100 text-2xs rounded-lg px-2 py-1 border border-gray-600/40"
-                      >
-                        <option value="">— пусто —</option>
-                        {availableToads.map((toad) => (
-                          <option key={toad.id} value={toad.id}>
-                            {toad.name} · {getRoleStat(toad, role).toFixed(2)}{" "}
-                            {config.statLabel} · {getToadHpStatusLabel(toad)}
-                          </option>
-                        ))}
-                      </select>
-                      <span className="text-2xs font-bold text-amber-200 w-10 text-right">
-                        {picked ? `${Math.round(getRolePower(picked, role) * 100)}%` : "—"}
-                      </span>
-                    </div>
+                    {/* Красивый список: сортировка по силе роли и цвет «уже в другой роли» */}
+                    <RoleToadPicker
+                      role={role}
+                      value={String(pickedId)}
+                      picked={picked}
+                      groups={roleGroups[role]}
+                      assignedRole={(toadId) => getAssignedRole(slots, toadId)}
+                      onPick={(value) => handleRolePick(role, value)}
+                    />
 
                     {picked && (
                       <HpBar hp={getToadHp(picked)} maxHp={getToadMaxHp(picked)} />
@@ -808,6 +1302,38 @@ const ExpeditionModal: React.FC<{
                 );
               })}
             </div>
+
+            {/* Жабы комнаты «Разведка»: экипаж, из которого команда собирается в один тап */}
+            {crewRoom && (
+              <div className="bg-color-main rounded-2xl p-3 border border-gray-600/30 flex flex-col gap-2">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs font-bold text-white">
+                    🧭 В «Разведке»: {crew.length}/{EXPEDITION_TEAM_SIZE}
+                  </p>
+                  {crewSendable.length > 0 &&
+                    members.length < EXPEDITION_TEAM_SIZE && (
+                      <ClickButton
+                        onClick={handleFillFromRoom}
+                        title="Занять свободные роли сильнейшими жабами комнаты"
+                        className="shrink-0 py-1.5 px-2 rounded-lg text-2xs font-bold border bg-amber-900/50 border-amber-500/50 text-amber-100 hover:bg-amber-800/60 transition-colors duration-300"
+                      >
+                        Собрать команду
+                      </ClickButton>
+                    )}
+                </div>
+
+                {crew.length === 0 && (
+                  <p className="text-2xs leading-snug text-gray-400">
+                    Комната пуста: перенесите сюда на карте до{" "}
+                    {EXPEDITION_TEAM_SIZE} взрослых жаб — команда соберётся из них, а из
+                    похода жаба возвращается в вольер (место в «Разведке» она
+                    освобождает).
+                  </p>
+                )}
+
+                {crew.map((toad) => renderCrewCard(toad))}
+              </div>
+            )}
 
             {/* Итог отправки */}
             <div className="bg-color-main rounded-2xl p-3 border border-gray-600/30 flex flex-col gap-2">
@@ -855,6 +1381,13 @@ const ExpeditionModal: React.FC<{
               {members.length > 0 && biomass < sendCost && (
                 <p className="text-2xs text-red-300">
                   Не хватает биомассы на снаряжение.
+                </p>
+              )}
+              {!sectorUnlocked && (
+                <p className="text-2xs text-amber-300">
+                  🔒 «{selectedSector.name}» закрыт: завершите{" "}
+                  {selectedSector.unlockExpeditions} походов (сейчас{" "}
+                  {stats.completed}). Отправить можно с открытой страницы.
                 </p>
               )}
 

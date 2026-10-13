@@ -25,6 +25,7 @@ import {
   clampScale,
   getEdgePanSpeed,
   getMapBounds,
+  getOverviewView,
   getZoomLevels,
   isZoomedIn,
   ZoomLevels,
@@ -454,20 +455,21 @@ export default function HexMapCanvas(props: HexMapCanvasProps) {
       from + (to - from) * progress;
 
     /**
-     * Камера обзорного вида: вся колония целиком.
-     * Такая доводка нужна при переносе жабы — иначе до дальних комнат не донести.
+     * Камера обзорного вида: вся колония целиком — включая гексы, которые только что открыла
+     * новая постройка (математика и проверка видимости — `getOverviewView`). Такая доводка
+     * нужна при переносе жабы — иначе до дальних комнат не донести.
      */
     const getOverviewCamera = () => {
       syncZoomLevels();
 
-      const bounds = getMapBounds(propsRef.current.rooms);
-      const scale = zoomLevelsRef.current.overview;
+      const { scale, x, y } = getOverviewView(
+        app.screen.width,
+        app.screen.height,
+        propsRef.current.rooms,
+        zoomLevelsRef.current,
+      );
 
-      return {
-        scale,
-        x: app.screen.width / 2 - bounds.center.x * scale,
-        y: app.screen.height / 2 - bounds.center.y * scale,
-      };
+      return { scale, x, y };
     };
 
     /** Камера приближенного вида, наведённая на комнату (показать, куда жаба прилетела). */

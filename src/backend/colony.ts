@@ -124,12 +124,50 @@ export const buildColonyRoom = (
 
   updateGameState({
     colony: {
+      ...colony,
       rooms: [...colony.rooms.filter((item) => item.id !== slotId), room],
+      // Гекс застраивают заново — метка сноса снимается: карта снова показывает комнату
+      // (`getUnlockedRooms`), а не пустой слот
+      demolished: colony.demolished?.filter((id) => id !== slotId),
     },
     scenes,
   });
 
   return room;
+};
+
+/**
+ * Сносит комнату с гекса: платная и необратимая развилка стройки.
+ *
+ * Что делает функция:
+ *  - убирает постройку из `ColonyState.rooms` (у базовых «Вольера» и «Гнезда» постройки в
+ *    сейве нет — их отсутствие помнит только `demolished`);
+ *  - ставит метку сноса: гекс остаётся на карте **свободным слотом**, а его фронт продолжает
+ *    держать открытыми гексы, которые от него выросли (`getUnlockedRooms`);
+ *  - забывает апгрейды комнаты: здание уходит вместе с ними (автокормушку не вернуть),
+ *    постройка на этом гексе начинается с нуля.
+ *
+ * Плата (`DEMOLISH_ROOM_COST`) и правила сноса — дело интерфейса: он проверяет, что это не
+ * ядро и что жаб внутри нет (`components/HexMap/colony-build.ts` → `getRoomDemolishIssue`).
+ * Здесь только состояние — как и у постройки, деньги списывает вызывающий экран.
+ */
+export const demolishColonyRoom = (roomId: string): ColonyState => {
+  const state = getGameState();
+  const colony = state.colony ?? EMPTY_COLONY;
+  const upgrades = { ...(colony.upgrades ?? {}) };
+
+  delete upgrades[roomId];
+
+  const demolished: ColonyState = {
+    ...colony,
+    rooms: colony.rooms.filter((room) => room.id !== roomId),
+    upgrades,
+    demolished: [...new Set([...(colony.demolished ?? []), roomId])],
+  };
+
+  updateGameState({ colony: demolished });
+
+  return demolished;
 };
 
 /**

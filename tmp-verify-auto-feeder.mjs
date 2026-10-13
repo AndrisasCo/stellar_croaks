@@ -13,7 +13,12 @@
  *   5) жаба в походе (`status: "out"`) дома не ест;
  *   6) ручное кормление стоит один корм на жабу (`getFeedCost`);
  *   7) пороги согласованы: кормушка кормит ровно на пороге выработки биомассы
- *      (`AUTO_FEED_HUNGER` = `PRODUCTION_MIN_HUNGER`), поэтому комната с апгрейдом не простаивает.
+ *      (`AUTO_FEED_HUNGER` = `PRODUCTION_MIN_HUNGER`), а голодная жаба работает на
+ *      минимуме (`PRODUCTION_HUNGRY_FACTOR`), поэтому голодовка не запирает игрока:
+ *      колония без корма всё равно копит биомассу — и кормушка сразу поднимает её до нормы;
+ *   8) снос комнаты (`demolishColonyRoom`): постройка уходит из сейва, гекс помечается
+ *      снесённым (`Resolve` показывает его свободным слотом), улучшения комнаты забываются,
+ *      постройка на этом гексе возвращает его в строй, а чужие улучшения снос не трогает.
  *
  * Запуск: node tmp-verify-auto-feeder.mjs
  */
@@ -96,6 +101,7 @@ const roomToadLists = bundle(
   "src/components/HexMap/room-toad-lists.ts",
   "room-toad-lists",
 );
+const constants = bundle("src/utils/constants.ts", "constants");
 
 /** Жаба с нужными полями: голод, дом (`scene_id`), рабочее место (`roomId`), статус */
 const toad = (over = {}) => ({
@@ -125,7 +131,14 @@ const scene = (over = {}) => ({
 });
 
 /** Записать сейв: состояние игры читается из localStorage на каждый вызов */
-const setState = ({ toads = [], scenes = [scene()], upgrades: roomUpgrades = {}, food = 0, rooms = [] }) => {
+const setState = ({
+  toads = [],
+  scenes = [scene()],
+  upgrades: roomUpgrades = {},
+  food = 0,
+  rooms = [],
+  demolished = [],
+}) => {
   raw = JSON.stringify({
     user: {
       id: "u",
@@ -138,7 +151,7 @@ const setState = ({ toads = [], scenes = [scene()], upgrades: roomUpgrades = {},
     },
     scenes,
     toads,
-    colony: { rooms, upgrades: roomUpgrades },
+    colony: { rooms, upgrades: roomUpgrades, demolished },
     lastSaved: new Date().toISOString(),
     createdAt: new Date().toISOString(),
   });
@@ -311,13 +324,122 @@ check(
 );
 check("порог кормления жабы", autoFeeder.AUTO_FEED_HUNGER, 20);
 check("порог выработки биомассы", gamification.PRODUCTION_MIN_HUNGER, 20);
-check("при голоде 20 выработки нет", gamification.getProductionFactor(20), 0);
-checkTrue(
-  "при голоде 21 выработка уже есть",
-  gamification.getProductionFactor(21) > 0,
+check(
+  "при голоде 20 жаба работает на минимуме",
+  gamification.getProductionFactor(20),
+  gamification.PRODUCTION_HUNGRY_FACTOR,
 );
-check("при голоде 60 выработка половина", gamification.getProductionFactor(60), 0.5);
+checkTrue(
+  "при голоде 21 выработки больше, чем на минимуме",
+  gamification.getProductionFactor(21) > gamification.PRODUCTION_HUNGRY_FACTOR,
+);
+check(
+  "при голоде 60 — между минимумом и нормой",
+  Math.round(gamification.getProductionFactor(60) * 100) / 100,
+  0.65,
+);
 check("при голоде 100 выработка полная", gamification.getProductionFactor(100), 1);
+
+console.log("\n── 12. Голодовка не запирает игрока ──────────────────────");
+/** Жаба с обычными генами: rarity 1.2, weight 15 — как средняя на рынке */
+const averageToad = (hunger) =>
+  toad({ state: { hunger, hp: 100, energy: 100 }, genes: { rarity: 1.2, weight: 15, hungerRate: 1, personality: null } });
+const hungryRate = gamification.getBiomassRate(averageToad(gamification.PRODUCTION_MIN_HUNGER));
+checkTrue(
+  "голодная жаба перекрывает апкипинг",
+  hungryRate > gamification.UPKEEP_PER_TOAD_HOUR,
+);
+check(
+  "голодная колония в плюсе, биомассы в сутки",
+  Math.round((hungryRate - gamification.UPKEEP_PER_TOAD_HOUR) * 24 * 100) / 100,
+  7.61,
+);
+const fedRate = gamification.getBiomassRate(averageToad(100));
+checkTrue("сытая жаба вырабатывает больше голодной", fedRate > hungryRate);
+check(
+  "голодная жаба даёт долю от нормы",
+  Math.round((hungryRate / gamification.getBiomassPotentialRate(averageToad(50))) * 100) / 100,
+  gamification.PRODUCTION_HUNGRY_FACTOR,
+);
+
+console.log("\n── 13. Снос комнаты: состояние колонии ────────────────────");
+const demolishCost = constants.DEMOLISH_ROOM_COST;
+check("снос комнаты стоит 100 🔷", demolishCost, 100);
+
+/** Настоящий свободный слот карты: рядом с ним есть комната, поэтому карта его открыла */
+const slotId = colonyBuild.getBuildableSlots(
+  colonyBuild.resolveColonyRooms({ rooms: [] }),
+)[0].id;
+
+setState({
+  rooms: [],
+  upgrades: { breeding: { autoFeeder: true } },
+});
+const builtRoom = colony.buildColonyRoom(slotId, "storage");
+checkTrue("комната построена", Boolean(builtRoom));
+check("постройка записала гекс", stateNow().colony.rooms.length, 1);
+checkTrue(
+  "постройка не потеряла чужие улучшения",
+  stateNow().colony.upgrades.breeding?.autoFeeder === true,
+);
+
+// Улучшение стоит и у самой комнаты: снос обязан забрать его вместе со зданием
+colony.upgradeColonyRoom(slotId, { autoFeeder: true });
+const demolished = colony.demolishColonyRoom(slotId);
+check("снос убрал постройку из сейва", demolished.rooms.length, 0);
+checkTrue(
+  "гекс помечен снесённым",
+  stateNow().colony.demolished.includes(slotId),
+);
+checkTrue(
+  "снос забрал улучшения комнаты",
+  stateNow().colony.upgrades[slotId] === undefined,
+);
+checkTrue(
+  "чужие улучшения снос не тронул",
+  stateNow().colony.upgrades.breeding?.autoFeeder === true,
+);
+check(
+  "снесённый гекс на карте — свободный слот",
+  colonyBuild
+    .resolveColonyRooms(stateNow().colony)
+    .find((room) => room.id === slotId)?.kind,
+  "empty",
+);
+
+// Тот же гекс застраивают заново: метка сноса должна сняться
+colony.buildColonyRoom(slotId, "storage");
+checkTrue(
+  "постройка сняла метку сноса",
+  !stateNow().colony.demolished.includes(slotId),
+);
+check(
+  "гекс снова показывает комнату",
+  colonyBuild
+    .resolveColonyRooms(stateNow().colony)
+    .find((room) => room.id === slotId)?.kind,
+  "storage",
+);
+
+// Базовая комната в сейве не лежит: её снос помнит только метка
+setState({ rooms: [], upgrades: { breeding: { autoFeeder: true } } });
+colony.demolishColonyRoom("breeding");
+checkTrue(
+  "снос базового гнезда помнит метка",
+  stateNow().colony.demolished.includes("breeding"),
+);
+check(
+  "снесённое гнездо на карте — слот",
+  colonyBuild
+    .resolveColonyRooms(stateNow().colony)
+    .find((room) => room.id === "breeding")?.kind,
+  "empty",
+);
+checkTrue(
+  "снос гнезда забрал его улучшения",
+  stateNow().colony.upgrades.breeding === undefined,
+);
+check("повторный снос не задваивает метку", colony.demolishColonyRoom("breeding").demolished.length, 1);
 
 console.log("\n────────────────────────────────────────────────────────────");
 if (failures.length > 0) {

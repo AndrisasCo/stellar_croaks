@@ -24,6 +24,8 @@ import {
  *  - вид комнаты к гексу не привязан: любую комнату можно поставить на любой свободный
  *    гекс колонии, ядро в центре занято с начала игры; карта растёт фронтом — у новой
  *    постройки открываются все шесть соседних гексов (см. `getUnlockedRooms`);
+ *  - слот под застройку стоит только рядом с построенной комнатой (`BUILD_REQUIRES_NEIGHBOUR`):
+ *    так его открывает фронт застройки, и гексов «в пустоте» на карте не бывает;
  *  - коллайдер, магазин и диссоциатор — единственные в колонии: второй такой не поставить;
  *  - остальные комнаты строятся сколько угодно раз, каждая следующая дороже;
  *  - сразу после постройки комната обесточена — ток появится, когда рядом окажется ядро
@@ -35,10 +37,13 @@ import {
 
 /**
  * Требовать ли построенную комнату по соседству, чтобы застроить слот.
- * По дизайну — нет: «на любом гексе можно построить любую комнату». Флаг оставлен,
- * чтобы вернуть старое правило одной строкой (ветка ниже жива и покрыта тестом).
+ *
+ * Правило включено: слот под застройку стоит только рядом с построенной комнатой — так его
+ * открывает фронт застройки (`rooms-config.ts` → `getUnlockedRooms`), поэтому проверка лишь
+ * страхует карту: чужой сейв или будущая правка базовых гексов не сделают из открытого гекса
+ * «слот в пустоте», по которому нельзя строить.
  */
-export const BUILD_REQUIRES_NEIGHBOUR = false;
+export const BUILD_REQUIRES_NEIGHBOUR = true;
 
 export interface BuildOption {
   kind: ColonyRoomKind;
@@ -85,6 +90,60 @@ export const canBuildRoomKind = (
   kind: ColonyRoomKind,
 ): boolean => !ROOM_BLUEPRINTS[kind].unique || !isRoomKindBuilt(colony, kind);
 
+/**
+ * Цена следующей комнаты того же вида ПОСЛЕ сноса этой — то, что игрок увидит в окне
+ * подтверждения.
+ *
+ * Цена считается по числу построенных (`getRoomCost`), поэтому снос возвращает её на шаг
+ * назад: у комнат с ростом цены следующая такая станет дешевле ровно на этот шаг. У базовых
+ * комнат (вольер и гнездо стоят с начала игры и в счёте построенных не участвуют) и у
+ * единственных (рост = 1) цена не меняется — вернётся та же.
+ */
+export const getRoomCostAfterDemolish = (
+  colony: ColonyState,
+  room: { id: string; kind: ColonyRoomKind },
+): number =>
+  getRoomCost(
+    { ...colony, rooms: colony.rooms.filter((item) => item.id !== room.id) },
+    room.kind,
+  );
+
+/**
+ * Почему комнату нельзя снести прямо сейчас (`null` — можно).
+ *
+ * Правила сноса:
+ *  - **ядро не сносят** — это сердце колонии, карта держится на нём;
+ *  - **пустой гекс сносить нечего**;
+ *  - **жаб не выселяют силой**: комната с жабами внутри (или жильцами своего вольера) ждёт,
+ *    пока игрок сам перенесёт их — дом жабы не должен пропадать из-под неё.
+ *
+ * Жабы комнаты приходят аргументом (тот же список, что карта рисует на гексе,
+ * `HexMap/room-toad-lists.ts` → `getRoomToadLists`): правило «в комнате есть жабы» должно
+ * сходиться с тем, что игрок видит на гексе.
+ */
+export const getRoomDemolishIssue = (
+  room: RoomConfig,
+  roomToads: Toad[],
+): string | null => {
+  if (room.kind === "core") {
+    return "Ядро — сердце колонии: его не сносят.";
+  }
+
+  if (!isBuiltRoom(room)) {
+    return "На этом гексе ничего не построено.";
+  }
+
+  if (roomToads.length > 0) {
+    return `В комнате ${roomToads.length} 🐸 — сначала переселите их в вольер.`;
+  }
+
+  return null;
+};
+
+/** Можно ли снести комнату сейчас: причина найдена — нельзя (`getRoomDemolishIssue`). */
+export const canDemolishRoom = (room: RoomConfig, roomToads: Toad[]): boolean =>
+  getRoomDemolishIssue(room, roomToads) === null;
+
 /** Каталог построек для меню застройки (порядок карточек — ROOM_BLUEPRINT_ORDER). */
 export const BUILD_OPTIONS: BuildOption[] = ROOM_BLUEPRINT_ORDER.map((kind) => {
   const blueprint = ROOM_BLUEPRINTS[kind];
@@ -106,6 +165,10 @@ export const BUILD_OPTIONS: BuildOption[] = ROOM_BLUEPRINT_ORDER.map((kind) => {
  * все шесть соседних гексов у каждой постройки. Поэтому застройка расширяет карту не
  * кольцом, а локально, вокруг новой комнаты, и медовая сетка территории обступает колонию
  * по её форме (см. `HexMapCanvas` → `drawBackdrop`).
+ *
+ * Снесённые комнаты (`ColonyState.demolished`) остаются на карте свободными слотами:
+ * у клетки пропадает комната, но не гекс — снос не сжимает открытую территорию
+ * (`getUnlockedRooms`).
  */
 export const resolveColonyRooms = (
   colony: ColonyState,
@@ -124,7 +187,7 @@ export const resolveColonyRooms = (
       .filter((sceneId): sceneId is number => sceneId !== undefined),
   );
   const freeScene = scenes.find((scene) => !claimedScenes.has(scene.id));
-  const rooms = getUnlockedRooms(colony.rooms).map((room) => {
+  const rooms = getUnlockedRooms(colony.rooms, colony.demolished).map((room) => {
     const built = colony.rooms.find((item) => item.id === room.id);
 
     // Слот застроили — на карте стоит комната того вида, который выбрал игрок
@@ -213,7 +276,9 @@ export const getRoomNeighbours = (
 
 /**
  * Прогноз для меню застройки: будет ли ток у комнаты сразу после постройки.
- * Считается на «виртуальной» карте, где комнату уже построили.
+ * Считается на «виртуальной» карте, где комнату уже построили. Гекс мог быть снесён раньше
+ * (`demolished`) — застройка снимает с него метку сноса, как и настоящая постройка
+ * (`backend/colony.ts` → `buildColonyRoom`): иначе виртуальная карта считала бы его пустым.
  */
 export const willBePoweredAfterBuild = (
   slot: RoomConfig,
@@ -222,7 +287,9 @@ export const willBePoweredAfterBuild = (
   toadsByRoom: Record<string, Toad[]>,
 ): boolean => {
   const nextColony: ColonyState = {
+    ...colony,
     rooms: [...colony.rooms, { id: slot.id, kind, builtAt: "" }],
+    demolished: colony.demolished?.filter((id) => id !== slot.id),
   };
 
   return (

@@ -109,6 +109,7 @@ const storage = bundle("src/utils/storage.ts", "storage");
 const housing = bundle("src/utils/housing.ts", "housing");
 const rooms = bundle("src/components/HexMap/rooms-config.ts", "rooms-config");
 const shop = bundle("src/backend/shop-state.ts", "shop-state");
+const gami = bundle("src/utils/gamification-config.ts", "gamification-config");
 
 /** Жаба с заданными генами (для расчёта силы роли) */
 const toad = (genes = {}) => ({
@@ -295,6 +296,78 @@ check(
 );
 console.log(
   `ℹ️  награды: ${Math.min(...rewards)}..${Math.max(...rewards)} 💎, заказов: ${rewards.length}`,
+);
+
+console.log("\n[6] Корм и голодовка: цена корма против выручки");
+console.log("─".repeat(60));
+/** Цена единицы корма: пачка x10 стоит 60🔷 */
+const FEED_PRICE = 60 / 10;
+/** Жаба с заданным голодом (для расчёта выработки) */
+const atHunger = (hunger, genes = {}) => ({
+  ...toad(genes),
+  state: { hunger },
+});
+
+/** Средняя выработка жабы за цикл кормления: голод идёт 100 → порог, затем корм возвращает сытость */
+const cycleAverageRate = (genes = {}) => {
+  const steps = 200;
+  let sum = 0;
+  for (let i = 0; i < steps; i += 1) {
+    const hunger =
+      100 - ((i + 0.5) / steps) * (100 - gami.PRODUCTION_MIN_HUNGER);
+    sum += gami.getBiomassRate(atHunger(hunger, genes));
+  }
+  return sum / steps;
+};
+
+/** Экономика жабы в сутки: выручка за цикл кормления и расход на корм */
+const farmEconomy = (genes = {}) => {
+  const netDay =
+    (cycleAverageRate(genes) - gami.UPKEEP_PER_TOAD_HOUR) *
+    24 *
+    gami.BIOMASS_TO_TOKENS_RATE;
+  const rate = genes.hungerRate ?? 1;
+  const feedDay =
+    ((gami.HUNGER_PER_DAY * rate) / (100 - gami.PRODUCTION_MIN_HUNGER)) * FEED_PRICE;
+  return { netDay, feedDay, share: feedDay / netDay };
+};
+
+const potential = gami.getBiomassPotentialRate(toad());
+check(
+  "на середине цикла (голод 60) жаба отдаёт 65 % потенциала",
+  Math.round(
+    (gami.getBiomassRate(atHunger(60)) / potential) * 100,
+  ) / 100,
+  0.65,
+);
+const ordinary = farmEconomy();
+check("корм обычной жабы — меньше четверти выручки", ordinary.share < 0.25, true);
+console.log(
+  `ℹ️  обычная жаба: ${Math.round(ordinary.netDay * 10) / 10}🔷/сут выручки,` +
+    ` корм ${Math.round(ordinary.feedDay * 10) / 10}🔷 (${Math.round(ordinary.share * 100)} %)`,
+);
+const glutton = farmEconomy({ hungerRate: 2 });
+check(
+  "корм прожорливой жабы (rate 2) — меньше половины выручки",
+  glutton.share < 0.5,
+  true,
+);
+const elite = farmEconomy({ rarity: 3, weight: 35 });
+check("корм элитной жабы — меньше 15 % выручки", elite.share < 0.15, true);
+
+const starvingDay =
+  (gami.getBiomassRate(atHunger(0)) - gami.UPKEEP_PER_TOAD_HOUR) *
+  24 *
+  gami.BIOMASS_TO_TOKENS_RATE;
+check("голодная жаба всё равно в плюсе", starvingDay > 0, true);
+console.log(
+  `ℹ️  голодная жаба: ${Math.round(starvingDay * 10) / 10}🔷/сут против` +
+    ` ${Math.round(ordinary.netDay * 10) / 10}🔷 у сытой`,
+);
+check(
+  "сытая жаба выгоднее голодной больше чем втрое",
+  ordinary.netDay / starvingDay > 3,
+  true,
 );
 
 console.log(

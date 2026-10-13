@@ -5,7 +5,8 @@ import { RoomConfig } from "./rooms-config";
  * Чистая математика камеры гекс-карты.
  *
  * Есть два вида карты, и между ними переключает зум:
- *  - обзорный — вся колония целиком (стартовый вид);
+ *  - обзорный — вся колония целиком (стартовый вид; вписывает в экран **всю** карту, включая
+ *    только что открытый фронт застройки — см. `FIT_ZOOM` и `getOverviewView`);
  *  - приближенный — один гекс занимает почти всю ширину экрана.
  * Порог — середина между ними: приблизил сильнее половины → включаются детали
  * (кликаются жабы и хотспоты), иначе тап открывает комнату целиком.
@@ -16,11 +17,25 @@ import { RoomConfig } from "./rooms-config";
  * Держим формулы отдельно от Pixi, чтобы проверять их без рендера.
  */
 
-/** Минимальный зум — видно всю территорию колонии с запасом. */
-export const MIN_SCALE = 0.5;
+/**
+ * Минимальный зум. На пределе карта — 127 гексов, 994×1109 мировых пикселей: в узкий
+ * экран 360×640 она вписывается при зуме ≈0.35, поэтому пол 0.3 с запасом. Раньше стоял
+ * 0.5, и на телефоне выросшая колония в экран уже не влезала.
+ */
+export const MIN_SCALE = 0.3;
 
-/** Стартовое приближение обзорного вида: в 2× крупнее, чем «вписать всю колонию». */
-export const FIT_ZOOM = 2;
+/**
+ * Множитель обзорного зума: единица — «вписать колонию в экран целиком».
+ *
+ * Обзорный вид обязан показывать всю карту, включая только что открытый фронт застройки.
+ * Ранее здесь стояла двойка («в 2× крупнее, чем вписать»), и карта в экран не влезала: на
+ * широком экране по вертикали помещалась лишь половина колонии. Новые гексы после постройки
+ * уезжали за кадр — игрок видел только боковые, а «наружу» гексы будто не появлялись.
+ */
+export const FIT_ZOOM = 1;
+
+/** Поле вокруг карты в обзорном виде (мировые пиксели): колония не липнет к краям экрана. */
+export const OVERVIEW_MARGIN = 40;
 
 /** Доля ширины экрана, которую занимает гекс в приближенном виде. */
 export const DETAIL_WIDTH_RATIO = 0.92;
@@ -62,6 +77,21 @@ export const getDetailScale = (screenWidth: number) =>
     (screenWidth * DETAIL_WIDTH_RATIO) / hexWidth(HEX_SIZE)
   );
 
+/** Зум, при котором вся колония влезает в экран целиком (с полем `OVERVIEW_MARGIN`). */
+export const getFitScale = (
+  screenWidth: number,
+  screenHeight: number,
+  rooms: RoomConfig[],
+  margin: number = OVERVIEW_MARGIN
+) => {
+  const bounds = getMapBounds(rooms);
+
+  return Math.min(
+    screenWidth / (bounds.width + margin),
+    screenHeight / (bounds.height + margin)
+  );
+};
+
 /** Обзорный зум: вся колония на экране × FIT_ZOOM. */
 export const getOverviewScale = (
   screenWidth: number,
@@ -69,15 +99,42 @@ export const getOverviewScale = (
   maxScale: number,
   rooms: RoomConfig[]
 ) => {
-  const bounds = getMapBounds(rooms);
+  const scale = getFitScale(screenWidth, screenHeight, rooms) * FIT_ZOOM;
 
-  return clampScale(
-    Math.min(
-      screenWidth / (bounds.width + 40),
-      screenHeight / (bounds.height + 40)
-    ) * FIT_ZOOM,
-    maxScale
-  );
+  return clampScale(scale, maxScale);
+};
+
+/**
+ * Обзорная камера: зум «вся колония на экране» и сдвиг, которым карта встаёт по центру.
+ *
+ * Возвращает и камеру, и видимый прямоугольник мира. По прямоугольнику проверяется главное
+ * свойство обзорного вида — что на экран попадает вся карта, включая свежий фронт застройки:
+ * у новой комнаты открываются соседние гексы, и игрок обязан увидеть их сразу, а не искать
+ * панорамой (проверки — `tmp-verify-colony-growth.mjs`, секция 8).
+ */
+export const getOverviewView = (
+  screenWidth: number,
+  screenHeight: number,
+  rooms: RoomConfig[],
+  levels: ZoomLevels = getZoomLevels(screenWidth, screenHeight, rooms)
+) => {
+  const bounds = getMapBounds(rooms);
+  const scale = levels.overview;
+  const x = screenWidth / 2 - bounds.center.x * scale;
+  const y = screenHeight / 2 - bounds.center.y * scale;
+
+  return {
+    scale,
+    x,
+    y,
+    /** Часть мира, попавшая на экран (мировые пиксели). */
+    visible: {
+      minX: (0 - x) / scale,
+      maxX: (screenWidth - x) / scale,
+      minY: (0 - y) / scale,
+      maxY: (screenHeight - y) / scale,
+    },
+  };
 };
 
 /** Оба вида под текущий размер экрана + порог между ними. */

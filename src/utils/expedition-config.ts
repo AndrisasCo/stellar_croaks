@@ -29,7 +29,7 @@ export const getMaxExpeditions = (dispatchLevel = 0): number =>
 export const getDispatchOfficeCost = (dispatchLevel: number): number | null =>
   dispatchLevel >= EXPEDITION_MAX_TEAMS - 1
     ? null
-    : DISPATCH_OFFICE_COST[dispatchLevel] ?? null;
+    : (DISPATCH_OFFICE_COST[dispatchLevel] ?? null);
 
 // === Роли ===
 
@@ -73,7 +73,7 @@ export const ROLE_CONFIG: Record<ExpeditionRole, ExpeditionRoleConfig> = {
     statCap: 12,
   },
   negotiator: {
-    label: "Биолог",
+    label: "Переговорщик",
     icon: "🌿",
     statLabel: "Характер",
     description: "Договаривается с местной органикой, добывает образцы.",
@@ -93,11 +93,7 @@ export const getRoleStat = (toad: Toad, role: ExpeditionRole): number => {
     case "hacker":
       return toad.genes?.rarity || 0;
     case "negotiator": {
-      // «Переговорщик» живёт на характере: берём мид-множители личности
-      const { weightMultiplier, speedMultiplier } = getPersonalityMultipliers(
-        toad.genes?.personality
-      );
-      return (weightMultiplier + speedMultiplier) / 2;
+      return toad.genes?.hungerRate || 0;
     }
     default:
       return 0;
@@ -137,8 +133,8 @@ export const getToadMaxHp = (toad: Toad): number =>
       HP_SOFT_CAP,
       (toad.maxHp && toad.maxHp > 0 ? toad.maxHp : EXPEDITION_BASE_HP) +
         (toad.genes?.weight || 0) * EXPEDITION_HP_PER_WEIGHT +
-        (toad.genes?.rarity || 0) * EXPEDITION_HP_PER_RARITY
-    )
+        (toad.genes?.rarity || 0) * EXPEDITION_HP_PER_RARITY,
+    ),
   );
 
 /** Текущий HP жабы (старые сейвы получают полный запас) */
@@ -188,7 +184,6 @@ export const getHealCost = (toad: Toad): number => {
   }
   return Math.max(HEAL_MIN_COST, Math.ceil(missing * HEAL_TOKENS_PER_HP));
 };
-
 
 // === Путь, события и добыча ===
 
@@ -272,12 +267,12 @@ export const rollExpeditionLuck = (rng: () => number = Math.random): number =>
 export const getExpeditionSuccessChance = (
   members: ExpeditionTeamMember[],
   sector: SectorDef,
-  luck = 1
+  luck = 1,
 ): number => {
   const units = members.reduce(
     (sum, member) =>
       sum + getRoleSuccessUnits(getRolePower(member.toad, member.role)),
-    0
+    0,
   );
 
   const chance =
@@ -301,13 +296,13 @@ export const getLootValue = (loot: {
 }): number => {
   const items = Object.values(loot.items ?? {}).reduce(
     (sum, amount) => sum + Math.max(0, amount || 0),
-    0
+    0,
   );
 
   return (
     Math.max(0, loot.biomass || 0) * 0.5 +
     Math.max(0, loot.tokens || 0) +
-    Math.max(0, loot.astro_quax || 0) * EXPEDITION_SAMPLE_VALUE / 2 +
+    (Math.max(0, loot.astro_quax || 0) * EXPEDITION_SAMPLE_VALUE) / 2 +
     items * EXPEDITION_ITEM_VALUE +
     Math.max(0, loot.samples || 0) * EXPEDITION_SAMPLE_VALUE
   );
@@ -317,12 +312,8 @@ export const getLootValue = (loot: {
 export const getFarmValueForTeam = (toads: Toad[], hours: number): number => {
   const perHour = toads.reduce(
     (sum, toad) =>
-      sum +
-      Math.max(
-        0,
-        getBiomassPotentialRate(toad) - UPKEEP_PER_TOAD_HOUR
-      ),
-    0
+      sum + Math.max(0, getBiomassPotentialRate(toad) - UPKEEP_PER_TOAD_HOUR),
+    0,
   );
 
   return perHour * Math.max(0, hours) * BIOMASS_TO_TOKENS_RATE;
@@ -336,7 +327,7 @@ export const getFarmValueForTeam = (toads: Toad[], hours: number): number => {
 export const getExpeditionProfitFloor = (
   toads: Toad[],
   awayHours: number,
-  supplyBiomass = 0
+  supplyBiomass = 0,
 ): number =>
   getFarmValueForTeam(toads, awayHours) * EXPEDITION_PROFIT_MARGIN +
   Math.max(0, supplyBiomass) * BIOMASS_TO_TOKENS_RATE;
@@ -349,10 +340,10 @@ export const EXPEDITION_SUPPLY_BIOMASS_PER_TOAD = 4;
 /** Сколько биомассы стоит снарядить команду в сектор */
 export const getExpeditionSendCost = (
   sector: SectorDef,
-  teamSize: number
+  teamSize: number,
 ): number =>
   Math.round(
-    EXPEDITION_SUPPLY_BIOMASS_PER_TOAD * sector.depth * Math.max(1, teamSize)
+    EXPEDITION_SUPPLY_BIOMASS_PER_TOAD * sector.depth * Math.max(1, teamSize),
   );
 
 /** Сколько биомассы стоит ускорить возврат (за час остатка пути) */
@@ -363,7 +354,7 @@ export const SPEEDUP_MIN_BIOMASS = 5;
 /** Часов осталось до дома (0 — уже дома) */
 export const getReturnRemainingHours = (
   expedition: Expedition,
-  now = Date.now()
+  now = Date.now(),
 ): number => {
   if (
     expedition.phase !== "returning" ||
@@ -380,7 +371,7 @@ export const getReturnRemainingHours = (
 /** Цена ускорения возврата в биомассе (вдвое ближе к дому) */
 export const getSpeedUpReturnCost = (
   expedition: Expedition,
-  now = Date.now()
+  now = Date.now(),
 ): number => {
   const remainingHours = getReturnRemainingHours(expedition, now);
   if (remainingHours <= 0) {
@@ -388,7 +379,7 @@ export const getSpeedUpReturnCost = (
   }
   return Math.max(
     SPEEDUP_MIN_BIOMASS,
-    Math.ceil(remainingHours * SPEEDUP_BIOMASS_PER_HOUR)
+    Math.ceil(remainingHours * SPEEDUP_BIOMASS_PER_HOUR),
   );
 };
 
@@ -419,5 +410,3 @@ export const getToadHpStatusLabel = (toad: Toad): string => {
   }
   return "в форме";
 };
-
-

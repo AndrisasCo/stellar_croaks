@@ -3,6 +3,7 @@ import { Toad } from "../models/Toad";
 import { ColonyRoomKind, ColonyState, EMPTY_COLONY } from "../models/colony";
 import {
   buildColonyRoom,
+  demolishColonyRoom,
   moveToadToAviary,
   placeToadInRoom,
   releaseToadFromRoom,
@@ -32,6 +33,8 @@ export interface ColonyController {
   /** Жабы по гексам: id гекса → жабы, которых он рисует (вольеры — своих жильцов). */
   toadsByRoom: Record<string, Toad[]>;
   buildRoom: (slotId: string, kind: ColonyRoomKind) => void;
+  /** Снести комнату: гекс остаётся свободным слотом, улучшения комнаты сгорают. */
+  demolishRoom: (roomId: string) => void;
   placeToad: (toadId: number, roomId: string) => void;
   /**
    * Вернуть жабу из комнаты в вольер (`roomId` сбрасывается). Если указан вольер,
@@ -67,6 +70,11 @@ export const useColony = (): ColonyController => {
     [],
   );
 
+  const demolishRoom = useCallback(
+    (roomId: string) => demolishColonyRoom(roomId),
+    [],
+  );
+
   const placeToad = useCallback(
     (toadId: number, roomId: string) => placeToadInRoom(toadId, roomId),
     [],
@@ -92,6 +100,7 @@ export const useColony = (): ColonyController => {
     powerGrid,
     toadsByRoom,
     buildRoom,
+    demolishRoom,
     placeToad,
     releaseToad,
   };
