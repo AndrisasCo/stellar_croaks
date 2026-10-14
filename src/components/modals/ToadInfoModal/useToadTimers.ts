@@ -17,7 +17,7 @@ export const useToadTimers = (toad: any) => {
   };
 
   /**
-   * Ухаживание в гнезде (Часть 3.2): беременность стартует не сразу — через
+   * Ухаживание в репродукторе (Часть 3.2): беременность стартует не сразу — через
    * 15–30 минут после спаривания, поэтому показываем отдельный отсчёт.
    */
   const getMatingInfo = () => {
@@ -33,7 +33,7 @@ export const useToadTimers = (toad: any) => {
 
   const getGrowthInfo = () => {
     if (toad.stage !== "toadpole") return null;
-    // Рост без ускорений: бонус вольера «ускоренный рост» — легаси и удалён
+    // Рост без ускорений: бонус биопода «ускоренный рост» — легаси и удалён
     const duration = HOURS_TO_GROW_UP * 3600000;
     const elapsed = Date.now() - new Date(toad.created_at).getTime();
     return {

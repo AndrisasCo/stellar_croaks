@@ -36,10 +36,10 @@ export const getScenes = (): Scene[] => {
 // Toad operations
 
 /**
- * Вольер для новой жабы. Склада жаб больше нет: `scene_id` у жабы всегда есть,
- * поэтому если вызвавший код не указал (или указал несуществующий) вольер,
- * берём первый, где есть место, иначе — первый вольер колонии (страховка от
- * сейвов старых версий; переполнение лечится постройкой нового вольера на карте).
+ * Биопод для новой жабы. Склада жаб больше нет: биопод у жабы всегда есть,
+ * поэтому если вызвавший код не указал (или указал несуществующий) биопод,
+ * берём первый, где есть место, иначе — первый биопод колонии (страховка от
+ * сейвов старых версий; переполнение лечится постройкой нового биопода на карте).
  */
 const resolveSceneId = (sceneId?: number | null): number => {
   const state = getGameState();
@@ -51,13 +51,39 @@ const resolveSceneId = (sceneId?: number | null): number => {
   return getSceneWithFreeSlot()?.id ?? state.scenes[0]?.id ?? 1;
 };
 
+/**
+ * Место новой жабы: биопод (`scene_id`) или сектор колонии (`roomId`), плюс её дом
+ * (`homeId`) — см. `utils/toad-location.ts`.
+ *
+ *  - жаба, которую создают в биоподе (покупка, награда, лутбокс, потомство дома),
+ *    живёт в нём же, и он становится её домом;
+ *  - жаба, которую создают сразу в секторе колонии (головастик, родившийся в
+ *    репродукторе), в биоподе не числится: `scene_id` пуст, место там не занято.
+ *    Дом ей всё равно нужен — по нему её вернут кнопкой «Домой» (`sendToadHome`),
+ *    и тогда место проверят.
+ */
+const resolveToadPlacement = (
+  toadData: Partial<Toad>
+): { scene_id: number | null; homeId: number } => {
+  if (toadData.roomId) {
+    return {
+      scene_id: null,
+      homeId: resolveSceneId(toadData.homeId ?? toadData.scene_id),
+    };
+  }
+
+  const sceneId = resolveSceneId(toadData.scene_id);
+
+  return { scene_id: sceneId, homeId: sceneId };
+};
+
 export const createToad = (toadData: Partial<Toad>): Toad[] => {
   const state = getGameState();
   const newToad: Toad = {
     id: Math.round(Date.now() * Math.random()),
     created_at: new Date().toISOString(),
     ...toadData,
-    scene_id: resolveSceneId(toadData.scene_id),
+    ...resolveToadPlacement(toadData),
   } as Toad;
 
   const newToads = [...state.toads, newToad];
@@ -88,7 +114,7 @@ export const createToads = (
       id: Math.round(Math.random() * Date.now()),
       created_at: new Date().toISOString(),
       ...toadData,
-      scene_id: resolveSceneId(toadData.scene_id),
+      ...resolveToadPlacement(toadData),
     } as Toad;
   });
 
@@ -185,8 +211,10 @@ export const updateToadsBulkHunger = (
   syntetic?: boolean
 ) => {
   const state = getGameState();
+  // Голод идёт у всех жаб колонии — и дома, и в секторе (репродуктор, ⚡, лазарет):
+  // место (`scene_id` или `roomId`) на это не влияет (`utils/toad-location.ts`)
   const updatedToads = state.toads.map((toad) =>
-    toad.scene_id && toad.state.hunger
+    toad.state?.hunger
       ? {
           ...toad,
           state: {

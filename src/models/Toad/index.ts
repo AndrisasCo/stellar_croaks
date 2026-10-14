@@ -4,10 +4,10 @@ import { toadTypeMap, ToadTypes } from "./toad-species";
 export type ToadStatus = "ok" | "injured" | "out";
 
 /**
- * Ухаживание в гнезде (Часть 3.2): после посадки пары в гнездо беременность стартует
+ * Ухаживание в репродукторе (Часть 3.2): после посадки пары в репродуктор беременность стартует
  * не сразу, а через случайные 15–30 минут (`MATING_MIN_MINUTES`–`MATING_MAX_MINUTES`).
- * Пока таймер идёт, пара живёт в гнезде и занята: по окончании самка становится
- * беременной (игроку приходит уведомление). Из гнезда жабы не уходят сами — и самец,
+ * Пока таймер идёт, пара живёт в репродукторе и занята: по окончании самка становится
+ * беременной (игроку приходит уведомление). Из репродуктора жабы не уходят сами — и самец,
  * и самка остаются там, пока игрок не перенесёт их (даже после родов).
  * Есть у обеих жаб пары: `partnerId` у самки — самец, у самца — самка.
  */
@@ -28,23 +28,33 @@ export interface Toad {
   name: string | null;
   parents: number[] | null; // ?
   /**
-   * Дом жабы — вольер (`Scene`), в котором она живёт. Склада жаб больше нет: у каждой
-   * жабы всегда есть вольер, и `scene_id` меняется только при переезде (игрок перенёс
-   * жабу в другой вольер).
+   * Биопод (`Scene`), в котором жаба находится **сейчас**. У жабы всегда одно место:
+   * либо биопод, либо сектор колонии (`roomId`), поэтому `scene_id` пуст, пока жаба
+   * сидит в секторе — место в биоподе при этом свободно (жаба пришла не в свой биопод,
+   * а в сектор, см. `utils/toad-location.ts`).
    *
-   * Дом сохраняется и когда жаба работает в комнате колонии (`roomId`): по `scene_id`
-   * гекс вольера находит своих жильцов, а вышедшая из комнаты или вернувшаяся из похода
-   * жаба оказывается именно в своём вольере.
+   * Жильцов биопода по нему и находят: гекс биопода рисует свою сцену (`getRoomToadLists`),
+   * а список жаб и статистика биопода показывают только тех, кто в нём сейчас.
    */
-  scene_id: number;
+  scene_id: number | null;
   /**
-   * id комнаты колонии, в которой жаба сидит физически (сейчас — энергокомната ⚡).
-   * Пусто — жаба живёт в вольере, как раньше.
+   * id сектора колонии, в котором жаба сидит физически: репродуктор, ⚡-энергосектор,
+   * «Разведка», лазарет. Пусто — жаба живёт в своём биоподе (`scene_id`).
    */
   roomId?: string | null;
+  /**
+   * Дом жабы — **последний** биопод, в котором она жила. Жаба помнит его и пока работает
+   * в секторе (`roomId`), поэтому «Домой» возвращает её ровно туда, откуда она вышла
+   * (`backend/colony.ts` → `sendToadHome`).
+   *
+   * В полный биопод жаба не влезет: место проверяется, и игрок получает ошибку — на этом
+   * и держится правило «дом запоминается, но не бронируется». Старые сейвы поля не знают:
+   * домом для них считается `scene_id` (`utils/toad-location.ts` → `getToadHomeId`).
+   */
+  homeId?: number | null;
   sex: string; // 'male' 'female' 'neuter'
   type: ToadTypes | null; // пока не используется, мб тут будут варианты окраса
-  // Ручное размножение (Гнездо): сила жабы тратится на скрещивание
+  // Ручное размножение (Репродуктор): сила жабы тратится на скрещивание
   energy?: number; // 0 to 100
   breedCooldownUntil?: number; // timestamp, до которого жаба отдыхает после скрещивания
   // Разведка (экспедиции): HP жабы
@@ -67,7 +77,7 @@ export interface Toad {
     father: Toad;
     offspringCount: number;
   };
-  /** Ухаживание в гнезде: беременность стартует по таймеру (см. `MatingState`) */
+  /** Ухаживание в репродукторе: беременность стартует по таймеру (см. `MatingState`) */
   mating?: MatingState | null;
   genes: {
     hungerRate: number;
@@ -94,6 +104,7 @@ export const DEFAULT_TOADS: Toad[] = [
     sex: "male",
     stage: "adult",
     scene_id: 1,
+    homeId: 1,
     created_at: new Date().toISOString(),
     parents: null,
     state: {
@@ -120,6 +131,7 @@ export const DEFAULT_TOADS: Toad[] = [
     sex: "female",
     stage: "adult",
     scene_id: 1,
+    homeId: 1,
     created_at: new Date().toISOString(),
     parents: null,
     state: {
@@ -146,6 +158,7 @@ export const DEFAULT_TOADS: Toad[] = [
     sex: "female",
     stage: "adult",
     scene_id: 1,
+    homeId: 1,
     created_at: new Date().toISOString(),
     parents: null,
     state: {
@@ -172,6 +185,7 @@ export const DEFAULT_TOADS: Toad[] = [
     sex: "male",
     stage: "adult",
     scene_id: 1,
+    homeId: 1,
     created_at: new Date().toISOString(),
     parents: null,
     state: {
@@ -198,6 +212,7 @@ export const DEFAULT_TOADS: Toad[] = [
     sex: "female",
     stage: "adult",
     scene_id: 1,
+    homeId: 1,
     created_at: new Date().toISOString(),
     parents: null,
     state: {
@@ -300,7 +315,7 @@ export const personalities = {
     weightMultiplier: 0.8,
     speedMultiplier: 1.4,
     label: "Гиперактивный",
-    description: "Прыгает даже во сне. Соседи по вольеру его ненавидят.",
+    description: "Прыгает даже во сне. Соседи по биоподу его ненавидят.",
   },
   shy: {
     hungerRate: 0.8,
@@ -351,7 +366,7 @@ export const personalities = {
     weightMultiplier: 1.1,
     speedMultiplier: 1.1,
     label: "Светская жаба",
-    description: "Знает все сплетни вольера. И несколько из соседнего.",
+    description: "Знает все сплетни биопода. И несколько из соседнего.",
   },
   workaholic: {
     hungerRate: 1.6,
@@ -394,7 +409,7 @@ export const personalities = {
     speedMultiplier: 1.3,
     label: "Искатель приключений",
     description:
-      "Уже трижды терялся, дважды попадал в соседний вольер и один раз чуть не стал обедом для цапли.",
+      "Уже трижды терялся, дважды попадал в соседний биопод и один раз чуть не стал обедом для цапли.",
   },
   homebody: {
     hungerRate: 0.8,
@@ -508,7 +523,7 @@ export const personalities = {
     speedMultiplier: 1.4,
     label: "Исследователь",
     description:
-      "Карта вольера - его настольная книга. Уверен, что за следующим листком скрывается новая жизнь.",
+      "Карта биопода - его настольная книга. Уверен, что за следующим листком скрывается новая жизнь.",
   },
   dominant: {
     hungerRate: 1.5,

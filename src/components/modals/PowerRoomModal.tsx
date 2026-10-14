@@ -18,11 +18,11 @@ import {
 import { RoomConfig } from "../HexMap/rooms-config";
 
 /**
- * Энергокомната ⚡ — источник питания колонии.
+ * Энергосектор ⚡ — источник питания колонии.
  *
  * Внутри до 6 жаб (по одной на каждую сторону гекса): кормлённая взрослая жаба
- * даёт одну единицу тока одной соседней комнате, значит 6 жаб закрывают все 6
- * соседей. Голодная жаба ток не даёт, а комната без работающих жаб никого не
+ * даёт одну единицу тока одной соседнем секторе, значит 6 жаб закрывают все 6
+ * соседей. Голодная жаба ток не даёт, а сектор без работающих жаб никого не
  * питает — но внешнее питание ей и не нужно: ток ей дают сами жабы.
  */
 const HungerBar = ({ value }: { value: number }) => (
@@ -48,7 +48,7 @@ export default function PowerRoomModal({ room }: { room: RoomConfig }) {
   const [showPicker, setShowPicker] = useState(false);
 
   const roomToads = toadsByRoom[room.id] ?? [];
-  // Ток комнаты считает сеть: у ⚡ с работающими жабами он есть даже без подачи извне
+  // Ток сектора считает сеть: у ⚡ с работающими жабами он есть даже без подачи извне
   const powered = isRoomPowered(room, powerGrid);
   const output = getToadPowerCapacity(roomToads);
   const hungryToads = roomToads.filter((toad) => !isToadPowering(toad));
@@ -59,8 +59,8 @@ export default function PowerRoomModal({ room }: { room: RoomConfig }) {
 
   /**
    * Кого можно подсадить: свободные здоровые взрослые жабы колонии. Раньше список
-   * ограничивался «текущим вольером», но энергокомната — рабочая комната всей колонии:
-   * в неё берут жаб из любого вольера.
+   * ограничивался «текущим биоподом», но энергосектор — рабочий сектор всей колонии:
+   * в неё берут жаб из любого биопода.
    */
   const candidates = useMemo(
     () =>
@@ -96,7 +96,7 @@ export default function PowerRoomModal({ room }: { room: RoomConfig }) {
       playBeep();
       addNotification({
         type: "warn",
-        content: `В энергокомнате уже ${POWER_ROOM_TOAD_SLOTS} жаб — мест нет.`,
+        content: `В энергосекторе уже ${POWER_ROOM_TOAD_SLOTS} жаб — мест нет.`,
       });
       return;
     }
@@ -105,23 +105,39 @@ export default function PowerRoomModal({ room }: { room: RoomConfig }) {
     playCroakSmall();
     addNotification({
       type: "success",
-      content: `${toad.name ?? "Жаба"} теперь работает в энергокомнате ⚡`,
+      content: `${toad.name ?? "Жаба"} теперь работает в энергосекторе ⚡`,
     });
   };
 
+  /** Вернуть жабу домой — в биопод, который она помнит (`homeId`) */
   const handleRelease = (toad: Toad) => {
-    releaseToad(toad.id);
+    const result = releaseToad(toad.id);
+
+    // Место в биоподе не бронировалось: пока жаба работала в ⚡-секторе, его могли занять
+    if (!result.ok) {
+      playBeep();
+      addNotification({
+        type: "warn",
+        content:
+          result.reason === "no-space"
+            ? `${toad.name ?? "Жаба"} остаётся в секторе: в биоподе «${result.scene?.name}» нет места — постройте биопод или переселите её в другой («🏠 Переместить» в карточке жабы).`
+            : `${toad.name ?? "Жаба"} остаётся в секторе: биопод, в котором она жила, не найден — переселите её в другой («🏠 Переместить» в карточке жабы).`,
+        timeout: 9000,
+      });
+      return;
+    }
+
     playOk();
     addNotification({
       type: "info",
-      content: `${toad.name ?? "Жаба"} вернулась в вольер.`,
+      content: `${toad.name ?? "Жаба"} вернулась в биопод.`,
     });
   };
 
   return (
-    <Modal icon={<span className="text-2xl">⚡</span>} title="Энергокомната">
+    <Modal icon={<span className="text-2xl">⚡</span>} title="Энергосектор">
       <div className="px-2 pb-2">
-        {/* Состояние сети: есть ли ток у самой комнаты */}
+        {/* Состояние сети: есть ли ток у самого сектора */}
         <div
           className={`mb-2 rounded-xl border p-2 ${
             powered
@@ -131,7 +147,7 @@ export default function PowerRoomModal({ room }: { room: RoomConfig }) {
         >
           <div className="flex items-center justify-between text-xs">
             <span className="font-bold text-white">
-              {powered ? "⚡ Комната под током" : "🔌 Комната обесточена"}
+              {powered ? "⚡ Сектор под током" : "🔌 Сектор обесточен"}
             </span>
             <span className="text-gray-300">
               Ток соседям: {powerGrid.usage[room.id] ?? 0}/
@@ -140,12 +156,12 @@ export default function PowerRoomModal({ room }: { room: RoomConfig }) {
           </div>
           <p className="mt-1 text-2xs leading-snug text-gray-200">
             {powered
-              ? "Каждая кормлённая жаба внутри даёт одну единицу тока соседней комнате."
-              : "Внешнее питание комнате не нужно: посадите взрослых жаб и накормите их — каждая даст одну единицу тока соседнему гексу."}
+              ? "Каждая кормлённая жаба внутри даёт одну единицу тока соседнем секторе."
+              : "Внешнее питание секторе не нужно: посадите взрослых жаб и накормите их — каждая даст одну единицу тока соседнему гексу."}
           </p>
         </div>
 
-        {/* Ёмкость комнаты и кормление жаб */}
+        {/* Ёмкость сектора и кормление жаб */}
         <div className="mb-3 rounded-xl border border-gray-600/40 bg-color-main p-2">
           <div className="flex items-center justify-between text-xs">
             <span className="text-amber-200">
@@ -175,12 +191,12 @@ export default function PowerRoomModal({ room }: { room: RoomConfig }) {
           </div>
         </div>
 
-        {/* Жабы, которые сидят в комнате */}
+        {/* Жабы, которые сидят в секторе */}
         {roomToads.length === 0 ? (
           <div className="py-6 text-center">
             <div className="mb-2 text-4xl">⚡</div>
             <p className="text-sm text-gray-300">
-              В комнате пока никто не работает
+              В секторе пока никто не работает
             </p>
             <p className="mt-1 text-2xs text-gray-400">
               Посадите жаб — по одной на каждого соседа — и кормите их.
@@ -221,7 +237,7 @@ export default function PowerRoomModal({ room }: { room: RoomConfig }) {
                     onClick={() => handleRelease(toad)}
                     className="shrink-0 rounded-lg border border-gray-600/60 px-2 py-1 text-2xs text-gray-300 transition-colors hover:border-rose-400 hover:text-rose-200"
                   >
-                    В вольер
+                    В биопод
                   </ClickButton>
                 </div>
               );
@@ -229,7 +245,7 @@ export default function PowerRoomModal({ room }: { room: RoomConfig }) {
           </div>
         )}
 
-        {/* Подсадка жаб: свободные взрослые жабы текущего вольера */}
+        {/* Подсадка жаб: свободные взрослые жабы текущего биопода */}
         <ClickButton
           onClick={() => setShowPicker((prev) => !prev)}
           disabled={freeSlots <= 0}
@@ -248,7 +264,7 @@ export default function PowerRoomModal({ room }: { room: RoomConfig }) {
           <div className="mt-2 space-y-1.5">
             {candidates.length === 0 ? (
               <p className="py-2 text-center text-2xs text-gray-400">
-                В вольере нет свободных взрослых жаб.
+                В биоподе нет свободных взрослых жаб.
               </p>
             ) : (
               candidates.map((toad) => {

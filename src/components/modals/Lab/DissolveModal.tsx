@@ -37,7 +37,7 @@ export default function DissolveModal() {
     canDissolveToad(toad, incubatingIds)
   );
 
-  // Группы: каждый вольер отдельно. Склада жаб больше нет — у каждой жабы есть вольер.
+  // Группы: каждый биопод отдельно. Склада жаб больше нет — у каждой жабы есть биопод.
   const groups = ownedScenes
     .map((scene) => ({
       key: `scene-${scene.id}`,
@@ -173,7 +173,7 @@ export default function DissolveModal() {
                           {toad.mating && (
                             <span
                               className="text-pink-300"
-                              title="Ухаживает в гнезде: беременность стартует через 15–30 мин"
+                              title="Ухаживает в репродукторе: беременность стартует через 15–30 мин"
                             >
                               🫧
                             </span>

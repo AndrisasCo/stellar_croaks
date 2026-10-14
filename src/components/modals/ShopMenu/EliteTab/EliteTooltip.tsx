@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Toad } from "../../../../models/Toad";
 import { CURRENCY_CONFIG } from "../../../../utils/constants";
+import { getToadHomeId } from "../../../../utils/toad-location";
 import { ToadGender } from "../../../shared/ToadGender";
 import { ToadAvatar } from "../../../shared/ToadAvatar";
 
@@ -93,7 +94,9 @@ export const EliteOrderTooltip: React.FC<EliteOrderTooltipProps> = ({
                     <span>Редкость: {toad.genes.rarity.toFixed(1)}</span>
                   </div>
                 </div>
-                <div>{toad.scene_id ? "" : "📦"}</div>
+                {/* Дом жабы — её биопод (`homeId`): у жабы без дома (сейв старой версии,
+                    а не «в секторе») показываем коробку */}
+                <div>{getToadHomeId(toad) ? "" : "📦"}</div>
               </div>
             </div>
           ))}

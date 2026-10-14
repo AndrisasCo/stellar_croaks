@@ -100,7 +100,7 @@ export const achievementGroups: AchievementGroup[] = [
         id: "buy-enclosure",
         icon: "🏠",
         name: "Недвижимость",
-        description: "Купить дополнительный вольер",
+        description: "Купить дополнительный биопод",
         completed: false,
       },
       {
@@ -389,14 +389,14 @@ export const achievementGroups: AchievementGroup[] = [
   {
     id: "biocampus-farm",
     title: "🏭 Хозяин биокупола",
-    description: "Освойте ферму, Гнездо и Диссоциатор лаборатории",
+    description: "Освойте ферму, Репродуктор и Диссоциатор лаборатории",
     color: "purple",
     achievements: [
       {
         id: "first-manual-breed",
         icon: "🥚",
-        name: "Гнездо в деле",
-        description: "Запустить первое размножение вручную в «Гнезде»",
+        name: "Репродуктор в деле",
+        description: "Запустить первое размножение вручную в «Репродукторе»",
         completed: false,
       },
       {

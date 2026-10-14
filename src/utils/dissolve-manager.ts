@@ -100,7 +100,7 @@ export const getDissolveWarnings = (toads: Toad[]): DissolveWarning[] => {
   if (courtingCount > 0) {
     warnings.push({
       icon: "🫧",
-      text: `Ухаживающих жаб в гнезде: ${courtingCount} — ухаживание прервётся`,
+      text: `Ухаживающих жаб в репродукторе: ${courtingCount} — ухаживание прервётся`,
     });
   }
 

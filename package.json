@@ -17,7 +17,8 @@
     "verify:colony": "node tmp-verify-colony-growth.mjs",
     "verify:crew": "node tmp-verify-expedition-crew.mjs",
     "verify:assets": "node tmp-verify-assets.mjs",
-    "verify": "npm run verify:init-data && npm run verify:stars && npm run verify:platform && npm run verify:colony && npm run verify:crew && npm run verify:assets"
+    "verify:place": "node tmp-verify-toad-place.mjs",
+    "verify": "npm run verify:init-data && npm run verify:stars && npm run verify:platform && npm run verify:colony && npm run verify:crew && npm run verify:assets && npm run verify:place"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.81.0",

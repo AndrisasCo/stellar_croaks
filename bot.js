@@ -70,7 +70,7 @@ const playKeyboard = () =>
 
 const GREETING =
   "🐸 Stellar Croak — колония жаб на орбите.\n\n" +
-  "Разводите жаб, стройте комнаты, летайте в разведку — прогресс сохраняется " +
+  "Разводите жаб, стройте сектора, летайте в разведку — прогресс сохраняется " +
   "и в Telegram, и в браузере.";
 
 const sendGreeting = (ctx) => ctx.reply(GREETING, playKeyboard());

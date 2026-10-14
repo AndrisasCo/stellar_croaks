@@ -20,15 +20,15 @@ import {
 } from "../HexMap/rooms-config";
 
 /**
- * Подтверждение сноса комнаты — модалка-развилка перед необратимым шагом.
+ * Подтверждение сноса сектора — модалка-развилка перед необратимым шагом.
  *
  * Снос платный (`DEMOLISH_ROOM_COST`) и всегда через подтверждение: за постройку Кваксы не
- * возвращаются, улучшения комнаты сгорают (автокормушку не вернуть), а вернуть комнату можно
+ * возвращаются, улучшения сектора сгорают (автокормушку не вернуть), а вернуть сектор можно
  * только новой постройкой. Взамен гекс остаётся на карте свободным слотом — земля не теряется,
- * а следующая комната того же вида дешевеет: цена считается по числу построенных
+ * а следующий сектор того же вида дешевеет: цена считается по числу построенных
  * (`colony-build.ts` → `getRoomCostAfterDemolish`), поэтому снос делает шаг назад.
  *
- * Модалку открывает список комнат ядра (`RoomUpgradeModal`): там же видно, что построено и
+ * Модалку открывает список секторов ядра (`RoomUpgradeModal`): там же видно, что построено и
  * где живут жабы. Правила сноса (не ядро и ни одной жабы внутри) — в `getRoomDemolishIssue`:
  * они должны сходиться с тем, что игрок видит на гексе.
  */
@@ -47,15 +47,15 @@ export default function RoomDemolishModal({ room }: { room: RoomConfig }) {
     room.sceneId === undefined
       ? null
       : ownedScenes.find((scene) => scene.id === room.sceneId)?.name ?? null;
-  /** Вид комнаты из каталога построек: у гекса он шире (ядро и пустой слот сюда не попадают) */
+  /** Вид сектора из каталога построек: у гекса он шире (ядро и пустой слот сюда не попадают) */
   const kind = getBuiltRoomKind(room);
 
   /**
-   * Цены вокруг сноса: столько комната того же вида стоит сейчас и столько — после сноса.
+   * Цены вокруг сноса: столько секторов того же вида стоит сейчас и столько — после сноса.
    * Считается по состоянию колонии, а не по сейву: список обновляется после каждой постройки.
    */
   const price = useMemo(() => {
-    // Открыть снос можно только у построенной комнаты: вид сужаем до каталога построек
+    // Открыть снос можно только у построенного сектора: вид сужаем до каталога построек
     if (!kind) {
       return { now: 0, after: 0, saving: 0 };
     }
@@ -92,9 +92,9 @@ export default function RoomDemolishModal({ room }: { room: RoomConfig }) {
     playOk();
     addNotification({
       type: "success",
-      content: `${room.icon} ${room.title || "Комната"} снесена: гекс свободен${
+      content: `${room.icon} ${room.title || "Сектор"} снесена: гекс свободен${
         price.saving > 0
-          ? `, следующая такая комната дешевле на ${price.saving} ${CURRENCY_CONFIG.tokens.icon}`
+          ? `, следующая такой сектор дешевле на ${price.saving} ${CURRENCY_CONFIG.tokens.icon}`
           : ""
       }.`,
     });
@@ -104,7 +104,7 @@ export default function RoomDemolishModal({ room }: { room: RoomConfig }) {
   };
 
   return (
-    <Modal icon={<span className="text-2xl">🗑</span>} title="Снос комнаты">
+    <Modal icon={<span className="text-2xl">🗑</span>} title="Снос сектора">
       <div className="px-2 pb-2">
         <div className="mb-3 rounded-xl border border-rose-500/40 bg-rose-900/20 p-2">
           <div className="mb-1 flex items-center justify-between text-xs">
@@ -114,7 +114,7 @@ export default function RoomDemolishModal({ room }: { room: RoomConfig }) {
             </span>
           </div>
           <p className="text-2xs leading-snug text-rose-100">
-            Комната уходит с карты навсегда: Кваксы за постройку не возвращаются, улучшения
+            Сектор уходит с карты навсегда: Кваксы за постройку не возвращаются, улучшения
             сгорают. Взамен гекс остаётся свободным слотом — его можно застроить заново.
           </p>
         </div>
@@ -132,7 +132,7 @@ export default function RoomDemolishModal({ room }: { room: RoomConfig }) {
                 )}
               </div>
               <div className="text-2xs leading-snug text-gray-400">
-                {room.subtitle} · жаб в комнате: {roomToads.length}
+                {room.subtitle} · жаб в секторе: {roomToads.length}
               </div>
             </div>
           </div>
@@ -146,12 +146,12 @@ export default function RoomDemolishModal({ room }: { room: RoomConfig }) {
           <div>
             🐸 Жабы:{" "}
             {roomToads.length > 0
-              ? `${roomToads.length} — сначала переселите их в вольер.`
-              : "в комнате пусто"}
+              ? `${roomToads.length} — сначала переселите их в биопод.`
+              : "в секторе пусто"}
           </div>
           {upgraded && (
             <div className="text-rose-300">
-              🍎 Улучшения комнаты сгорят: автокормушка уйдёт вместе с ней.
+              🍎 Улучшения сектора сгорят: автокормушка уйдёт вместе с ней.
             </div>
           )}
           {price.saving > 0 ? (
@@ -161,7 +161,7 @@ export default function RoomDemolishModal({ room }: { room: RoomConfig }) {
             </div>
           ) : (
             <div>
-              💰 Цена комнаты того же вида после сноса не изменится (шаг роста у неё
+              💰 Цена сектора того же вида после сноса не изменится (шаг роста у неё
               единичный).
             </div>
           )}

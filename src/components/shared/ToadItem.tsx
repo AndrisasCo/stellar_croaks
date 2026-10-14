@@ -14,6 +14,10 @@ import {
   getToadHpRatio,
   getToadHpStatusLabel,
 } from "../../utils/expedition-config";
+import {
+  PRODUCTION_HUNGRY_FACTOR,
+  PRODUCTION_MIN_HUNGER,
+} from "../../utils/gamification-config";
 
 /** Полоска HP жабы (Часть 5: походы ранят жаб) */
 const ToadHpRow = ({ toad }: { toad: Toad }) => {
@@ -47,25 +51,39 @@ const ToadHpRow = ({ toad }: { toad: Toad }) => {
   );
 };
 
-const HungerIcon = ({ level }: { level: number }) => {
-  const getHungerColor = (level: number) => {
-    if (level >= 80) return "text-green-400";
-    if (level >= 50) return "text-yellow-400";
-    if (level >= 20) return "text-orange-400";
-    return "text-red-400";
-  };
-
-  const getHungerIcon = (level: number) => {
-    if (level >= 80) return "🤤";
-    if (level >= 50) return "😐";
-    if (level >= 20) return "😟";
-    return "😵";
-  };
+/**
+ * Сытость жабы: подпись словами вместо эмодзи-лица.
+ *
+ * 😐/😵 читались как «настроение», а голод в игре — ресурс с порогом
+ * `PRODUCTION_MIN_HUNGER`: ниже него жаба выдаёт треть биомассы (и её подхватывает
+ * автокормушка сектора). Порог тот же, поэтому нижняя ступень цвета — оранжевая
+ * ровно до 20 %, красная — уже голодный минимум.
+ */
+const HungerLabel = ({ level }: { level: number }) => {
+  const color =
+    level >= 80
+      ? "text-green-400"
+      : level >= 50
+      ? "text-yellow-400"
+      : level >= PRODUCTION_MIN_HUNGER
+      ? "text-orange-400"
+      : "text-red-400";
 
   return (
-    <div className={`flex items-center gap-1 ${getHungerColor(level)}`}>
-      <span className="text-xs">{getHungerIcon(level)}</span>
-      <span className="text-2xs font-medium">{level}%</span>
+    <div
+      className="flex items-center gap-1 whitespace-nowrap"
+      title={
+        level <= PRODUCTION_MIN_HUNGER
+          ? `Голодный минимум: ниже ${PRODUCTION_MIN_HUNGER} % сытости жаба вырабатывает лишь ${Math.round(
+              PRODUCTION_HUNGRY_FACTOR * 100
+            )} % биомассы`
+          : "Сытость умножает выработку биомассы: корм на складе, автокормушка сектора кормит сама"
+      }
+    >
+      <span className="text-2xs text-gray-400">Сытость</span>
+      <span className={`text-2xs font-medium ${color}`}>
+        {Math.round(level)}%
+      </span>
     </div>
   );
 };
@@ -194,8 +212,8 @@ export const ToadItem = ({
       </div>
       {showHunger && (
         <div className="flex w-full mt-2 items-center justify-between gap-3">
-          <HungerIcon level={toad.state.hunger} />
-          {/* Прогресс-бар голода */}
+          <HungerLabel level={toad.state.hunger} />
+          {/* Прогресс-бар сытости: цвет той же лестницы, что у подписи */}
           <div className="flex-1 h-1.5 bg-gray-600 rounded-full overflow-hidden">
             <div
               className={`h-full rounded-full ${
@@ -203,7 +221,7 @@ export const ToadItem = ({
                   ? "bg-green-500"
                   : toad.state.hunger >= 50
                   ? "bg-yellow-500"
-                  : toad.state.hunger >= 20
+                  : toad.state.hunger >= PRODUCTION_MIN_HUNGER
                   ? "bg-orange-500"
                   : "bg-red-500"
               }`}

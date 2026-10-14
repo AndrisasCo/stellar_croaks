@@ -7,21 +7,24 @@ import {
   RoomUpgrades,
 } from "../models/colony";
 import { DEFAULT_SCENE, INITIAL_CAPACITY, Scene } from "../models/scene";
+import { Toad } from "../models/Toad";
 import { MAX_OWNED_SCENES } from "../utils/constants";
+import { getEnclosureToads } from "../utils/housing";
+import { getToadHomeId } from "../utils/toad-location";
 import { getGameState, updateGameState } from "./localStorage";
-import { updateToadById } from "./index";
+import { getToadById, updateToadById } from "./index";
 
 /**
  * Постройки колонии: гексагональная карта живёт в состоянии игры,
  * поэтому все действия идут через `updateGameState` — экран карты
  * перерисуется сам по событию `gameStateUpdated`.
  *
- * Вольеры больше не покупаются в магазине: каждый построенный на гексе «Вольер»
- * открывает новый вольер (`Scene`) с `INITIAL_CAPACITY` мест, поэтому стройка
- * обновляет сразу и колонию, и список вольеров.
+ * Биоподы больше не покупаются в магазине: каждый построенный на гексе «Биопод»
+ * открывает новый биопод (`Scene`) с `INITIAL_CAPACITY` мест, поэтому стройка
+ * обновляет сразу и колонию, и список биоподов.
  */
 
-/** Построенные комнаты колонии (старые сейвы поля не знают — отдаём пустую колонию). */
+/** Построенные секторы колонии (старые сейвы поля не знают — отдаём пустую колонию). */
 export const getColonyState = (): ColonyState =>
   getGameState().colony ?? EMPTY_COLONY;
 
@@ -32,13 +35,13 @@ export const saveColonyState = (colony: ColonyState): ColonyState => {
 };
 
 /**
- * Апгрейды комнаты: они лежат в `ColonyState.upgrades` по id гекса, поэтому комнату
- * передаём целиком — гексу-вольеру апгрейд может отдать ещё и его вольер.
+ * Апгрейды сектора: они лежат в `ColonyState.upgrades` по id гекса, поэтому сектор
+ * передаём целиком — гексу-биоподу апгрейд может отдать ещё и его биопод.
  *
- * Легаси: раньше автокормушку покупали «вольеру», и она жила в `Scene.bonuses.autoFeeder`.
- * Покупка теперь всегда пишет в `ColonyState.upgrades`, а старый бонус вольера читается
+ * Легаси: раньше автокормушку покупали «биоподу», и она жила в `Scene.bonuses.autoFeeder`.
+ * Покупка теперь всегда пишет в `ColonyState.upgrades`, а старый бонус биопода читается
  * здесь как апгрейд его гекса — апгрейд, купленный до переезда, продолжает работать.
- * Связь «гекс ↔ вольер» знает карта (`RoomConfig.sceneId`), поэтому `sceneId` приходит
+ * Связь «гекс ↔ биопод» знает карта (`RoomConfig.sceneId`), поэтому `sceneId` приходит
  * параметром, а не ищется здесь.
  */
 export const getRoomUpgrades = (room: {
@@ -57,7 +60,7 @@ export const getRoomUpgrades = (room: {
   return scene?.bonuses?.autoFeeder ? { ...stored, autoFeeder: true } : stored;
 };
 
-/** Ставит комнате апгрейд: чужие апгрейды и постройки комнаты не трогает. */
+/** Ставит секторе апгрейд: чужие апгрейды и постройки сектора не трогает. */
 export const upgradeColonyRoom = (
   roomId: string,
   upgrades: RoomUpgrades,
@@ -79,19 +82,19 @@ export const upgradeColonyRoom = (
   return upgraded;
 };
 
-/** Новый вольер для построенной на гексе комнаты «Вольер» */
+/** Новый биопод для построенной на гексе сектора «Биопод» */
 const createEnclosureScene = (scenes: Scene[]): Scene => ({
   ...DEFAULT_SCENE,
   id: Date.now(),
-  name: `Вольер #${scenes.length + 1}`,
-  description: "Вольер, построенный на карте колонии",
+  name: `Биопод #${scenes.length + 1}`,
+  description: "Биопод, построенный на карте колонии",
   capacity: INITIAL_CAPACITY,
   created_at: new Date().toISOString(),
 });
 
 /**
- * Возводит комнату на слоте карты (повторная стройка того же слота не дублируется).
- * «Вольер» попутно открывает новый вольер: возвращаем null, если вольеров уже максимум
+ * Возводит сектор на слоте карты (повторная стройка того же слота не дублируется).
+ * «Биопод» попутно открывает новый биопод: возвращаем null, если биоподов уже максимум
  * (ограничение `MAX_OWNED_SCENES` проверяет и интерфейс — здесь страховка).
  */
 export const buildColonyRoom = (
@@ -126,7 +129,7 @@ export const buildColonyRoom = (
     colony: {
       ...colony,
       rooms: [...colony.rooms.filter((item) => item.id !== slotId), room],
-      // Гекс застраивают заново — метка сноса снимается: карта снова показывает комнату
+      // Гекс застраивают заново — метка сноса снимается: карта снова показывает сектор
       // (`getUnlockedRooms`), а не пустой слот
       demolished: colony.demolished?.filter((id) => id !== slotId),
     },
@@ -137,14 +140,14 @@ export const buildColonyRoom = (
 };
 
 /**
- * Сносит комнату с гекса: платная и необратимая развилка стройки.
+ * Сносит сектор с гекса: платная и необратимая развилка стройки.
  *
  * Что делает функция:
- *  - убирает постройку из `ColonyState.rooms` (у базовых «Вольера» и «Гнезда» постройки в
+ *  - убирает постройку из `ColonyState.rooms` (у базовых «Биопода» и «Репродуктора» постройки в
  *    сейве нет — их отсутствие помнит только `demolished`);
  *  - ставит метку сноса: гекс остаётся на карте **свободным слотом**, а его фронт продолжает
  *    держать открытыми гексы, которые от него выросли (`getUnlockedRooms`);
- *  - забывает апгрейды комнаты: здание уходит вместе с ними (автокормушку не вернуть),
+ *  - забывает апгрейды сектора: здание уходит вместе с ними (автокормушку не вернуть),
  *    постройка на этом гексе начинается с нуля.
  *
  * Плата (`DEMOLISH_ROOM_COST`) и правила сноса — дело интерфейса: он проверяет, что это не
@@ -171,10 +174,10 @@ export const demolishColonyRoom = (roomId: string): ColonyState => {
 };
 
 /**
- * Приводит карту и вольеры в согласие: у каждой построенной на гексе комнаты «Вольер»
- * должен быть свой вольер. Нужно для сейвов, где вольер строили до того, как постройка
- * начала открывать вольер (или если сохранение пришло от старой версии игры).
- * Возвращает число созданных вольеров.
+ * Приводит карту и биоподы в согласие: у каждой построенной на гексе сектора «Биопод»
+ * должен быть свой биопод. Нужно для сейвов, где биопод строили до того, как постройка
+ * начала открывать биопод (или если сохранение пришло от старой версии игры).
+ * Возвращает число созданных биоподов.
  */
 export const syncColonyScenes = (): number => {
   const state = getGameState();
@@ -207,25 +210,100 @@ export const syncColonyScenes = (): number => {
 };
 
 /**
- * Помещает жабу в комнату колонии (энергокомната, гнездо, «Разведка»).
+ * Дом жабы: биопод, который она помнит (`homeId`), — туда её возвращает «Домой».
+ * null — биопода нет (сейв старой версии или биопод снесли вместе с картой).
+ */
+export const getToadHomeScene = (toadId: number): Scene | null => {
+  const state = getGameState();
+  const toad = state.toads.find((item) => item.id === toadId);
+  const homeId = toad ? getToadHomeId(toad) : null;
+
+  return state.scenes.find((scene) => scene.id === homeId) ?? null;
+};
+
+/**
+ * Переезд жабы в биопод: либо она дома, либо причина отказа (её показывают уведомлением),
+ * `scene` при отказе тоже отдаём — по нему видно, куда жаба не влезла.
+ */
+export type ToadHomeResult =
+  | { ok: true; toad: Toad; scene: Scene }
+  | { ok: false; reason: "no-scene" | "no-space"; scene: Scene | null };
+
+/**
+ * Общая часть переезда в биопод: проверка места и запись места (`scene_id`) вместе с домом
+ * (`homeId`). Заходим сюда только из «Домой» и «Переместить» — сектор колонии при переезде
+ * освобождается, потому что физически жаба идёт в биопод.
  *
- * `scene_id` при этом не трогаем: это дом жабы (её вольер), по нему гекс вольера
- * находит своих жильцов, когда жаба вернётся из комнаты или из похода.
+ * Место проверяем по жильцам биопода и без самой жабы: она как раз переезжает. Жаба, которая
+ * сидит в секторе (репродуктор, ⚡), в биоподе не числилась ни дня — если за время её работы
+ * места кончились, домой она не влезет, и игроку нужно построить биопод.
  */
-export const placeToadInRoom = (toadId: number, roomId: string) =>
-  updateToadById(toadId, { roomId });
+const settleToadInScene = (toadId: number, sceneId: number): ToadHomeResult => {
+  const toad = getToadById(toadId);
+  const scene = getGameState().scenes.find((item) => item.id === sceneId) ?? null;
+
+  if (!scene) {
+    return { ok: false, reason: "no-scene", scene: null };
+  }
+
+  const residents = getEnclosureToads(scene.id).filter(
+    (item) => item.id !== toadId
+  ).length;
+
+  if (residents >= scene.capacity) {
+    return { ok: false, reason: "no-space", scene };
+  }
+
+  const [updated] = updateToadById(toadId, {
+    roomId: null,
+    scene_id: scene.id,
+    homeId: scene.id,
+  });
+
+  return { ok: true, toad: updated ?? toad, scene };
+};
 
 /**
- * Возвращает жабу из комнаты колонии обратно в вольер (`roomId` сбрасывается).
- * Место определит сам вольер жабы — её `scene_id`.
+ * Помещает жабу в сектор колонии (энергосектор, репродуктор, «Разведка», лазарет).
+ *
+ * Место у жабы одно: в секторе она в биоподе уже не живёт, поэтому `scene_id` очищается —
+ * место в биоподе освобождается (его займёт кто-то другой, см. `utils/housing.ts`), а гекс
+ * биопода перестаёт рисовать жабу у себя. Дом при этом не теряется: он уезжает в `homeId`,
+ * и кнопка «Домой» вернёт жабу туда, откуда она вышла (`sendToadHome`).
  */
-export const releaseToadFromRoom = (toadId: number) =>
-  updateToadById(toadId, { roomId: null });
+export const placeToadInRoom = (toadId: number, roomId: string): Toad[] => {
+  const toad = getToadById(toadId);
+
+  return updateToadById(toadId, {
+    roomId,
+    scene_id: null,
+    homeId: getToadHomeId(toad),
+  });
+};
 
 /**
- * Переселяет жабу в конкретный вольер: `scene_id` становится её новым домом,
- * `roomId` сбрасывается — физически жаба идёт в вольер, а не остаётся в комнате.
- * Так гекс вольера, на который жабу перенесли, показывает её у себя.
+ * Возвращает жабу из сектора колонии домой — в её биопод (`homeId`).
+ *
+ * Дом жаба помнит всегда, но не бронирует: пока она работала в секторе, биопод мог
+ * заполниться. Тогда возвращаем `no-space` — жаба остаётся в секторе, а игроку надо
+ * построить биопод (или вернуть её в другой свободный биопод, «домой» из карточки жабы).
  */
-export const moveToadToAviary = (toadId: number, sceneId: number) =>
-  updateToadById(toadId, { roomId: null, scene_id: sceneId });
+export const sendToadHome = (toadId: number): ToadHomeResult => {
+  const home = getToadHomeScene(toadId);
+
+  if (!home) {
+    return { ok: false, reason: "no-scene", scene: null };
+  }
+
+  return settleToadInScene(toadId, home.id);
+};
+
+/**
+ * Переселяет жабу в конкретный биопод: он становится её местом и новым домом
+ * (`scene_id` и `homeId`), а сектор колонии освобождается.
+ * В полный биопод жаба не влезет — вернём `no-space`.
+ */
+export const moveToadToAviary = (
+  toadId: number,
+  sceneId: number
+): ToadHomeResult => settleToadInScene(toadId, sceneId);

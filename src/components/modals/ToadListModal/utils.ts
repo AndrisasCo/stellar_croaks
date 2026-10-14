@@ -1,3 +1,6 @@
+import { Toad } from "../../../models/Toad";
+import { getToadHomeId, isToadSamePlace } from "../../../utils/toad-location";
+
 // Неоновые цвета в стиле игры для родственных связей (25 цветов)
 export const RELATIONSHIP_COLORS = [
   "rgba(255, 20, 147, 0.15)", // Neon Pink
@@ -91,8 +94,10 @@ export const getToadRelatives = (toad: Toad, allToads: Toad[]) => {
           id: parent.id,
           name: parent.name,
           sex: parent.sex,
-          sceneId: parent.scene_id,
-          isInSameEnclosure: parent.scene_id === toad.scene_id,
+          // Дом (`homeId`) — подпись «где живёт»; вместе они могут быть и в секторе
+          // колонии (пара в репродукторе) — это `isInSameEnclosure`
+          sceneId: getToadHomeId(parent),
+          isInSameEnclosure: isToadSamePlace(parent, toad),
           relation: "parent",
         });
       }
@@ -110,8 +115,8 @@ export const getToadRelatives = (toad: Toad, allToads: Toad[]) => {
         id: child.id,
         name: child.name,
         sex: child.sex,
-        sceneId: child.scene_id,
-        isInSameEnclosure: child.scene_id === toad.scene_id,
+        sceneId: getToadHomeId(child),
+        isInSameEnclosure: isToadSamePlace(child, toad),
         relation: "child",
       });
     }
@@ -137,8 +142,8 @@ export const getToadRelatives = (toad: Toad, allToads: Toad[]) => {
         id: sibling.id,
         name: sibling.name,
         sex: sibling.sex,
-        sceneId: sibling.scene_id,
-        isInSameEnclosure: sibling.scene_id === toad.scene_id,
+        sceneId: getToadHomeId(sibling),
+        isInSameEnclosure: isToadSamePlace(sibling, toad),
         relation: "sibling",
       });
     }
@@ -146,7 +151,7 @@ export const getToadRelatives = (toad: Toad, allToads: Toad[]) => {
 
   const relativesArray = Array.from(relatives.values());
 
-  // Проверяем риск имбридинга: есть ли родственники другого пола в том же вольере
+  // Проверяем риск имбридинга: есть ли родственники другого пола в том же биоподе
   // (кроме детей, так как дети обычно не представляют риска имбридинга)
   const inbreedingRisk = relativesArray.some(
     (rel) =>

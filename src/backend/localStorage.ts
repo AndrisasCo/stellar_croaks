@@ -10,7 +10,7 @@ export interface GameState {
   user: User;
   scenes: Scene[];
   toads: Toad[];
-  /** Построенные комнаты колонии (гексагональная карта). */
+  /** Построенные секторы колонии (гексагональная карта). */
   colony?: ColonyState;
   /** Активные походы (разведка, Часть 5) */
   expeditions?: Expedition[];
@@ -89,57 +89,84 @@ export const getGameState = (): GameState => {
 };
 
 /**
- * Склад жаб отменён: у каждой жабы всегда есть вольер.
- * Старые сейвы держали лишних жаб «на складе» (`scene_id: null`) — при загрузке
- * расселяем их по вольерам по порядку; если мест не хватило, жабы остаются жить
- * в переполненном вольере до постройки нового (потерять жаб нельзя).
+ * Приведение старых сейвов к правилу «у жабы одно место» (`utils/toad-location.ts`):
+ *
+ *  1. **Дом (`homeId`)**: раньше `scene_id` был домом жабы — он не менялся, пока жаба
+ *     работала в секторе колонии. Теперь `scene_id` — это место, где жаба **сейчас**,
+ *     а дом переехал в `homeId`: переносим его из `scene_id` (если поля ещё нет).
+ *  2. **Место**: жаба, сидящая в секторе (`roomId`), в биоподе уже не живёт — очищаем
+ *     `scene_id` (место в биоподе освобождается, дом остаётся в `homeId`), иначе она бы
+ *     и числилась в биоподе, и висела в секторе.
+ *  3. **Склад жаб отменён**: у каждой жабы всегда есть биопод. Старые сейвы держали лишних
+ *     жаб «на складе» (пустой биопод и никакого сектора) — расселяем их по биоподам по
+ *     порядку; если мест не хватило, жабы остаются жить в переполненном биоподе до
+ *     постройки нового (потерять жаб нельзя).
  */
 function migrateGameState(state: GameState): GameState {
   if (!state.toads?.length || !state.scenes?.length) {
     return state;
   }
 
-  const homeless = state.toads.filter(
-    (toad) => !state.scenes.some((scene) => scene.id === toad.scene_id)
-  );
+  let changed = false;
 
-  if (homeless.length === 0) {
-    return state;
-  }
+  // 1–2. Дом и место: жаба либо в биоподе (`scene_id`), либо в секторе (`roomId`)
+  let toads = state.toads.map((toad) => {
+    const homeId = toad.homeId ?? toad.scene_id ?? null;
+    const sceneId = toad.roomId ? null : homeId;
 
-  const free = new Map<number, number>(
-    state.scenes.map((scene) => [
-      scene.id,
-      Math.max(
-        0,
-        scene.capacity -
-          state.toads.filter((toad) => toad.scene_id === scene.id).length
-      ),
-    ])
-  );
-  const fallbackSceneId = state.scenes[0].id;
-  let index = 0;
-
-  const toads = state.toads.map((toad) => {
-    if (state.scenes.some((scene) => scene.id === toad.scene_id)) {
+    if (homeId === toad.homeId && sceneId === toad.scene_id) {
       return toad;
     }
 
-    const scene = state.scenes.find((candidate) => (free.get(candidate.id) ?? 0) > 0);
+    changed = true;
 
-    if (!scene) {
-      return { ...toad, scene_id: fallbackSceneId };
-    }
-
-    free.set(scene.id, (free.get(scene.id) ?? 1) - 1);
-    index += 1;
-
-    return { ...toad, scene_id: scene.id };
+    return { ...toad, homeId, scene_id: sceneId };
   });
 
-  console.info(`Склад жаб закрыт: ${index} жаб переехали в вольеры`);
+  // 3. Жабы без места вовсе (старый «склад жаб»): биопод не помнит их ни местом, ни домом
+  const homeless = toads.filter(
+    (toad) =>
+      !toad.roomId && !state.scenes.some((scene) => scene.id === toad.homeId)
+  );
 
-  return { ...state, toads };
+  if (homeless.length > 0) {
+    const free = new Map<number, number>(
+      state.scenes.map((scene) => [
+        scene.id,
+        Math.max(
+          0,
+          scene.capacity -
+            toads.filter(
+              (toad) => toad.scene_id === scene.id && !toad.roomId
+            ).length
+        ),
+      ])
+    );
+    const fallbackSceneId = state.scenes[0].id;
+    let index = 0;
+
+    toads = toads.map((toad) => {
+      if (toad.roomId || state.scenes.some((scene) => scene.id === toad.homeId)) {
+        return toad;
+      }
+
+      const scene = state.scenes.find((candidate) => (free.get(candidate.id) ?? 0) > 0);
+      const sceneId = scene?.id ?? fallbackSceneId;
+
+      if (scene) {
+        free.set(scene.id, (free.get(scene.id) ?? 1) - 1);
+        index += 1;
+      }
+
+      return { ...toad, scene_id: sceneId, homeId: sceneId };
+    });
+
+    changed = true;
+
+    console.info(`Склад жаб закрыт: ${index} жаб переехали в биоподы`);
+  }
+
+  return changed ? { ...state, toads } : state;
 }
 
 // Сохранение всего состояния

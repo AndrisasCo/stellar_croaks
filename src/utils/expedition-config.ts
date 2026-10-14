@@ -5,7 +5,9 @@ import {
   BIOMASS_TO_TOKENS_RATE,
   UPKEEP_PER_TOAD_HOUR,
   getBiomassPotentialRate,
+  getToadEnergy,
 } from "./gamification-config";
+import { getToadHomeId } from "./toad-location";
 
 /**
  * Константы разведки (Часть 5) и смысл характеристик жаб (Часть 5.3).
@@ -150,15 +152,23 @@ export const getToadHp = (toad: Toad): number => {
 export const isToadDown = (toad: Toad): boolean => getToadHp(toad) <= 0;
 
 /**
- * Обновление жабы при отправке в поход: место в комнате сбрасывается (`roomId: null`).
- * Жаба в походе не стоит ни в ⚡-комнате, ни в «Разведке» — двух мест сразу не бывает:
- * уйдя, она освобождает место, а вернувшись, попадает в вольер (её сажают заново).
+ * Обновление жабы при отправке в поход: место в секторе сбрасывается (`roomId: null`).
+ * Жаба в походе не стоит ни в ⚡-секторе, ни в «Разведке» — двух мест сразу не бывает:
+ * уйдя, она освобождает место в секторе и возвращается домой в свой биопод (`scene_id`
+ * по `homeId`, см. `toad-location.ts`) — карта её больше не рисует (`isToadVisibleInRoom`),
+ * но дом её снова считает, как и до новой модели места.
  * HP на старте похода полный — раны лечат уже после возвращения.
  */
 export const getAwayToadUpdate = (toad: Toad): Partial<Toad> => {
   const maxHp = getToadMaxHp(toad);
 
-  return { status: "out", hp: maxHp, maxHp, roomId: null };
+  return {
+    status: "out",
+    hp: maxHp,
+    maxHp,
+    roomId: null,
+    scene_id: getToadHomeId(toad),
+  };
 };
 
 /** Отношение HP жабы к максимуму (0..1) */
@@ -345,6 +355,37 @@ export const getExpeditionSendCost = (
   Math.round(
     EXPEDITION_SUPPLY_BIOMASS_PER_TOAD * sector.depth * Math.max(1, teamSize),
   );
+
+/**
+ * Силы жабы на поход (Часть 5): путь за Периметр выматывает, и чем глубже сектор,
+ * тем дороже он обходится. Силы — **личный** ресурс жабы, поэтому платит не общий
+ * склад, а каждая участница команды: в модалке разведки у жаб видно силы, а
+ * снаряжение биомассой оплачивается отдельно, со склада.
+ *
+ * Дома силы капают обратно (+6 в час), так что поход — ещё и очередь: жабу, которая
+ * копит силы на «Репродуктор», дешевле взять в ближний сектор, чем в дальний.
+ * Первый сектор стоит 10 ⚡, «Дальний Периметр» (глубина 8) — 52 ⚡.
+ */
+export const EXPEDITION_ENERGY_BASE = 10;
+/** Плюс столько сил за каждую следующую глубину сектора */
+export const EXPEDITION_ENERGY_PER_DEPTH = 6;
+
+/** Силы одной жабы на поход в сектор */
+export const getExpeditionToadEnergyCost = (sector: SectorDef): number =>
+  EXPEDITION_ENERGY_BASE +
+  EXPEDITION_ENERGY_PER_DEPTH * (Math.max(1, sector.depth) - 1);
+
+/** Силы всей команды на поход: каждую жабу считаем отдельно, тут — сумма для итога */
+export const getExpeditionEnergyCost = (
+  sector: SectorDef,
+  teamSize: number,
+): number => getExpeditionToadEnergyCost(sector) * Math.max(1, teamSize);
+
+/** Хватает ли жабе сил на поход в сектор */
+export const canToadAffordExpedition = (
+  toad: Toad,
+  sector: SectorDef,
+): boolean => getToadEnergy(toad) >= getExpeditionToadEnergyCost(sector);
 
 /** Сколько биомассы стоит ускорить возврат (за час остатка пути) */
 export const SPEEDUP_BIOMASS_PER_HOUR = 8;

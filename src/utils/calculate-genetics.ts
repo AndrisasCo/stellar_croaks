@@ -1,5 +1,6 @@
 import { personalities, Toad } from "../models/Toad";
 import { ToadTypes } from "../models/Toad/toad-species";
+import { getToadHomeId } from "./toad-location";
 
 const getSum = (arr: number[]) => arr.reduce((a, b) => a + b, 0);
 
@@ -259,7 +260,9 @@ export const generateChildToad = (
         ? "neuter"
         : getSex(isCollider, chances?.genesBreakChance || false),
     stage: "toadpole",
-    scene_id: parents[0].scene_id,
+    // Дом первого родителя — ориентир для потомства: место в биоподе ребёнку выдаст
+    // `assignToadsToScenes` (или `createToad`, если его несли в инкубатор коллайдера)
+    homeId: getToadHomeId(parents[0]),
     state: {
       hunger: 0,
       genetic_fault: geneticFault, // Округляем до целого числа

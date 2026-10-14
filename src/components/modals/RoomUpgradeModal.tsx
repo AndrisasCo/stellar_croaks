@@ -20,18 +20,18 @@ import RoomDemolishModal from "./RoomDemolishModal";
 import { isBuiltRoom, isToadRoom, RoomConfig } from "../HexMap/rooms-config";
 
 /**
- * «Комнаты колонии» — модалка ядра карты (раньше ядро открывало бургер-меню).
+ * «Сектора колонии» — модалка ядра карты (раньше ядро открывало бургер-меню).
  *
- * Здесь одно место, где комнатой распоряжаются: у жилой комнаты можно купить улучшение,
- * а любую (кроме ядра) — снести. Сначала комната, потом действие: список показывает всё
- * построенное, а улучшения есть только у жилых — тех, где живут жабы (`isToadRoom`: вольер,
- * ⚡-энергокомната, гнездо, лазарет, «Разведка»). Пустые гексы в списке не мешаются.
+ * Здесь одно место, где сектором распоряжаются: у жилого сектора можно купить улучшение,
+ * а любую (кроме ядра) — снести. Сначала сектор, потом действие: список показывает всё
+ * построенное, а улучшения есть только у жилых — тех, где живут жабы (`isToadRoom`: биопод,
+ * ⚡-энергосектор, репродуктор, лазарет, «Разведка»). Пустые гексы в списке не мешаются.
  *
- * Апгрейд у комнаты один — автокормушка (`utils/room-upgrades.ts`): пока на складе есть корм,
- * она кормит жаб комнаты сама, когда голод падает до `AUTO_FEED_HUNGER` (20 % — на этом же
+ * Апгрейд у сектора один — автокормушка (`utils/room-upgrades.ts`): пока на складе есть корм,
+ * она кормит жаб сектора сама, когда голод падает до `AUTO_FEED_HUNGER` (20 % — на этом же
  * голоде жаба переходит на голодный минимум выработки, см. §3 дизайна) и списывает корм со
- * склада (`utils/auto-feeder.ts`). Жильцов комнаты показывает карта: у вольера это жабы его
- * `scene_id`, у энергокомнаты — те, кто в ней работает. Покупка кормит голодных жаб комнаты
+ * склада (`utils/auto-feeder.ts`). Жильцов сектора показывает карта: у биопода это жабы его
+ * `scene_id`, у энергосектора — те, кто в ней работает. Покупка кормит голодных жаб сектора
  * сразу, не дожидаясь тика голода.
  *
  * Снос — платный и необратимый, поэтому идёт через отдельное подтверждение
@@ -44,11 +44,11 @@ export default function RoomUpgradeModal() {
   const { addNotification } = useNotifications();
   const { playOk, playBeep, playClick } = useSoundEffects();
 
-  /** Выбранная комната: список показываем, пока комната не выбрана */
+  /** Выбранный сектор: список показываем, пока сектор не выбрана */
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const tokens = Math.floor(account?.tokens || 0);
-  /** Комнаты, которыми можно распорядиться: всё построенное, кроме ядра (ядро — сама модалка) */
+  /** Сектора, которыми можно распорядиться: всё построенное, кроме ядра (ядро — сама модалка) */
   const builtRooms = useMemo(
     () => rooms.filter((room) => isBuiltRoom(room) && room.kind !== "core"),
     [rooms],
@@ -56,7 +56,7 @@ export default function RoomUpgradeModal() {
   const selected = builtRooms.find((room) => room.id === selectedId) ?? null;
 
   /**
-   * Апгрейды комнат для списка. Считаются от состояния колонии (`colony`), а не от глобального
+   * Апгрейды секторов для списка. Считаются от состояния колонии (`colony`), а не от глобального
    * сейва: покупка обновляет `ColonyState.upgrades`, и карточки перерисовываются сами.
    */
   const upgradesByRoom = useMemo(
@@ -69,7 +69,7 @@ export default function RoomUpgradeModal() {
     [colony, rooms],
   );
 
-  /** Имя вольера гекса: у «Био Пода» и построек оно своё (`Scene.name`) */
+  /** Имя биопода гекса: у «Био Пода» и построек оно своё (`Scene.name`) */
   const getSceneName = (room: RoomConfig) =>
     room.sceneId === undefined
       ? null
@@ -80,7 +80,7 @@ export default function RoomUpgradeModal() {
       return;
     }
 
-    // Улучшений у нежилой комнаты нет: список рисует их только жилым, это страховка
+    // Улучшений у нежилого сектора нет: список рисует их только жилым, это страховка
     if (!isToadRoom(selected)) {
       playBeep();
       return;
@@ -105,13 +105,13 @@ export default function RoomUpgradeModal() {
     upgradeColonyRoom(selected.id, option.upgrade);
     updateUser({ tokens: tokens - option.cost });
 
-    // Кормушка берётся за дело сразу: голодных жаб комнаты она кормит, не дожидаясь тика голода
+    // Кормушка берётся за дело сразу: голодных жаб сектора она кормит, не дожидаясь тика голода
     const { fed } = processAutoFeeders(rooms, toadsByRoom);
 
     playOk();
     addNotification({
       type: "success",
-      content: `${option.icon} ${option.title}: комната «${selected.title}» улучшена${
+      content: `${option.icon} ${option.title}: сектор «${selected.title}» улучшена${
         fed > 0
           ? ` — кормушка сразу накормила жаб: ${fed}`
           : " — её жабы кормятся со склада сами"
@@ -120,20 +120,20 @@ export default function RoomUpgradeModal() {
   };
 
   return (
-    <Modal icon={<span className="text-2xl">🔧</span>} title="Комнаты колонии">
+    <Modal icon={<span className="text-2xl">🔧</span>} title="Сектора колонии">
       <div className="px-2 pb-2">
         <div className="mb-3 rounded-xl border border-amber-500/40 bg-amber-900/20 p-2">
           <div className="mb-1 flex items-center justify-between text-xs">
             <span className="font-bold text-amber-200">
-              {selected ? "Выбранная комната" : "Построенное в колонии"}
+              {selected ? "Выбранный сектор" : "Построенное в колонии"}
             </span>
             <span className="text-amber-200">
               {CURRENCY_CONFIG.tokens.icon} {tokens}
             </span>
           </div>
           <p className="text-2xs leading-snug text-amber-100">
-            Улучшение одно — автокормушка, и ставится оно только жилой комнате: вольеру,
-            ⚡-энергокомнате, гнезду, лазарету, «Разведке». Снести можно любую комнату кроме
+            Улучшение одно — автокормушка, и ставится оно только жилом секторе: биоподу,
+            ⚡-энергосекторе, репродуктору, лазарету, «Разведке». Снести можно любой сектор кроме
             ядра — снос платный, гекс остаётся свободным, а жаб надо вынести заранее.
           </p>
         </div>
@@ -143,7 +143,7 @@ export default function RoomUpgradeModal() {
             {builtRooms.length === 0 && (
               <p className="rounded-xl border border-gray-600/40 bg-color-second p-2 text-2xs leading-snug text-gray-400">
                 Построенного нет: базовое ядро не в счёт. Застройте свободный гекс 🏗 —
-                у жилой комнаты потом можно поставить автокормушку, а ненужную — снести.
+                у жилого сектора потом можно поставить автокормушку, а ненужную — снести.
               </p>
             )}
 
@@ -184,7 +184,7 @@ export default function RoomUpgradeModal() {
                         )}
                       </div>
                       <div className="text-2xs leading-snug text-gray-400">
-                        {room.subtitle} · жаб в комнате: {residents}
+                        {room.subtitle} · жаб в секторе: {residents}
                       </div>
                     </div>
                     <span className="shrink-0 text-xs text-gray-500">
@@ -205,7 +205,7 @@ export default function RoomUpgradeModal() {
               }}
               className="mb-2 rounded-lg border border-gray-600/40 bg-color-second px-2 py-1 text-2xs text-gray-300 active:scale-95"
             >
-              ← Другая комната
+              ← Другой сектор
             </ClickButton>
 
             <div className="mb-2 rounded-xl border border-gray-600/40 bg-color-second p-2">
@@ -221,7 +221,7 @@ export default function RoomUpgradeModal() {
                     )}
                   </div>
                   <div className="text-2xs leading-snug text-gray-400">
-                    {selected.subtitle} · жаб в комнате:{" "}
+                    {selected.subtitle} · жаб в секторе:{" "}
                     {toadsByRoom[selected.id]?.length ?? 0}
                   </div>
                 </div>
@@ -231,8 +231,8 @@ export default function RoomUpgradeModal() {
             <div className="space-y-2">
               {!isToadRoom(selected) && (
                 <p className="rounded-xl border border-gray-600/40 bg-color-second p-2 text-2xs leading-snug text-gray-400">
-                  У этой комнаты улучшений нет: автокормушку ставят только жилой комнате —
-                  той, где живут жабы. Снести комнату можно внизу.
+                  У этого сектора улучшений нет: автокормушку ставят только жилом секторе —
+                  той, где живут жабы. Снести сектор можно внизу.
                 </p>
               )}
 
@@ -294,10 +294,10 @@ export default function RoomUpgradeModal() {
               <div className="flex items-start gap-2">
                 <span className="text-2xl">🗑</span>
                 <div className="min-w-0 flex-1">
-                  <div className="text-sm font-semibold text-rose-200">Снос комнаты</div>
+                  <div className="text-sm font-semibold text-rose-200">Снос сектора</div>
                   <div className="text-2xs leading-snug text-rose-100/80">
-                    Комната уйдёт с карты: гекс останется свободным слотом, улучшения сгорят,
-                    а следующая комната того же вида станет дешевле. Жаб снос не выселяет —
+                    Сектор уйдёт с карты: гекс останется свободным слотом, улучшения сгорят,
+                    а следующий сектор того же вида станет дешевле. Жаб снос не выселяет —
                     их придётся вынести заранее.
                   </div>
                 </div>

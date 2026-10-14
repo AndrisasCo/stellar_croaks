@@ -25,11 +25,12 @@ import {
 } from "../backend/collider-manager";
 import { getFeedCost } from "../utils/feeding";
 import { pickSceneForNewToad } from "../utils/housing";
+import { getToadHomeId } from "../utils/toad-location";
 
 interface ToadContextType {
   /**
-   * Все жабы колонии. «Своих» жаб экран берёт сам: гекс вольера — по `scene_id`,
-   * комната — по `roomId` (см. `getRoomToadLists`). Общего «текущего вольера» больше нет.
+   * Все жабы колонии. «Своих» жаб экран берёт сам: гекс биопода — по `scene_id`,
+   * сектор — по `roomId` (см. `getRoomToadLists`). Общего «текущего биопода» больше нет.
    */
   allToads: Toad[];
   selectedToad: Toad | null;
@@ -40,7 +41,7 @@ interface ToadContextType {
   startBreeding: (child: Toad) => void;
   collectChild: (slotId: number) => void;
   setSlotReady: (slotId: number) => void;
-  /** Вольеры колонии: по ним гексы карты находят своих жильцов (`RoomConfig.sceneId`). */
+  /** Биоподы колонии: по ним гексы карты находят своих жильцов (`RoomConfig.sceneId`). */
   ownedScenes: Scene[];
   account: User;
   handleFeedToads: (toadsId: number[]) => void;
@@ -136,14 +137,15 @@ export const ToadProvider: React.FC<ToadProviderProps> = ({ children }) => {
       return;
     }
 
-    // Склада жаб больше нет: гибрид переезжает в вольер. Если места нет — колба
-    // остаётся в инкубаторе, а игроку нужно построить вольер на карте колонии.
-    const scene = pickSceneForNewToad(slot.child.scene_id);
+    // Склада жаб больше нет: гибрид переезжает в биопод. Если места нет — колба
+    // остаётся в инкубаторе, а игроку нужно построить биопод на карте колонии.
+    // Ориентир — дом родителя (`homeId`): в коллайдере ребёнок рождается не у матери в биоподе.
+    const scene = pickSceneForNewToad(getToadHomeId(slot.child));
 
     if (!scene) {
       addNotification({
         type: "danger",
-        content: `Все вольеры полны: постройте «Вольер» на гексе карты — ${slot.child.name} подождёт в инкубаторе.`,
+        content: `Все биоподы полны: постройте «Биопод» на гексе карты — ${slot.child.name} подождёт в инкубаторе.`,
       });
       return;
     }

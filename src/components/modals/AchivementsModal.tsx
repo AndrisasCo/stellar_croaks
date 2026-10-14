@@ -111,7 +111,7 @@ const AchievementModal: React.FC = () => {
       const content = reward.content;
 
       if (reward.type === "toad" && typeof content === "object" && content) {
-        // Склада жаб больше нет: награда ищет место в вольерах, иначе остаётся невыданной
+        // Склада жаб больше нет: награда ищет место в биоподах, иначе остаётся невыданной
         const scene = pickSceneForNewToad();
 
         if (!scene) {

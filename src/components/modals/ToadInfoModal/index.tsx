@@ -13,7 +13,8 @@ import { InfoIcons } from "../../../assets/icons";
 import Modal from "../../shared/Header";
 import { useSoundEffects } from "../../../hooks/use-sound-effects";
 import { updateToadById, updateUserStorage } from "../../../backend";
-import { moveToadToAviary } from "../../../backend/colony";
+import { moveToadToAviary, sendToadHome } from "../../../backend/colony";
+import { getToadHomeId } from "../../../utils/toad-location";
 import { completeAchivement } from "../../../backend/achivements-manager";
 import { nameGenerator } from "../../../utils/name-generator";
 import { Tooltip } from "../../shared/Tooltip";
@@ -21,13 +22,22 @@ import { getGameState } from "../../../backend/localStorage";
 import { useNotifications } from "../../../hooks/use-notification";
 import { endPregnancy } from "../../../utils/breeding-manager";
 import {
+  BIOMASS_PER_TOAD_HOUR,
+  ENERGY_REGEN_PER_HOUR,
   MAX_ENERGY,
+  PRODUCTION_HUNGRY_FACTOR,
   PRODUCTION_MIN_HUNGER,
+  UPKEEP_PER_TOAD_HOUR,
+  getBiomassPotentialRate,
+  getBiomassRate,
   getEnergyCost,
   getPersonalityCooldownMultiplier,
+  getProductionFactor,
   getToadEnergy,
 } from "../../../utils/gamification-config";
 import {
+  EXPEDITION_ENERGY_BASE,
+  EXPEDITION_ENERGY_PER_DEPTH,
   getToadHp,
   getToadMaxHp,
   getToadHpRatio,
@@ -47,6 +57,8 @@ import { useToadTimers } from "./useToadTimers";
 import { Colors } from "./Colors";
 import { useModal } from "../../ModalContext";
 import { DissolveConfirm } from "../../shared/DissolveConfirm";
+import { ClickButton } from "../../shared/ClickButton";
+import ToadListModal from "../ToadListModal";
 import {
   canDissolveToad,
   dissolveToads,
@@ -74,14 +86,14 @@ export const ToadInfo = () => {
     ownedScenes,
     account,
   } = useToads();
-  const { playCrunchShort, playCrunch } = useSoundEffects();
+  const { playCrunchShort, playCrunch, playOk, playBeep } = useSoundEffects();
   const { addNotification } = useNotifications();
-  const { closeModal } = useModal();
+  const { closeModal, openModal } = useModal();
 
   /**
    * Жабы для листания карточки стрелками: вся колония, самые редкие — первыми.
-   * Раньше листались только жабы «текущего вольера», но карточку открывают с любого
-   * гекса, в том числе из списка чужого вольера.
+   * Раньше листались только жабы «текущего биопода», но карточку открывают с любого
+   * гекса, в том числе из списка чужого биопода.
    */
   const toads = useMemo(
     () => [...allToads].sort((a, b) => b.genes.rarity - a.genes.rarity),
@@ -108,7 +120,23 @@ export const ToadInfo = () => {
     ? personalities[toad.genes.personality]
     : null;
 
-  // Ручное размножение (Гнездо): силы жабы, отдых и готовность (Часть 3.2)
+  /**
+   * Дом жабы — её биопод (`homeId`): карточку открывают и с карты, и из списка другого
+   * биопода, поэтому идём в дом именно этой жабы, а не туда, откуда открыли. Жаба в секторе
+   * колонии дома не занимает, но помнит его — по `homeId` видно, откуда она вышла.
+   */
+  const toadScene =
+    ownedScenes.find((scene) => scene.id === getToadHomeId(toad)) ?? null;
+
+  // Выработка биомассы (Часть 3.6): сколько жаба даёт за час и насколько её режет голод
+  const hunger = toad.state?.hunger ?? 0;
+  const biomassRate = getBiomassRate(toad);
+  const biomassPotential = getBiomassPotentialRate(toad);
+  const productionFactor = getProductionFactor(hunger);
+  /** Чистая прибыль за час: выработка минус содержание (`UPKEEP_PER_TOAD_HOUR`) */
+  const netBiomass = biomassRate - UPKEEP_PER_TOAD_HOUR;
+
+  // Ручное размножение (Репродуктор): силы жабы, отдых и готовность (Часть 3.2)
   const energy = getToadEnergy(toad);
   const energyCost = getEnergyCost(toad);
   const cooldownLeft = Math.max(0, (toad.breedCooldownUntil ?? 0) - Date.now());
@@ -187,20 +215,53 @@ export const ToadInfo = () => {
   };
 
   /**
-   * Переселение жабы в другой вольер: он становится её новым домом (`scene_id`),
-   * а комната колонии освобождается — физически жаба идёт в вольер.
+   * Переселение жабы в другой биопод: он становится её местом и новым домом
+   * (`scene_id` и `homeId`), а сектор колонии освобождается — физически жаба идёт в биопод.
+   * Место проверяет сам биопод (`moveToadToAviary`): в полный жаба не влезет.
    */
   const handleMove = (sceneId: number) => {
-    const scene = getGameState().scenes.find((s) => s.id === sceneId);
-    const count = getGameState().toads.filter((t) => t.scene_id === sceneId).length;
+    const result = moveToadToAviary(toad.id, sceneId);
 
-    if (!scene || scene.capacity <= count) {
-      addNotification({ type: "warn", content: "Вольер переполнен!" });
+    if (!result.ok) {
+      addNotification({
+        type: "warn",
+        content:
+          result.reason === "no-space"
+            ? `В биоподе «${result.scene?.name}» нет свободных мест!`
+            : "Биопод не найден — возможно, его снесли.",
+      });
       return;
     }
 
-    moveToadToAviary(toad.id, sceneId);
     handleNav("next");
+  };
+
+  /**
+   * Вернуть жабу домой — в биопод, который она помнит (`homeId`). Дом не бронируется:
+   * пока жаба работала в секторе, места там могли закончиться — тогда она остаётся на месте.
+   */
+  const handleSendHome = () => {
+    const result = sendToadHome(toad.id);
+
+    if (!result.ok) {
+      playBeep();
+      addNotification({
+        type: "warn",
+        content:
+          result.reason === "no-space"
+            ? `${toad.name}: в биоподе «${result.scene?.name}» нет места — постройте биопод или выберите другой («🏠 Переместить»).`
+            : `${toad.name}: биопод, в котором она жила, не найден — выберите другой («🏠 Переместить»).`,
+        timeout: 9000,
+      });
+      return;
+    }
+
+    playOk();
+    addNotification({
+      type: "success",
+      content: `${toad.name} вернулась в биопод «${result.scene.name}» 🏠`,
+      timeout: 4000,
+    });
   };
 
   /** Разбор жабы в биомассу: жаба исчезает навсегда */
@@ -216,7 +277,7 @@ export const ToadInfo = () => {
 
     addNotification({ type: "success", content: result.message });
 
-    // Переходим к следующей жабе этого вольера, чтобы карточка осталась полезной
+    // Переходим к следующей жабе этого биопода, чтобы карточка осталась полезной
     const nextToad = toads.find((item) => item.id !== toad.id);
 
     if (nextToad) {
@@ -232,6 +293,23 @@ export const ToadInfo = () => {
   return (
     <>
       <Modal>
+      {/* Возврат к списку жаб биопода: карточка — это «глубже» по клику из списка/с гекса */}
+      <div className="flex w-full items-center pb-1 px-10">
+        <ClickButton
+          onClick={() =>
+            openModal(() => <ToadListModal sceneId={getToadHomeId(toad)} />)
+          }
+          className="flex items-center gap-1 rounded-md bg-color-second px-2 py-1 text-2xs font-medium text-gray-200 transition-colors duration-300 hover:text-cyan-200"
+          title={
+            toadScene
+              ? `Открыть биопод «${toadScene.name}» со списком жаб`
+              : "Открыть список жаб биопода"
+          }
+        >
+          ‹ Биопод{toadScene ? `: ${toadScene.name}` : ""}
+        </ClickButton>
+      </div>
+
       <div className="flex w-full items-center pb-1 px-10 ">
         {isEditingName ? (
           <div className="flex w-full items-center gap-2">
@@ -404,16 +482,20 @@ export const ToadInfo = () => {
               tooltip={
                 tooltips["energy"] && (
                   <Tooltip
-                    title="Силы и размножение"
+                    title="Силы"
                     isOpen
                     onClose={() => toggleTooltip("energy")}
                     className="right-0 w-[200%]"
                   >
                     <p className="text-sm text-gray-200">
-                      Спаривание в «Гнезде» стоит {energyCost} ⚡ и тратит
-                      биомассу. Силы восстанавливаются сами: +6 в час (максимум{" "}
-                      {MAX_ENERGY}). Снять отдых после спаривания можно за 1
-                      Астро-квакс.
+                      Силы ⚡ — личный запас жабы, максимум {MAX_ENERGY}.
+                      Спаривание в «Репродукторе» стоит {energyCost} ⚡, а поход за
+                      Периметр — от {EXPEDITION_ENERGY_BASE} ⚡ за ближний сектор и
+                      на {EXPEDITION_ENERGY_PER_DEPTH} ⚡ дороже за каждый
+                      следующий (силы тратит каждая жаба команды). Биомасса на
+                      снаряжение платится со склада и к силам отношения не имеет.
+                      Восстанавливаются силы сами: +{ENERGY_REGEN_PER_HOUR} в час.
+                      Снять отдых после спаривания можно за 1 Астро-квакс.
                     </p>
                   </Tooltip>
                 )
@@ -459,6 +541,80 @@ export const ToadInfo = () => {
                   : energy >= energyCost
                   ? "text-green-400"
                   : "text-red-400"
+              }
+            />
+            {/* Выработка биомассы: голод режет её до трети, содержание съедает часть дохода */}
+            <StatCard
+              icon={<span>🧪</span>}
+              label="Биомасса"
+              value={
+                toad.stage === "adult"
+                  ? `${biomassRate.toFixed(1)} 🧪/ч`
+                  : "ещё не взрослая"
+              }
+              colorClass={
+                toad.stage !== "adult"
+                  ? "text-gray-400"
+                  : productionFactor >= 1
+                  ? "text-emerald-400"
+                  : "text-orange-400"
+              }
+              onClick={() => toggleTooltip("biomass")}
+              tooltip={
+                tooltips["biomass"] && (
+                  <Tooltip
+                    title="Выработка биомассы"
+                    isOpen
+                    onClose={() => toggleTooltip("biomass")}
+                    className="right-0 w-[200%]"
+                  >
+                    <p className="text-sm text-gray-200">
+                      Биомасса 🧪 — топливо колонии: корм жаб, снаряжение
+                      походов, содержание биоподов. Взрослая жаба даёт базовые{" "}
+                      {BIOMASS_PER_TOAD_HOUR} 🧪/ч, а её редкость, вес, характер
+                      и кибер-болезнь меняют это число.
+                    </p>
+                    <div className="mt-2 space-y-0.5 text-xs text-gray-300">
+                      <div className="flex justify-between">
+                        <span>Сейчас (сытость {Math.round(hunger)} %)</span>
+                        <span className="text-white">
+                          {biomassRate.toFixed(2)} 🧪/ч
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Содержание жабы</span>
+                        <span className="text-white">
+                          −{UPKEEP_PER_TOAD_HOUR.toFixed(2)} 🧪/ч
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Чистыми в час</span>
+                        <span
+                          className={
+                            netBiomass >= 0 ? "text-emerald-300" : "text-red-300"
+                          }
+                        >
+                          {netBiomass.toFixed(2)} 🧪/ч
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Потенциал сытой и здоровой</span>
+                        <span className="text-white">
+                          {biomassPotential.toFixed(2)} 🧪/ч
+                        </span>
+                      </div>
+                    </div>
+                    <p className="mt-2 text-xs text-gray-300">
+                      {hunger <= PRODUCTION_MIN_HUNGER
+                        ? `Жаба голодает (сытость ≤ ${PRODUCTION_MIN_HUNGER} %) и работает на ${Math.round(
+                            PRODUCTION_HUNGRY_FACTOR * 100
+                          )} %: покормите или поставьте автокормушку в секторе.`
+                        : `Сытость умножает выработку на ${productionFactor.toFixed(
+                            2
+                          )} — кормить всегда выгоднее, чем морить.`}
+                    </p>
+                  </Tooltip>
+                )
               }
             />
           </div>
@@ -552,15 +708,13 @@ export const ToadInfo = () => {
           </div>
 
           {/* PROGRESS BARS */}
-          {/* Полоса «Сытость»: красная у жаб на голодном минимуме выработки (голод ≤ порога) */}
+          {/* Сытость: подписана цифрой — голод режет выработку биомассы (см. карточку «Биомасса») */}
           <ProgressBar
             label="Сытость"
-            current={toad.state?.hunger || 0}
+            current={hunger}
             max={100}
-            color={
-              (toad.state?.hunger || 0) <= PRODUCTION_MIN_HUNGER ? "red" : "green"
-            }
-            icon={InfoIcons.hunger}
+            color={hunger <= PRODUCTION_MIN_HUNGER ? "red" : "green"}
+            valueLabel={`${Math.round(hunger)} %`}
           />
 
           {growth && (
@@ -626,9 +780,10 @@ export const ToadInfo = () => {
                   isOpen
                   onClose={() => toggleTooltip("scenes")}
                 >
-                  {/* Склада жаб больше нет: у каждой жабы есть вольер, и он — её дом */}
+                  {/* Склада жаб больше нет: у каждой жабы есть биопод, и он — её дом
+                      (`homeId`): жаба в секторе колонии дома не занимает, но помнит его */}
                   {ownedScenes
-                    .filter((s) => s.id !== toad.scene_id)
+                    .filter((s) => s.id !== getToadHomeId(toad))
                     .map((s) => (
                       <button
                         key={s.id}
@@ -641,6 +796,22 @@ export const ToadInfo = () => {
                 </Tooltip>
               )}
             </div>
+
+            {/* Быстрый возврат домой: жаба в секторе колонии дома не занимает, но помнит
+                его (`homeId`) — одна кнопка, чтобы вернуть её в свой биопод (с проверкой места) */}
+            {toad.roomId && (
+              <button
+                onClick={handleSendHome}
+                title={
+                  toadScene
+                    ? `Вернуть жабу в «${toadScene.name}»`
+                    : "Вернуть жабу в её биопод"
+                }
+                className="col-span-2 bg-cyan-600/30 hover:bg-cyan-600/40 rounded-lg py-2 text-xs flex justify-center gap-2"
+              >
+                <span>🏠</span> Домой
+              </button>
+            )}
 
             {/* Быстрый разбор жабы в биомассу (Диссоциатор) */}
             <button

@@ -17,6 +17,8 @@ import { getGameState } from "../backend/localStorage";
 import { getHunger } from "./state-manager";
 import { completeAchivement } from "../backend/achivements-manager";
 import { assignToadsToScenes } from "./housing";
+import { getToadHomeId } from "./toad-location";
+import { placeToadInRoom } from "../backend/colony";
 import { NEST_ROOM_ID } from "./constants";
 import {
   canUpgradeNest,
@@ -56,15 +58,15 @@ export class TimeManager {
 }
 
 export const processBreeding = (hoursPassed: number, addNotification: any) => {
-  // Ухаживание заводит игрок кнопкой «Начать ухаживание» в модалке гнезда — тик пару не
+  // Ухаживание заводит игрок кнопкой «Начать ухаживание» в модалке репродуктора — тик пару не
   // берёт сам. Он только ведёт уже начатое ухаживание (`processMating`: беременность по
   // таймеру или срыв) и играет беременности. Оффлайн-догон ухаживание не запускает: без
   // игрока пары не спариваются.
 
-  const toads = getGameState().toads.filter((t) => t.scene_id !== null);
-
-  // Группируем жаб по сценам
-  const toadsByScene = groupToadsByScene(toads);
+  // Группируем жаб по их домам (`homeId`): беременность и роды — свойство пары и её биопода,
+  // и самка, ушедшая рожать в репродуктор, остаётся в группе своего дома (места в биоподе
+  // она при этом не занимает — см. `utils/toad-location.ts`)
+  const toadsByScene = groupToadsByScene(getGameState().toads);
 
   // Обрабатываем каждую сцену отдельно
   Object.entries(toadsByScene).forEach(([sceneId, sceneToads]) => {
@@ -72,11 +74,12 @@ export const processBreeding = (hoursPassed: number, addNotification: any) => {
   });
 };
 
+/** Жабы по домам: id биопода (`homeId`) → его жабы */
 const groupToadsByScene = (toads: Toad[]): Record<string, Toad[]> => {
   return toads
-    .filter((t) => t.scene_id)
+    .filter((toad) => getToadHomeId(toad) != null)
     .reduce((groups, toad) => {
-      const sceneId = toad.scene_id || "0";
+      const sceneId = String(getToadHomeId(toad));
       if (!groups[sceneId]) {
         groups[sceneId] = [];
       }
@@ -93,7 +96,7 @@ const processSceneBreeding = async (
 ) => {
   const pregnant = sceneToads.filter((t) => t.pregnancy);
 
-  // Роды идут по таймеру беременности: где бы самка ни ждала, она родит в свою комнату
+  // Роды идут по таймеру беременности: где бы самка ни ждала, она родит в свой сектор
   pregnant.forEach((toad) => {
     if (
       toad.pregnancy &&
@@ -104,7 +107,7 @@ const processSceneBreeding = async (
     }
   });
 
-  // Ухаживание пары в гнезде: тик либо завершает его беременностью (`finishMating`),
+  // Ухаживание пары в репродукторе: тик либо завершает его беременностью (`finishMating`),
   // либо срывает, если пара распалась (поход, выбывание, разбор партнёра).
   sceneToads
     .filter((t) => t.mating)
@@ -113,7 +116,7 @@ const processSceneBreeding = async (
   // смотрим нужно ли жабе вырасти
   const toadpoles = sceneToads.filter((t) => t.stage === "toadpole");
 
-  // Рост без ускорений: бонусы вольера («ускоренный рост») — легаси и удалены
+  // Рост без ускорений: бонусы биопода («ускоренный рост») — легаси и удалены
   const grownToadpoles: number[] = [];
   toadpoles.forEach((t) => {
     if (getHoursFromNow(t.created_at) >= HOURS_TO_GROW_UP) {
@@ -141,12 +144,12 @@ const processSceneBreeding = async (
 };
 
 /**
- * Ухаживание в гнезде (Часть 3.2).
+ * Ухаживание в репродукторе (Часть 3.2).
  *
- * Жабы беременеют только в гнезде: самец и самка сидят там парой, и ухаживание заводит игрок
- * — кнопкой «Начать ухаживание» в модалке гнезда (`startNestCourtship`); само гнездо пару не
- * берёт. Пара живёт в гнезде (`roomId` = гекс-гнездо) и ухаживает случайные 15–30 минут, после
- * чего у самки начинается беременность. Из гнезда жабы не уходят сами: и после ухаживания,
+ * Жабы беременеют только в репродукторе: самец и самка сидят там парой, и ухаживание заводит игрок
+ * — кнопкой «Начать ухаживание» в модалке репродуктора (`startNestCourtship`); само репродуктор пару не
+ * берёт. Пара живёт в репродукторе (`roomId` = гекс-репродуктор) и ухаживает случайные 15–30 минут, после
+ * чего у самки начинается беременность. Из репродуктора жабы не уходят сами: и после ухаживания,
  * и после родов их выносит только игрок. Пару «ведёт» самка — её таймер запускает
  * беременность, поэтому уведомление приходит один раз.
  *
@@ -158,8 +161,8 @@ const processSceneBreeding = async (
 const MATING_LEAD_SEX = "female";
 
 /**
- * Жаба перестала ухаживать, но осталась в гнезде: выносит её только игрок
- * (перенос на карте или кнопка в модалке «Гнездо»).
+ * Жаба перестала ухаживать, но осталась в репродукторе: выносит её только игрок
+ * (перенос на карте или кнопка в модалке «Репродуктор»).
  */
 const clearMating = (toad: Toad) => updateToadById(toad.id, { mating: null }, true);
 
@@ -190,12 +193,12 @@ const getMatingBreakReason = (toad: Toad, partner: Toad | null): string => {
 };
 
 /**
- * Низкоуровневый старт ухаживания: сажает пару в гнездо и вешает обоим `mating`.
+ * Низкоуровневый старт ухаживания: сажает пару в репродуктор и вешает обоим `mating`.
  * Энергия, биомасса и отдых списываются на входе (`startNestCourtship` — кнопка игрока),
  * а беременность стартует по таймеру (`processMating`). Возвращает минуты ожидания — их
  * показывают в интерфейсе.
  *
- * Наружу не отдаём: пару заводит только кнопка «Начать ухаживание» в модалке гнезда.
+ * Наружу не отдаём: пару заводит только кнопка «Начать ухаживание» в модалке репродуктора.
  */
 const startMating = (
   female: Toad,
@@ -220,18 +223,21 @@ const startMating = (
   updateToadById(female.id, {
     ...female,
     mating: femaleMating,
-    roomId: nestRoomId,
   });
-  updateToadById(male.id, { mating: maleMating, roomId: nestRoomId });
+  updateToadById(male.id, { mating: maleMating });
+  // Пара уходит в репродуктор: место у жабы одно, поэтому дом (`homeId`) остаётся
+  // в памяти, а место в биоподе освобождается — иначе жаба висела бы в двух местах
+  placeToadInRoom(female.id, nestRoomId);
+  placeToadInRoom(male.id, nestRoomId);
 
   return { minutes, startAt };
 };
 
-/** Время вышло: у самки стартует беременность, пара остаётся жить в гнезде */
+/** Время вышло: у самки стартует беременность, пара остаётся жить в репродукторе */
 const finishMating = (female: Toad, male: Toad, addNotification: any) => {
   const mother: Toad = { ...female, mating: null };
 
-  // startPregnancy пишет мать синхронно; `roomId` у обоих не трогаем: из гнезда
+  // startPregnancy пишет мать синхронно; `roomId` у обоих не трогаем: из репродуктора
   // жабу выносит игрок, сама она никуда не уходит
   void startPregnancy(mother, male);
   clearMating(male);
@@ -246,13 +252,13 @@ const finishMating = (female: Toad, male: Toad, addNotification: any) => {
 };
 
 /**
- * Тик ухаживания: пара ждёт в гнезде. Завершает ухаживание по таймеру либо срывает
+ * Тик ухаживания: пара ждёт в репродукторе. Завершает ухаживание по таймеру либо срывает
  * его, если жаба ушла в поход, выбита или партнёр пропал. Вызывается из
  * `processBreeding` (раз в минуту и при оффлайн-догоне).
  */
 /**
- * Тик ухаживания: пара ждёт в гнезде 15–30 минут, потом у самки стартует беременность.
- * Срыв (поход, 0 HP, пропавший партнёр) гасит ухаживание у обоих, но жабы остаются в гнезде.
+ * Тик ухаживания: пара ждёт в репродукторе 15–30 минут, потом у самки стартует беременность.
+ * Срыв (поход, 0 HP, пропавший партнёр) гасит ухаживание у обоих, но жабы остаются в репродукторе.
  */
 const processMating = (
   toad: Toad,
@@ -310,7 +316,7 @@ const processMating = (
 };
 
 export const startPregnancy = async (toad: Toad, father: Toad) => {
-  // Беременность без ускорений: бонус вольера («ускоренная беременность») — легаси
+  // Беременность без ускорений: бонус биопода («ускоренная беременность») — легаси
   toad.pregnancy = {
     isPregnant: true,
     pregnancyStart: Date.now(),
@@ -345,7 +351,7 @@ export const endPregnancy = async (toad: Toad, addNotification: any) => {
 
   const father = toad.pregnancy.father;
 
-  // Мать остаётся там, где рожала: из гнезда её выносит игрок, а не игра
+  // Мать остаётся там, где рожала: из репродуктора её выносит игрок, а не игра
   const finishBirth = () =>
     updateToadById(toad.id, { ...toad, pregnancy: null, mating: null }, true);
 
@@ -358,16 +364,19 @@ export const endPregnancy = async (toad: Toad, addNotification: any) => {
     .fill(1)
     .map(() => generateChildToad([toad, father], false));
 
-  const currentSceneId = toad.scene_id;
+  // Дом матери — её биопод (`homeId`): туда разложим потомство, даже если рожала она
+  // в репродукторе (место в биоподе она не занимала)
+  const currentSceneId = getToadHomeId(toad);
 
-  // Роды в гнезде: головастики остаются рядом с матерью, даже если гнездо
-  // переполнено — игрок сам разнесёт их по вольерам. Склада жаб нет, поэтому
-  // гнездо остаётся единственным местом, где потомство может подождать места.
+  // Роды в репродукторе: головастики остаются рядом с матерью, даже если репродуктор
+  // переполнено — игрок сам разнесёт их по биоподам. Склада жаб нет, поэтому
+  // репродуктор остаётся единственным местом, где потомство может подождать места:
+  // головастик в секторе место в биоподе не занимает, а дом помнит (`homeId`).
   if (isNestRoomId(toad.roomId)) {
     const born = children.map(
       (child): Partial<Toad> => ({
         ...child,
-        scene_id: currentSceneId,
+        homeId: currentSceneId,
         roomId: toad.roomId,
       })
     );
@@ -376,7 +385,7 @@ export const endPregnancy = async (toad: Toad, addNotification: any) => {
 
     addNotification({
       type: "success",
-      content: `${toad.name} родила головастиков в гнезде: ${born.length}. Перенесите их в вольер.`,
+      content: `${toad.name} родила головастиков в репродукторе: ${born.length}. Перенесите их в биопод.`,
       timeout: 9000,
     });
 
@@ -385,22 +394,23 @@ export const endPregnancy = async (toad: Toad, addNotification: any) => {
     return;
   }
 
-  const currentScene = getGameState().scenes.find(
-    (s) => s.id === currentSceneId
+  // Биопод матери мог пропасть (её дом — снесли карту/сейв): тогда потомство просто
+  // раскладывается по любым свободным биоподам — «предпочтительный» тогда не находится.
+  const homeSceneExists = getGameState().scenes.some(
+    (scene) => scene.id === currentSceneId
   );
 
-  if (!currentScene) {
-    throw Error("Scene for toads birth not found!");
-  }
-
-  // Склада жаб больше нет: потомство раскладываем по вольерам, начиная с вольера матери.
-  // Тем, кому места не хватило, вольер придётся построить — они не появляются на свет.
-  const { assigned, rejected } = assignToadsToScenes(children, currentSceneId);
+  // Склада жаб больше нет: потомство раскладываем по биоподам, начиная с биопода матери.
+  // Тем, кому места не хватило, биопод придётся построить — они не появляются на свет.
+  const { assigned, rejected } = assignToadsToScenes(
+    children,
+    homeSceneExists ? currentSceneId : null
+  );
 
   if (rejected > 0) {
     addNotification({
       type: "warn",
-      content: `${toad.name} родила ${assigned.length} головастиков, ещё ${rejected} не поместились: постройте вольер на карте колонии.`,
+      content: `${toad.name} родила ${assigned.length} головастиков, ещё ${rejected} не поместились: постройте биопод на карте колонии.`,
     });
   } else {
     addNotification({
@@ -418,32 +428,35 @@ export const endPregnancy = async (toad: Toad, addNotification: any) => {
 };
 
 /**
- * Занятость родильных слотов вольера (Часть 3.2).
- * used — число занятых слотов: ухаживание в гнезде (пара) и беременность,
+ * Занятость родильных слотов биопода (Часть 3.2).
+ * used — число занятых слотов: ухаживание в репродукторе (пара) и беременность,
  * limit — лимит слотов купола.
+ *
+ * Считаем по дому (`homeId`): родильные слоты — свойство биопода, а пара в это время
+ * живёт в репродукторе и места в биоподе не занимает (`utils/toad-location.ts`).
  */
 export const getNestOccupancy = (
   sceneId: number | null
 ): { used: number; limit: number } => {
   const state = getGameState();
   const scene = state.scenes.find((s) => s.id === sceneId) ?? null;
-  // Слот занят и пока идёт ухаживание (жаба в гнезде), и пока она вынашивает
+  // Слот занят и пока идёт ухаживание (жаба в репродукторе), и пока она вынашивает
   const used = state.toads.filter(
-    (t) => t.scene_id === sceneId && (t.mating || t.pregnancy?.isPregnant)
+    (t) => getToadHomeId(t) === sceneId && (t.mating || t.pregnancy?.isPregnant)
   ).length;
 
   return { used, limit: getNestSlots(scene) };
 };
 
-/** Результат действия в гнезде: прерывание ухаживания, апгрейд слотов */
+/** Результат действия в репродукторе: прерывание ухаживания, апгрейд слотов */
 export interface NestActionResult {
   success: boolean;
   message: string;
 }
 
 /**
- * Досрочно прерывает ухаживание (кнопка «Прервать» в гнезде): пара перестаёт
- * ухаживать, но остаётся в гнезде — вынести жаб может только игрок.
+ * Досрочно прерывает ухаживание (кнопка «Прервать» в репродукторе): пара перестаёт
+ * ухаживать, но остаётся в репродукторе — вынести жаб может только игрок.
  * Потраченные на спаривание энергия и биомасса не возвращаются.
  */
 export const abortMating = (toadId: number): NestActionResult => {
@@ -452,7 +465,7 @@ export const abortMating = (toadId: number): NestActionResult => {
   const mating = toad?.mating;
 
   if (!toad || !mating) {
-    return { success: false, message: "Эта жаба не ухаживает в гнезде" };
+    return { success: false, message: "Эта жаба не ухаживает в репродукторе" };
   }
 
   const partner = state.toads.find((t) => t.id === mating.partnerId);
@@ -467,12 +480,12 @@ export const abortMating = (toadId: number): NestActionResult => {
     success: true,
     message: `Ухаживание ${
       toad.name ?? "жабы"
-    } прервано: жабы остались в гнезде`,
+    } прервано: жабы остались в репродукторе`,
   };
 };
 
 /**
- * Апгрейд постройки «Гнездо» (Часть 3.2): +1 родильный слот за Кваксы.
+ * Апгрейд постройки «Репродуктор» (Часть 3.2): +1 родильный слот за Кваксы.
  * Цена растёт с каждым апгрейдом, максимум — NEST_MAX_SLOTS.
  */
 export const upgradeNestSlots = (
@@ -482,13 +495,13 @@ export const upgradeNestSlots = (
   const scene = state.scenes.find((s) => s.id === sceneId);
 
   if (!scene) {
-    return { success: false, message: "Вольер для апгрейда не найден" };
+    return { success: false, message: "Биопод для апгрейда не найден" };
   }
 
   if (!canUpgradeNest(scene)) {
     return {
       success: false,
-      message: `Гнездо уже расширено до предела (${NEST_MAX_SLOTS} слотов)`,
+      message: `Репродуктор уже расширено до предела (${NEST_MAX_SLOTS} слотов)`,
     };
   }
 
@@ -498,7 +511,7 @@ export const upgradeNestSlots = (
   if (tokens < cost) {
     return {
       success: false,
-      message: `Не хватает Кваксов на Гнездо: нужно ${cost}, есть ${Math.floor(
+      message: `Не хватает Кваксов на Репродуктор: нужно ${cost}, есть ${Math.floor(
         tokens
       )}`,
     };
@@ -511,13 +524,13 @@ export const upgradeNestSlots = (
 
   return {
     success: true,
-    message: `Гнездо расширено: ${slots} родильных слотов`,
+    message: `Репродуктор расширен: ${slots} родильных слотов`,
   };
 };
 
 /**
- * Гнездо ли это на карте: базовое гнездо колонии (`NEST_ROOM_ID`) или гекс «Гнездо»,
- * построенный игроком. Только в гнезде жабы могут забеременеть — в вольере нет.
+ * Репродуктор ли это на карте: базовый репродуктор колонии (`NEST_ROOM_ID`) или гекс «Репродуктор»,
+ * построенный игроком. Только в репродукторе жабы могут забеременеть — в биоподе нет.
  */
 export const isNestRoomId = (roomId?: string | null): boolean => {
   if (!roomId) {
@@ -533,31 +546,31 @@ export const isNestRoomId = (roomId?: string | null): boolean => {
   );
 };
 
-/** Взрослые жабы, которые прямо сейчас сидят в комнате-гнезде */
+/** Взрослые жабы, которые прямо сейчас сидят в секторе-репродукторе */
 export const getNestToads = (roomId: string = NEST_ROOM_ID): Toad[] =>
   getGameState().toads.filter(
     (toad) => toad.roomId === roomId && toad.stage === "adult"
   );
 
-/** Результат нажатия кнопки «Начать ухаживание» в модалке гнезда */
+/** Результат нажатия кнопки «Начать ухаживание» в модалке репродуктора */
 export interface CourtshipResult {
   started: boolean;
-  /** Почему ухаживание не началось — текст для интерфейса гнезда */
+  /** Почему ухаживание не началось — текст для интерфейса репродуктора */
   message: string;
 }
 
-/** Состояние пары гнезда: активна ли кнопка ухаживания и чего не хватает */
+/** Состояние пары репродуктора: активна ли кнопка ухаживания и чего не хватает */
 export interface CourtshipCheck {
   /** Можно ли начинать ухаживание прямо сейчас */
   ready: boolean;
-  /** Чего не хватает — или что пара готова делать: текст под кнопкой гнезда */
+  /** Чего не хватает — или что пара готова делать: текст под кнопкой репродуктора */
   message: string;
   /** Пара, которой кнопка заведёт ухаживание (есть всегда, когда `ready`) */
   pair: { male: Toad; female: Toad } | null;
 }
 
 /**
- * Жабы гнезда: все взрослые (по ним видно, что ухаживание или беременность уже идут)
+ * Жабы репродуктора: все взрослые (по ним видно, что ухаживание или беременность уже идут)
  * и свободная пара — самец и самка без ухаживания и беременности. Ходим через неё и в
  * проверке кнопки, и в запуске пары, чтобы проверки и старт не разъезжались.
  */
@@ -577,10 +590,10 @@ const getNestPair = (
 };
 
 /**
- * Готова ли пара в гнезде к ухаживанию (кнопка «Начать ухаживание», Часть 3.2).
+ * Готова ли пара в репродукторе к ухаживанию (кнопка «Начать ухаживание», Часть 3.2).
  *
  * Проверка без побочных эффектов: по ней кнопка решает, активна ли она, и объясняет,
- * чего не хватает — сил пары, биомассы, родильных слотов вольера. Пара берётся из тех,
+ * чего не хватает — сил пары, биомассы, родильных слотов биопода. Пара берётся из тех,
  * кто ещё не ухаживает и не вынашивает, поэтому при идущем ухаживании (или уже
  * начавшейся беременности) кнопка ничего не запустит.
  */
@@ -593,7 +606,7 @@ export const checkNestCourtship = (
   if (adults.length === 0) {
     return {
       ready: false,
-      message: "Гнездо пусто: посадите сюда самца и самку.",
+      message: "Репродуктор пуст: посадите сюда самца и самку.",
       pair: null,
     };
   }
@@ -609,7 +622,7 @@ export const checkNestCourtship = (
   if (adults.some((toad) => toad.pregnancy?.isPregnant)) {
     return {
       ready: false,
-      message: "В гнезде уже идёт беременность — дождитесь родов.",
+      message: "В репродукторе уже идёт беременность — дождитесь родов.",
       pair: null,
     };
   }
@@ -617,7 +630,7 @@ export const checkNestCourtship = (
   if (!male || !female) {
     return {
       ready: false,
-      message: "В гнезде нужны самец и самка — посадите обоих.",
+      message: "В репродукторе нужны самец и самка — посадите обоих.",
       pair: null,
     };
   }
@@ -659,12 +672,12 @@ export const checkNestCourtship = (
     };
   }
 
-  const { used, limit } = getNestOccupancy(female.scene_id);
+  const { used, limit } = getNestOccupancy(getToadHomeId(female));
 
   if (used >= limit) {
     return {
       ready: false,
-      message: "Все родильные слоты вольера заняты — дождитесь родов.",
+      message: "Все родильные слоты биопода заняты — дождитесь родов.",
       pair: null,
     };
   }
@@ -679,10 +692,10 @@ export const checkNestCourtship = (
 /**
  * Кнопка «Начать ухаживание» (Часть 3.2).
  *
- * Пару заводит игрок: посадил в гнездо самца и самку, нажал кнопку — здесь списываются
+ * Пару заводит игрок: посадил в репродуктор самца и самку, нажал кнопку — здесь списываются
  * энергия, биомасса и отдых обоих, им вешается `mating` на случайные 15–30 минут
- * (`startMating`), после чего у самки стартует беременность (`processMating`). Само гнездо
- * пару не заводит: без нажатия пара просто ждёт в гнезде и ничего не тратит.
+ * (`startMating`), после чего у самки стартует беременность (`processMating`). Само репродуктор
+ * пару не заводит: без нажатия пара просто ждёт в репродукторе и ничего не тратит.
  *
  * Проверяет то же, что показывает кнопка (`checkNestCourtship`): если пара не готова,
  * возвращаем причину и говорим о ней уведомлением — для вызовов мимо интерфейса.
@@ -719,7 +732,7 @@ export const startNestCourtship = (
   updateToadById(updatedMale.id, updatedMale, true);
   updateUser({ biomass: Math.round((biomass - biomassCost) * 100) / 100 });
 
-  // startMating дописывает обоим ухаживание и оставляет пару в её гнезде
+  // startMating дописывает обоим ухаживание и оставляет пару в её репродукторе
   const { minutes } = startMating(updatedFemale, updatedMale, roomId);
 
   completeAchivement("first-manual-breed");
@@ -732,7 +745,7 @@ export const startNestCourtship = (
 
   return {
     started: true,
-    message: `Ухаживание в гнезде: беременность через ~${minutes} мин`,
+    message: `Ухаживание в репродукторе: беременность через ~${minutes} мин`,
   };
 };
 

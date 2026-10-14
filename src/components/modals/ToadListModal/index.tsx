@@ -21,16 +21,32 @@ import { useModal } from "../../ModalContext";
 import { DissolveConfirm } from "../../shared/DissolveConfirm";
 import { dissolveToads } from "../../../utils/dissolve-manager";
 import { getHousingInfo } from "../../../utils/housing";
-import SceneInfoModal from "../SceneInfoModal";
+import { getRoomUpgrades } from "../../../backend/colony";
+import { useColony } from "../../../hooks/use-colony";
+import { SceneStatsTab } from "./SceneStatsTab";
 
 /**
- * Список жаб одного вольера.
+ * Список жаб одного биопода.
  *
- * Вольер приходит от гекса карты, по которому тапнули (`RoomConfig.sceneId`): общего
- * «текущего вольера» больше нет, поэтому и закреплён за модалкой гекс. Стрелки листают
- * вольеры прямо здесь (`ownedScenes`), не трогая состояние игры.
+ * Биопод приходит от гекса карты, по которому тапнули (`RoomConfig.sceneId`): общего
+ * «текущего биопода» больше нет, поэтому и закреплён за модалкой гекс. Стрелки листают
+ * биоподы прямо здесь (`ownedScenes`), не трогая состояние игры.
+ *
+ * У биопода два состояния (таба): список жаб — по умолчанию, и статистика биопода
+ * (`SceneInfoModal` больше нет: его содержимое переехало во вкладку `SceneStatsTab`).
  */
-const ToadListModal: React.FC<{ sceneId: number }> = ({ sceneId }) => {
+type ToadListTab = "toads" | "stats";
+
+/** Табы биопода: имя, список жаб и статистика живут в одной модалке */
+const TOAD_LIST_TABS: { id: ToadListTab; label: string }[] = [
+  { id: "toads", label: "🐸 Жабы" },
+  { id: "stats", label: "📊 Статистика" },
+];
+
+const ToadListModal: React.FC<{
+  /** Биопод, который открывают: гекс карты или дом жабы (`homeId`) из её карточки */
+  sceneId?: number | null;
+}> = ({ sceneId }) => {
   const { openModal, modals } = useModal();
   const { playCrunchShort, playClick } = useSoundEffects();
   const {
@@ -42,7 +58,7 @@ const ToadListModal: React.FC<{ sceneId: number }> = ({ sceneId }) => {
   } = useToads();
   const { addNotification } = useNotifications();
 
-  // Вольер списка: гекс задаёт стартовый, стрелки листают остальные
+  // Биопод списка: гекс задаёт стартовый, стрелки листают остальные
   const [sceneIndex, setSceneIndex] = useState(() => {
     const index = ownedScenes.findIndex((scene) => scene.id === sceneId);
 
@@ -50,11 +66,16 @@ const ToadListModal: React.FC<{ sceneId: number }> = ({ sceneId }) => {
   });
   const scene = ownedScenes[sceneIndex] ?? ownedScenes[0] ?? null;
 
-  /** Жабы открытого вольера: дом жабы — её `scene_id`, где бы она ни работала. */
+  /**
+   * Жабы открытого биопода — только те, кто в нём **сейчас** (`scene_id`). Жаба в секторе
+   * колонии (репродуктор, ⚡, «Разведка», лазарет) место в биоподе не занимает и в списке
+   * не висит: вернуть её домой можно из карточки жабы или из модалки сектора
+   * (`utils/toad-location.ts`).
+   */
   const toads = React.useMemo(
     () =>
       allToads
-        .filter((toad) => toad.scene_id === scene?.id)
+        .filter((toad) => toad.scene_id === scene?.id && !toad.roomId)
         .sort((a, b) => b.genes.rarity - a.genes.rarity),
     [allToads, scene?.id]
   );
@@ -70,6 +91,8 @@ const ToadListModal: React.FC<{ sceneId: number }> = ({ sceneId }) => {
   } = useFilters(toads);
 
   const [viewMode, setViewMode] = useState<"detailed" | "compact">("detailed");
+  /** Состояние биопода: список жаб (по умолчанию) или статистика биопода */
+  const [tab, setTab] = useState<ToadListTab>("toads");
   const [selectedToads, setSelectedToads] = useState<Set<number>>(new Set());
   const [showMoveTooltip, setShowMoveTooltip] = useState(false);
   /** Жабы, отправленные в диссоциатор: ждут подтверждения разбора */
@@ -78,8 +101,33 @@ const ToadListModal: React.FC<{ sceneId: number }> = ({ sceneId }) => {
     new Map()
   );
 
-  /** Места в вольерах колонии: склада жаб больше нет, поэтому это единственный дом */
+  /** Места в биоподах колонии: склада жаб больше нет, поэтому это единственный дом */
   const housing = getHousingInfo();
+
+  const { rooms } = useColony();
+
+  /** Гекс-биопод открытого списка: по нему видно апгрейды сектора (автокормушка) */
+  const enclosureRoom = React.useMemo(
+    () => rooms.find((room) => room.sceneId === scene?.id) ?? null,
+    [rooms, scene?.id]
+  );
+
+  /**
+   * Автокормушка биопода: апгрейд стоит у гекса (`getRoomUpgrades`), и легаси-бонус
+   * биопода читается там же, поэтому спрашиваем про гекс, а не про `Scene`.
+   * Если гекс не нашёлся (сейв знает биопод, но не карту), проверяем биопод напрямую —
+   * так старая покупка тоже видна.
+   */
+  const hasAutoFeeder = React.useMemo(
+    () =>
+      Boolean(
+        scene &&
+          getRoomUpgrades(
+            enclosureRoom ?? { id: `enclosure-${scene.id}`, sceneId: scene.id }
+          ).autoFeeder
+      ),
+    [enclosureRoom, scene?.id]
+  );
 
   const handleDissolveConfirm = () => {
     const ids = dissolveTargets.map((toad) => toad.id);
@@ -151,24 +199,31 @@ const ToadListModal: React.FC<{ sceneId: number }> = ({ sceneId }) => {
     setSelectedToads(new Set());
   };
 
-  // Переместить выделенных: вольер обязателен — склада жаб больше нет.
-  // Переезд — это новый дом и выход из комнаты: жаба идёт в вольер (`scene_id`), а место
-  // в комнате колонии освобождается (`roomId` сбрасывается).
+  // Переместить выделенных: биопод обязателен — склада жаб больше нет.
+  // Переезд — это новое место и новый дом (`scene_id` и `homeId`), а сектор колонии
+  // освобождается: место у жабы одно (`utils/toad-location.ts`).
   const moveSelected = (sceneId: number) => {
     if (selectedToads.size === 0) return;
 
-    const nextScene = getGameState().scenes.find((s) => s.id === sceneId);
-    const nextSceneToads =
-      getGameState().toads.filter((t) => t.scene_id === sceneId).length +
-      selectedToads.size;
+    const state = getGameState();
+    const nextScene = state.scenes.find((s) => s.id === sceneId);
+    // Жильцы биопода без самих переезжающих: они как раз уходят из своих биоподов
+    const residents =
+      state.toads.filter(
+        (t) =>
+          t.scene_id === sceneId &&
+          !t.roomId &&
+          !selectedToads.has(t.id)
+      ).length + selectedToads.size;
 
-    if (!nextScene || nextScene.capacity < nextSceneToads) {
-      addNotification({ type: "warn", content: "Данный вольер переполнен!" });
+    if (!nextScene || nextScene.capacity < residents) {
+      addNotification({ type: "warn", content: "Данный биопод переполнен!" });
       return;
     }
 
     updateToadsByIds(Array.from(selectedToads), {
       scene_id: sceneId,
+      homeId: sceneId,
       roomId: null,
     });
 
@@ -234,7 +289,69 @@ const ToadListModal: React.FC<{ sceneId: number }> = ({ sceneId }) => {
   const onPrevScene = () => setSceneIndex((index) => Math.max(0, index - 1));
 
   return (
-    <Modal icon={icon} title={"Все жабы"}>
+    <Modal
+      icon={icon}
+      title={
+        /**
+         * Шапка списка — сам биопод: имя, сколько жаб внутри из вместимости и есть ли
+         * автокормушка. Суммарные подписи набираем мельче и своим цветом: градиент
+         * родительского заголовка иначе перекрасил бы их в общий зелёно-фиолетовый.
+         */
+        <span className="flex flex-col items-center gap-0.5">
+          <span>🏠 {scene?.name ?? "Биопод"}</span>
+          <span className="text-2xs font-medium text-gray-300 [-webkit-text-fill-color:currentColor]">
+            {toads.length} / {scene?.capacity ?? 0} жаб
+          </span>
+          <span
+            className={`text-2xs font-medium [-webkit-text-fill-color:currentColor] ${
+              hasAutoFeeder ? "text-lime-300" : "text-gray-400"
+            }`}
+          >
+            🍎{" "}
+            {hasAutoFeeder
+              ? "автокормушка есть: корм со склада"
+              : "автокормушки нет: кормите вручную"}
+          </span>
+        </span>
+      }
+    >
+      {/* Состояния биопода: список жаб и его статистика. Стрелки биоподов остаются в
+          обоих — листать биоподы можно, не выходя из вкладки. */}
+      <div className="px-1 pb-3 flex items-center gap-2">
+        <div className="flex items-center gap-1">
+          {TOAD_LIST_TABS.map((item) => (
+            <ClickButton
+              key={item.id}
+              onClick={() => setTab(item.id)}
+              className={`px-3 py-1 rounded-xl text-2xs font-bold border transition-colors duration-300 ${
+                tab === item.id
+                  ? "bg-amber-800/60 border-amber-400/70 text-amber-100"
+                  : "bg-slate-800/50 border-gray-600/40 text-gray-300 hover:bg-slate-700/60"
+              }`}
+            >
+              {item.label}
+            </ClickButton>
+          ))}
+        </div>
+
+        <div className="flex items-center justify-center gap-2 ml-auto">
+          <ArrowLeftButtonCompact
+            className="w-6 h-6"
+            disabled={isFirstScene}
+            onClick={onPrevScene}
+          />
+          <ArrowRightButtonCompact
+            className="w-6 h-6"
+            onClick={onNextScene}
+            disabled={isLastScene}
+          />
+        </div>
+      </div>
+
+      {/* Список жаб — состояние биопода по умолчанию. Фильтры, режим вида, выделение и
+          подвал нужны только здесь: у вкладки статистики свои секции. */}
+      {tab === "toads" && (
+        <>
       <Filters
         toads={toads}
         setSortDirection={setSortDirection}
@@ -246,7 +363,7 @@ const ToadListModal: React.FC<{ sceneId: number }> = ({ sceneId }) => {
         addHunger
       />
 
-      {/* Кнопки переключения режима просмотра */}
+      {/* Режим вида: подробные карточки или сетка (по центру — стрелки биоподов) */}
       <div className="px-1 pb-3 flex gap-2 ">
         <ClickButton
           onClick={() => setViewMode("detailed")}
@@ -270,31 +387,6 @@ const ToadListModal: React.FC<{ sceneId: number }> = ({ sceneId }) => {
         >
           Сетка
         </ClickButton>
-
-        <div className="flex items-center justify-center gap-2 ml-auto">
-          <ArrowLeftButtonCompact
-            className="w-6 h-6"
-            disabled={isFirstScene}
-            onClick={onPrevScene}
-          />
-          {/* Вольер списка: по нему же открывается его статистика (переименование, бонусы) */}
-          <button
-            onClick={() =>
-              scene &&
-              openModal(() => <SceneInfoModal sceneId={scene.id} />)
-            }
-            className="max-w-[120px] truncate text-sm underline decoration-dotted decoration-cyan-400/50 hover:text-cyan-200"
-            title="Статистика вольера"
-          >
-            🏠 {scene?.name ?? "Вольер"}
-          </button>
-
-          <ArrowRightButtonCompact
-            className="w-6 h-6"
-            onClick={onNextScene}
-            disabled={isLastScene}
-          />
-        </div>
       </div>
       {/* Панель управления выделением (только для компактного режима) */}
       {viewMode === "compact" && (
@@ -517,19 +609,31 @@ const ToadListModal: React.FC<{ sceneId: number }> = ({ sceneId }) => {
           </div>
         </div>
 
-        {/* Места в вольерах: склада жаб нет, поэтому «дом» — только вольеры */}
+        {/* Места в биоподах: склада жаб нет, поэтому «дом» — только биоподы */}
         <div className="mt-2 flex items-center justify-between text-2xs text-gray-300 px-2">
           <span>
-            🏠 Мест в вольерах: {housing.used} / {housing.capacity} (вольеров:{" "}
+            🏠 Мест в биоподах: {housing.used} / {housing.capacity} (биоподов:{" "}
             {housing.enclosures})
           </span>
           {housing.free === 0 && (
             <span className="text-rose-300">
-              Мест нет — постройте «Вольер» на карте
+              Мест нет — постройте «Биопод» на карте
             </span>
           )}
         </div>
       </div>
+        </>
+      )}
+
+      {/* Статистика биопода: второе состояние модалки — шапка, стрелки и список жаб те же,
+          меняется только тело */}
+      {tab === "stats" && scene && (
+        <SceneStatsTab
+          scene={scene}
+          toads={toads}
+          hasAutoFeeder={hasAutoFeeder}
+        />
+      )}
 
       {/* Подтверждение: жабы уйдут в биомассу навсегда */}
       {dissolveTargets.length > 0 && (

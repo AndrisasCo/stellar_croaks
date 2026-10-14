@@ -21,13 +21,13 @@ import {
 } from "./room-toads-layout";
 
 /**
- * Жабы, живущие внутри гексагональной комнаты.
+ * Жабы, живущие внутри гексагонального сектора.
  *
  * Из старой сцены (ToadCanvas) переиспользуется всё, что касается самих жаб:
  * текстуры (preloadTextures/getTextureByType), анимация (updateToadAppearance)
  * и «характер» (скорость из генов, сон/блуждание, прыжок при тапе).
  * Само движение переписано: жабы не разбредаются по экрану, а держатся внутри зоны жаб —
- * приплюснутого гекса во всю ширину комнаты, прижатого к её низу и обрезанного по стенам
+ * приплюснутого гекса во всю ширину сектора, прижатого к её низу и обрезанного по стенам
  * (см. `room-toads-layout.ts`).
  */
 
@@ -35,11 +35,11 @@ import {
 const HOP_AMPLITUDE = 6;
 
 export interface RoomBounds {
-  /** Центр гекса комнаты. */
+  /** Центр гекса сектора. */
   center: Point;
-  /** Зона жаб — многоугольник в нижней части комнаты, куда пускают жаб. */
+  /** Зона жаб — многоугольник в нижней части сектора, куда пускают жаб. */
   area: Point[];
-  /** Радиус гекса комнаты — нужен для адаптивного размера жаб. */
+  /** Радиус гекса сектора — нужен для адаптивного размера жаб. */
   hexSize: number;
 }
 
@@ -51,16 +51,16 @@ export interface RoomToad {
 }
 
 export interface RoomToadFlock {
-  /** Слой с жабами — добавляется на карту поверх комнат. */
+  /** Слой с жабами — добавляется на карту поверх секторов. */
   layer: Container;
   toads: RoomToad[];
-  /** Полная синхронизация со списком жаб вольера/гнезда/комнаты ⚡/«Разведки». */
+  /** Полная синхронизация со списком жаб биопода/репродуктора/сектора ⚡/«Разведки». */
   sync: (toads: Toad[], spawns?: Record<number, Point>) => void;
   /** Точка притяжения (кормушка во время кормления). null — блуждают сами. */
   setAttractor: (point: Point | null) => void;
   /** Реакция на тап: жаба подпрыгивает. */
   react: (toadId: number) => void;
-  /** Жаба в этой комнате (нужна карте, чтобы взять её в руку). */
+  /** Жаба в этом секторе (нужна карте, чтобы взять её в руку). */
   getToad: (toadId: number) => RoomToad | undefined;
   /** Взяли жабу в руку: блуждание останавливается, жаба «подрастает». */
   beginDrag: (toadId: number) => boolean;
@@ -80,7 +80,7 @@ interface ToadState {
   hopPhase: number;
   target: Point;
   speed: number;
-  /** Масштаб жабы внутри комнаты (крупные уменьшаются). */
+  /** Масштаб жабы внутри сектора (крупные уменьшаются). */
   scale: number;
   needsRedraw: boolean;
   lastState: string;
@@ -97,7 +97,7 @@ const createState = (toad: Toad, spawn: Point, hexSize: number): ToadState => ({
   stateTimer: 30 + Math.random() * 150,
   hopPhase: Math.random() * Math.PI * 2,
   target: { ...spawn },
-  // Скорость из генов, но в масштабе комнаты (а не всего экрана)
+  // Скорость из генов, но в масштабе сектора (а не всего экрана)
   speed: Math.max(0.18, (toad.genes.speed * toad.genes.weight) / 22 / 8),
   scale: getToadScale(toad.genes.weight, hexSize),
   needsRedraw: true,
@@ -209,7 +209,7 @@ export const createRoomToads = (
   };
 
   const sync = (nextToads: Toad[], spawns?: Record<number, Point>) => {
-    // Ушедшие в поход жабы в комнате не сидят (место они освобождают): спрайт не рисуем
+    // Ушедшие в поход жабы в секторе не сидят (место они освобождают): спрайт не рисуем
     nextToads = nextToads.filter(isToadVisibleInRoom);
 
     const nextIds = new Set(nextToads.map((toad) => toad.id));
@@ -243,7 +243,7 @@ export const createRoomToads = (
         return;
       }
 
-      // Жаба уже живёт в комнате — обновляем данные и внешний вид при смене стадии
+      // Жаба уже живёт в секторе — обновляем данные и внешний вид при смене стадии
       const state = states.get(toad.id)!;
       const changed =
         state.toad.stage !== toad.stage ||
@@ -303,7 +303,7 @@ export const createRoomToads = (
     state.needsRedraw = true;
   };
 
-  /** Жаба этой комнаты по id — карта берёт её в руку при удержании. */
+  /** Жаба этого сектора по id — карта берёт её в руку при удержании. */
   const getToad = (toadId: number) =>
     toads.find((roomToad) => roomToad.toad.id === toadId);
 

@@ -43,6 +43,7 @@ import {
   getExpeditionProfitFloor,
   getExpeditionSendCost,
   getExpeditionSuccessChance,
+  getExpeditionToadEnergyCost,
   getHealCost,
   getLootValue,
   getMaxExpeditions,
@@ -63,6 +64,7 @@ import {
   pickExpeditionEvent,
 } from "./expedition-events";
 import { ExpeditionTeamMember, getSectorSuccessFactor } from "./expedition-config";
+import { getToadEnergy } from "./gamification-config";
 import { getHpRegenPerHour, getHospitalRoomIds } from "./hospital";
 
 /**
@@ -147,9 +149,9 @@ export const canSendToad = (
   if (toad.pregnancy?.isPregnant) {
     return { ok: false, reason: "вынашивает потомство" };
   }
-  // Пара в гнезде: жаба занята ухаживанием (Часть 3.2)
+  // Пара в репродукторе: жаба занята ухаживанием (Часть 3.2)
   if (toad.mating) {
-    return { ok: false, reason: "ухаживает в гнезде" };
+    return { ok: false, reason: "ухаживает в репродукторе" };
   }
   if (getIncubatingToadIds().includes(toad.id)) {
     return { ok: false, reason: "в инкубаторе" };
@@ -172,9 +174,9 @@ export const getSectorUnlockStatus = (
 /**
  * Отправить команду в сектор.
  * Списывает биомассу на снаряжение, помечает жаб `status: "out"` и заводит запись
- * похода. Уходя, жаба освобождает место в комнате (`roomId` сбрасывается): она в
- * походе, а не в ⚡-комнате или «Разведке» — двух мест сразу не бывает. Вернувшись,
- * жаба оказывается в вольере, и её сажают на место заново.
+ * похода. Уходя, жаба освобождает место в секторе (`roomId` сбрасывается): она в
+ * походе, а не в ⚡-секторе или «Разведке» — двух мест сразу не бывает. Вернувшись,
+ * жаба оказывается в биоподе, и её сажают на место заново.
  */
 export const startExpedition = (
   sectorId: number,
@@ -251,15 +253,39 @@ export const startExpedition = (
     };
   }
 
+  /**
+   * Силы: снаряжение оплачивает склад, а путь — сама жаба. Если хоть одной не хватает
+   * сил на сектор, поход не отправляем: иначе игрок терял бы добычу и HP, не увидев,
+   * почему команда вышла «пустой». Сколько именно нужно, показывает модалка разведки.
+   */
+  const energyCost = getExpeditionToadEnergyCost(sector);
+  const tired = toads.find((toad) => getToadEnergy(toad) < energyCost);
+  if (tired) {
+    return {
+      success: false,
+      message: `${tired.name}: не хватает сил — нужно ${energyCost} ⚡ (сейчас ${Math.round(
+        getToadEnergy(tired)
+      )})`,
+    };
+  }
+
   const now = Date.now();
 
   updateUser({
     biomass: Math.round(((state.user.biomass || 0) - cost) * 100) / 100,
   });
 
-  // Уход в поход освобождает место: жаба в походе, а не в комнате, спрайт скрыт
+  // Уход в поход освобождает место: жаба в походе, а не в секторе, спрайт скрыт.
+  // Заодно списываем силы: у каждой своя цена по глубине сектора.
   toads.forEach((toad) => {
-    updateToadById(toad.id, getAwayToadUpdate(toad), true);
+    updateToadById(
+      toad.id,
+      {
+        ...getAwayToadUpdate(toad),
+        energy: Math.max(0, getToadEnergy(toad) - energyCost),
+      },
+      true
+    );
   });
 
   const expedition: Expedition = {
@@ -284,7 +310,7 @@ export const startExpedition = (
   pushLog(expedition, {
     role: "system",
     kind: "info",
-    text: `команда из ${team.length} жаб ушла в «${sector.name}» − снаряжение ${cost} 🧪`,
+    text: `команда из ${team.length} жаб ушла в «${sector.name}» − снаряжение ${cost} 🧪, силы −${energyCost} ⚡ на жабу`,
   });
 
   pushLog(expedition, {
@@ -884,7 +910,7 @@ const createSampleToads = (count: number, sector: SectorDef): Toad[] => {
     },
   }));
 
-  // Склада жаб больше нет: образец живёт только в вольере. Сколько мест — столько жаб,
+  // Склада жаб больше нет: образец живёт только в биоподе. Сколько мест — столько жаб,
   // остальные образцы остаются в секторе (о них скажет отчёт похода).
   const { assigned, rejected } = assignToadsToScenes(data);
 

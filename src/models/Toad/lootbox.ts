@@ -310,8 +310,9 @@ const findToadTemplate = (rarity: LootboxRarity) => {
 
 // Основная функция генерации жабы из лутбокса
 /**
- * Жаба из лутбокса. Вольер (`sceneId`) жабе назначает вызывающий код: склада жаб нет,
+ * Жаба из лутбокса. Биопод (`sceneId`) жабе назначает вызывающий код: склада жаб нет,
  * поэтому открывающий обязан найти свободное место (см. `utils/housing.ts`).
+ * Место в биоподе и дом жабы (`homeId`) сверит `createToad` при создании.
  */
 export const generateLootboxToad = (
   sceneId = 1,
@@ -338,6 +339,7 @@ export const generateLootboxToad = (
     sex,
     stage: "adult",
     scene_id: sceneId,
+    homeId: sceneId,
     created_at: new Date().toISOString(),
     parents: null,
     state: {

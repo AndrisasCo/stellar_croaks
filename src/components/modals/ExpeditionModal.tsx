@@ -22,10 +22,13 @@ import {
   EXPEDITION_TEAM_SIZE,
   EXTRACTION_ASTRO_COST,
   ExpeditionTeamMember,
+  canToadAffordExpedition,
   getDispatchOfficeCost,
   getExpeditionProfitFloor,
   getExpeditionSendCost,
+  getExpeditionEnergyCost,
   getExpeditionSuccessChance,
+  getExpeditionToadEnergyCost,
   getHealCost,
   getRoleStat,
   getSectorSuccessFactor,
@@ -53,6 +56,13 @@ import {
   withdrawExpedition,
 } from "../../utils/expedition-manager";
 import { getMaxExpeditions } from "../../utils/expedition-config";
+import {
+  ENERGY_REGEN_PER_HOUR,
+  MAX_ENERGY,
+  PRODUCTION_HUNGRY_FACTOR,
+  PRODUCTION_MIN_HUNGER,
+  getToadEnergy,
+} from "../../utils/gamification-config";
 import { cureToadForTokens } from "../../utils/disease-manager";
 import {
   HOSPITAL_DISEASE_SPEED,
@@ -130,6 +140,56 @@ const HpBar: React.FC<{ hp: number; maxHp: number; className?: string }> = ({
         className={`h-full rounded-full transition-all duration-500 ${color}`}
         style={{ width: `${ratio * 100}%` }}
       />
+    </div>
+  );
+};
+
+/**
+ * Значки состояния жабы в списках команды: **сытость** 🍽 и **силы** ⚡.
+ *
+ * Поход стоит сил (`energyCost` — цена по глубине выбранного сектора), поэтому цвет
+ * значка сил отвечает на главный вопрос выбора: «дотянет ли жаба до этого сектора».
+ * Сытость рядом, потому что её спрашивают ровно там же: из похода жаба возвращается
+ * домой, где голод режет выработку биомассы, а на пороге `PRODUCTION_MIN_HUNGER` её
+ * подхватывает автокормушка сектора.
+ */
+const ToadVitals: React.FC<{
+  toad: Toad;
+  /** Силы на поход в выбранный сектор */
+  energyCost: number;
+  className?: string;
+}> = ({ toad, energyCost, className }) => {
+  const energy = Math.round(getToadEnergy(toad));
+  const hunger = Math.round(toad.state?.hunger ?? 0);
+  const hungerColor =
+    hunger >= 80
+      ? "text-green-300"
+      : hunger >= 50
+      ? "text-yellow-300"
+      : hunger >= PRODUCTION_MIN_HUNGER
+      ? "text-orange-300"
+      : "text-red-400";
+
+  return (
+    <div
+      className={`flex items-center gap-2 text-3xs font-medium ${
+        className ?? ""
+      }`}
+    >
+      <span
+        className={energy >= energyCost ? "text-lime-300" : "text-red-400"}
+        title={`Силы: ${energy} / ${MAX_ENERGY}. Поход в этот сектор стоит ${energyCost} ⚡ — силы восстанавливаются +${ENERGY_REGEN_PER_HOUR} в час`}
+      >
+        ⚡{energy}
+      </span>
+      <span
+        className={hungerColor}
+        title={`Сытость: ${hunger} %. Ниже ${PRODUCTION_MIN_HUNGER} % жаба вырабатывает лишь ${Math.round(
+          PRODUCTION_HUNGRY_FACTOR * 100
+        )} % биомассы`}
+      >
+        🍽{hunger}%
+      </span>
     </div>
   );
 };
@@ -234,9 +294,11 @@ const RoleToadPicker: React.FC<{
   groups: RoleToadGroup[];
   /** Какая роль занята жабой (undefined — жаба свободна) */
   assignedRole: (toadId: number) => ExpeditionRole | undefined;
+  /** Силы на поход в выбранный сектор — по ним красится значок ⚡ у каждой жабы */
+  energyCost: number;
   /** Куда сообщить выбор ("" — снять жабу с роли) */
   onPick: (value: string) => void;
-}> = ({ role, value, picked, groups, assignedRole, onPick }) => {
+}> = ({ role, value, picked, groups, assignedRole, energyCost, onPick }) => {
   const [open, setOpen] = useState(false);
   /** Не хватает места снизу — список раскрывается вверх: иначе он уходит за край экрана */
   const [dropUp, setDropUp] = useState(false);
@@ -314,6 +376,9 @@ const RoleToadPicker: React.FC<{
           {picked ? picked.name : "— пусто —"}
         </span>
         {picked && (
+          <ToadVitals toad={picked} energyCost={energyCost} className="shrink-0" />
+        )}
+        {picked && (
           <span className="shrink-0 text-2xs font-bold text-amber-200">
             {getRolePowerPercent(picked, role)}%
           </span>
@@ -335,7 +400,8 @@ const RoleToadPicker: React.FC<{
         >
           <p className="sticky top-0 z-10 bg-slate-900/95 px-2 py-1.5 text-3xs leading-snug text-gray-400">
             Сверху — сильнее для роли «{config.label}» ({config.statLabel}).
-            Янтарная жаба уже в другой роли: выбор перенесёт её сюда.
+            Янтарная жаба уже в другой роли: выбор перенесёт её сюда. Под именем —
+            ⚡ силы (красные: на этот сектор не хватит) и 🍽 сытость.
           </p>
 
           {value !== "" && (
@@ -402,6 +468,11 @@ const RoleToadPicker: React.FC<{
                             }`
                           : ""}
                       </p>
+                      <ToadVitals
+                        toad={toad}
+                        energyCost={energyCost}
+                        className="mt-0.5"
+                      />
                     </div>
 
                     <div className="w-12 shrink-0 text-right">
@@ -437,10 +508,10 @@ type ExpeditionTab = "runs" | "send" | "infirmary";
 /**
  * Модалка разведки: походы, сборка новой команды и лазарет.
  *
- * Команду собирают **из жаб комнаты «Разведка»**: гекс, из которого открыли модалку, приходит
+ * Команду собирают **из жаб сектора «Разведка»**: гекс, из которого открыли модалку, приходит
  * в `roomId`, и его жильцы идут первым списком — тап по жабе ставит её на сильную роль,
  * повторный тап выводит из команды, а «Собрать команду» занимает все свободные роли
- * (`utils/expedition-crew.ts`). В списках ролей жабы комнаты тоже идут первыми группой,
+ * (`utils/expedition-crew.ts`). В списках ролей жабы сектора тоже идут первыми группой,
  * а внутри группы — по силе роли (`sortToadsByRolePower`), как и в выпадающем списке роли
  * (`RoleToadPicker`).
  *
@@ -450,7 +521,7 @@ type ExpeditionTab = "runs" | "send" | "infirmary";
  */
 const ExpeditionModal: React.FC<{
   onClose?: () => void;
-  /** Вкладка, с которой открывается модалка: комната «Лазарет» открывает свою вкладку. */
+  /** Вкладка, с которой открывается модалка: сектор «Лазарет» открывает свою вкладку. */
   initialTab?: ExpeditionTab;
   /** Гекс «Разведки», из которого открыли модалку: его жильцы — экипаж для команды. */
   roomId?: string;
@@ -510,17 +581,34 @@ const ExpeditionModal: React.FC<{
   ).map((role) => ({ toadId: slots[role] as number, role }));
 
   const sendCost = getExpeditionSendCost(selectedSector, members.length);
+  /** Силы одной жабы на поход в выбранный сектор: растут с глубиной (см. `getExpeditionToadEnergyCost`) */
+  const energyCostPerToad = getExpeditionToadEnergyCost(selectedSector);
+  /**
+   * Жабы команды, которым сил не хватает: поход не отправят (`startExpedition` проверит
+   * то же самое), поэтому предупреждаем до нажатия и гасим кнопку — иначе игрок узнает
+   * о нехватке сил только по тосту-ошибке.
+   */
+  const tiredMembers = members.reduce<Toad[]>((acc, member) => {
+    const toad = state.toads.find((item) => item.id === member.toadId);
+
+    if (toad && !canToadAffordExpedition(toad, selectedSector)) {
+      acc.push(toad);
+    }
+
+    return acc;
+  }, []);
   const biomass = state.user.biomass || 0;
   const tokens = state.user.tokens || 0;
   const astro = state.user.astro_quax || 0;
   const canSend =
     members.length > 0 &&
     biomass >= sendCost &&
+    tiredMembers.length === 0 &&
     expeditions.length < teamLimit &&
     sectorUnlocked;
 
-  // Лазарет: койки комнаты и два списка — кто лежит и кому ещё нужна помощь.
-  // Комнаты и жаб по комнатам берём из колонии теми же вычислениями, что и карта.
+  // Лазарет: койки сектора и два списка — кто лежит и кому ещё нужна помощь.
+  // Сектора и жаб по секторам берём из колонии теми же вычислениями, что и карта.
   const { rooms, powerGrid, toadsByRoom, placeToad, releaseToad } = useColony();
 
   const hospitalRooms = useMemo(
@@ -533,9 +621,9 @@ const ExpeditionModal: React.FC<{
   );
 
   /**
-   * Комната «Разведка», из которой открыли модалку: её жильцы — экипаж, из которого
+   * Сектор «Разведка», из которой открыли модалку: её жильцы — экипаж, из которого
    * собирают команду. Из бургер-меню гекса нет — берём «Разведку» с жабами внутри, а если
-   * и такой нет — первую построенную: пустую комнату модалка тоже показывает, чтобы игрок
+   * и такой нет — первую построенную: пустой сектор модалка тоже показывает, чтобы игрок
    * знал, куда сажать команду (построек «Разведки» может и не быть — тогда блока нет).
    */
   const crewRoom = useMemo(() => {
@@ -552,7 +640,7 @@ const ExpeditionModal: React.FC<{
     );
   }, [rooms, roomId, toadsByRoom]);
 
-  /** Экипаж комнаты: те же жабы, что рисует карта (ушедшие в поход комнату покинули) */
+  /** Экипаж сектора: те же жабы, что рисует карта (ушедшие в поход сектор покинули) */
   const crew = useMemo(
     () => (crewRoom ? toadsByRoom[crewRoom.id] : undefined) ?? [],
     [crewRoom, toadsByRoom]
@@ -562,7 +650,7 @@ const ExpeditionModal: React.FC<{
   const crewSendable = crew.filter((toad) => canSendToad(toad, expeditions).ok);
 
   /**
-   * Жабы комнаты — отдельной группой вверху списков ролей: команду собирают из экипажа,
+   * Жабы сектора — отдельной группой вверху списков ролей: команду собирают из экипажа,
    * а жабы всей колонии остаются ниже. Команда из одних экипажных жаб собирается в один тап.
    */
   const { crewAvailable, otherAvailable } = useMemo(() => {
@@ -625,7 +713,7 @@ const ExpeditionModal: React.FC<{
   /**
    * Куда положить жабу из списка «нужна помощь»: первый лазарет, который её принимает.
    * Проверяем теми же правилами, что и перенос по карте (`canMoveToadToRoom`): место
-   * на койке, ток в комнате, возраст, поход — чтобы кнопка не обещала лишнего.
+   * на койке, ток в секторе, возраст, поход — чтобы кнопка не обещала лишнего.
    */
   const getAdmission = (
     toad: Toad
@@ -641,7 +729,7 @@ const ExpeditionModal: React.FC<{
         roomToads: (toadsByRoom[room.id] ?? []).filter(
           (item) => item.id !== toad.id
         ),
-        // Переносим в лазарет, а не в вольер: жильё тут не считается
+        // Переносим в лазарет, а не в биопод: жильё тут не считается
         aviaryCount: 0,
         aviaryCapacity: 0,
         rooms,
@@ -716,14 +804,30 @@ const ExpeditionModal: React.FC<{
   };
 
   /**
-   * Выписать жабу из лазарета в вольер. Жильё при этом не меняется (жаба остаётся
-   * в своём вольере), поэтому проверяем только «жива и не в походе».
+   * Выписать жабу из лазарета домой — в её биопод (`homeId`).
+   *
+   * Жильё жаба не меняла (пока лежала на койке, места в биоподе она не занимала), но
+   * свободного места там может уже не быть — тогда она остаётся на койке, а игроку надо
+   * построить биопод или переселить её в другой.
    */
   const handleDischarge = (toad: Toad) => {
-    releaseToad(toad.id);
+    const result = releaseToad(toad.id);
+
+    if (!result.ok) {
+      addNotification({
+        type: "warn",
+        content:
+          result.reason === "no-space"
+            ? `${toad.name} остаётся на койке: в биоподе «${result.scene?.name}» нет места — постройте биопод или переселите её в другой.`
+            : `${toad.name} остаётся на койке: биопод, в котором она жила, не найден — переселите её в другой.`,
+        timeout: 9000,
+      });
+      return;
+    }
+
     addNotification({
       type: "success",
-      content: `${toad.name} выписана из лазарета в вольер`,
+      content: `${toad.name} выписана из лазарета в биопод`,
     });
   };
 
@@ -738,7 +842,7 @@ const ExpeditionModal: React.FC<{
     const cureCost = getDiseaseCureCost(toad);
     const inBed = options.inBed;
     const admission = inBed ? null : getAdmission(toad);
-    // Выписывают в вольер по любым причинам, поэтому выбитого пациента тоже отпускаем:
+    // Выписывают в биопод по любым причинам, поэтому выбитого пациента тоже отпускаем:
     // правило «сначала подлечите» здесь не мешает (allowDown) — это же лазарет
     const dischargeIssue = inBed
       ? getToadMoveIssue(toad, { allowDown: true })
@@ -842,7 +946,7 @@ const ExpeditionModal: React.FC<{
           >
             {dischargeIssue
               ? `🚪 Выписать нельзя: ${dischargeIssue}`
-              : "🚪 Выписать в вольер"}
+              : "🚪 Выписать в биопод"}
           </ClickButton>
         )}
       </div>
@@ -850,7 +954,7 @@ const ExpeditionModal: React.FC<{
   };
 
   /**
-   * Строка экипажа комнаты: кто живёт в «Разведке» и что с ним можно сделать.
+   * Строка экипажа сектора: кто живёт в «Разведке» и что с ним можно сделать.
    * Свободная жаба показывает свою сильную роль, жаба в команде — занятую ею роль;
    * тап по кнопке ставит жабу в команду или выводит её оттуда.
    */
@@ -901,6 +1005,11 @@ const ExpeditionModal: React.FC<{
                   role
                 )}%`}
           </p>
+          <ToadVitals
+            toad={toad}
+            energyCost={energyCostPerToad}
+            className="mt-0.5"
+          />
         </div>
 
         <ClickButton
@@ -927,7 +1036,7 @@ const ExpeditionModal: React.FC<{
     );
   };
 
-  /** Тап по жабе комнаты: в команде — вывести, свободна — поставить на сильную роль */
+  /** Тап по жабе сектора: в команде — вывести, свободна — поставить на сильную роль */
   const handleCrewTap = (toad: Toad) => {
     if (getAssignedRole(slots, toad.id)) {
       setSlots((prev) => removeToadFromTeam(prev, toad.id));
@@ -949,7 +1058,7 @@ const ExpeditionModal: React.FC<{
     );
   };
 
-  /** «Собрать команду»: свободные роли занимают самые сильные жабы комнаты */
+  /** «Собрать команду»: свободные роли занимают самые сильные жабы сектора */
   const handleFillFromRoom = () => {
     const next = fillTeamFromCrew(slots, crewSendable);
     const filled = EXPEDITION_ROLE_ORDER.filter(
@@ -991,13 +1100,15 @@ const ExpeditionModal: React.FC<{
    * Страницы слайдера секторов: один сектор — одна страница.
    *
    * Страница **и есть** выбор сектора (свайп вправо-влево, стрелки ‹ › и точки), поэтому
-   * на экране всегда тот сектор, который полетит в поход. Закрытые сектора листать можно —
+   * на экране всегда тот сектор, который полетит в поход. Закрытые секторы листать можно —
    * видно, что впереди, — но отправить туда не даст `canSend` (`sectorUnlocked`).
    */
   const sectorSlides = SECTORS.map((item) => {
     const unlocked = isSectorUnlocked(item, stats);
     const selected = item.id === selectedSector.id;
     const sectorCost = getExpeditionSendCost(item, Math.max(1, members.length));
+    /** Силы на поход в этот сектор: их тратит каждая жаба команды */
+    const sectorEnergy = getExpeditionToadEnergyCost(item);
     const backHours =
       Math.round(item.durationHours * EXPEDITION_RETURN_RATIO * 10) / 10;
 
@@ -1049,7 +1160,8 @@ const ExpeditionModal: React.FC<{
 
         <p className="text-2xs text-gray-400">
           Глубина {item.depth} · обратно ~{backHours} ч · снаряжение {sectorCost} 🧪
-          на команду из {Math.max(1, members.length)} жаб
+          на команду из {Math.max(1, members.length)} жаб · силы {sectorEnergy} ⚡
+          на жабу
         </p>
 
         <p
@@ -1292,6 +1404,7 @@ const ExpeditionModal: React.FC<{
                       picked={picked}
                       groups={roleGroups[role]}
                       assignedRole={(toadId) => getAssignedRole(slots, toadId)}
+                      energyCost={energyCostPerToad}
                       onPick={(value) => handleRolePick(role, value)}
                     />
 
@@ -1303,7 +1416,7 @@ const ExpeditionModal: React.FC<{
               })}
             </div>
 
-            {/* Жабы комнаты «Разведка»: экипаж, из которого команда собирается в один тап */}
+            {/* Жабы сектора «Разведка»: экипаж, из которого команда собирается в один тап */}
             {crewRoom && (
               <div className="bg-color-main rounded-2xl p-3 border border-gray-600/30 flex flex-col gap-2">
                 <div className="flex items-center justify-between gap-2">
@@ -1314,7 +1427,7 @@ const ExpeditionModal: React.FC<{
                     members.length < EXPEDITION_TEAM_SIZE && (
                       <ClickButton
                         onClick={handleFillFromRoom}
-                        title="Занять свободные роли сильнейшими жабами комнаты"
+                        title="Занять свободные роли сильнейшими жабами сектора"
                         className="shrink-0 py-1.5 px-2 rounded-lg text-2xs font-bold border bg-amber-900/50 border-amber-500/50 text-amber-100 hover:bg-amber-800/60 transition-colors duration-300"
                       >
                         Собрать команду
@@ -1324,9 +1437,9 @@ const ExpeditionModal: React.FC<{
 
                 {crew.length === 0 && (
                   <p className="text-2xs leading-snug text-gray-400">
-                    Комната пуста: перенесите сюда на карте до{" "}
+                    Сектор пуст: перенесите сюда на карте до{" "}
                     {EXPEDITION_TEAM_SIZE} взрослых жаб — команда соберётся из них, а из
-                    похода жаба возвращается в вольер (место в «Разведке» она
+                    похода жаба возвращается в биопод (место в «Разведке» она
                     освобождает).
                   </p>
                 )}
@@ -1340,6 +1453,19 @@ const ExpeditionModal: React.FC<{
               <div className="flex items-center justify-between text-2xs text-gray-300">
                 <span>Снаряжение: {sendCost} 🧪</span>
                 <span>В запасе: {Math.round(biomass)} 🧪</span>
+              </div>
+              {/* Силы платит каждая жаба: их видно у жаб в списках и в значках ⚡ напротив имён */}
+              <div className="flex items-center justify-between text-2xs text-gray-300">
+                <span>
+                  Силы команды: −{energyCostPerToad} ⚡ на жабу
+                  {members.length > 0
+                    ? ` (−${getExpeditionEnergyCost(
+                        selectedSector,
+                        members.length
+                      )} ⚡ всего)`
+                    : ""}
+                </span>
+                <span>Восстановление +{ENERGY_REGEN_PER_HOUR} ⚡/ч</span>
               </div>
               <p className="text-2xs text-gray-400">
                 {selectedSector.icon} {selectedSector.name}: путь туда{" "}
@@ -1383,6 +1509,18 @@ const ExpeditionModal: React.FC<{
                   Не хватает биомассы на снаряжение.
                 </p>
               )}
+              {tiredMembers.length > 0 && (
+                <p className="text-2xs text-red-300">
+                  Не хватает сил на поход ({energyCostPerToad} ⚡ на жабу):{" "}
+                  {tiredMembers
+                    .map(
+                      (toad) =>
+                        `${toad.name} — ${Math.round(getToadEnergy(toad))} ⚡`
+                    )
+                    .join(", ")}
+                  . Силы капают дома: +{ENERGY_REGEN_PER_HOUR} ⚡/ч, либо возьмите в ближний сектор.
+                </p>
+              )}
               {!sectorUnlocked && (
                 <p className="text-2xs text-amber-300">
                   🔒 «{selectedSector.name}» закрыт: завершите{" "}
@@ -1420,7 +1558,7 @@ const ExpeditionModal: React.FC<{
 
             {hospitalRooms.length === 0 && (
               <p className="text-2xs text-amber-200/90 bg-amber-950/30 border border-amber-500/30 rounded-xl px-3 py-2">
-                🏥 В колонии нет «Лазарета»: постройте комнату на свободном гексе
+                🏥 В колонии нет «Лазарета»: постройте сектор на свободном гексе
                 карты — только на койке жабы выздоравливают быстро.
               </p>
             )}

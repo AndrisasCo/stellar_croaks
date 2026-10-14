@@ -7,7 +7,7 @@ import { Toad } from "./Toad";
  * Состояние жаб хранится в `Toad.state.diseaseId` / `Toad.state.diseaseUntil`, поэтому
  * селекторы «больна ли жаба» живут здесь же (без обращения к сохранению): их читают и
  * `utils/disease-manager.ts`, и `utils/hospital.ts` — лазарет ускоряет срок болезни
- * и изолирует пациента от вольера.
+ * и изолирует пациента от биопода.
  */
 
 export interface DiseaseDef {
@@ -15,7 +15,7 @@ export interface DiseaseDef {
   name: string;
   icon: string;
   description: string;
-  /** Шанс передачи соседям по вольеру за час */
+  /** Шанс передачи соседям по биоподу за час */
   contagionPerHour: number;
   /** Срез выработки биомассы (0.3 = −30 %) */
   productionPenalty: number;

@@ -6,7 +6,7 @@ export type CyberEventKind = "negative" | "positive";
 export interface CyberEventEffect {
   /** Дельта биомассы аккаунта */
   biomass?: number;
-  /** Дельта голода случайной жабы вольера */
+  /** Дельта голода случайной жабы биопода */
   hunger?: number;
   /** Выдача корма */
   food?: number;

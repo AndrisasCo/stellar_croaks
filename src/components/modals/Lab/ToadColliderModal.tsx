@@ -70,7 +70,7 @@ export default function ToadCollider() {
   const { startBreeding, updateBreeding, allToads } = useToads();
 
   // Часть 5: жабы в походе недоступны для коллайдера (они на Периметре).
-  // Список — вся колония: коллайдер работает с генами, а не с вольером.
+  // Список — вся колония: коллайдер работает с генами, а не с биоподом.
   const availableToads = allToads.filter(
     (t) => t.stage === "adult" && t.status !== "out"
   );
@@ -371,7 +371,7 @@ export default function ToadCollider() {
                         {toad.mating && (
                           <span
                             className="absolute -top-1 -left-1 text-xs"
-                            title="Ухаживает в гнезде: беременность стартует через 15–30 мин"
+                            title="Ухаживает в репродукторе: беременность стартует через 15–30 мин"
                           >
                             🫧
                           </span>

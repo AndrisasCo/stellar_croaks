@@ -14,7 +14,7 @@ export const ASTRO_PRICES = {
   resetCooldown: 1,
   /** Ускорение беременности вдвое */
   acceleratePregnancy: 2,
-  /** Карантин вольера: лечит всех жаб сцены */
+  /** Карантин биопода: лечит всех жаб сцены */
   quarantine: 2,
 } as const;
 
@@ -123,7 +123,7 @@ export const acceleratePregnancy = (toadId: number): AstroPurchaseResult => {
   };
 };
 
-/** Карантин вольера: лечит всех заражённых жаб сцены */
+/** Карантин биопода: лечит всех заражённых жаб сцены */
 export const buyQuarantine = (sceneId: number | null): AstroPurchaseResult => {
   if (!spendAstro(ASTRO_PRICES.quarantine)) {
     return {

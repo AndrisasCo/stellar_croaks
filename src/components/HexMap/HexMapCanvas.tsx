@@ -45,26 +45,26 @@ import { ToadMoveCheck } from "./toad-move-rules";
  *
  * Канвас сам управляет панорамой, зумом и попаданиями (hit-test), поэтому не зависит
  * от событий Pixi — так одинаково предсказуемо работает и мышью, и пальцем.
- * Комнаты и жаб создают соседние модули (hex-room, room-toads).
+ * Сектора и жаб создают соседние модули (hex-room, room-toads).
  */
 
 export interface HexMapCanvasProps {
-  /** Комнаты карты: базовые плюс всё, что игрок построил (см. resolveColonyRooms). */
+  /** Сектора карты: базовые плюс всё, что игрок построил (см. resolveColonyRooms). */
   rooms: RoomConfig[];
-  /** У построенных комнат — есть ли ток (id комнаты → есть ли ток). */
+  /** У построенных секторов — есть ли ток (id сектора → есть ли ток). */
   poweredRooms: Record<string, boolean>;
-  /** Жабы по комнатам: id комнаты → список жаб. */
+  /** Жабы по секторам: id сектора → список жаб. */
   toadsByRoom: Record<string, Toad[]>;
-  /** Комната, к которой идут жабы (кормление). null — блуждают сами. */
+  /** Сектор, к которой идут жабы (кормление). null — блуждают сами. */
   feedRoomId: string | null;
   onRoomTap: (room: RoomConfig) => void;
   onToadTap: (toad: Toad) => void;
   /**
-   * Можно ли перенести жабу в эту комнату (удержание жабы + бросок).
+   * Можно ли перенести жабу в этот сектор (удержание жабы + бросок).
    * Правила живут в toad-move-rules, карта только спрашивает.
    */
   canDropToad: (toad: Toad, room: RoomConfig) => ToadMoveCheck;
-  /** Жабу перенесли в другую комнату — менять состояние игры должен родитель. */
+  /** Жабу перенесли в другой сектор — менять состояние игры должен родитель. */
   onToadDrop: (toad: Toad, room: RoomConfig) => void;
   /** Перенести нельзя: родитель показывает причину (жаба уже летит назад). */
   onToadRejected?: (toad: Toad, room: RoomConfig, reason?: string) => void;
@@ -72,7 +72,7 @@ export interface HexMapCanvasProps {
   onToadPickup?: (toad: Toad) => void;
   /**
    * Сменился вид карты:
-   *  - false — обзорный (вся колония, тапы открывают комнаты, двойной тап приближает);
+   *  - false — обзорный (вся колония, тапы открывают секторы, двойной тап приближает);
    *  - true  — приближенный (гекс почти во весь экран, жабы кликаются по отдельности).
    */
   onZoomedChange?: (zoomed: boolean) => void;
@@ -81,10 +81,10 @@ export interface HexMapCanvasProps {
 /** Длительность доводки камеры: отдаление при переносе и возврат зума (мс). */
 const CAMERA_TWEEN_MS = 280;
 
-/** Состояние переноса: жаба в «руке», её стая, камера и целевая комната. */
+/** Состояние переноса: жаба в «руке», её стая, камера и целевой сектор. */
 interface DragState {
   toad: Toad;
-  /** Комната, из которой жабу взяли. */
+  /** Сектор, из которой жабу взяли. */
   roomId: string;
   /** Палец, который несёт жабу: отпускание других пальцев перенос не завершает. */
   pointerId: number;
@@ -98,9 +98,9 @@ interface DragState {
   origin: Point;
   /** Камера до переноса: к ней возвращаемся, если перенос не удался. */
   camera: { scale: number; x: number; y: number };
-  /** Комната под пальцем (id) — её же и подсвечиваем. */
+  /** Сектор под пальцем (id) — её же и подсвечиваем. */
   targetRoomId: string | null;
-  /** Камера уже отдалилась, чтобы жабу можно было донести до любой комнаты. */
+  /** Камера уже отдалилась, чтобы жабу можно было донести до любого сектора. */
   zoomedOut: boolean;
 }
 
@@ -136,7 +136,7 @@ const BACKDROP_MARGIN = 600;
 /**
  * Фон карты: тёмная подложка + медовая сетка территории колонии.
  *
- * Сетка рисуется только за открытыми гексами: под ними живут комнаты и свободные слоты,
+ * Сетка рисуется только за открытыми гексами: под ними живут сектора и свободные слоты,
  * и там линия сетки шла рядом с контуром слота — сквозь полупрозрачный пустой слот
  * просвечивали обе, и контур выглядел сдвоенным. Карта растёт фронтом вокруг новых
  * построек, поэтому клетки сетки встают на все гексы, соседние с колонией (`getHoneycombCoords`):
@@ -158,7 +158,7 @@ const drawBackdrop = (graphics: Graphics, rooms: RoomConfig[]) => {
   getHoneycombCoords(rooms.map((room) => room.coord)).forEach((coord) => {
     graphics
       .poly(hexPolygon(axialToPixel(coord, HEX_SIZE), HEX_SIZE))
-      // Сетка — фоновая фактура: комнаты и живой ток должны читаться сильнее неё
+      // Сетка — фоновая фактура: сектора и живой ток должны читаться сильнее неё
       .stroke({ width: 1, color: 0x3f5d7d, alpha: 0.07 });
   });
 };
@@ -171,7 +171,7 @@ export default function HexMapCanvas(props: HexMapCanvasProps) {
   const viewsRef = useRef<RoomView[]>([]);
   const flocksRef = useRef<Record<string, RoomToadFlock>>({});
   const texturesRef = useRef<any>(null);
-  /** Фоны комнат (фото вольера): приезжают отдельно от спрайтов жаб. */
+  /** Фоны секторов (фото биопода): приезжают отдельно от спрайтов жаб. */
   const roomBackgroundsRef = useRef<Partial<Record<RoomKind, Texture>>>({});
   const transformRef = useRef({ scale: 1, x: 0, y: 0 });
   const autoFitRef = useRef(true);
@@ -184,11 +184,11 @@ export default function HexMapCanvas(props: HexMapCanvasProps) {
     zoomTo: (_level: "overview" | "detail") => {},
     reset: () => {},
   });
-  /** Пересборка карты (после постройки комнаты — см. resolveColonyRooms). */
+  /** Пересборка карты (после постройки сектора — см. resolveColonyRooms). */
   const rebuildRoomsRef = useRef<() => void>(() => {});
   /** Обновление бейджей и наличия тока без пересборки карты. */
   const syncRoomVisualsRef = useRef<() => void>(() => {});
-  /** Раздача подгруженных фонов комнатам (после пересборки карты или прихода фото). */
+  /** Раздача подгруженных фонов секторовм (после пересборки карты или прихода фото). */
   const applyRoomBackgroundsRef = useRef<() => void>(() => {});
   /** Жаба «в руке»: удержание сработало, палец ведёт жабу по карте. */
   const dragRef = useRef<DragState | null>(null);
@@ -260,8 +260,8 @@ export default function HexMapCanvas(props: HexMapCanvasProps) {
       /** Сколько гексов было под фоном: по числу видно, что карта выросла. */
       let drawnCount = propsRef.current.rooms.length;
 
-      // Два слоя: комнаты и жабы поверх них. Оба пересобираются, когда игрок
-      // строит новую комнату (см. rebuildRooms → resolveColonyRooms).
+      // Два слоя: сектора и жабы поверх них. Оба пересобираются, когда игрок
+      // строит новый сектор (см. rebuildRooms → resolveColonyRooms).
       const roomsLayer = new Container();
       const toadsLayer = new Container();
 
@@ -279,9 +279,9 @@ export default function HexMapCanvas(props: HexMapCanvasProps) {
       };
 
       /**
-       * Фоны комнат (фото вольера): кладём тем комнатам, у которых есть картинка.
+       * Фоны секторов (фото биопода): кладём тем секторам, у которых есть картинка.
        * Вызывается и после пересборки карты, и когда фото только-только приехало —
-       * у самой комнаты `setBackground` повторный вызов игнорируется.
+       * у самого сектора `setBackground` повторный вызов игнорируется.
        */
       const applyRoomBackgrounds = () => {
         const backgrounds = roomBackgroundsRef.current;
@@ -295,7 +295,7 @@ export default function HexMapCanvas(props: HexMapCanvasProps) {
         });
       };
 
-      /** Пересборка карты: снос старых комнат и стай, сборка из props.rooms. */
+      /** Пересборка карты: снос старых секторов и стай, сборка из props.rooms. */
       const rebuildRooms = () => {
         // Пересборка рвёт стаи: жабу в руке возвращать некуда — просто отпускаем
         cancelDrag(false);
@@ -318,7 +318,7 @@ export default function HexMapCanvas(props: HexMapCanvasProps) {
         });
         flocksRef.current = {};
 
-        // Сортировка «дальние кольца ниже» — ядро рисуется поверх остальных комнат
+        // Сортировка «дальние кольца ниже» — ядро рисуется поверх остальных секторов
         const views = [...propsRef.current.rooms]
           .sort((a, b) => getRoomRing(b) - getRoomRing(a))
           .map((room) => createRoomView(room, HEX_SIZE));
@@ -326,7 +326,7 @@ export default function HexMapCanvas(props: HexMapCanvasProps) {
         views.forEach((view) => roomsLayer.addChild(view.container));
         viewsRef.current = views;
 
-        // Жабы живут в своих комнатах: вольер, гнездо и энергокомнаты
+        // Жабы живут в своих секторах: биопод, репродуктор и энергосектора
         const textures = texturesRef.current;
         const flocks: Record<string, RoomToadFlock> = {};
         // Жаба, перенесённая прямо перед пересборкой, садится на своё место
@@ -351,7 +351,7 @@ export default function HexMapCanvas(props: HexMapCanvasProps) {
 
         flocksRef.current = flocks;
         syncRoomVisuals();
-        // Комнаты собраны заново — фон (если уже загружен) возвращаем им сразу
+        // Сектора собраны заново — фон (если уже загружен) возвращаем им сразу
         applyRoomBackgrounds();
 
         // Карта выросла — показываем колонию целиком: это событие игрока («территория
@@ -393,7 +393,7 @@ export default function HexMapCanvas(props: HexMapCanvasProps) {
       setTexturesReady(true);
     });
 
-    // Фоны комнат: пока фото едет, карта уже играбельна — гекс просто остаётся цветным
+    // Фоны секторов: пока фото едет, карта уже играбельна — гекс просто остаётся цветным
     preloadRoomBackgrounds().then((backgrounds) => {
       if (disposed) {
         return;
@@ -457,7 +457,7 @@ export default function HexMapCanvas(props: HexMapCanvasProps) {
     /**
      * Камера обзорного вида: вся колония целиком — включая гексы, которые только что открыла
      * новая постройка (математика и проверка видимости — `getOverviewView`). Такая доводка
-     * нужна при переносе жабы — иначе до дальних комнат не донести.
+     * нужна при переносе жабы — иначе до дальних секторов не донести.
      */
     const getOverviewCamera = () => {
       syncZoomLevels();
@@ -472,7 +472,7 @@ export default function HexMapCanvas(props: HexMapCanvasProps) {
       return { scale, x, y };
     };
 
-    /** Камера приближенного вида, наведённая на комнату (показать, куда жаба прилетела). */
+    /** Камера приближенного вида, наведённая на сектор (показать, куда жаба прилетела). */
     const getRoomCamera = (room: RoomConfig) => {
       syncZoomLevels();
 
@@ -486,7 +486,7 @@ export default function HexMapCanvas(props: HexMapCanvasProps) {
       };
     };
 
-    /** Плавно доводит камеру до нужного вида (отдаление, возврат зума, показ комнаты). */
+    /** Плавно доводит камеру до нужного вида (отдаление, возврат зума, показ сектора). */
     const tweenCamera = (
       to: { scale: number; x: number; y: number },
       duration: number = CAMERA_TWEEN_MS,
@@ -573,7 +573,7 @@ export default function HexMapCanvas(props: HexMapCanvasProps) {
         .find((view) => pointInHex(worldPoint, view.center, HEX_SIZE)) ?? null;
 
     /**
-     * Ближайшая жаба под точкой (мировые координаты) + id её комнаты.
+     * Ближайшая жаба под точкой (мировые координаты) + id её сектора.
      *
      * Радиус — её собственный плюс допуск пальца (см. getToadPickRadius): в обзорном
      * виде жабы мелкие, и без этого допуска удержание бы не срабатывало. Если под
@@ -617,7 +617,7 @@ export default function HexMapCanvas(props: HexMapCanvasProps) {
       };
     };
 
-    /** Снимает подсветку со всех комнат и зажигает её у целевой. */
+    /** Снимает подсветку со всех секторов и зажигает её у целевой. */
     const setDropTarget = (roomId: string | null, check?: ToadMoveCheck) => {
       viewsRef.current.forEach((view) => {
         if (view.room.id !== roomId) {
@@ -629,7 +629,7 @@ export default function HexMapCanvas(props: HexMapCanvasProps) {
       });
     };
 
-    /** Комната под курсором мыши — единственная «живая» подсветка обзорного вида. */
+    /** Сектор под курсором мыши — единственная «живая» подсветка обзорного вида. */
     let hoveredRoomId: string | null = null;
 
     const setHoveredRoom = (roomId: string | null) => {
@@ -683,7 +683,7 @@ export default function HexMapCanvas(props: HexMapCanvasProps) {
         return;
       }
 
-      // Перенос важнее тапа: отложенное открытие комнаты больше не нужно
+      // Перенос важнее тапа: отложенное открытие сектора больше не нужно
       cancelPendingTap();
 
       const world = screenToWorld(pending.local);
@@ -711,7 +711,7 @@ export default function HexMapCanvas(props: HexMapCanvasProps) {
       propsRef.current.onToadPickup?.(roomToad.toad);
     };
 
-    /** Палец ведёт жабу: доводим её, проверяем комнату под ней и при нужде отдаляем зум. */
+    /** Палец ведёт жабу: доводим её, проверяем сектор под ней и при нужде отдаляем зум. */
     const updateDrag = (local: Point) => {
       const drag = dragRef.current;
 
@@ -779,9 +779,9 @@ export default function HexMapCanvas(props: HexMapCanvasProps) {
     /**
      * Отпустили жабу.
      *
-     * Есть подходящая комната — жаба остаётся в ней, а карта показывает её новое
-     * место жительства. Комната жабу не принимает — жаба летит назад, а игрок
-     * получает причину отказа. Отпустили мимо комнат или в родном гексе — просто
+     * Есть подходящий сектор — жаба остаётся в ней, а карта показывает её новое
+     * место жительства. Сектор жабу не принимает — жаба летит назад, а игрок
+     * получает причину отказа. Отпустили мимо секторов или в родном гексе — просто
      * возвращаем жабу на место, без уведомлений.
      */
     const finishDrag = () => {
@@ -795,7 +795,7 @@ export default function HexMapCanvas(props: HexMapCanvasProps) {
       setDropTarget(null);
       app.canvas.style.cursor = "grab";
 
-      // Комнату перестроили прямо во время переноса — возвращать некуда
+      // Сектор перестроили прямо во время переноса — возвращать некуда
       if (drag.container.destroyed) {
         return;
       }
@@ -845,7 +845,7 @@ export default function HexMapCanvas(props: HexMapCanvasProps) {
 
     /**
      * Приближение к гексу — двойной тап в обзорном виде.
-     * Комната под пальцем встаёт в центр экрана, пустой гекс — просто точка приближения.
+     * Сектор под пальцем встаёт в центр экрана, пустой гекс — просто точка приближения.
      */
     const zoomToDetailAt = (worldPoint: Point, local: Point) => {
       const view = findRoomAt(worldPoint);
@@ -861,10 +861,10 @@ export default function HexMapCanvas(props: HexMapCanvasProps) {
     /**
      * Тап по карте.
      *
-     * Приближенный вид — тап по жабе открывает её карточку, остальное отдаём комнате.
-     * Обзорный вид — одиночный тап открывает интерфейс комнаты, двойной приближает к
+     * Приближенный вид — тап по жабе открывает её карточку, остальное отдаём секторе.
+     * Обзорный вид — одиночный тап открывает интерфейс сектора, двойной приближает к
      * ней. Пока открыто окно двойного тапа, одиночный тап ждёт: иначе первый тап успел
-     * бы открыть комнату раньше второго касания.
+     * бы открыть сектор раньше второго касания.
      */
     const handleTap = (worldPoint: Point, local: Point) => {
       if (isDetailView()) {
@@ -1077,7 +1077,7 @@ export default function HexMapCanvas(props: HexMapCanvasProps) {
           gesture.pinchDistance = 0;
         }
 
-        // Отпустили жабу: она либо остаётся в новой комнате, либо летит назад
+        // Отпустили жабу: она либо остаётся в новом секторе, либо летит назад
         if (dragRef.current) {
           // Жабу несёт конкретный палец — отпускание соседних нас не интересует
           if (dragRef.current.pointerId === event.pointerId) {
@@ -1193,12 +1193,12 @@ export default function HexMapCanvas(props: HexMapCanvasProps) {
     };
   }, []);
 
-  /** Подпись набора комнат: пересборка карты нужна только когда карта меняется. */
+  /** Подпись набора секторов: пересборка карты нужна только когда карта меняется. */
   const roomsKey = props.rooms
     .map((room) => `${room.id}:${room.kind}`)
     .join("|");
 
-  // Постройка новой комнаты (или снос) меняет карту — собираем её заново
+  // Постройка нового сектора (или снос) меняет карту — собираем её заново
   useEffect(() => {
     if (!mapReady) {
       return;
@@ -1207,7 +1207,7 @@ export default function HexMapCanvas(props: HexMapCanvasProps) {
     rebuildRoomsRef.current();
   }, [mapReady, roomsKey]);
 
-  // Ток в комнатах — без пересборки карты
+  // Ток в секторах — без пересборки карты
   useEffect(() => {
     if (!mapReady) {
       return;
@@ -1216,7 +1216,7 @@ export default function HexMapCanvas(props: HexMapCanvasProps) {
     syncRoomVisualsRef.current();
   }, [mapReady, props.poweredRooms]);
 
-  // Синхронизация жаб по комнатам — только когда текстуры уже загружены
+  // Синхронизация жаб по секторам — только когда текстуры уже загружены
   useEffect(() => {
     if (!mapReady || !texturesReady) {
       return;
@@ -1232,7 +1232,7 @@ export default function HexMapCanvas(props: HexMapCanvasProps) {
     });
   }, [mapReady, texturesReady, props.toadsByRoom]);
 
-  // Во время кормления жабы идут к кормушке вольера
+  // Во время кормления жабы идут к кормушке биопода
   useEffect(() => {
     if (!mapReady) {
       return;
@@ -1246,7 +1246,7 @@ export default function HexMapCanvas(props: HexMapCanvasProps) {
 
       const view = viewsRef.current.find((item) => item.room.id === roomId);
 
-      // Жабы идут к центру кормушки: отдельного хотспота в комнате больше нет
+      // Жабы идут к центру кормушки: отдельного хотспота в секторе больше нет
       flock.setAttractor(view?.center ?? null);
     });
   }, [mapReady, props.feedRoomId, roomsKey]);

@@ -9,11 +9,13 @@ import { infectToad } from "./disease-manager";
 
 // === ЧАСТЬ 3.6. Кибер-события (техногенные риски и удачи) ===
 
-/** Случайная жаба в вольере (её и триггерит событие) */
-const pickSceneToad = () => {
-  const inScenes = getGameState().toads.filter((toad) => toad.scene_id !== null);
-  const pool = inScenes.length > 0 ? inScenes : getGameState().toads;
-  return pool[Math.floor(Math.random() * pool.length)];
+/**
+ * Случайная жаба колонии (её и триггерит событие). Жаб в секторах тоже берём: событие
+ * бьёт по самой жабе, а не по биоподу, где она живёт.
+ */
+const pickColonyToad = () => {
+  const toads = getGameState().toads;
+  return toads[Math.floor(Math.random() * toads.length)];
 };
 
 /**
@@ -43,7 +45,7 @@ export const applyCyberEvent = (event: CyberEventDef): string => {
   }
 
   if (effect.hunger) {
-    const toad = pickSceneToad();
+    const toad = pickColonyToad();
     if (toad) {
       const hunger = Math.max(
         0,
@@ -55,7 +57,7 @@ export const applyCyberEvent = (event: CyberEventDef): string => {
   }
 
   if (effect.infect) {
-    const toad = pickSceneToad();
+    const toad = pickColonyToad();
     if (toad && infectToad(toad.id)) {
       parts.push(`${toad.name} заражена`);
     }

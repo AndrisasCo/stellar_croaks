@@ -23,10 +23,10 @@ import { MAX_OWNED_SCENES } from "../../utils/constants";
 /**
  * Меню застройки свободного гекса (тап по пустому слоту карты).
  *
- * Вид комнаты к гексу не привязан: любую комнату каталога можно поставить на любой
+ * Вид сектора к гексу не привязан: любой сектор каталога можно поставить на любой
  * свободный гекс колонии. Коллайдер, магазин и диссоциатор строятся в единственном
- * экземпляре, остальные — сколько угодно раз, каждая следующая дороже. Новая комната
- * сразу обесточена: ток ей даст соседнее ядро или ⚡-комната с кормлёнными жабами.
+ * экземпляре, остальные — сколько угодно раз, каждая следующая дороже. Новый сектор
+ * сразу обесточена: ток ей даст соседнее ядро или ⚡-сектор с кормлёнными жабами.
  */
 export default function BuildRoomModal({ slot }: { slot: RoomConfig }) {
   const { closeModal } = useModal();
@@ -37,15 +37,15 @@ export default function BuildRoomModal({ slot }: { slot: RoomConfig }) {
 
   const tokens = Math.floor(account?.tokens || 0);
   const buildable = canBuildOnSlot(slot, rooms);
-  /** Вольеры больше не покупают в магазине: их строят гексом, и их число ограничено */
+  /** Биоподы больше не покупают в магазине: их строят гексом, и их число ограничено */
   const enclosureLimitReached = ownedScenes.length >= MAX_OWNED_SCENES;
 
-  /** Соседние построенные комнаты — по ним же видно, появится ли ток. */
+  /** Соседние построенные секторы — по ним же видно, появится ли ток. */
   const neighbourTitles = useMemo(
     () =>
       getRoomNeighbours(slot, rooms)
         .filter(isBuiltRoom)
-        .map((room) => room.title || "комната"),
+        .map((room) => room.title || "сектор"),
     [rooms, slot],
   );
 
@@ -92,7 +92,7 @@ export default function BuildRoomModal({ slot }: { slot: RoomConfig }) {
       playBeep();
       addNotification({
         type: "warn",
-        content: `В колонии уже максимум вольеров (${MAX_OWNED_SCENES}).`,
+        content: `В колонии уже максимум биоподов (${MAX_OWNED_SCENES}).`,
       });
       return;
     }
@@ -122,15 +122,15 @@ export default function BuildRoomModal({ slot }: { slot: RoomConfig }) {
       type: "success",
       content:
         option.kind === "aviary"
-          ? `${option.title} построен: новый вольер на 20 мест открыт 🐸`
+          ? `${option.title} построен: новый биопод на 20 мест открыт 🐸`
           : powered
             ? `${option.title} построена и подключена к сети ⚡`
             : option.kind === "power"
-              ? `${option.title} построена: посадите жаб — их ток запитает комнату и соседей ⚡`
+              ? `${option.title} построена: посадите жаб — их ток запитает сектор и соседей ⚡`
               : `${option.title} построена, но обесточена: нужен источник питания по соседству.`,
     });
 
-    // Комнату построили — меню закрываем, карта перерисуется сама
+    // Сектор построили — меню закрываем, карта перерисуется сама
     closeModal();
   };
 
@@ -148,11 +148,11 @@ export default function BuildRoomModal({ slot }: { slot: RoomConfig }) {
             </span>
           </div>
           <p className="text-2xs leading-snug text-amber-100">
-            На любом свободном гексе — любая комната. Чтобы комната заработала,
-            по соседству нужен источник питания: ядро или энергокомната ⚡.
+            На любом свободном гексе — любой сектор. Чтобы сектор заработала,
+            по соседству нужен источник питания: ядро или энергосектор ⚡.
           </p>
           <p className="mt-1 text-2xs leading-snug text-amber-100/80">
-            Новая комната расширяет колонию: наружу от неё открываются соседние
+            Новый сектор расширяет колонию: наружу от неё открываются соседние
             гексы — до трёх под застройку.
           </p>
           {neighbourTitles.length > 0 && (
@@ -204,7 +204,7 @@ export default function BuildRoomModal({ slot }: { slot: RoomConfig }) {
                 <div className="mt-1 flex items-center justify-between gap-2">
                   <span className="text-2xs text-gray-400">
                     {option.kind === "aviary" && enclosureLimitReached
-                      ? "В колонии максимум вольеров"
+                      ? "В колонии максимум биоподов"
                       : powered
                         ? "После постройки: под током ⚡"
                         : option.kind === "power"

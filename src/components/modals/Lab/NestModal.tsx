@@ -25,7 +25,8 @@ import {
   startNestCourtship,
   upgradeNestSlots,
 } from "../../../utils/breeding-manager";
-import { placeToadInRoom, releaseToadFromRoom } from "../../../backend/colony";
+import { placeToadInRoom, sendToadHome } from "../../../backend/colony";
+import { getToadHomeId, isToadFromEnclosure } from "../../../utils/toad-location";
 import {
   CURRENCY_CONFIG,
   NEST_ROOM_ID,
@@ -45,20 +46,20 @@ import { ClickButton } from "../../shared/ClickButton";
 import { useToads } from "../../ToadContext";
 
 /**
- * Модалка гнезда (Часть 3.2).
+ * Модалка репродуктора (Часть 3.2).
  *
- * Гнездо — комната на пару (2 взрослые жабы). Здесь видно, кто в нём сидит прямо
+ * Репродуктор — сектор на пару (2 взрослые жабы). Здесь видно, кто в нём сидит прямо
  * сейчас, а пустой слот открывает список ВСЕХ половозрелых жаб колонии (кроме тех,
- * что в походе) с указанием комнаты, где жаба находится: нажатие переносит её в гнездо.
+ * что в походе) с указанием сектора, где жаба находится: нажатие переносит её в репродуктор.
  *
  * Ухаживание заводит игрок: посадил самца и самку — и нажал «Начать ухаживание».
  * Кнопка активна не всегда: пока пара отдыхает, не хватает биомассы или заняты
- * родильные слоты вольера, под кнопкой висит причина (`checkNestCourtship`).
- * Беременность приходит через 15–30 минут, и из гнезда жабы не уходят сами —
+ * родильные слоты биопода, под кнопкой висит причина (`checkNestCourtship`).
+ * Беременность приходит через 15–30 минут, и из репродуктора жабы не уходят сами —
  * их выносит игрок.
  */
 
-/** «12м» / «1ч 05м» — отсчёт ухаживания в гнезде */
+/** «12м» / «1ч 05м» — отсчёт ухаживания в репродукторе */
 const formatWait = (ms: number): string => {
   const totalMinutes = Math.max(1, Math.ceil(ms / 60_000));
   const hours = Math.floor(totalMinutes / 60);
@@ -87,7 +88,7 @@ const EnergyBar = ({ value }: { value: number }) => (
   </div>
 );
 
-/** Строка жабы в списке свободного слота: имя, редкость, комната и готовность */
+/** Строка жабы в списке свободного слота: имя, редкость, сектор и готовность */
 const CandidateRow = ({
   toad,
   room,
@@ -150,7 +151,7 @@ const CandidateRow = ({
 };
 
 interface NestModalProps {
-  /** id гекса-гнезда, из которого открыли модалку: гнёзд в колонии может быть несколько */
+  /** id гекса-репродуктора, из которого открыли модалку: репродукторов в колонии может быть несколько */
   roomId?: string;
 }
 
@@ -172,33 +173,35 @@ export default function NestModal({ roomId = NEST_ROOM_ID }: NestModalProps) {
   const colonyRooms = gameState.colony?.rooms ?? [];
   const scenes = gameState.scenes ?? [];
 
-  /** Жабы, которые физически стоят в этом гнезде: их и показывают слоты */
+  /** Жабы, которые физически стоят в этом репродукторе: их и показывают слоты */
   const nestToads = allToads.filter(
     (toad) => toad.roomId === roomId && toad.status !== "out",
   );
-  /** Взрослые занимают места гнезда… */
+  /** Взрослые занимают места репродуктора… */
   const nestAdults = nestToads.filter((toad) => toad.stage === "adult");
-  /** …а головастики, рождённые в гнезде, живут поверх мест, пока их не вынесут */
+  /** …а головастики, рождённые в репродукторе, живут поверх мест, пока их не вынесут */
   const nestChildren = nestToads.filter((toad) => toad.stage !== "adult");
 
   /**
-   * Вольер, к которому относится гнездо: родильные слоты, карантин и апгрейды — свойства
-   * вольера, а пара приходит в гнездо из своего дома. Раньше это был «текущий вольер»
-   * игрока; теперь берём дом пары в гнезде, а если гнездо пусто — первый вольер колонии.
+   * Биопод, к которому относится репродуктор: родильные слоты, карантин и апгрейды — свойства
+   * биопода, а пара приходит в репродуктор из своего дома. Дом жабы — её `homeId`: пока пара
+   * сидит в репродукторе, места в биоподе она не занимает (`utils/toad-location.ts`).
+   * Раньше это был «текущий биопод» игрока; теперь берём дом пары в репродукторе,
+   * а если репродуктор пуст — первый биопод колонии.
    */
   const hostScene =
-    scenes.find((scene) => scene.id === nestAdults[0]?.scene_id) ??
+    scenes.find((scene) => scene.id === getToadHomeId(nestAdults[0] ?? {})) ??
     scenes[0] ??
     null;
 
-  /** Два места гнезда: занятые жабами и пустые (нажатие на пустое открывает список) */
+  /** Два места репродуктора: занятые жабами и пустые (нажатие на пустое открывает список) */
   const slots = Array.from(
     { length: NEST_ROOM_TOAD_SLOTS },
     (_, index) => nestAdults[index] ?? null,
   );
   const hasFreeSlot = nestAdults.length < NEST_ROOM_TOAD_SLOTS;
 
-  /** Статус жабы в гнезде: ухаживает / вынашивает / ждёт пару */
+  /** Статус жабы в репродукторе: ухаживает / вынашивает / ждёт пару */
   const toadStatus = (toad: Toad): string => {
     if (toad.mating) {
       const partner = allToads.find(
@@ -215,13 +218,13 @@ export default function NestModal({ roomId = NEST_ROOM_ID }: NestModalProps) {
     }
 
     if (toad.stage !== "adult") {
-      return "головастик из этого гнезда";
+      return "головастик из этого репродуктора";
     }
 
     return "ждёт пару";
   };
 
-  /** Список для пустого слота: ВСЕ половозрелые жабы, кроме похода и тех, кто уже в гнезде */
+  /** Список для пустого слота: ВСЕ половозрелые жабы, кроме похода и тех, кто уже в репродукторе */
   const candidates = allToads
     .filter(
       (toad) =>
@@ -231,11 +234,11 @@ export default function NestModal({ roomId = NEST_ROOM_ID }: NestModalProps) {
     )
     .sort((a, b) => b.genes.rarity - a.genes.rarity);
 
-  /** В какой комнате жаба живёт сейчас (для списка жаб) */
+  /** В каком секторе жаба живёт сейчас (для списка жаб) */
   const roomLabelOf = (toad: Toad): string => {
     if (!toad.roomId) {
-      const scene = scenes.find((s) => s.id === toad.scene_id);
-      return scene?.name ?? "Вольер";
+      const scene = scenes.find((s) => s.id === getToadHomeId(toad));
+      return scene?.name ?? "Биопод";
     }
 
     const baseRoom = HEX_ROOM_BY_ID[toad.roomId];
@@ -246,10 +249,10 @@ export default function NestModal({ roomId = NEST_ROOM_ID }: NestModalProps) {
 
     const builtRoom = colonyRooms.find((room) => room.id === toad.roomId);
 
-    return builtRoom ? COLONY_ROOM_TITLES[builtRoom.kind] : "Комната колонии";
+    return builtRoom ? COLONY_ROOM_TITLES[builtRoom.kind] : "Сектор колонии";
   };
 
-  /** Название гнезда, из которого открыли модалку (базовое или построенное) */
+  /** Название репродуктора, из которого открыли модалку (базовое или построенное) */
   const nestRoomTitle = (() => {
     const baseRoom = HEX_ROOM_BY_ID[roomId];
 
@@ -259,14 +262,14 @@ export default function NestModal({ roomId = NEST_ROOM_ID }: NestModalProps) {
 
     const builtRoom = colonyRooms.find((room) => room.id === roomId);
 
-    return builtRoom ? COLONY_ROOM_TITLES[builtRoom.kind] : "Гнездо";
+    return builtRoom ? COLONY_ROOM_TITLES[builtRoom.kind] : "Репродуктор";
   })();
 
   const occupancy = getNestOccupancy(hostScene?.id ?? null);
   const nestSlotsFull = occupancy.used >= occupancy.limit;
   const pregnant = allToads.filter(
     (toad) =>
-      toad.scene_id === (hostScene?.id ?? null) &&
+      isToadFromEnclosure(toad, hostScene?.id) &&
       Boolean(toad.pregnancy?.isPregnant),
   );
   const courting = nestAdults.filter(
@@ -278,7 +281,7 @@ export default function NestModal({ roomId = NEST_ROOM_ID }: NestModalProps) {
   const canUpgrade = canUpgradeNest(hostScene);
   const nestUpgradeCost = getNestSlotUpgradeCost(hostScene);
 
-  // Пара в гнезде может быть неполной: по ней считаем цену ухаживания и подсказки
+  // Пара в репродукторе может быть неполной: по ней считаем цену ухаживания и подсказки
   const nestMale = nestAdults.find((toad) => toad.sex === "male") ?? null;
   const nestFemale = nestAdults.find((toad) => toad.sex === "female") ?? null;
   const courtingToad = nestAdults.find((toad) => toad.mating) ?? null;
@@ -291,10 +294,10 @@ export default function NestModal({ roomId = NEST_ROOM_ID }: NestModalProps) {
     nestMale && nestFemale ? getBreedPairBiomassCost(nestMale, nestFemale) : 0;
   const enoughBiomass = biomass >= pairBiomassCost;
 
-  /** Пара гнезда для кнопки ухаживания: активна ли кнопка и чего не хватает */
+  /** Пара репродуктора для кнопки ухаживания: активна ли кнопка и чего не хватает */
   const courtship = checkNestCourtship(roomId);
 
-  /** Что сейчас происходит в гнезде — подсказка рядом с кнопкой ухаживания */
+  /** Что сейчас происходит в репродукторе — подсказка рядом с кнопкой ухаживания */
   const nestHint = ((): string | null => {
     if (courtingToad) {
       const partner = allToads.find(
@@ -310,17 +313,17 @@ export default function NestModal({ roomId = NEST_ROOM_ID }: NestModalProps) {
     }
 
     if (nestAdults.length === 0) {
-      return "Посадите в гнездо самца и самку ";
+      return "Посадите в репродуктор самца и самку ";
     }
 
     if (!nestMale || !nestFemale) {
-      return "В гнезде нужны самец и самка — посадите жабу в свободный слот.";
+      return "В репродукторе нужны самец и самка — посадите жабу в свободный слот.";
     }
 
     return null;
   })();
 
-  /** Посадить жабу из списка в гнездо: пару заводит кнопка, а не посадка */
+  /** Посадить жабу из списка в репродуктор: пару заводит кнопка, а не посадка */
   const handlePlace = (toad: Toad) => {
     placeToadInRoom(toad.id, roomId);
     playOk();
@@ -330,7 +333,7 @@ export default function NestModal({ roomId = NEST_ROOM_ID }: NestModalProps) {
     setTick((t) => t + 1);
   };
 
-  /** Кнопка «Начать ухаживание»: пара в гнезде начинает ждать беременность */
+  /** Кнопка «Начать ухаживание»: пара в репродукторе начинает ждать беременность */
   const handleStartCourtship = () => {
     const result = startNestCourtship(roomId, addNotification);
 
@@ -339,7 +342,7 @@ export default function NestModal({ roomId = NEST_ROOM_ID }: NestModalProps) {
     setTick((t) => t + 1);
   };
 
-  /** Вынести жабу из гнезда в её вольер (ухаживание при этом прерывается) */
+  /** Вынести жабу из репродуктора домой — в её биопод (ухаживание при этом прерывается) */
   const handleRelease = (toad: Toad) => {
     const wasCourting = Boolean(toad.mating);
 
@@ -347,13 +350,30 @@ export default function NestModal({ roomId = NEST_ROOM_ID }: NestModalProps) {
       abortMating(toad.id);
     }
 
-    releaseToadFromRoom(toad.id);
+    // Дом жабы помнит её биопод (`homeId`), но места там может уже не быть: пока пара жила
+    // в репродукторе, биопод мог заполниться — тогда жаба остаётся в репродукторе
+    const result = sendToadHome(toad.id);
+
+    if (!result.ok) {
+      playExited();
+      addNotification({
+        type: "warn",
+        content:
+          result.reason === "no-space"
+            ? `${toad.name} не вернулась: в биоподе «${result.scene?.name}» нет места — постройте биопод или переселите её в другой («🏠 Переместить» в карточке жабы).`
+            : `${toad.name} не вернулась: биопод, в котором она жила, не найден — переселите её в другой («🏠 Переместить» в карточке жабы).`,
+        timeout: 9000,
+      });
+      setTick((t) => t + 1);
+      return;
+    }
+
     playOk();
     addNotification({
       type: wasCourting ? "warn" : "success",
       content: wasCourting
-        ? `${toad.name} в вольере: ухаживание прервано`
-        : `${toad.name} вернулась в вольер`,
+        ? `${toad.name} в биоподе: ухаживание прервано`
+        : `${toad.name} вернулась в биопод`,
       timeout: 4000,
     });
     setTick((t) => t + 1);
@@ -370,7 +390,7 @@ export default function NestModal({ roomId = NEST_ROOM_ID }: NestModalProps) {
     setTick((t) => t + 1);
   };
 
-  /** Прервать ухаживание: жабы перестают ухаживать, но остаются в гнезде */
+  /** Прервать ухаживание: жабы перестают ухаживать, но остаются в репродукторе */
   const handleAbortMating = (toad: Toad) => {
     const result = abortMating(toad.id);
     addNotification({
@@ -381,7 +401,7 @@ export default function NestModal({ roomId = NEST_ROOM_ID }: NestModalProps) {
     setTick((t) => t + 1);
   };
 
-  /** Кваксы: апгрейд постройки «Гнездо» — больше родильных слотов вольера */
+  /** Кваксы: апгрейд постройки «Репродуктор» — больше родильных слотов биопода */
   const handleUpgradeNest = () => {
     const result = upgradeNestSlots(hostScene?.id ?? null);
     addNotification({
@@ -403,7 +423,7 @@ export default function NestModal({ roomId = NEST_ROOM_ID }: NestModalProps) {
     setTick((t) => t + 1);
   };
 
-  /** Астро-кваксы: карантин вольера (Часть 3.6/3.7) */
+  /** Астро-кваксы: карантин биопода (Часть 3.6/3.7) */
   const handleQuarantine = () => {
     const result = buyQuarantine(hostScene?.id ?? null);
     addNotification({
@@ -423,7 +443,7 @@ export default function NestModal({ roomId = NEST_ROOM_ID }: NestModalProps) {
       <div className="flex w-full justify-center items-center relative">
         <div className="flex items-center gap-2 pb-4">
           <h2 className="text-xl font-bold bg-gradient-to-r from-green-400 to-purple-500 bg-clip-text text-transparent">
-            Гнездо
+            Репродуктор
           </h2>
         </div>
       </div>
@@ -432,29 +452,29 @@ export default function NestModal({ roomId = NEST_ROOM_ID }: NestModalProps) {
         {/* Сводка */}
         <div className="flex items-center justify-between text-xs bg-color-main rounded-xl px-3 py-2 border border-gray-500/30">
           <span className="text-emerald-300">
-            🪺 Слоты вольера: {occupancy.used}/{occupancy.limit}
+            🪺 Слоты биопода: {occupancy.used}/{occupancy.limit}
           </span>
           <span className="text-cyan-300">
-            👥 В гнезде: {nestAdults.length}/{NEST_ROOM_TOAD_SLOTS}
+            👥 В репродукторе: {nestAdults.length}/{NEST_ROOM_TOAD_SLOTS}
           </span>
           <span className="text-lime-300">🧪 {biomass}</span>
           <span className="text-purple-300">★ {astro}</span>
         </div>
 
         <p className="text-1xs text-gray-400 text-center leading-snug">
-          Посадите в гнездо самца и самку и нажмите «Начать ухаживание»:
+          Посадите в репродуктор самца и самку и нажмите «Начать ухаживание»:
           ухаживание занимает {MATING_MIN_MINUTES}–{MATING_MAX_MINUTES} мин, и
-          только потом у самки стартует беременность. Из гнезда жабы не уходят —
+          только потом у самки стартует беременность. Из репродуктора жабы не уходят —
           и после ухаживания, и после родов их выносит игрок. Головастики,
-          рождённые в гнезде, остаются рядом с матерью, даже если гнездо
+          рождённые в репродукторе, остаются рядом с матерью, даже если репродуктор
           переполнено.
         </p>
 
-        {/* Места гнезда: занятые жабы и пустые слоты */}
+        {/* Места репродуктора: занятые жабы и пустые слоты */}
         <div className="bg-color-main rounded-xl px-3 py-2 border border-purple-500/40 flex flex-col gap-2">
           <div className="flex items-center justify-between">
             <span className="text-xs text-purple-200 font-semibold">
-              🪺 Места гнезда
+              🪺 Места репродуктора
             </span>
             <span className="text-2xs text-gray-400">{nestRoomTitle}</span>
           </div>
@@ -502,7 +522,7 @@ export default function NestModal({ roomId = NEST_ROOM_ID }: NestModalProps) {
                     onClick={() => handleRelease(toad)}
                     className="px-2 py-1 rounded-md text-2xs bg-color-main border border-gray-500/50 text-gray-200"
                   >
-                    {toad.mating ? "Прервать и вынести" : "Вынести в вольер"}
+                    {toad.mating ? "Прервать и вынести" : "Вынести в биопод"}
                   </ClickButton>
                   {toad.mating && (
                     <ClickButton
@@ -541,7 +561,7 @@ export default function NestModal({ roomId = NEST_ROOM_ID }: NestModalProps) {
           )}
         </div>
 
-        {/* Кнопка ухаживания: пару заводит игрок, а не гнездо само (Часть 3.2) */}
+        {/* Кнопка ухаживания: пару заводит игрок, а не репродуктор само (Часть 3.2) */}
         <div className="bg-color-main rounded-xl px-3 py-2 border border-pink-500/40 flex flex-col gap-2">
           <div className="flex items-center justify-between">
             <span className="text-xs text-pink-200 font-semibold">
@@ -587,20 +607,20 @@ export default function NestModal({ roomId = NEST_ROOM_ID }: NestModalProps) {
           </div>
         </div>
 
-        {/* Головастики, рождённые в гнезде: переполнение разрешено, их выносит игрок */}
+        {/* Головастики, рождённые в репродукторе: переполнение разрешено, их выносит игрок */}
         {nestChildren.length > 0 && (
           <div className="bg-color-main rounded-xl px-3 py-2 border border-amber-500/40 flex flex-col gap-1">
             <div className="flex items-center justify-between">
               <span className="text-xs text-amber-200 font-semibold">
-                🐸 Головастики в гнезде: {nestChildren.length}
+                🐸 Головастики в репродукторе: {nestChildren.length}
               </span>
               <span className="text-2xs text-gray-400">
                 мест: {NEST_ROOM_TOAD_SLOTS}
               </span>
             </div>
             <div className="text-2xs text-gray-400 leading-snug">
-              Они родились здесь и переполняют гнездо. Перенесите их в вольер на
-              карте колонии — гнездо примет ещё пару.
+              Они родились здесь и переполняют репродуктор. Перенесите их в биопод на
+              карте колонии — репродуктор примет ещё пару.
             </div>
             <div className="flex flex-col gap-1">
               {nestChildren.map((child) => (
@@ -614,28 +634,28 @@ export default function NestModal({ roomId = NEST_ROOM_ID }: NestModalProps) {
                   <span className={getRarityConfig(child.genes.rarity).color}>
                     {child.name}
                   </span>{" "}
-                  · {toadStatus(child)} · вынести в вольер
+                  · {toadStatus(child)} · вынести в биопод
                 </button>
               ))}
             </div>
           </div>
         )}
 
-        {/* Список всех половозрелых жаб на свободный слот гнезда */}
+        {/* Список всех половозрелых жаб на свободный слот репродуктора */}
         {pickerOpen && hasFreeSlot && (
           <div className="bg-color-main rounded-xl px-3 py-2 border border-emerald-500/40 flex flex-col gap-2">
             <div className="flex items-center justify-between">
               <span className="text-xs text-emerald-200 font-semibold">
-                Кого позвать в гнездо
+                Кого позвать в репродуктор
               </span>
               <span className="text-2xs text-gray-400">
-                {candidates.length} жаб · комната указана у каждой
+                {candidates.length} жаб · сектор указана у каждой
               </span>
             </div>
 
             {candidates.length === 0 ? (
               <div className="text-2xs text-gray-400">
-                Половозрелых жаб нет: все в походах или уже сидят в гнезде.
+                Половозрелых жаб нет: все в походах или уже сидят в репродукторе.
               </div>
             ) : (
               <div className="flex flex-col gap-1.5 max-h-[36vh] overflow-y-auto pr-1">
@@ -667,15 +687,15 @@ export default function NestModal({ roomId = NEST_ROOM_ID }: NestModalProps) {
             </span>
           </div>
           <div className="text-2xs text-gray-500 leading-snug">
-            Списывается один раз — когда гнездо начинает ухаживание. Отдых после
+            Списывается один раз — когда репродуктор начинает ухаживание. Отдых после
             пары считается у каждой жабы отдельно.
           </div>
         </div>
 
-        {/* Кваксы: расширение гнезда вольера (Часть 3.2) */}
+        {/* Кваксы: расширение репродуктора биопода (Часть 3.2) */}
         <div className="bg-color-main rounded-xl px-3 py-2 border border-gray-500/30 flex flex-col gap-2">
           <div className="flex items-center justify-between text-xs">
-            <span className="text-gray-400">Родильные слоты вольера</span>
+            <span className="text-gray-400">Родильные слоты биопода</span>
             <span className="text-emerald-300">
               {occupancy.used}/{occupancy.limit}
             </span>
@@ -691,19 +711,19 @@ export default function NestModal({ roomId = NEST_ROOM_ID }: NestModalProps) {
                   : "border-emerald-500/50 text-emerald-200 hover:border-emerald-400"
               }`}
             >
-              Расширить гнездо: +1 слот · {CURRENCY_CONFIG.tokens.icon}{" "}
+              Расширить репродуктор: +1 слот · {CURRENCY_CONFIG.tokens.icon}{" "}
               {nestUpgradeCost} · {CURRENCY_CONFIG.tokens.icon} у вас {tokens}
             </ClickButton>
           ) : (
             <div className="text-2xs text-gray-400">
-              Гнездо расширено до предела: {NEST_MAX_SLOTS} родильных слотов на
-              вольер.
+              Репродуктор расширен до предела: {NEST_MAX_SLOTS} родильных слотов на
+              биопод.
             </div>
           )}
 
           <div className="text-2xs text-gray-500 leading-snug">
-            Слот занимают и ухаживание в гнезде, и беременность: пока все слоты
-            вольера заняты, новая пара не заведётся.
+            Слот занимают и ухаживание в репродукторе, и беременность: пока все слоты
+            биопода заняты, новая пара не заведётся.
           </div>
         </div>
 
@@ -742,7 +762,7 @@ export default function NestModal({ roomId = NEST_ROOM_ID }: NestModalProps) {
             onClick={handleQuarantine}
             className="w-full rounded-lg px-3 py-2 text-xs border border-sky-500/40 text-sky-200 hover:border-sky-400 disabled:opacity-50"
           >
-            Карантин вольера: лечит всех жаб (★{ASTRO_PRICES.quarantine})
+            Карантин биопода: лечит всех жаб (★{ASTRO_PRICES.quarantine})
           </ClickButton>
         </div>
       </div>

@@ -362,9 +362,9 @@ reset();
 pairInNest();
 const abort = breeding.abortMating(2);
 check("«Прервать» работает", abort.success, true);
-checkText("сообщение про гнездо", abort.message, /остались в гнезде/);
-check("самка осталась в гнезде", findToad(2).roomId, constants.NEST_ROOM_ID);
-check("самец остался в гнезде", findToad(1).roomId, constants.NEST_ROOM_ID);
+checkText("сообщение про репродуктор", abort.message, /остались в репродукторе/);
+check("самка осталась в репродукторе", findToad(2).roomId, constants.NEST_ROOM_ID);
+check("самец остался в репродукторе", findToad(1).roomId, constants.NEST_ROOM_ID);
 
 
 console.log("\n[5] Гнездо как комната на карте");
@@ -429,7 +429,7 @@ checkText(
 checkText(
   "ухаживающую жабу не унести",
   moveRules.getToadMoveIssue(courting),
-  /ухаживает в гнезде/
+  /ухаживает в репродукторе/
 );
 
 // Гексы рисуют каждый своих жаб: вольер — жильцов своего вольера (`scene_id`),
@@ -555,8 +555,11 @@ check("после ускорения самка беременна", findToad(2)
 
 reset();
 pairInNest();
-check("пара в гнезде остаётся жильцом вольера", housing.getHousingInfo().used, 3);
-check("мест в вольерах не прибавилось", housing.getHousingInfo().capacity, 20);
+// Место у жабы одно: пара ушла в репродуктор, поэтому биопод занят только третьей жабой,
+// а вернутся они домой кнопкой «Домой» — с проверкой свободного места
+check("пара в репродукторе место в биоподе освободила", housing.getHousingInfo().used, 1);
+check("жильцов в биоподе осталось", housing.getEnclosureToads(1).length, 1);
+check("мест в биоподах не прибавилось", housing.getHousingInfo().capacity, 20);
 
 console.log("\n[7] Роды: гнездо оставляет головастиков у матери");
 console.log("─".repeat(60));
@@ -579,13 +582,13 @@ await new Promise((resolve) => setTimeout(resolve, 30));
 const bornInNest = gameState().toads.filter(
   (item) => item.stage === "toadpole" && item.roomId === constants.NEST_ROOM_ID
 );
-check("головастики родились в гнезде", bornInNest.length > 0, true);
+check("головастики родились в репродукторе", bornInNest.length > 0, true);
 checkText(
-  "уведомление о родах в гнезде",
+  "уведомление о родах в репродукторе",
   notes.map((item) => item.content).join(" "),
-  /родила головастиков в гнезде/
+  /родила головастиков в репродукторе/
 );
-check("мать осталась в гнезде", findToad(2).roomId, constants.NEST_ROOM_ID);
+check("мать осталась в репродукторе", findToad(2).roomId, constants.NEST_ROOM_ID);
 check("мать больше не беременна", Boolean(findToad(2).pregnancy), false);
 
 // Старая беременность вне гнезда (до обновления): потомство расходится по вольерам

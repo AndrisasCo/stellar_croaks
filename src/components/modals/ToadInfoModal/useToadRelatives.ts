@@ -1,5 +1,6 @@
 // hooks/useToadRelatives.ts
 import { useMemo } from "react";
+import { getToadHomeId, isToadSamePlace } from "../../../utils/toad-location";
 
 export const useToadRelatives = (toad: any, allToads: any[]) => {
   return useMemo(() => {
@@ -14,8 +15,10 @@ export const useToadRelatives = (toad: any, allToads: any[]) => {
         id: t.id,
         name: t.name,
         sex: t.sex,
-        sceneId: t.scene_id,
-        isInSameEnclosure: t.scene_id === toad.scene_id,
+        // Дом родственника (`homeId`) — он же подпись «где живёт»; вместе они могут быть
+        // и в секторе колонии (пара в репродукторе) — это `isInSameEnclosure`
+        sceneId: getToadHomeId(t),
+        isInSameEnclosure: isToadSamePlace(t, toad),
         relation,
       });
     };

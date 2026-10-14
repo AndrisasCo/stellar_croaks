@@ -7,13 +7,13 @@ export interface Scene {
   price: number | null;
   texture: string | null;
   /**
-   * @deprecated Легаси-бонусы вольера. Апгрейды комнаты живут в `ColonyState.upgrades`
-   * (`utils/room-upgrades.ts`), а автокормушку, купленную вольеру в старой версии игры,
+   * @deprecated Легаси-бонусы биопода. Апгрейды сектора живут в `ColonyState.upgrades`
+   * (`utils/room-upgrades.ts`), а автокормушку, купленную биоподу в старой версии игры,
    * дочитывает `getRoomUpgrades` (`backend/colony.ts`) — поле не пишется и однажды уйдёт.
    */
   bonuses?: { autoFeeder?: number };
   capacity: number;
-  /** Число родильных слотов купола (постройка «Гнездо»), по умолчанию NEST_BASE_SLOTS */
+  /** Число родильных слотов купола (постройка «Репродуктор»), по умолчанию NEST_BASE_SLOTS */
   nestSlots?: number;
 }
 

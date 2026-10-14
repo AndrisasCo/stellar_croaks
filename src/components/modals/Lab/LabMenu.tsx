@@ -26,7 +26,7 @@ export const ColliderMenu = () => {
       Component: <ToadSlotModal />,
     },
     {
-      name: "Гнездо",
+      name: "Репродуктор",
       bg: "/assets/bowl2.webp",
       Component: <NestModal />,
     },

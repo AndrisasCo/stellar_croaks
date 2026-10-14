@@ -6,7 +6,8 @@ import {
   demolishColonyRoom,
   moveToadToAviary,
   placeToadInRoom,
-  releaseToadFromRoom,
+  sendToadHome,
+  ToadHomeResult,
 } from "../backend/colony";
 import { useGameState } from "./use-game-state";
 import {
@@ -16,31 +17,36 @@ import {
 import { PowerGrid } from "../components/HexMap/colony-power";
 import { getRoomToadLists } from "../components/HexMap/room-toad-lists";
 import { RoomConfig } from "../components/HexMap/rooms-config";
+import { getToadHomeId } from "../utils/toad-location";
 
 /**
- * Состояние колонии для экрана карты: построенные комнаты, энергосеть и жабы,
- * которые стоят на гексах (в комнатах — по `Toad.roomId`, в вольерах — по `Toad.scene_id`).
+ * Состояние колонии для экрана карты: построенные секторы, энергосеть и жабы,
+ * которые стоят на гексах (в секторах — по `Toad.roomId`, в биоподах — по `Toad.scene_id`).
  *
- * Жабы из комнат достаются из общего состояния, а сеть пересчитывается на каждый чих —
+ * Жабы из секторов достаются из общего состояния, а сеть пересчитывается на каждый чих —
  * формулы дешёвые и чистые (colony-power).
  */
 export interface ColonyController {
   colony: ColonyState;
-  /** Комнаты карты: базовые плюс построенные игроком (у вольеров — свой `sceneId`). */
+  /** Сектора карты: базовые плюс построенные игроком (у биоподов — свой `sceneId`). */
   rooms: RoomConfig[];
-  /** Энергосеть: у каждой построенной комнаты видно, есть ли ток. */
+  /** Энергосеть: у каждой построенного сектора видно, есть ли ток. */
   powerGrid: PowerGrid;
-  /** Жабы по гексам: id гекса → жабы, которых он рисует (вольеры — своих жильцов). */
+  /** Жабы по гексам: id гекса → жабы, которых он рисует (биоподы — своих жильцов). */
   toadsByRoom: Record<string, Toad[]>;
   buildRoom: (slotId: string, kind: ColonyRoomKind) => void;
-  /** Снести комнату: гекс остаётся свободным слотом, улучшения комнаты сгорают. */
+  /** Снести сектор: гекс остаётся свободным слотом, улучшения сектора сгорают. */
   demolishRoom: (roomId: string) => void;
+  /** Посадить жабу в сектор колонии: место в биоподе освобождается, дом — в `homeId` */
   placeToad: (toadId: number, roomId: string) => void;
   /**
-   * Вернуть жабу из комнаты в вольер (`roomId` сбрасывается). Если указан вольер,
-   * он становится её новым домом — так перенос жабы в другой вольер меняет `scene_id`.
+   * Вернуть жабу из сектора в биопод. Без `sceneId` — домой: в биопод, который жаба
+   * помнит (`homeId`); с `sceneId` — переезд в указанный биопод (он становится её домом).
+   *
+   * Возвращаем результат: в полный биопод жаба не влезет (`no-space`) — она остаётся
+   * где была, а игроку надо сказать об ошибке.
    */
-  releaseToad: (toadId: number, sceneId?: number | null) => void;
+  releaseToad: (toadId: number, sceneId?: number | null) => ToadHomeResult;
 }
 
 export const useColony = (): ColonyController => {
@@ -52,8 +58,8 @@ export const useColony = (): ColonyController => {
   const rooms = useMemo(() => resolveColonyRooms(colony, scenes), [colony, scenes]);
 
   /**
-   * Жабы по гексам: у каждой комнаты свой список — комнаты берут посаженных вручную
-   * (`roomId`), вольеры — жильцов своего вольера (`sceneId` гекса).
+   * Жабы по гексам: у каждого сектора свой список — сектора берут посаженных вручную
+   * (`roomId`), биоподы — жильцов своего биопода (`sceneId` гекса).
    */
   const toadsByRoom = useMemo(
     () => getRoomToadLists(rooms, toads),
@@ -81,15 +87,16 @@ export const useColony = (): ColonyController => {
   );
 
   const releaseToad = useCallback(
-    (toadId: number, sceneId?: number | null) => {
+    (toadId: number, sceneId?: number | null): ToadHomeResult => {
       const toad = toads.find((item) => item.id === toadId);
 
-      // Другой вольер — переезд: дом жабы меняется, комната освобождается
-      if (sceneId != null && sceneId !== toad?.scene_id) {
+      // Другой биопод — переезд: он становится новым домом жабы, сектор освобождается
+      if (sceneId != null && toad && sceneId !== getToadHomeId(toad)) {
         return moveToadToAviary(toadId, sceneId);
       }
 
-      return releaseToadFromRoom(toadId);
+      // Свой биопод (или адреса нет) — домой: место в нём проверяет сам биопод
+      return sendToadHome(toadId);
     },
     [toads],
   );

@@ -14,12 +14,12 @@ export const BREED_ENERGY_BASE = 25;
 export const BREED_BIOMASS_BASE = 8;
 /** Базовый отдых после скрещивания — 10 минут */
 export const BREED_COOLDOWN_BASE_MS = 10 * 60 * 1000;
-/** Базовое число родильных слотов на купол (постройка «Гнездо») */
+/** Базовое число родильных слотов на купол (постройка «Репродуктор») */
 export const NEST_BASE_SLOTS = 2;
-/** Сколько жаб влезает в гекс «Гнездо»: пара (самец + самка) на ухаживание */
+/** Сколько жаб влезает в гекс «Репродуктор»: пара (самец + самка) на ухаживание */
 export const NEST_ROOM_TOAD_SLOTS = 2;
 
-// === Ухаживание в гнезде: беременность стартует не сразу (Часть 3.2) ===
+// === Ухаживание в репродукторе: беременность стартует не сразу (Часть 3.2) ===
 
 /**
  * Окно ухаживания: беременность стартует через случайные 15–30 минут после
@@ -83,7 +83,7 @@ export const UPKEEP_PER_TOAD_HOUR = 0.6;
 /**
  * Порог голода, ниже которого жаба работает «на голодном минимуме».
  * Порог держим на уровне кормления автокормушки (см. `AUTO_FEED_HUNGER` в `utils/auto-feeder.ts`):
- * кормушка доливает жабу ровно на нём, поэтому комната с апгрейдом из голодного режима не выходит.
+ * кормушка доливает жабу ровно на нём, поэтому сектор с апгрейдом из голодного режима не выходит.
  */
 export const PRODUCTION_MIN_HUNGER = 20;
 /**
@@ -154,7 +154,7 @@ export const getBreedPairBiomassCost = (male: Toad, female: Toad): number =>
 
 /**
  * Отдых после скрещивания: `base × (1 + rarity/10) × характер`.
- * Ускорения от бонусов вольера («ускоренная беременность») удалены как легаси.
+ * Ускорения от бонусов биопода («ускоренная беременность») удалены как легаси.
  */
 export const getBreedCooldownMs = (toad: Toad): number => {
   const personalityMult = getPersonalityCooldownMultiplier(
@@ -168,7 +168,7 @@ export const getBreedCooldownMs = (toad: Toad): number => {
 export const isToadReadyToBreed = (toad: Toad, now = Date.now()): boolean => {
   if (toad.stage !== "adult") return false;
   if (toad.pregnancy?.isPregnant) return false;
-  // Пара уже в гнезде: пока идёт ухаживание, жаба занята (Часть 3.2)
+  // Пара уже в репродукторе: пока идёт ухаживание, жаба занята (Часть 3.2)
   if (toad.mating) return false;
   if ((toad.breedCooldownUntil ?? 0) > now) return false;
   return getToadEnergy(toad) >= getEnergyCost(toad);
@@ -220,9 +220,9 @@ export const getBiomassRate = (toad: Toad): number =>
 export const getNestSlots = (scene?: Scene | null): number =>
   scene?.nestSlots ?? NEST_BASE_SLOTS;
 
-/** Максимум родильных слотов купола (постройка «Гнездо» апгрейдится за Кваксы) */
+/** Максимум родильных слотов купола (постройка «Репродуктор» апгрейдится за Кваксы) */
 export const NEST_MAX_SLOTS = 6;
-/** Базовая цена первого апгрейда Гнезда в Кваксах (аудит: было 40 — почти бесплатно) */
+/** Базовая цена первого апгрейда Репродуктора в Кваксах (аудит: было 40 — почти бесплатно) */
 export const NEST_SLOT_UPGRADE_BASE_COST = 150;
 /** Во сколько раз дорожает каждый следующий родильный слот */
 export const NEST_SLOT_UPGRADE_GROWTH = 2.4;
@@ -235,6 +235,6 @@ export const getNestSlotUpgradeCost = (scene?: Scene | null): number => {
   );
 };
 
-/** Можно ли ещё расширить Гнездо вольера */
+/** Можно ли ещё расширить Репродуктор биопода */
 export const canUpgradeNest = (scene?: Scene | null): boolean =>
   getNestSlots(scene) < NEST_MAX_SLOTS;

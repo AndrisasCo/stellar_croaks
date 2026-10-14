@@ -169,7 +169,7 @@ export const SECTORS: SectorDef[] = [
   },
   {
     id: 5,
-    name: "Гнездо дронов",
+    name: "Репродуктор дронов",
     icon: "🐝",
     description: "Роевой улей автоматики: жалит больно, но деталей — горы.",
     depth: 5,

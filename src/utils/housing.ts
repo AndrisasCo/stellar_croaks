@@ -3,42 +3,53 @@ import { INITIAL_CAPACITY, Scene } from "../models/scene";
 import { Toad } from "../models/Toad";
 
 /**
- * Жильё жаб. Склада жаб больше нет: у каждой жабы всегда есть вольер (`Toad.scene_id`),
- * поэтому любые новые жабы — покупка на рынке, потомство гнезда, гибрид коллайдера,
- * образец из похода, награда за достижение — сначала ищут свободное место в вольерах.
+ * Жильё жаб.
  *
- * Вольеры — это `Scene` игры. Раньше их покупали в магазине; теперь вольер строится
- * гексом «Вольер» на карте колонии (`backend/colony.ts`): каждая постройка добавляет
- * вольер с `INITIAL_CAPACITY` мест.
+ * У жабы всегда ровно одно место: биопод (`Toad.scene_id`) или сектор колонии
+ * (`Toad.roomId`) — см. `toad-location.ts`. Поэтому здесь считаются только «местные»:
+ * жаба, ушедшая работать в репродуктор или ⚡-энергосектор, место в биоподе не занимает
+ * (её `scene_id` пуст), а вернут её домой кнопкой «Домой» — с проверкой свободного места
+ * (`backend/colony.ts` → `sendToadHome`).
+ *
+ * Склада жаб нет: биопод у жабы всегда есть, поэтому любые новые жабы — покупка на рынке,
+ * потомство репродуктора, гибрид коллайдера, образец из похода, награда за достижение —
+ * сначала ищут свободное место в биоподах.
+ *
+ * Биоподы — это `Scene` игры. Раньше их покупали в магазине; теперь биопод строится
+ * гексом «Биопод» на карте колонии (`backend/colony.ts`): каждая постройка добавляет
+ * биопод с `INITIAL_CAPACITY` мест.
  *
  * Если свободного места нет, жабу НЕ создаём (её нельзя «положить на склад»):
- * вызывающий код обязан сказать игроку «постройте вольер».
+ * вызывающий код обязан сказать игроку «постройте биопод».
  */
 
 export interface HousingInfo {
-  /** Мест во всех вольерах */
+  /** Мест во всех биоподах */
   capacity: number;
-  /** Сколько жаб живёт в вольерах */
+  /** Сколько мест занято жабами, которые живут в биоподах */
   used: number;
   /** Сколько мест свободно */
   free: number;
-  /** Сколько вольеров в колонии */
+  /** Сколько биоподов в колонии */
   enclosures: number;
 }
 
-/** Жабы конкретного вольера */
+/** Жабы конкретного биопода: живут в нём сейчас (ушедшие в сектора не в счёт) */
 export const getEnclosureToads = (sceneId: number): Toad[] =>
-  getGameState().toads.filter((toad) => toad.scene_id === sceneId);
+  getGameState().toads.filter(
+    (toad) => toad.scene_id === sceneId && !toad.roomId
+  );
 
-/** Сколько мест осталось в вольере */
+/** Сколько мест осталось в биоподе */
 export const getSceneFreeSlots = (scene: Scene): number =>
   Math.max(0, scene.capacity - getEnclosureToads(scene.id).length);
 
-/** Общая картина по жилью: места, занятость и число вольеров */
+/** Общая картина по жилью: места, занятость и число биоподов */
 export const getHousingInfo = (): HousingInfo => {
   const state = getGameState();
   const capacity = state.scenes.reduce((sum, scene) => sum + scene.capacity, 0);
-  const used = state.toads.length;
+  // Жабы в секторах колонии (репродуктор, ⚡, «Разведка», лазарет) биопод не занимают
+  const used = state.toads.filter((toad) => toad.scene_id != null).length;
 
   return {
     capacity,
@@ -48,21 +59,22 @@ export const getHousingInfo = (): HousingInfo => {
   };
 };
 
-/** Вольер, в котором есть свободное место (или null, если все полны) */
+/** Биопод, в котором есть свободное место (или null, если все полны) */
 export const getSceneWithFreeSlot = (): Scene | null => {
   const state = getGameState();
 
   return (
     state.scenes.find(
       (scene) =>
-        state.toads.filter((toad) => toad.scene_id === scene.id).length <
-        scene.capacity,
+        state.toads.filter(
+          (toad) => toad.scene_id === scene.id && !toad.roomId
+        ).length < scene.capacity,
     ) ?? null
   );
 };
 
 /**
- * Вольер для новой жабы: сначала желаемый (обычно тот, что открыт у игрока),
+ * Биопод для новой жабы: сначала желаемый (обычно тот, что открыт у игрока),
  * потом любой свободный. null — мест нет.
  */
 export const pickSceneForNewToad = (
@@ -79,17 +91,18 @@ export const pickSceneForNewToad = (
 };
 
 export interface ToadPlacement<T extends Partial<Toad>> {
-  /** Жабы, которым нашлось место (с уже проставленным `scene_id`) */
+  /** Жабы, которым нашлось место (с уже проставленным `scene_id` и домом `homeId`) */
   assigned: T[];
   /** Сколько жаб осталось без места */
   rejected: number;
 }
 
 /**
- * Раскладывает жаб по вольерам: вольеры заполняются по порядку, лишние остаются без
+ * Раскладывает жаб по биоподам: биоподы заполняются по порядку, лишние остаются без
  * места (`rejected`) — их не создаём, о них игроку надо сообщить.
- * Занятость считается на лету: пачка жаб не «видит» саму себя в сохранении.
- * `preferredSceneId` (например, вольер матери или текущий вольер игрока) идёт первым.
+ * Занятость считается на лету: пачка жаб не «видит» саму себя в сохранении, а жабы
+ * в секторах колонии места не занимают (см. `getEnclosureToads`).
+ * `preferredSceneId` (например, биопод матери или текущий биопод игрока) идёт первым.
  */
 export const assignToadsToScenes = <T extends Partial<Toad>>(
   toads: T[],
@@ -101,7 +114,9 @@ export const assignToadsToScenes = <T extends Partial<Toad>>(
   state.scenes.forEach((scene) => {
     occupancy.set(
       scene.id,
-      state.toads.filter((toad) => toad.scene_id === scene.id).length,
+      state.toads.filter(
+        (toad) => toad.scene_id === scene.id && !toad.roomId
+      ).length,
     );
   });
 
@@ -124,15 +139,17 @@ export const assignToadsToScenes = <T extends Partial<Toad>>(
     }
 
     occupancy.set(scene.id, (occupancy.get(scene.id) ?? 0) + 1);
-    assigned.push({ ...toad, scene_id: scene.id });
+    // Биопод, в который жаба встала, сразу становится и её домом: место занято,
+    // «Домой» вернёт её сюда же
+    assigned.push({ ...toad, scene_id: scene.id, homeId: scene.id });
   });
 
   return { assigned, rejected: toads.length - assigned.length };
 };
 
-/** Влезет ли столько жаб в вольеры колонии */
+/** Влезет ли столько жаб в биоподы колонии */
 export const canHouseToads = (count = 1): boolean =>
   getHousingInfo().free >= count;
 
-/** Вместимость нового вольера — то, что прибавляет постройка «Вольер» */
+/** Вместимость нового биопода — то, что прибавляет постройка «Биопод» */
 export const NEW_ENCLOSURE_CAPACITY = INITIAL_CAPACITY;
