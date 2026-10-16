@@ -1,29 +1,36 @@
 import { useState } from "react";
-import { useSoundEffects } from "../../../hooks/use-sound-effects";
 import { CURRENCY_CONFIG } from "../../../utils/constants";
 import Modal from "../../shared/Header";
+import ModalTabs, { ModalTabItem } from "../../shared/ModalTabs";
+import RoomDataTab, { ROOM_DATA_TAB, RoomDataTabId } from "../RoomDataTab";
+import { RoomConfig } from "../../HexMap/rooms-config";
 import { useToads } from "../../ToadContext";
 import BuyTab from "./BuyTab";
 import SellTab from "./SellTab";
 import { EliteTab } from "./EliteTab";
 
-type TabType = "buy" | "sell" | "elite";
+type TabType = "buy" | "sell" | "elite" | RoomDataTabId;
 
-export default function ShopMenu() {
+/**
+ * «Космический рынок» 🛒 — торговля колонии: покупка, продажа и элитные заказы.
+ *
+ * Табы модалки — общие для всех секторов карты (`shared/ModalTabs`): этот переключатель
+ * и стал их образцом. Последний таб — «Данные сектора» (`modals/RoomDataTab.tsx`), и он
+ * появляется, только когда модалку открыли по гексу магазина (`room`): из бургер-меню
+ * гекса нет, а данным нужен свой сектор — его описание, апгрейды и снос.
+ */
+export default function ShopMenu({ room }: { room?: RoomConfig }) {
   const [activeTab, setActiveTab] = useState<TabType>("buy");
   const { account } = useToads();
-  const { playClick } = useSoundEffects();
 
   const { tokens = 0, astro_quax = 0 } = account || {};
 
-  const tabs = [
-    { id: "buy" as TabType, label: "Купить", color: "text-green-400" },
-    { id: "sell" as TabType, label: "Продать", color: "text-yellow-400" },
-    {
-      id: "elite" as TabType,
-      label: "Элитные",
-      color: "text-purple-400",
-    },
+  /** Табы рынка: три торговых и, если модалку открыл гекс, «Данные сектора» */
+  const tabs: ModalTabItem<TabType>[] = [
+    { id: "buy", label: "Купить", color: "text-green-400" },
+    { id: "sell", label: "Продать", color: "text-yellow-400" },
+    { id: "elite", label: "Элитные", color: "text-purple-400" },
+    ...(room ? [{ ...ROOM_DATA_TAB }] : []),
   ];
 
   const renderTabContent = () => {
@@ -34,6 +41,8 @@ export default function ShopMenu() {
         return <SellTab />;
       case "elite":
         return <EliteTab />;
+      case "room-data":
+        return room ? <RoomDataTab room={room} /> : null;
       default:
         return null;
     }
@@ -64,27 +73,7 @@ export default function ShopMenu() {
       </div>
 
       {/* Табы */}
-      <div className="flex border-b border-gray-700 ">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => {
-              playClick();
-              setActiveTab(tab.id);
-            }}
-            className={`flex-1 py-3 relative text-sm font-medium transition-colors ${
-              activeTab === tab.id
-                ? `${tab.color} border-b-2 ${tab.color.replace(
-                    "text",
-                    "border"
-                  )}`
-                : "text-gray-300 hover:text-gray-200"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      <ModalTabs tabs={tabs} active={activeTab} onChange={setActiveTab} />
 
       {/* Контент */}
       <div className="py-4">{renderTabContent()}</div>

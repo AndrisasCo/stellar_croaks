@@ -21,7 +21,7 @@ export const INITIAL_CAPACITY = 12;
 
 export const DEFAULT_SCENE: Scene = {
   id: 1,
-  name: "Био Под",
+  name: "Биопод #1",
   gradient: 0,
   price: 0,
   description: "",

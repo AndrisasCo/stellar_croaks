@@ -76,16 +76,3 @@ export interface ColonyState {
 /** Пустая колония: кроме базовых секторов ничего не построено. */
 export const EMPTY_COLONY: ColonyState = { rooms: [] };
 
-/** Названия построек для текстов уведомлений. */
-export const COLONY_ROOM_TITLES: Record<ColonyRoomKind, string> = {
-  aviary: "Биопод",
-  breeding: "Репродуктор",
-  incubator: "Инкубатор",
-  collider: "Коллайдер",
-  scout: "Разведка",
-  storage: "Склад",
-  shop: "Магазин",
-  hospital: "Лазарет",
-  dissociator: "Диссоциатор",
-  power: "Энергосектор",
-};

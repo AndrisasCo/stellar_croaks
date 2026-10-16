@@ -16,6 +16,7 @@ import {
   ROOM_BLUEPRINTS,
   RoomConfig,
 } from "./rooms-config";
+import { withRoomNames } from "./room-names";
 
 /**
  * Постройки колонии: что можно возвести, сколько это стоит и как выглядит карта после застройки.
@@ -169,6 +170,9 @@ export const BUILD_OPTIONS: BuildOption[] = ROOM_BLUEPRINT_ORDER.map((kind) => {
  * Снесённые секторы (`ColonyState.demolished`) остаются на карте свободными слотами:
  * у клетки пропадает сектор, но не гекс — снос не сжимает открытую территорию
  * (`getUnlockedRooms`).
+ *
+ * Каждому гексу карта даёт имя с номером экземпляра — «Репродуктор #2» (`room-names.ts`):
+ * по нему модалки и уведомления отличают один репродуктор от другого.
  */
 export const resolveColonyRooms = (
   colony: ColonyState,
@@ -201,9 +205,14 @@ export const resolveColonyRooms = (
     return createColonyRoom(room, built.kind, built.sceneId);
   });
 
-  // Свободные гексы, доступные под застройку, помечаем плюсом — их видно на карте
-  return rooms.map((room) =>
-    canBuildOnSlot(room, rooms) ? { ...room, icon: room.icon || "+" } : room,
+  // Свободные гексы, доступные под застройку, помечаем плюсом — их видно на карте.
+  // Имена с номерами считаем по порядку постройки (`colony.rooms`), а не по порядку гексов:
+  // у уже стоящего сектора номер не должен меняться (см. `room-names.ts`).
+  return withRoomNames(
+    rooms.map((room) =>
+      canBuildOnSlot(room, rooms) ? { ...room, icon: room.icon || "+" } : room,
+    ),
+    colony.rooms.map((room) => room.id),
   );
 };
 

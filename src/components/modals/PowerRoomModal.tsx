@@ -1,12 +1,20 @@
 import { useMemo, useState } from "react";
 import { getRarityConfig, Toad } from "../../models/Toad";
 import { useColony } from "../../hooks/use-colony";
+import { useGameState } from "../../hooks/use-game-state";
 import { useNotifications } from "../../hooks/use-notification";
 import { useSoundEffects } from "../../hooks/use-sound-effects";
 import { getFeedCost } from "../../utils/feeding";
+import { getToadHomeId } from "../../utils/toad-location";
+import {
+  TOAD_PICKER_REJECTED_GROUP,
+  splitToadPickerCandidates,
+} from "../../utils/toad-picker";
 import { useToads } from "../ToadContext";
 import { ClickButton } from "../shared/ClickButton";
 import Modal from "../shared/Header";
+import ModalTabs, { ModalTabItem } from "../shared/ModalTabs";
+import { ToadPicker } from "../shared/ToadPicker";
 import { isRoomPowered } from "../HexMap/colony-build";
 import {
   getToadPowerCapacity,
@@ -16,6 +24,7 @@ import {
   POWER_ROOM_TOAD_SLOTS,
 } from "../HexMap/colony-power";
 import { RoomConfig } from "../HexMap/rooms-config";
+import RoomDataTab, { ROOM_DATA_TAB, RoomDataTabId } from "./RoomDataTab";
 
 /**
  * Энергосектор ⚡ — источник питания колонии.
@@ -24,6 +33,11 @@ import { RoomConfig } from "../HexMap/rooms-config";
  * даёт одну единицу тока одной соседнем секторе, значит 6 жаб закрывают все 6
  * соседей. Голодная жаба ток не даёт, а сектор без работающих жаб никого не
  * питает — но внешнее питание ей и не нужно: ток ей дают сами жабы.
+ *
+ * Табы — общие для всех секторов (`shared/ModalTabs`): работающие жабы первым, «Данные
+ * сектора» (`modals/RoomDataTab.tsx`) — последним: описание, улучшения и снос, то есть всё,
+ * что раньше жило в отдельной модалке улучшения. Энергосектор открывают только с гекса,
+ * поэтому табов у неё всегда два.
  */
 const HungerBar = ({ value }: { value: number }) => (
   <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-700/60">
@@ -38,14 +52,23 @@ const HungerBar = ({ value }: { value: number }) => (
   </div>
 );
 
+/** Табы энергосектора: работающие жабы первым, «Данные сектора» — последним */
+type PowerTab = "power" | RoomDataTabId;
+
+const POWER_TABS: ModalTabItem<PowerTab>[] = [
+  { id: "power", label: "⚡ Сектор", color: "text-amber-400" },
+  { ...ROOM_DATA_TAB },
+];
+
 export default function PowerRoomModal({ room }: { room: RoomConfig }) {
   const { allToads, account, handleFeedToads } = useToads();
-  const { powerGrid, toadsByRoom, placeToad, releaseToad } = useColony();
+  const { powerGrid, toadsByRoom, placeToad, releaseToad, rooms } = useColony();
   const { addNotification } = useNotifications();
   const { playOk, playBeep, playCrunchShort, playCroakSmall } =
     useSoundEffects();
-
-  const [showPicker, setShowPicker] = useState(false);
+  const gameState = useGameState();
+  /** Состояние сектора: жабы у сети (по умолчанию) или данные сектора */
+  const [tab, setTab] = useState<PowerTab>("power");
 
   const roomToads = toadsByRoom[room.id] ?? [];
   // Ток сектора считает сеть: у ⚡ с работающими жабами он есть даже без подачи извне
@@ -57,22 +80,48 @@ export default function PowerRoomModal({ room }: { room: RoomConfig }) {
   const feedCost = getFeedCost(roomToads);
   const food = Math.floor(account?.storage?.food || 0);
 
+  /** Как называется сектор, в котором жаба работает сейчас */
+  const getRoomName = (id: string): string =>
+    rooms.find((item) => item.id === id)?.name ?? "сектор колонии";
+
   /**
-   * Кого можно подсадить: свободные здоровые взрослые жабы колонии. Раньше список
-   * ограничивался «текущим биоподом», но энергосектор — рабочий сектор всей колонии:
-   * в неё берут жаб из любого биопода.
+   * Жабы для подсадки в энергосектор — строками общего списка (`shared/ToadPicker`).
+   *
+   * Взять можно свободных здоровых взрослых жаб колонии: энергосектор — рабочий сектор всей
+   * колонии, поэтому в неё берут жаб из любого биопода. Остальные из списка не исчезают:
+   * у каждой видна причина отказа (`getToadPowerIssue` или «уже работает в секторе»), чтобы
+   * игрок не искал ответ, почему его жабы нет в списке.
    */
   const candidates = useMemo(
     () =>
-      allToads.filter(
-        (toad) =>
-          !toad.roomId &&
-          toad.stage === "adult" &&
-          toad.status !== "out" &&
-          (toad.hp ?? 1) > 0,
+      splitToadPickerCandidates(
+        allToads
+          // Жабы самого энергосектора и так стоят списком выше
+          .filter((toad) => toad.roomId !== room.id)
+          .map((toad) => ({
+            toad,
+            // Сверху — те, кто уже даёт ток: сытые взрослые на своих местах
+            rank: isToadPowering(toad) ? 1 : 0,
+            reason: toad.roomId
+              ? `Жаба уже работает в секторе «${getRoomName(toad.roomId)}»`
+              : getToadPowerIssue(toad),
+          }))
       ),
-    [allToads],
+    [allToads, room.id, rooms]
   );
+
+  /** Где жаба живёт сейчас — строкой списка: сектор колонии или её биопод */
+  const locationOf = (toad: Toad): string => {
+    if (toad.roomId) {
+      return getRoomName(toad.roomId);
+    }
+
+    const scene = (gameState.scenes ?? []).find(
+      (item) => item.id === getToadHomeId(toad)
+    );
+
+    return scene?.name ?? "Биопод";
+  };
 
   const handleFeed = () => {
     if (roomToads.length === 0) {
@@ -136,167 +185,158 @@ export default function PowerRoomModal({ room }: { room: RoomConfig }) {
 
   return (
     <Modal icon={<span className="text-2xl">⚡</span>} title="Энергосектор">
-      <div className="px-2 pb-2">
-        {/* Состояние сети: есть ли ток у самого сектора */}
-        <div
-          className={`mb-2 rounded-xl border p-2 ${
-            powered
-              ? "border-emerald-500/40 bg-emerald-900/20"
-              : "border-rose-500/40 bg-rose-900/20"
-          }`}
-        >
-          <div className="flex items-center justify-between text-xs">
-            <span className="font-bold text-white">
-              {powered ? "⚡ Сектор под током" : "🔌 Сектор обесточен"}
-            </span>
-            <span className="text-gray-300">
-              Ток соседям: {powerGrid.usage[room.id] ?? 0}/
-              {POWER_ROOM_TOAD_SLOTS}
-            </span>
-          </div>
-          <p className="mt-1 text-2xs leading-snug text-gray-200">
-            {powered
-              ? "Каждая кормлённая жаба внутри даёт одну единицу тока соседнем секторе."
-              : "Внешнее питание секторе не нужно: посадите взрослых жаб и накормите их — каждая даст одну единицу тока соседнему гексу."}
-          </p>
-        </div>
+      {/* Переключение вкладок: вид один на все секторы (`shared/ModalTabs`) */}
+      <ModalTabs tabs={POWER_TABS} active={tab} onChange={setTab} />
 
-        {/* Ёмкость сектора и кормление жаб */}
-        <div className="mb-3 rounded-xl border border-gray-600/40 bg-color-main p-2">
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-amber-200">
-              ⚡ Работающих жаб: {output} из {POWER_ROOM_TOAD_SLOTS}
-            </span>
-            <span className="text-gray-300">
-              🐸 {roomToads.length}/{POWER_ROOM_TOAD_SLOTS}
-            </span>
-          </div>
-          <div className="mt-2 flex items-center justify-between gap-2">
-            <span className="text-2xs leading-snug text-gray-400">
-              {hungryToads.length > 0
-                ? `Не вырабатывают ток: ${hungryToads.length} (нужна сытость выше ${POWER_MIN_HUNGER})`
-                : "Все жабы сыты и вырабатывают ток"}
-            </span>
-            <ClickButton
-              onClick={handleFeed}
-              disabled={roomToads.length === 0 || food < feedCost}
-              className={`shrink-0 rounded-lg px-3 py-1 text-xs font-bold transition-all ${
-                roomToads.length === 0 || food < feedCost
-                  ? "cursor-not-allowed bg-gray-700/60 text-gray-400"
-                  : "bg-amber-600 text-white hover:bg-amber-500 active:scale-95"
-              }`}
-            >
-              Покормить ({feedCost} 🍎)
-            </ClickButton>
-          </div>
-        </div>
-
-        {/* Жабы, которые сидят в секторе */}
-        {roomToads.length === 0 ? (
-          <div className="py-6 text-center">
-            <div className="mb-2 text-4xl">⚡</div>
-            <p className="text-sm text-gray-300">
-              В секторе пока никто не работает
-            </p>
-            <p className="mt-1 text-2xs text-gray-400">
-              Посадите жаб — по одной на каждого соседа — и кормите их.
+      {tab === "power" && (
+        <div className="px-2 pb-2">
+          {/* Состояние сети: есть ли ток у самого сектора */}
+          <div
+            className={`mb-2 rounded-xl border p-2 ${
+              powered
+                ? "border-emerald-500/40 bg-emerald-900/20"
+                : "border-rose-500/40 bg-rose-900/20"
+            }`}
+          >
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-bold text-white">
+                {powered ? "⚡ Сектор под током" : "🔌 Сектор обесточен"}
+              </span>
+              <span className="text-gray-300">
+                Ток соседям: {powerGrid.usage[room.id] ?? 0}/
+                {POWER_ROOM_TOAD_SLOTS}
+              </span>
+            </div>
+            <p className="mt-1 text-2xs leading-snug text-gray-200">
+              {powered
+                ? "Каждая кормлённая жаба внутри даёт одну единицу тока соседнем секторе."
+                : "Внешнее питание секторе не нужно: посадите взрослых жаб и накормите их — каждая даст одну единицу тока соседнему гексу."}
             </p>
           </div>
-        ) : (
-          <div className="space-y-1.5">
-            {roomToads.map((toad) => {
-              const powering = isToadPowering(toad);
-              const rarity = getRarityConfig(toad.genes.rarity);
 
-              return (
-                <div
-                  key={toad.id}
-                  className={`flex items-center gap-2 rounded-xl border px-2 py-1.5 ${
-                    powering
-                      ? "border-emerald-500/40 bg-emerald-900/10"
-                      : "border-amber-500/40 bg-amber-900/10"
-                  }`}
-                >
-                  <span className="text-lg leading-none">
-                    {powering ? "⚡" : "🔌"}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-2">
-                      <span
-                        className={`truncate text-xs font-semibold ${rarity.color}`}
-                      >
-                        {toad.name}
-                      </span>
-                      <span className="shrink-0 text-2xs text-gray-400">
-                        🍽 {Math.round(toad.state.hunger)}
-                      </span>
-                    </div>
-                    <HungerBar value={toad.state.hunger} />
-                  </div>
-                  <ClickButton
-                    onClick={() => handleRelease(toad)}
-                    className="shrink-0 rounded-lg border border-gray-600/60 px-2 py-1 text-2xs text-gray-300 transition-colors hover:border-rose-400 hover:text-rose-200"
-                  >
-                    В биопод
-                  </ClickButton>
-                </div>
-              );
-            })}
+          {/* Ёмкость сектора и кормление жаб */}
+          <div className="mb-3 rounded-xl border border-gray-600/40 bg-color-main p-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-amber-200">
+                ⚡ Работающих жаб: {output} из {POWER_ROOM_TOAD_SLOTS}
+              </span>
+              <span className="text-gray-300">
+                🐸 {roomToads.length}/{POWER_ROOM_TOAD_SLOTS}
+              </span>
+            </div>
+            <div className="mt-2 flex items-center justify-between gap-2">
+              <span className="text-2xs leading-snug text-gray-400">
+                {hungryToads.length > 0
+                  ? `Не вырабатывают ток: ${hungryToads.length} (нужна сытость выше ${POWER_MIN_HUNGER})`
+                  : "Все жабы сыты и вырабатывают ток"}
+              </span>
+              <ClickButton
+                onClick={handleFeed}
+                disabled={roomToads.length === 0 || food < feedCost}
+                className={`shrink-0 rounded-lg px-3 py-1 text-xs font-bold transition-all ${
+                  roomToads.length === 0 || food < feedCost
+                    ? "cursor-not-allowed bg-gray-700/60 text-gray-400"
+                    : "bg-amber-600 text-white hover:bg-amber-500 active:scale-95"
+                }`}
+              >
+                Покормить ({feedCost} 🍎)
+              </ClickButton>
+            </div>
           </div>
-        )}
 
-        {/* Подсадка жаб: свободные взрослые жабы текущего биопода */}
-        <ClickButton
-          onClick={() => setShowPicker((prev) => !prev)}
-          disabled={freeSlots <= 0}
-          className={`mt-3 w-full rounded-xl px-3 py-2 text-sm font-bold transition-all ${
-            freeSlots <= 0
-              ? "cursor-not-allowed bg-gray-700/60 text-gray-400"
-              : "bg-emerald-700 text-white hover:bg-emerald-600 active:scale-[0.98]"
-          }`}
-        >
-          {freeSlots > 0
-            ? `Поместить жабу (свободно мест: ${freeSlots})`
-            : `Все ${POWER_ROOM_TOAD_SLOTS} мест заняты`}
-        </ClickButton>
-
-        {showPicker && freeSlots > 0 && (
-          <div className="mt-2 space-y-1.5">
-            {candidates.length === 0 ? (
-              <p className="py-2 text-center text-2xs text-gray-400">
-                В биоподе нет свободных взрослых жаб.
+          {/* Жабы, которые сидят в секторе */}
+          {roomToads.length === 0 ? (
+            <div className="py-6 text-center">
+              <div className="mb-2 text-4xl">⚡</div>
+              <p className="text-sm text-gray-300">
+                В секторе пока никто не работает
               </p>
-            ) : (
-              candidates.map((toad) => {
+              <p className="mt-1 text-2xs text-gray-400">
+                Посадите жаб — по одной на каждого соседа — и кормите их.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-1.5">
+              {roomToads.map((toad) => {
+                const powering = isToadPowering(toad);
                 const rarity = getRarityConfig(toad.genes.rarity);
 
                 return (
-                  <button
+                  <div
                     key={toad.id}
-                    type="button"
-                    onClick={() => handlePlace(toad)}
-                    className="flex w-full items-center gap-2 rounded-xl border border-gray-600/40 bg-color-second px-2 py-1.5 text-left transition-colors hover:border-emerald-400/60"
+                    className={`flex items-center gap-2 rounded-xl border px-2 py-1.5 ${
+                      powering
+                        ? "border-emerald-500/40 bg-emerald-900/10"
+                        : "border-amber-500/40 bg-amber-900/10"
+                    }`}
                   >
-                    <div className="min-w-0 flex-1">
-                      <div
-                        className={`truncate text-xs font-semibold ${rarity.color}`}
-                      >
-                        {toad.name}
-                      </div>
-                      <div className="text-2xs text-gray-400">
-                        {rarity.label} · сытость {Math.round(toad.state.hunger)}
-                      </div>
-                    </div>
-                    <span className="shrink-0 text-2xs text-emerald-300">
-                      Посадить
+                    <span className="text-lg leading-none">
+                      {powering ? "⚡" : "🔌"}
                     </span>
-                  </button>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <span
+                          className={`truncate text-xs font-semibold ${rarity.color}`}
+                        >
+                          {toad.name}
+                        </span>
+                        <span className="shrink-0 text-2xs text-gray-400">
+                          🍽 {Math.round(toad.state.hunger)}
+                        </span>
+                      </div>
+                      <HungerBar value={toad.state.hunger} />
+                    </div>
+                    <ClickButton
+                      onClick={() => handleRelease(toad)}
+                      className="shrink-0 rounded-lg border border-gray-600/60 px-2 py-1 text-2xs text-gray-300 transition-colors hover:border-rose-400 hover:text-rose-200"
+                    >
+                      В биопод
+                    </ClickButton>
+                  </div>
                 );
-              })
-            )}
+              })}
+            </div>
+          )}
+
+          {/* Подсадка жаб: общий выпадающий список — свободные взрослые жабы всей колонии */}
+          <div className="mt-3">
+            <ToadPicker
+              icon="⚡"
+              caption="Энергосектор"
+              label="Энергосектор"
+              placeholder={
+                freeSlots > 0
+                  ? `＋ Поместить жабу (свободно мест: ${freeSlots})`
+                  : `Все ${POWER_ROOM_TOAD_SLOTS} мест заняты`
+              }
+              disabled={freeSlots <= 0}
+              groups={[
+                {
+                  label: `Можно взять (${candidates.available.length})`,
+                  // Порядок строк уже задан `splitToadPickerCandidates`: кто даёт ток — сверху
+                  items: candidates.available.map(({ toad }) => ({
+                    toad,
+                    note: isToadPowering(toad)
+                      ? "даёт ток"
+                      : `голодная — ток не даёт (нужна сытость выше ${POWER_MIN_HUNGER})`,
+                  })),
+                },
+              ]}
+              rejected={{
+                label: TOAD_PICKER_REJECTED_GROUP,
+                items: candidates.rejected,
+              }}
+              hint={`Сверху — жабы, которые уже дают ток: взрослые, живые и сытые выше ${POWER_MIN_HUNGER}. Энергосектор — рабочий сектор всей колонии, поэтому взять можно жабу из любого биопода. Жабу из другого сектора выбор перенесёт сюда.`}
+              emptyText="Свободных взрослых жаб нет: остальные в походе, выбиты или уже работают в секторе колонии."
+              locationOf={locationOf}
+              onPick={handlePlace}
+            />
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* ВКЛАДКА «Данные сектора»: описание, улучшения и снос гекса */}
+      {tab === "room-data" && <RoomDataTab room={room} />}
     </Modal>
   );
 }

@@ -18,6 +18,7 @@ import {
   willBePoweredAfterBuild,
 } from "../HexMap/colony-build";
 import { isBuiltRoom, RoomConfig } from "../HexMap/rooms-config";
+import { getNextRoomName } from "../HexMap/room-names";
 import { MAX_OWNED_SCENES } from "../../utils/constants";
 
 /**
@@ -45,7 +46,7 @@ export default function BuildRoomModal({ slot }: { slot: RoomConfig }) {
     () =>
       getRoomNeighbours(slot, rooms)
         .filter(isBuiltRoom)
-        .map((room) => room.title || "сектор"),
+        .map((room) => room.name || room.title || "сектор"),
     [rooms, slot],
   );
 
@@ -114,6 +115,10 @@ export default function BuildRoomModal({ slot }: { slot: RoomConfig }) {
       toadsByRoom,
     );
 
+    // Имя считаем до постройки: карта ещё без нового сектора, поэтому это ровно тот номер,
+    // который получит постройка (`room-names.ts` → `getNextRoomName`)
+    const roomName = getNextRoomName(rooms, option.kind);
+
     buildRoom(slot.id, option.kind);
     updateUser({ tokens: tokens - cost });
     playOk();
@@ -122,12 +127,12 @@ export default function BuildRoomModal({ slot }: { slot: RoomConfig }) {
       type: "success",
       content:
         option.kind === "aviary"
-          ? `${option.title} построен: новый биопод на 20 мест открыт 🐸`
+          ? `${roomName} построен: новый биопод на 20 мест открыт 🐸`
           : powered
-            ? `${option.title} построена и подключена к сети ⚡`
+            ? `${roomName} построена и подключена к сети ⚡`
             : option.kind === "power"
-              ? `${option.title} построена: посадите жаб — их ток запитает сектор и соседей ⚡`
-              : `${option.title} построена, но обесточена: нужен источник питания по соседству.`,
+              ? `${roomName} построена: посадите жаб — их ток запитает сектор и соседей ⚡`
+              : `${roomName} построена, но обесточена: нужен источник питания по соседству.`,
     });
 
     // Сектор построили — меню закрываем, карта перерисуется сама
@@ -213,6 +218,10 @@ export default function BuildRoomModal({ slot }: { slot: RoomConfig }) {
                   </span>
                   <span className="text-2xs text-gray-500">
                     {built > 0 ? `в колонии: ${built}` : "в колонии нет"}
+                    {/* Имя новой постройки: «Репродуктор #3» — по нему её потом найдут в списке */}
+                    {option.unique
+                      ? ""
+                      : ` · «${getNextRoomName(rooms, option.kind)}»`}
                   </span>
                   <ClickButton
                     onClick={() => handleBuild(option, cost)}

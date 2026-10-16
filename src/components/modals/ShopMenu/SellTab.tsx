@@ -18,8 +18,18 @@ import { useFilters } from "../../../hooks/use-filters";
 import { Filters } from "../../shared/Filters";
 import { usePagination } from "../../../hooks/use-pagination";
 import { useNotifications } from "../../../hooks/use-notification";
-import { exchangeBiomassForTokens } from "../../../utils/production-manager";
-import { BIOMASS_TO_TOKENS_RATE } from "../../../utils/gamification-config";
+import {
+  exchangeBiomassForTokens,
+  getBiomassExchangeSpent,
+  getBiomassExchangeTokens,
+} from "../../../utils/production-manager";
+
+/** Сколько биомассы продаём: `null` — «вся имеющаяся», число — выбор ползунка */
+type BiomassSellChoice = number | null;
+
+/** Биомасса в строке: без хвостовых нулей (12, 12.5) */
+const formatBiomass = (value: number): string =>
+  String(Math.round(Math.max(0, value) * 100) / 100);
 
 const SellTab: React.FC = () => {
   const { allToads: activeToads, account } = useToads();
@@ -28,16 +38,32 @@ const SellTab: React.FC = () => {
   const [selectedToads, setSelectedToads] = useState<number[]>([]);
 
   const { tokens = 0, biomass = 0 } = account || {};
-  const biomassTokens = Math.floor(biomass * BIOMASS_TO_TOKENS_RATE);
 
-  // Часть 3.7: биомасса с фермы обменивается на Кваксы
+  /**
+   * Часть 3.7: биомасса обменивается ползунком «0 … вся имеющаяся», а не кнопкой
+   * «продать всё». Выбор игрока держим отдельно (`null` = весь максимум), чтобы
+   * ползунок сам шёл за растущей биомассой, пока его не тронули.
+   */
+  const [biomassChoice, setBiomassChoice] = useState<BiomassSellChoice>(null);
+  const maxBiomass = Math.max(0, Math.floor(biomass));
+  const sellBiomass = Math.min(biomassChoice ?? maxBiomass, maxBiomass);
+  const sellTokens = getBiomassExchangeTokens(sellBiomass);
+  /** Неполный Квакс не берётся: сколько биомассы уйдёт и сколько останется на счету */
+  const spentBiomass = getBiomassExchangeSpent(sellTokens);
+  const leftBiomass =
+    Math.max(0, Math.round((biomass - spentBiomass) * 100) / 100);
+
   const handleExchangeBiomass = () => {
-    const result = exchangeBiomassForTokens();
+    const result = exchangeBiomassForTokens(sellBiomass);
+
     if (result.success) {
       playCell();
+      setBiomassChoice(null);
       addNotification({
         type: "success",
-        content: `Обменяно биомассы на ${result.tokensGained} Кваксов`,
+        content: `Обменяно ${formatBiomass(
+          result.biomassSpent
+        )} 🧪 на ${result.tokensGained} Кваксов`,
       });
     } else {
       addNotification({
@@ -146,27 +172,78 @@ const SellTab: React.FC = () => {
 
   return (
     <div className="space-y-3 pb-3">
-      {/* Ферма: обмен биомассы на Кваксы (Часть 3.7) */}
-      <div className="bg-color-main rounded-xl p-3 border border-emerald-500/30 flex items-center justify-between gap-2">
-        <div className="min-w-0">
-          <div className="text-emerald-300 font-semibold text-sm truncate">
-            🧪 Биомасса: {Math.floor(biomass)}
+      {/* Ферма: обмен биомассы на Кваксы (Часть 3.7) — ползунок решает, сколько продать */}
+      <div className="bg-color-main rounded-xl p-3 border border-emerald-500/30 flex flex-col gap-2">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <div className="text-emerald-300 font-semibold text-sm truncate">
+              🧪 Биомасса: {formatBiomass(biomass)}
+            </div>
+            <div className="text-gray-400 text-xs">
+              Курс обмена: 2 биомассы = 1 {CURRENCY_CONFIG.tokens.icon}
+            </div>
           </div>
-          <div className="text-gray-400 text-xs">
-            Курс обмена: 2 биомассы = 1 {CURRENCY_CONFIG.tokens.icon}
-          </div>
+          <button
+            onClick={handleExchangeBiomass}
+            disabled={sellTokens <= 0}
+            title={
+              sellTokens > 0
+                ? `Обменять ${formatBiomass(spentBiomass)} 🧪 на ${sellTokens} ${
+                    CURRENCY_CONFIG.tokens.icon
+                  }`
+                : "Нет биомассы для обмена"
+            }
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all shrink-0 ${
+              sellTokens > 0
+                ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white border-emerald-400/30 hover:from-emerald-500 hover:to-teal-500"
+                : "bg-gray-600/30 text-gray-400 border-gray-500/30 cursor-not-allowed"
+            }`}
+          >
+            Обменять ({sellTokens} {CURRENCY_CONFIG.tokens.icon})
+          </button>
         </div>
-        <button
-          onClick={handleExchangeBiomass}
-          disabled={biomassTokens <= 0}
-          className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all shrink-0 ${
-            biomassTokens > 0
-              ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white border-emerald-400/30 hover:from-emerald-500 hover:to-teal-500"
-              : "bg-gray-600/30 text-gray-400 border-gray-500/30 cursor-not-allowed"
-          }`}
-        >
-          Обменять ({biomassTokens} {CURRENCY_CONFIG.tokens.icon})
-        </button>
+
+        {/* Ползунок: 0 … вся имеющаяся биомасса, шаг — 1 🧪 */}
+        <div className="flex items-center gap-3">
+          <input
+            type="range"
+            min="0"
+            max={maxBiomass}
+            step="1"
+            value={sellBiomass}
+            onChange={(event) => setBiomassChoice(Number(event.target.value))}
+            disabled={maxBiomass <= 0}
+            aria-label="Сколько биомассы обменять на Кваксы"
+            title="Ползунок: сколько биомассы отдать за Кваксы"
+            className="flex-1 accent-emerald-500 h-2 rounded-lg bg-gray-600 disabled:opacity-50"
+          />
+          <span
+            className={`w-20 shrink-0 text-right text-xs font-medium ${
+              sellBiomass > 0 ? "text-emerald-200" : "text-gray-500"
+            }`}
+          >
+            {sellBiomass} 🧪
+          </span>
+        </div>
+
+        <div className="flex items-center justify-between gap-2 text-2xs">
+          <span className="text-gray-400">
+            Обмен:{" "}
+            <span className="text-emerald-300 font-semibold">
+              {sellTokens} {CURRENCY_CONFIG.tokens.icon}
+            </span>{" "}
+            · останется {formatBiomass(leftBiomass)} 🧪
+          </span>
+          {sellBiomass < maxBiomass && (
+            <button
+              type="button"
+              onClick={() => setBiomassChoice(null)}
+              className="shrink-0 text-emerald-300 underline decoration-dotted hover:text-emerald-200"
+            >
+              вся биомасса
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Панель фильтров */}

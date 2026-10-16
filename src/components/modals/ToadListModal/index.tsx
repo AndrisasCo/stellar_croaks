@@ -19,11 +19,16 @@ import { CompactToadItem } from "./CompactToadItem";
 import { ToadInfo } from "../ToadInfoModal";
 import { useModal } from "../../ModalContext";
 import { DissolveConfirm } from "../../shared/DissolveConfirm";
+import { DissolveBlockedModal } from "../../shared/DissolveBlockedModal";
+import { useDissociator } from "../../../hooks/use-dissociator";
 import { dissolveToads } from "../../../utils/dissolve-manager";
 import { getHousingInfo } from "../../../utils/housing";
 import { getRoomUpgrades } from "../../../backend/colony";
 import { useColony } from "../../../hooks/use-colony";
 import { SceneStatsTab } from "./SceneStatsTab";
+import ModalTabs, { ModalTabItem } from "../../shared/ModalTabs";
+import { RoomConfig } from "../../HexMap/rooms-config";
+import RoomDataTab, { ROOM_DATA_TAB, RoomDataTabId } from "../RoomDataTab";
 
 /**
  * Список жаб одного биопода.
@@ -34,28 +39,27 @@ import { SceneStatsTab } from "./SceneStatsTab";
  *
  * У биопода два состояния (таба): список жаб — по умолчанию, и статистика биопода
  * (`SceneInfoModal` больше нет: его содержимое переехало во вкладку `SceneStatsTab`).
+ * Если модалку открыл гекс карты, последним идёт общий таб «Данные сектора»
+ * (`modals/RoomDataTab.tsx`): описание, апгрейды и снос того же гекса.
  */
-type ToadListTab = "toads" | "stats";
+type ToadListTab = "toads" | "stats" | RoomDataTabId;
 
-/** Табы биопода: имя, список жаб и статистика живут в одной модалке */
-const TOAD_LIST_TABS: { id: ToadListTab; label: string }[] = [
-  { id: "toads", label: "🐸 Жабы" },
-  { id: "stats", label: "📊 Статистика" },
+/** Табы биопода без «Данных сектора»: список жаб и статистика биопода */
+const TOAD_LIST_TABS: ModalTabItem<ToadListTab>[] = [
+  { id: "toads", label: "🐸 Жабы", color: "text-emerald-400" },
+  { id: "stats", label: "📊 Статистика", color: "text-amber-400" },
 ];
 
 const ToadListModal: React.FC<{
   /** Биопод, который открывают: гекс карты или дом жабы (`homeId`) из её карточки */
   sceneId?: number | null;
-}> = ({ sceneId }) => {
+  /** Гекс карты, из которого открыли список: по нему появляется таб «Данные сектора» */
+  room?: RoomConfig;
+}> = ({ sceneId, room }) => {
   const { openModal, modals } = useModal();
   const { playCrunchShort, playClick } = useSoundEffects();
-  const {
-    handleFeedToads,
-    ownedScenes,
-    selectToad,
-    allToads,
-    selectedToad,
-  } = useToads();
+  const { handleFeedToads, ownedScenes, selectToad, allToads, selectedToad } =
+    useToads();
   const { addNotification } = useNotifications();
 
   // Биопод списка: гекс задаёт стартовый, стрелки листают остальные
@@ -77,7 +81,7 @@ const ToadListModal: React.FC<{
       allToads
         .filter((toad) => toad.scene_id === scene?.id && !toad.roomId)
         .sort((a, b) => b.genes.rarity - a.genes.rarity),
-    [allToads, scene?.id]
+    [allToads, scene?.id],
   );
 
   const {
@@ -93,12 +97,20 @@ const ToadListModal: React.FC<{
   const [viewMode, setViewMode] = useState<"detailed" | "compact">("detailed");
   /** Состояние биопода: список жаб (по умолчанию) или статистика биопода */
   const [tab, setTab] = useState<ToadListTab>("toads");
+
+  /** Табы биопода: список жаб, статистика и, если модалку открыл гекс, «Данные сектора» */
+  const tabs: ModalTabItem<ToadListTab>[] = [
+    ...TOAD_LIST_TABS,
+    ...(room ? [{ ...ROOM_DATA_TAB }] : []),
+  ];
   const [selectedToads, setSelectedToads] = useState<Set<number>>(new Set());
   const [showMoveTooltip, setShowMoveTooltip] = useState(false);
   /** Жабы, отправленные в диссоциатор: ждут подтверждения разбора */
   const [dissolveTargets, setDissolveTargets] = useState<Toad[]>([]);
+  /** Диссоциатор не готов: вместо подтверждения показываем окно-подсказку */
+  const [showBlockedDissolve, setShowBlockedDissolve] = useState(false);
   const [familyGroups, setFamilyGroups] = useState<Map<number, number>>(
-    new Map()
+    new Map(),
   );
 
   /** Места в биоподах колонии: склада жаб больше нет, поэтому это единственный дом */
@@ -106,10 +118,13 @@ const ToadListModal: React.FC<{
 
   const { rooms } = useColony();
 
+  // Диссоциатор принимает жаб, только когда его сектор построен и под током
+  const { ready: dissociatorReady, built: dissociatorBuilt } = useDissociator();
+
   /** Гекс-биопод открытого списка: по нему видно апгрейды сектора (автокормушка) */
   const enclosureRoom = React.useMemo(
     () => rooms.find((room) => room.sceneId === scene?.id) ?? null,
-    [rooms, scene?.id]
+    [rooms, scene?.id],
   );
 
   /**
@@ -122,11 +137,11 @@ const ToadListModal: React.FC<{
     () =>
       Boolean(
         scene &&
-          getRoomUpgrades(
-            enclosureRoom ?? { id: `enclosure-${scene.id}`, sceneId: scene.id }
-          ).autoFeeder
+        getRoomUpgrades(
+          enclosureRoom ?? { id: `enclosure-${scene.id}`, sceneId: scene.id },
+        ).autoFeeder,
       ),
-    [enclosureRoom, scene?.id]
+    [enclosureRoom, scene?.id],
   );
 
   const handleDissolveConfirm = () => {
@@ -210,10 +225,7 @@ const ToadListModal: React.FC<{
     // Жильцы биопода без самих переезжающих: они как раз уходят из своих биоподов
     const residents =
       state.toads.filter(
-        (t) =>
-          t.scene_id === sceneId &&
-          !t.roomId &&
-          !selectedToads.has(t.id)
+        (t) => t.scene_id === sceneId && !t.roomId && !selectedToads.has(t.id),
       ).length + selectedToads.size;
 
     if (!nextScene || nextScene.capacity < residents) {
@@ -234,25 +246,25 @@ const ToadListModal: React.FC<{
   // Группируем жаб по всем типам редкости
   const groupedToads = {
     common: toads.filter(
-      (toad) => toad.genes.rarity < RARITY_GROUPS_TRESHOLD.uncommon
+      (toad) => toad.genes.rarity < RARITY_GROUPS_TRESHOLD.uncommon,
     ),
     uncommon: toads.filter(
       (toad) =>
         toad.genes.rarity >= RARITY_GROUPS_TRESHOLD.uncommon &&
-        toad.genes.rarity < RARITY_GROUPS_TRESHOLD.rare
+        toad.genes.rarity < RARITY_GROUPS_TRESHOLD.rare,
     ),
     rare: toads.filter(
       (toad) =>
         toad.genes.rarity >= RARITY_GROUPS_TRESHOLD.rare &&
-        toad.genes.rarity < RARITY_GROUPS_TRESHOLD.epic
+        toad.genes.rarity < RARITY_GROUPS_TRESHOLD.epic,
     ),
     epic: toads.filter(
       (toad) =>
         toad.genes.rarity >= RARITY_GROUPS_TRESHOLD.epic &&
-        toad.genes.rarity < RARITY_GROUPS_TRESHOLD.legendary
+        toad.genes.rarity < RARITY_GROUPS_TRESHOLD.legendary,
     ),
     legendary: toads.filter(
-      (toad) => toad.genes.rarity >= RARITY_GROUPS_TRESHOLD.legendary
+      (toad) => toad.genes.rarity >= RARITY_GROUPS_TRESHOLD.legendary,
     ),
   };
 
@@ -290,7 +302,6 @@ const ToadListModal: React.FC<{
 
   return (
     <Modal
-      icon={icon}
       title={
         /**
          * Шапка списка — сам биопод: имя, сколько жаб внутри из вместимости и есть ли
@@ -298,40 +309,29 @@ const ToadListModal: React.FC<{
          * родительского заголовка иначе перекрасил бы их в общий зелёно-фиолетовый.
          */
         <span className="flex flex-col items-center gap-0.5">
-          <span>🏠 {scene?.name ?? "Биопод"}</span>
-          <span className="text-2xs font-medium text-gray-300 [-webkit-text-fill-color:currentColor]">
-            {toads.length} / {scene?.capacity ?? 0} жаб
-          </span>
-          <span
-            className={`text-2xs font-medium [-webkit-text-fill-color:currentColor] ${
-              hasAutoFeeder ? "text-lime-300" : "text-gray-400"
-            }`}
-          >
-            🍎{" "}
-            {hasAutoFeeder
-              ? "автокормушка есть: корм со склада"
-              : "автокормушки нет: кормите вручную"}
-          </span>
+          <span> {scene?.name ?? "Биопод"}</span>
+
+          {hasAutoFeeder && (
+            <span
+              className={`text-2xs font-medium [-webkit-text-fill-color:currentColor] text-lime-300`}
+            >
+              Улучшение: автокормушка
+            </span>
+          )}
         </span>
       }
     >
-      {/* Состояния биопода: список жаб и его статистика. Стрелки биоподов остаются в
-          обоих — листать биоподы можно, не выходя из вкладки. */}
-      <div className="px-1 pb-3 flex items-center gap-2">
+      {/* Состояния биопода: список жаб, его статистика и, если модалку открыл гекс карты,
+          данные сектора — переключатель тот же, что у других секторов (`shared/ModalTabs`). */}
+      <ModalTabs tabs={tabs} active={tab} onChange={setTab} />
+
+      {/* Сколько жаб внутри и листание биоподов: строка нужна всем вкладкам, поэтому
+          остаётся над телом и не зависит от выбранного таба. */}
+      <div className="px-1 pb-3 pt-3 flex items-center gap-2">
         <div className="flex items-center gap-1">
-          {TOAD_LIST_TABS.map((item) => (
-            <ClickButton
-              key={item.id}
-              onClick={() => setTab(item.id)}
-              className={`px-3 py-1 rounded-xl text-2xs font-bold border transition-colors duration-300 ${
-                tab === item.id
-                  ? "bg-amber-800/60 border-amber-400/70 text-amber-100"
-                  : "bg-slate-800/50 border-gray-600/40 text-gray-300 hover:bg-slate-700/60"
-              }`}
-            >
-              {item.label}
-            </ClickButton>
-          ))}
+          <span className="text-xs font-medium text-gray-300 [-webkit-text-fill-color:currentColor]">
+            {toads.length} / {scene?.capacity ?? 0} жаб
+          </span>
         </div>
 
         <div className="flex items-center justify-center gap-2 ml-auto">
@@ -352,276 +352,282 @@ const ToadListModal: React.FC<{
           подвал нужны только здесь: у вкладки статистики свои секции. */}
       {tab === "toads" && (
         <>
-      <Filters
-        toads={toads}
-        setSortDirection={setSortDirection}
-        setSortBy={setSortBy}
-        filterBy={filterBy}
-        setFilterBy={setFilterBy}
-        sortBy={sortBy}
-        sortDirection={sortDirection}
-        addHunger
-      />
+          <Filters
+            toads={toads}
+            setSortDirection={setSortDirection}
+            setSortBy={setSortBy}
+            filterBy={filterBy}
+            setFilterBy={setFilterBy}
+            sortBy={sortBy}
+            sortDirection={sortDirection}
+            addHunger
+          />
 
-      {/* Режим вида: подробные карточки или сетка (по центру — стрелки биоподов) */}
-      <div className="px-1 pb-3 flex gap-2 ">
-        <ClickButton
-          onClick={() => setViewMode("detailed")}
-          className={`px-3 py-1 rounded-md h-min text-xs font-medium transition-all ${
-            viewMode === "detailed"
-              ? "bg-green-500 text-white"
-              : "bg-color-second text-gray-200 hover:text-white"
-          }`}
-          title="Подробный вид"
-        >
-          Подробно
-        </ClickButton>
-        <ClickButton
-          onClick={() => setViewMode("compact")}
-          className={`px-3 py-1 rounded-md h-min text-xs font-medium transition-all ${
-            viewMode === "compact"
-              ? "bg-blue-500 text-white"
-              : "bg-color-second text-gray-200 hover:text-white"
-          }`}
-          title="Компактный вид"
-        >
-          Сетка
-        </ClickButton>
-      </div>
-      {/* Панель управления выделением (только для компактного режима) */}
-      {viewMode === "compact" && (
-        <div className="bg-color-main rounded-lg p-3 mb-4 border border-gray-600/50">
-          <div className="flex items-center justify-between relative">
-            <div className="text-sm text-white">
-              Выбрано: <span className="font-bold">{selectedToads.size}</span>{" "}
-              жаб
-            </div>
+          {/* Режим вида: подробные карточки или сетка (по центру — стрелки биоподов) */}
+          <div className="px-1 pb-3 flex gap-2 ">
+            <ClickButton
+              onClick={() => setViewMode("detailed")}
+              className={`px-3 py-1 rounded-md h-min text-xs font-medium transition-all ${
+                viewMode === "detailed"
+                  ? "bg-green-500 text-white"
+                  : "bg-color-second text-gray-200 hover:text-white"
+              }`}
+              title="Подробный вид"
+            >
+              Подробно
+            </ClickButton>
+            <ClickButton
+              onClick={() => setViewMode("compact")}
+              className={`px-3 py-1 rounded-md h-min text-xs font-medium transition-all ${
+                viewMode === "compact"
+                  ? "bg-blue-500 text-white"
+                  : "bg-color-second text-gray-200 hover:text-white"
+              }`}
+              title="Компактный вид"
+            >
+              Сетка
+            </ClickButton>
+          </div>
+          {/* Панель управления выделением (только для компактного режима) */}
+          {viewMode === "compact" && (
+            <div className="bg-color-main rounded-lg p-3 mb-4 border border-gray-600/50">
+              <div className="flex items-center justify-between relative">
+                <div className="text-sm text-white">
+                  Выбрано:{" "}
+                  <span className="font-bold">{selectedToads.size}</span> жаб
+                </div>
 
-            <div className="flex gap-2">
-              {/* Выделить все */}
-              <button
-                onClick={selectAll}
-                className="px-2 py-1 bg-blue-500/20 text-blue-300 rounded-lg text-xs font-medium transition-all border border-blue-500/30 hover:bg-blue-500/30"
-                title="Выделить все"
-              >
-                ▼
-              </button>
-
-              {/* Отменить выделение */}
-              <button
-                onClick={clearSelection}
-                className="px-2 py-1 bg-gray-500/20 text-gray-200 rounded-lg text-xs font-medium transition-all border border-gray-500/30 hover:bg-gray-500/30"
-                title="Отменить выделение"
-              >
-                ✕
-              </button>
-
-              {/* Покормить выделенных */}
-              <button
-                onClick={feedSelected}
-                className="px-3 py-1 bg-green-500/20 text-green-300 rounded-lg text-xs font-medium transition-all border border-green-500/30 hover:bg-green-500/30"
-                title="Покормить выделенных"
-              >
-                🍎
-              </button>
-
-              {/* Переместить выделенных */}
-              <div className="">
-                <button
-                  onClick={() => setShowMoveTooltip(!showMoveTooltip)}
-                  className="px-3 py-1 bg-purple-500/20 text-purple-300 rounded-lg text-xs font-medium transition-all border border-purple-500/30 hover:bg-purple-500/30"
-                  title="Переместить выделенных"
-                >
-                  🏠
-                </button>
-
-                {showMoveTooltip && (
-                  <Tooltip
-                    title="Куда"
-                    isOpen={true}
-                    onClose={() => setShowMoveTooltip(false)}
-                    className="right-0 "
+                <div className="flex gap-2">
+                  {/* Выделить все */}
+                  <button
+                    onClick={selectAll}
+                    className="px-2 py-1 bg-blue-500/20 text-blue-300 rounded-lg text-xs font-medium transition-all border border-blue-500/30 hover:bg-blue-500/30"
+                    title="Выделить все"
                   >
-                    <div className="space-y-1 h-40 overflow-auto">
-                      {ownedScenes
-                        .filter((s) => s.id !== scene?.id)
-                        .map((s) => (
-                          <button
-                            key={s.id}
-                            onClick={() => moveSelected(s.id)}
-                            className="w-full text-left p-2  text-xs truncate border-b-[1px] border-gray-500/10"
-                          >
-                            🏠 {s.name}
-                          </button>
-                        ))}
-                    </div>
-                  </Tooltip>
-                )}
+                    ▼
+                  </button>
+
+                  {/* Отменить выделение */}
+                  <button
+                    onClick={clearSelection}
+                    className="px-2 py-1 bg-gray-500/20 text-gray-200 rounded-lg text-xs font-medium transition-all border border-gray-500/30 hover:bg-gray-500/30"
+                    title="Отменить выделение"
+                  >
+                    ✕
+                  </button>
+
+                  {/* Покормить выделенных */}
+                  <button
+                    onClick={feedSelected}
+                    className="px-3 py-1 bg-green-500/20 text-green-300 rounded-lg text-xs font-medium transition-all border border-green-500/30 hover:bg-green-500/30"
+                    title="Покормить выделенных"
+                  >
+                    🍎
+                  </button>
+
+                  {/* Переместить выделенных */}
+                  <div className="">
+                    <button
+                      onClick={() => setShowMoveTooltip(!showMoveTooltip)}
+                      className="px-3 py-1 bg-purple-500/20 text-purple-300 rounded-lg text-xs font-medium transition-all border border-purple-500/30 hover:bg-purple-500/30"
+                      title="Переместить выделенных"
+                    >
+                      🏠
+                    </button>
+
+                    {showMoveTooltip && (
+                      <Tooltip
+                        title="Куда"
+                        isOpen={true}
+                        onClose={() => setShowMoveTooltip(false)}
+                        className="right-0 "
+                      >
+                        <div className="space-y-1 h-40 overflow-auto">
+                          {ownedScenes
+                            .filter((s) => s.id !== scene?.id)
+                            .map((s) => (
+                              <button
+                                key={s.id}
+                                onClick={() => moveSelected(s.id)}
+                                className="w-full text-left p-2  text-xs truncate border-b-[1px] border-gray-500/10"
+                              >
+                                🏠 {s.name}
+                              </button>
+                            ))}
+                        </div>
+                      </Tooltip>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Контент с прокруткой */}
-      <div className="px-1">
-        {filteredAndSortedToads.length === 0 ? (
-          <div className="text-center py-8">
-            <div className="text-gray-300 text-4xl mb-3">🐸</div>
-            <p className="text-gray-300 text-sm">
-              {toads.length === 0
-                ? "Пока нет жаб в коллекции"
-                : "Жабы не найдены"}
-            </p>
-            <p className="text-gray-500 text-xs mt-1">
-              {toads.length === 0
-                ? "Приобретите жаб на рынке"
-                : "Измените фильтры для отображения"}
-            </p>
-          </div>
-        ) : viewMode === "detailed" ? (
-          // Подробный режим (оставляем как было)
-          <div className="space-y-2">
-            {filteredAndSortedToads.map((toad) => {
-              const familyId = familyGroups.get(toad.id);
-              const familyColor =
-                familyId !== undefined
-                  ? getRelationshipColor(familyId)
-                  : undefined;
-
-              return (
-                <div key={toad.id} className="rounded-2xl relative">
-                  <ToadItem
-                    id={(toad.id || 0).toString()}
-                    showHunger
-                    isSelected={false}
-                    onClick={() => handleToadClick(toad)}
-                    toad={toad}
-                    button={
-                      <div className="flex gap-1">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            playClick();
-                            setDissolveTargets([toad]);
-                          }}
-                          className="px-3 py-2 bg-amber-500/20 text-amber-200 rounded-lg text-xs font-medium transition-all border border-amber-500/30 hover:bg-amber-500/30"
-                          title="Разобрать на биомассу (освободит место)"
-                        >
-                          ♻️
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            playCrunchShort();
-                            handleFeedToads([toad.id]);
-                            completeAchivement("feed-one");
-                          }}
-                          className="px-3 py-2 bg-green-500/20 text-green-300 rounded-lg text-xs font-medium transition-all border border-green-500/30 hover:bg-green-500/30"
-                        >
-                          🍎
-                        </button>
-                      </div>
-                    }
-                  />
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          // Компактный режим (сетка) с выделением
-          <div className="grid grid-cols-3 gap-2">
-            {filteredAndSortedToads.map((toad) => {
-              const familyId = familyGroups.get(toad.id);
-              const familyColor =
-                familyId !== undefined
-                  ? getRelationshipColor(familyId)
-                  : undefined;
-
-              return (
-                <CompactToadItem
-                  key={toad.id}
-                  toad={toad}
-                  isSelected={selectedToads.has(toad.id)}
-                  onSelect={handleSelectToad}
-                  familyColor={familyColor}
-                  onProfileClick={handleToadClick}
-                  allToads={toads}
-                />
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* Подвал с статистикой */}
-      <div className="border-t border-gray-700/50 py-3 px-2 bg-gray-900/50 mt-3">
-        <div className="grid grid-cols-5 gap-1 text-center text-xs mb-2">
-          <div>
-            <div className="text-green-400 font-bold">
-              {groupedToads.common.length}
-            </div>
-            <div className="text-gray-300 text-2xs">Обычные</div>
-          </div>
-          <div>
-            <div className="text-blue-400 font-bold">
-              {groupedToads.uncommon.length}
-            </div>
-            <div className="text-gray-300 text-2xs">Необычные</div>
-          </div>
-          <div>
-            <div className="text-purple-400 font-bold">
-              {groupedToads.rare.length}
-            </div>
-            <div className="text-gray-300 text-2xs">Редкие</div>
-          </div>
-          <div>
-            <div className="text-orange-400 font-bold">
-              {groupedToads.epic.length}
-            </div>
-            <div className="text-gray-300 text-2xs">Эпические</div>
-          </div>
-          <div>
-            <div className="text-yellow-400 font-bold">
-              {groupedToads.legendary.length}
-            </div>
-            <div className="text-gray-300 text-2xs">Легендарные</div>
-          </div>
-        </div>
-
-        {/* Статистика голода */}
-        <div className="flex justify-between text-center text-xs px-2">
-          <div>
-            <div className="text-green-400 font-bold">
-              {hungerStats.wellFed}
-            </div>
-            <div className="text-gray-300 text-2xs">Сытые</div>
-          </div>
-          <div>
-            <div className="text-yellow-400 font-bold">
-              {hungerStats.normal}
-            </div>
-            <div className="text-gray-300 text-2xs">Норма</div>
-          </div>
-          <div>
-            <div className="text-red-400 font-bold">{hungerStats.starving}</div>
-            <div className="text-gray-300 text-2xs">Голодные</div>
-          </div>
-        </div>
-
-        {/* Места в биоподах: склада жаб нет, поэтому «дом» — только биоподы */}
-        <div className="mt-2 flex items-center justify-between text-2xs text-gray-300 px-2">
-          <span>
-            🏠 Мест в биоподах: {housing.used} / {housing.capacity} (биоподов:{" "}
-            {housing.enclosures})
-          </span>
-          {housing.free === 0 && (
-            <span className="text-rose-300">
-              Мест нет — постройте «Биопод» на карте
-            </span>
           )}
-        </div>
-      </div>
+
+          {/* Контент с прокруткой */}
+          <div className="px-1">
+            {filteredAndSortedToads.length === 0 ? (
+              <div className="text-center py-8">
+                <div className="text-gray-300 text-4xl mb-3">🐸</div>
+                <p className="text-gray-300 text-sm">
+                  {toads.length === 0
+                    ? "Пока нет жаб в коллекции"
+                    : "Жабы не найдены"}
+                </p>
+                <p className="text-gray-500 text-xs mt-1">
+                  {toads.length === 0
+                    ? "Приобретите жаб на рынке"
+                    : "Измените фильтры для отображения"}
+                </p>
+              </div>
+            ) : viewMode === "detailed" ? (
+              // Подробный режим (оставляем как было)
+              <div className="space-y-2">
+                {filteredAndSortedToads.map((toad) => {
+                  const familyId = familyGroups.get(toad.id);
+                  const familyColor =
+                    familyId !== undefined
+                      ? getRelationshipColor(familyId)
+                      : undefined;
+
+                  return (
+                    <div key={toad.id} className="rounded-2xl relative">
+                      <ToadItem
+                        id={(toad.id || 0).toString()}
+                        showHunger
+                        isSelected={false}
+                        onClick={() => handleToadClick(toad)}
+                        toad={toad}
+                        button={
+                          <div className="flex gap-1">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                playClick();
+                                if (dissociatorReady) {
+                                  setDissolveTargets([toad]);
+                                } else {
+                                  setShowBlockedDissolve(true);
+                                }
+                              }}
+                              className="px-3 py-2 bg-amber-500/20 text-amber-200 rounded-lg text-xs font-medium transition-all border border-amber-500/30 hover:bg-amber-500/30"
+                              title="Разобрать на биомассу (освободит место)"
+                            >
+                              ♻️
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                playCrunchShort();
+                                handleFeedToads([toad.id]);
+                                completeAchivement("feed-one");
+                              }}
+                              className="px-3 py-2 bg-green-500/20 text-green-300 rounded-lg text-xs font-medium transition-all border border-green-500/30 hover:bg-green-500/30"
+                            >
+                              🍎
+                            </button>
+                          </div>
+                        }
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              // Компактный режим (сетка) с выделением
+              <div className="grid grid-cols-3 gap-2">
+                {filteredAndSortedToads.map((toad) => {
+                  const familyId = familyGroups.get(toad.id);
+                  const familyColor =
+                    familyId !== undefined
+                      ? getRelationshipColor(familyId)
+                      : undefined;
+
+                  return (
+                    <CompactToadItem
+                      key={toad.id}
+                      toad={toad}
+                      isSelected={selectedToads.has(toad.id)}
+                      onSelect={handleSelectToad}
+                      familyColor={familyColor}
+                      onProfileClick={handleToadClick}
+                      allToads={toads}
+                    />
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Подвал с статистикой */}
+          <div className="border-t border-gray-700/50 py-3 px-2 bg-gray-900/50 mt-3">
+            <div className="grid grid-cols-5 gap-1 text-center text-xs mb-2">
+              <div>
+                <div className="text-green-400 font-bold">
+                  {groupedToads.common.length}
+                </div>
+                <div className="text-gray-300 text-2xs">Обычные</div>
+              </div>
+              <div>
+                <div className="text-blue-400 font-bold">
+                  {groupedToads.uncommon.length}
+                </div>
+                <div className="text-gray-300 text-2xs">Необычные</div>
+              </div>
+              <div>
+                <div className="text-purple-400 font-bold">
+                  {groupedToads.rare.length}
+                </div>
+                <div className="text-gray-300 text-2xs">Редкие</div>
+              </div>
+              <div>
+                <div className="text-orange-400 font-bold">
+                  {groupedToads.epic.length}
+                </div>
+                <div className="text-gray-300 text-2xs">Эпические</div>
+              </div>
+              <div>
+                <div className="text-yellow-400 font-bold">
+                  {groupedToads.legendary.length}
+                </div>
+                <div className="text-gray-300 text-2xs">Легендарные</div>
+              </div>
+            </div>
+
+            {/* Статистика голода */}
+            <div className="flex justify-between text-center text-xs px-2">
+              <div>
+                <div className="text-green-400 font-bold">
+                  {hungerStats.wellFed}
+                </div>
+                <div className="text-gray-300 text-2xs">Сытые</div>
+              </div>
+              <div>
+                <div className="text-yellow-400 font-bold">
+                  {hungerStats.normal}
+                </div>
+                <div className="text-gray-300 text-2xs">Норма</div>
+              </div>
+              <div>
+                <div className="text-red-400 font-bold">
+                  {hungerStats.starving}
+                </div>
+                <div className="text-gray-300 text-2xs">Голодные</div>
+              </div>
+            </div>
+
+            {/* Места в биоподах: склада жаб нет, поэтому «дом» — только биоподы */}
+            <div className="mt-2 flex items-center justify-between text-2xs text-gray-300 px-2">
+              <span>
+                🏠 Мест в биоподах: {housing.used} / {housing.capacity}{" "}
+                (биоподов: {housing.enclosures})
+              </span>
+              {housing.free === 0 && (
+                <span className="text-rose-300">
+                  Мест нет — постройте «Биопод» на карте
+                </span>
+              )}
+            </div>
+          </div>
         </>
       )}
 
@@ -635,12 +641,50 @@ const ToadListModal: React.FC<{
         />
       )}
 
+      {/* ВКЛАДКА «Данные сектора»: описание, улучшения и снос того же гекса карты — по
+          ней видно, что это за биопод и что с ним можно сделать. */}
+      {tab === "room-data" && room && (
+        <RoomDataTab
+          room={room}
+          stats={
+            <div className="grid grid-cols-3 gap-1.5 text-center text-2xs">
+              <div className="rounded-lg bg-slate-900/40 px-1 py-1">
+                <p className="text-gray-400">🐸 В биоподе</p>
+                <p className="font-bold text-white">
+                  {toads.length}/{scene?.capacity ?? 0}
+                </p>
+              </div>
+              <div className="rounded-lg bg-slate-900/40 px-1 py-1">
+                <p className="text-gray-400">🏠 Мест в колонии</p>
+                <p className="font-bold text-white">
+                  {housing.used}/{housing.capacity}
+                </p>
+              </div>
+              <div className="rounded-lg bg-slate-900/40 px-1 py-1">
+                <p className="text-gray-400">🍽 Автокормушка</p>
+                <p className="font-bold text-white">
+                  {hasAutoFeeder ? "есть" : "нет"}
+                </p>
+              </div>
+            </div>
+          }
+        />
+      )}
+
       {/* Подтверждение: жабы уйдут в биомассу навсегда */}
       {dissolveTargets.length > 0 && (
         <DissolveConfirm
           toads={dissolveTargets}
           onCancel={() => setDissolveTargets([])}
           onConfirm={handleDissolveConfirm}
+        />
+      )}
+
+      {/* Диссоциатор ещё не готов: окно-подсказка вместо подтверждения разбора */}
+      {showBlockedDissolve && (
+        <DissolveBlockedModal
+          unpowered={dissociatorBuilt && !dissociatorReady}
+          onClose={() => setShowBlockedDissolve(false)}
         />
       )}
     </Modal>

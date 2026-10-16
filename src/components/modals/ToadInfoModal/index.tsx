@@ -57,6 +57,8 @@ import { useToadTimers } from "./useToadTimers";
 import { Colors } from "./Colors";
 import { useModal } from "../../ModalContext";
 import { DissolveConfirm } from "../../shared/DissolveConfirm";
+import { DissolveBlockedModal } from "../../shared/DissolveBlockedModal";
+import { useDissociator } from "../../../hooks/use-dissociator";
 import { ClickButton } from "../../shared/ClickButton";
 import ToadListModal from "../ToadListModal";
 import {
@@ -97,7 +99,7 @@ export const ToadInfo = () => {
    */
   const toads = useMemo(
     () => [...allToads].sort((a, b) => b.genes.rarity - a.genes.rarity),
-    [allToads]
+    [allToads],
   );
 
   // Local State
@@ -106,10 +108,15 @@ export const ToadInfo = () => {
   const [tooltips, setTooltips] = useState<Record<string, boolean>>({});
   // Разбор жабы в биомассу (Диссоциатор) — необратимо, подтверждаем отдельно
   const [showDissolve, setShowDissolve] = useState(false);
+  /** Диссоциатор не готов: вместо подтверждения показываем окно-подсказку */
+  const [showBlockedDissolve, setShowBlockedDissolve] = useState(false);
 
   // Logic Hooks
   const { relatives, inbreedingRisk } = useToadRelatives(toad, allToads);
   const { age, pregnancy, mating, growth } = useToadTimers(toad);
+
+  // Диссоциатор принимает жаб, только когда его сектор построен и под током
+  const { ready: dissociatorReady, built: dissociatorBuilt } = useDissociator();
 
   if (!toad) return null;
 
@@ -143,17 +150,17 @@ export const ToadInfo = () => {
   const isPregnant = Boolean(toad.pregnancy?.isPregnant);
   const isCourting = Boolean(toad.mating);
   const cooldownMult = getPersonalityCooldownMultiplier(
-    toad.genes?.personality
+    toad.genes?.personality,
   );
   const breedStatus = isPregnant
     ? "🍼 вынашивает"
     : isCourting
-    ? `🫧 ухаживает${mating ? ` ${mating.timeLeft} мин` : ""}`
-    : cooldownLeft > 0
-    ? `🛏️ отдых ${formatCooldownLeft(cooldownLeft)}`
-    : energy >= energyCost
-    ? "✅ готова"
-    : `нужно ⚡${energyCost}`;
+      ? `🫧 ухаживает${mating ? ` ${mating.timeLeft} мин` : ""}`
+      : cooldownLeft > 0
+        ? `🛏️ отдых ${formatCooldownLeft(cooldownLeft)}`
+        : energy >= energyCost
+          ? "✅ готова"
+          : `нужно ⚡${energyCost}`;
 
   // Разведка (Часть 5): HP жабы, состояние и стоимость лечения
   const hpValue = Math.round(getToadHp(toad));
@@ -165,8 +172,8 @@ export const ToadInfo = () => {
     hpRatio >= 0.7
       ? "text-green-400"
       : hpRatio > 0
-      ? "text-amber-400"
-      : "text-red-400";
+        ? "text-amber-400"
+        : "text-red-400";
 
   // Handlers
   const toggleTooltip = (key: string) =>
@@ -267,6 +274,13 @@ export const ToadInfo = () => {
   /** Разбор жабы в биомассу: жаба исчезает навсегда */
   const handleDissolve = () => {
     setShowDissolve(false);
+
+    // Без построенного и запитанного сектора жаба в биомассу не уйдёт
+    if (!dissociatorReady) {
+      setShowBlockedDissolve(true);
+      return;
+    }
+
     playCrunch();
     const result = dissolveToads([toad.id]);
 
@@ -293,567 +307,581 @@ export const ToadInfo = () => {
   return (
     <>
       <Modal>
-      {/* Возврат к списку жаб биопода: карточка — это «глубже» по клику из списка/с гекса */}
-      <div className="flex w-full items-center pb-1 px-10">
-        <ClickButton
-          onClick={() =>
-            openModal(() => <ToadListModal sceneId={getToadHomeId(toad)} />)
-          }
-          className="flex items-center gap-1 rounded-md bg-color-second px-2 py-1 text-2xs font-medium text-gray-200 transition-colors duration-300 hover:text-cyan-200"
-          title={
-            toadScene
-              ? `Открыть биопод «${toadScene.name}» со списком жаб`
-              : "Открыть список жаб биопода"
-          }
-        >
-          ‹ Биопод{toadScene ? `: ${toadScene.name}` : ""}
-        </ClickButton>
-      </div>
-
-      <div className="flex w-full items-center pb-1 px-10 ">
-        {isEditingName ? (
-          <div className="flex w-full items-center gap-2">
-            <button
-              className="text-xl"
-              onClick={() => setEditedName(nameGenerator.generate())}
-            >
-              🎲
-            </button>
-            <input
-              value={editedName}
-              onChange={(e) => setEditedName(e.target.value)}
-              className="bg-color-second border border-gray-600 rounded-lg px-2 py-1 text-white w-full"
-              autoFocus
-              onKeyDown={(e) => e.key === "Enter" && handleRename()}
-            />
-            <button onClick={handleRename} className="text-green-400">
-              ✓
-            </button>
-            <button
-              onClick={() => setIsEditingName(false)}
-              className="text-red-400"
-            >
-              ✕
-            </button>
-          </div>
-        ) : (
-          <h2 className="font-bold flex gap-2 text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-purple-500">
-            <span className="text-lg">{toad.name}</span>
-            <button
-              className="text-gray-300"
-              onClick={() => {
-                setEditedName(toad.name);
-                setIsEditingName(true);
-              }}
-            >
-              {InfoIcons.pencil}
-            </button>
-          </h2>
-        )}
-      </div>
-
-      {/* AVATAR & BASIC INFO */}
-      <div className="flex gap-4 items-start mb-4 px-10 relative">
-        <ToadAvatar
-          toad={toad}
-          size={20}
-          onClick={() => toggleTooltip("avatar")}
-        />
-
-        {tooltips["avatar"] && (
-          <div
-            onClick={() => toggleTooltip("avatar")}
-            className={`absolute top-full z-10 bg-color-main border border-purple-500/50 rounded-xl p-2  shadow-lg`}
+        {/* Возврат к списку жаб биопода: карточка — это «глубже» по клику из списка/с гекса */}
+        <div className="flex w-full items-center pb-1 px-10">
+          <ClickButton
+            onClick={() =>
+              openModal(() => <ToadListModal sceneId={getToadHomeId(toad)} />)
+            }
+            className="flex items-center gap-1 rounded-md bg-color-second px-2 py-1 text-2xs font-medium text-gray-200 transition-colors duration-300 hover:text-cyan-200"
+            title={
+              toadScene
+                ? `Открыть биопод «${toadScene.name}» со списком жаб`
+                : "Открыть список жаб биопода"
+            }
           >
-            <ToadAvatar toad={toad} size={75} />
-          </div>
-        )}
-        <div className="flex flex-col gap-1 mr-auto text-sm text-gray-300">
-          <p>{getToadTypeLabel(toad.type)}</p>
-          <p>Поколение {toad.generation}</p>
-          <p>
-            {toad.stage === "adult" ? "Взрослый" : "Детеныш"}: {age} дней
-          </p>
+            ‹ Биопод{toadScene ? `: ${toadScene.name}` : ""}
+          </ClickButton>
         </div>
-        {/* Sex Icon */}
-        {toad.sex !== "neuter" && (
-          <div
-            className={`flex items-center justify-center w-8 rounded-xl border-2 ${
-              toad.sex === "male"
-                ? "bg-blue-900/50 border-blue-500"
-                : "bg-pink-900/50 border-pink-500"
-            }`}
-          >
-            {TYPE_ICONS[toad.sex]}
-          </div>
-        )}
-      </div>
 
-      <div className="flex">
-        {/* Navigation Left */}
-        <button
-          onClick={() => handleNav("prev")}
-          className="text-gray-300 hover:text-white p-1"
-        >
-          <svg
-            className="w-8 h-8"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M15 19l-7-7 7-7"
-            />
-          </svg>
-        </button>
+        <div className="flex w-full items-center pb-1 px-10 ">
+          {isEditingName ? (
+            <div className="flex w-full items-center gap-2">
+              <button
+                className="text-xl"
+                onClick={() => setEditedName(nameGenerator.generate())}
+              >
+                🎲
+              </button>
+              <input
+                value={editedName}
+                onChange={(e) => setEditedName(e.target.value)}
+                className="bg-color-second border border-gray-600 rounded-lg px-2 py-1 text-white w-full"
+                autoFocus
+                onKeyDown={(e) => e.key === "Enter" && handleRename()}
+              />
+              <button onClick={handleRename} className="text-green-400">
+                ✓
+              </button>
+              <button
+                onClick={() => setIsEditingName(false)}
+                className="text-red-400"
+              >
+                ✕
+              </button>
+            </div>
+          ) : (
+            <h2 className="font-bold flex gap-2 text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-purple-500">
+              <span className="text-lg">{toad.name}</span>
+              <button
+                className="text-gray-300"
+                onClick={() => {
+                  setEditedName(toad.name);
+                  setIsEditingName(true);
+                }}
+              >
+                {InfoIcons.pencil}
+              </button>
+            </h2>
+          )}
+        </div>
 
-        {/* --- MAIN CONTENT COLUMN --- */}
-        <div className="flex flex-col w-full px-2 ">
-          {/* STATS GRID */}
-          <div className="grid grid-cols-2 gap-2 mb-3 ">
-            <StatCard
-              icon={InfoIcons.rarity}
-              label="Редкость"
-              value={`${rarityConfig.label} (${toad.genes?.rarity?.toFixed(
-                1
-              )})`}
-              colorClass={rarityConfig.color}
-            />
-            <StatCard
-              icon={<span>{geneticFault.icon}</span>}
-              label="Генетика"
-              value={`${geneticFault.label} (${
-                toad.state?.genetic_fault || 0
-              }%)`}
-              colorClass={geneticFault.color}
-              onClick={() => toggleTooltip("genetic")}
-              tooltip={
-                tooltips["genetic"] && (
-                  <Tooltip
-                    title="Генетика"
-                    isOpen
-                    onClose={() => toggleTooltip("genetic")}
-                    className="right-0 w-[200%]"
-                  >
-                    <p className="text-sm text-gray-200">
-                      {geneticFault.description}
-                    </p>
-                  </Tooltip>
-                )
-              }
-            />
-            <StatCard
-              icon={InfoIcons.fertility}
-              label="Плодовитость"
-              value={`${toad.genes?.fertility?.toFixed(1)}x`}
-              colorClass={
-                toad.genes?.fertility > 1 ? "text-green-400" : "text-red-400"
-              }
-            />
-            <StatCard
-              icon={InfoIcons.hunger}
-              label="Аппетит"
-              value={`${toad.genes?.hungerRate?.toFixed(1)}x`}
-              colorClass={
-                toad.genes?.hungerRate < 1 ? "text-green-400" : "text-red-400"
-              }
-            />
-            <StatCard
-              icon={InfoIcons.weight}
-              label="Размер"
-              value={toad.genes?.weight?.toFixed(2)}
-              colorClass="text-blue-400"
-            />
-            <StatCard
-              icon={InfoIcons.speed}
-              label="Скорость"
-              value={toad.genes?.speed?.toFixed(2)}
-              colorClass="text-blue-400"
-            />
-            <StatCard
-              icon={<span>⚡</span>}
-              label="Силы"
-              value={`${Math.round(energy)} / ${MAX_ENERGY}`}
-              colorClass={energy >= energyCost ? "text-lime-400" : "text-red-400"}
-              onClick={() => toggleTooltip("energy")}
-              tooltip={
-                tooltips["energy"] && (
-                  <Tooltip
-                    title="Силы"
-                    isOpen
-                    onClose={() => toggleTooltip("energy")}
-                    className="right-0 w-[200%]"
-                  >
-                    <p className="text-sm text-gray-200">
-                      Силы ⚡ — личный запас жабы, максимум {MAX_ENERGY}.
-                      Спаривание в «Репродукторе» стоит {energyCost} ⚡, а поход за
-                      Периметр — от {EXPEDITION_ENERGY_BASE} ⚡ за ближний сектор и
-                      на {EXPEDITION_ENERGY_PER_DEPTH} ⚡ дороже за каждый
-                      следующий (силы тратит каждая жаба команды). Биомасса на
-                      снаряжение платится со склада и к силам отношения не имеет.
-                      Восстанавливаются силы сами: +{ENERGY_REGEN_PER_HOUR} в час.
-                      Снять отдых после спаривания можно за 1 Астро-квакс.
-                    </p>
-                  </Tooltip>
-                )
-              }
-            />
-            <StatCard
-              icon={<span>{hpIcon}</span>}
-              label="Здоровье"
-              value={`${hpValue} / ${hpMax}`}
-              colorClass={hpColor}
-              onClick={() => toggleTooltip("hp")}
-              tooltip={
-                tooltips["hp"] && (
-                  <Tooltip
-                    title="Здоровье и походы"
-                    isOpen
-                    onClose={() => toggleTooltip("hp")}
-                    className="right-0 w-[200%]"
-                  >
-                    <p className="text-sm text-gray-200">
-                      Сейчас жаба {hpStatusLabel}. Походы за Периметр ранят жаб:
-                      провалы событий снимают HP. Дома здоровье капает очень
-                      медленно (+{HP_REGEN_PER_HOUR} в час), на койке «Лазарета»
-                      оно идёт +{HOSPITAL_HP_REGEN_PER_HOUR} в час, а срок
-                      болезни там короче в {HOSPITAL_DISEASE_SPEED} раза.
-                      Мгновенно поднять жабу можно за{" "}
-                      {getHealCost(toad) || 0} Кваксов — это самый дорогой
-                      способ. Раненая жаба даёт вдвое
-                      меньше биомассы, выбитая — не работает совсем и не может
-                      идти в поход.
-                    </p>
-                  </Tooltip>
-                )
-              }
-            />
-            <StatCard
-              icon={<span>🛏️</span>}
-              label="Разведение"
-              value={breedStatus}
-              colorClass={
-                isPregnant || isCourting || cooldownLeft > 0
-                  ? "text-amber-400"
-                  : energy >= energyCost
-                  ? "text-green-400"
-                  : "text-red-400"
-              }
-            />
-            {/* Выработка биомассы: голод режет её до трети, содержание съедает часть дохода */}
-            <StatCard
-              icon={<span>🧪</span>}
-              label="Биомасса"
-              value={
-                toad.stage === "adult"
-                  ? `${biomassRate.toFixed(1)} 🧪/ч`
-                  : "ещё не взрослая"
-              }
-              colorClass={
-                toad.stage !== "adult"
-                  ? "text-gray-400"
-                  : productionFactor >= 1
-                  ? "text-emerald-400"
-                  : "text-orange-400"
-              }
-              onClick={() => toggleTooltip("biomass")}
-              tooltip={
-                tooltips["biomass"] && (
-                  <Tooltip
-                    title="Выработка биомассы"
-                    isOpen
-                    onClose={() => toggleTooltip("biomass")}
-                    className="right-0 w-[200%]"
-                  >
-                    <p className="text-sm text-gray-200">
-                      Биомасса 🧪 — топливо колонии: корм жаб, снаряжение
-                      походов, содержание биоподов. Взрослая жаба даёт базовые{" "}
-                      {BIOMASS_PER_TOAD_HOUR} 🧪/ч, а её редкость, вес, характер
-                      и кибер-болезнь меняют это число.
-                    </p>
-                    <div className="mt-2 space-y-0.5 text-xs text-gray-300">
-                      <div className="flex justify-between">
-                        <span>Сейчас (сытость {Math.round(hunger)} %)</span>
-                        <span className="text-white">
-                          {biomassRate.toFixed(2)} 🧪/ч
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Содержание жабы</span>
-                        <span className="text-white">
-                          −{UPKEEP_PER_TOAD_HOUR.toFixed(2)} 🧪/ч
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Чистыми в час</span>
-                        <span
-                          className={
-                            netBiomass >= 0 ? "text-emerald-300" : "text-red-300"
-                          }
-                        >
-                          {netBiomass.toFixed(2)} 🧪/ч
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Потенциал сытой и здоровой</span>
-                        <span className="text-white">
-                          {biomassPotential.toFixed(2)} 🧪/ч
-                        </span>
-                      </div>
-                    </div>
-                    <p className="mt-2 text-xs text-gray-300">
-                      {hunger <= PRODUCTION_MIN_HUNGER
-                        ? `Жаба голодает (сытость ≤ ${PRODUCTION_MIN_HUNGER} %) и работает на ${Math.round(
-                            PRODUCTION_HUNGRY_FACTOR * 100
-                          )} %: покормите или поставьте автокормушку в секторе.`
-                        : `Сытость умножает выработку на ${productionFactor.toFixed(
-                            2
-                          )} — кормить всегда выгоднее, чем морить.`}
-                    </p>
-                  </Tooltip>
-                )
-              }
-            />
-          </div>
-
-          {/* RELATIVES & PERSONALITY */}
-          <div className="space-y-2 mb-3">
-            <StatCard
-              icon={<span>🔸</span>}
-              label="Родственники"
-              value={`${
-                relatives.length > 0 ? relatives.length + " найдено" : "Нет"
-              } ${inbreedingRisk ? "(Риск)" : ""}`}
-              colorClass={inbreedingRisk ? "text-yellow-400" : "text-blue-400"}
-              onClick={() => toggleTooltip("relatives")}
-              tooltip={
-                tooltips["relatives"] && (
-                  <Tooltip
-                    title="Родственники"
-                    isOpen
-                    onClose={() => toggleTooltip("relatives")}
-                  >
-                    {/* Relatives list logic here (simplified for brevity) */}
-                    <div className="max-h-40 overflow-y-auto">
-                      {relatives.map((rel: any) => (
-                        <div
-                          key={rel.id}
-                          className={`p-1 text-xs border-b border-gray-700  ${
-                            rel.sex !== toad.sex ? "bg-yellow-500/20 " : ""
-                          }`}
-                        >
-                          {rel.sex !== toad.sex ? "🔸 " : " "} {rel.name}
-                        </div>
-                      ))}
-                      {relatives.length === 0 && (
-                        <p>Безопасно для разведения</p>
-                      )}
-                    </div>
-                  </Tooltip>
-                )
-              }
-            />
-
-            <StatCard
-              icon={InfoIcons.personality}
-              label="Характер"
-              value={getPersonalityLabel(toad.genes?.personality)}
-              colorClass="text-purple-400"
-              onClick={() => personality && toggleTooltip("personality")}
-              tooltip={
-                tooltips["personality"] &&
-                personality && (
-                  <Tooltip
-                    title="Характер"
-                    isOpen
-                    onClose={() => toggleTooltip("personality")}
-                  >
-                    <p className="text-xs italic text-gray-300">
-                      {personality.description}
-                    </p>
-                    {/* Влияние характера на гены и отдых */}
-                    <div className="mt-2 text-xs text-gray-300 space-y-0.5">
-                      <div className="flex justify-between">
-                        <span>Аппетит</span>
-                        <span className="text-white">×{personality.hungerRate}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Плодовитость</span>
-                        <span className="text-white">×{personality.fertility}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Вес</span>
-                        <span className="text-white">
-                          ×{personality.weightMultiplier}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Скорость</span>
-                        <span className="text-white">
-                          ×{personality.speedMultiplier}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Отдых после спаривания</span>
-                        <span className="text-white">×{cooldownMult}</span>
-                      </div>
-                    </div>
-                  </Tooltip>
-                )
-              }
-            />
-          </div>
-
-          {/* PROGRESS BARS */}
-          {/* Сытость: подписана цифрой — голод режет выработку биомассы (см. карточку «Биомасса») */}
-          <ProgressBar
-            label="Сытость"
-            current={hunger}
-            max={100}
-            color={hunger <= PRODUCTION_MIN_HUNGER ? "red" : "green"}
-            valueLabel={`${Math.round(hunger)} %`}
+        {/* AVATAR & BASIC INFO */}
+        <div className="flex gap-4 items-start mb-4 px-10 relative">
+          <ToadAvatar
+            toad={toad}
+            size={20}
+            onClick={() => toggleTooltip("avatar")}
           />
 
-          {growth && (
-            <ProgressBar
-              label="Рост"
-              current={growth.progress}
-              max={100}
-              color="purple"
-              action={{
-                label: "Ускорить",
-                handler: () => handleAccelerate("growth"),
-                timeLeft: growth.timeLeft,
-              }}
-            />
-          )}
-
-          {mating && (
-            <ProgressBar
-              label="Ухаживание"
-              current={mating.progress}
-              max={100}
-              color="pink"
-            />
-          )}
-
-          {pregnancy && (
-            <ProgressBar
-              label="Беременность"
-              current={pregnancy.progress}
-              max={100}
-              color="red"
-              action={{
-                label: "Ускорить",
-                handler: () => handleAccelerate("pregnancy"),
-                timeLeft: pregnancy.timeLeft,
-              }}
-            />
-          )}
-
-          {/* ACTIONS */}
-          <div className="bg-color-main rounded-xl p-2 border border-gray-600/50 mt-1 grid grid-cols-2 gap-2">
-            <button
-              onClick={() => {
-                playCrunchShort();
-                handleFeedToads([toad.id]);
-                completeAchivement("feed-one");
-              }}
-              className="bg-green-600/30 hover:bg-green-600/40 rounded-lg py-2 text-xs flex justify-center gap-2"
+          {tooltips["avatar"] && (
+            <div
+              onClick={() => toggleTooltip("avatar")}
+              className={`absolute top-full z-10 bg-color-main border border-purple-500/50 rounded-xl p-2  shadow-lg`}
             >
-              <span>🍎</span> Накормить
-            </button>
-            <div className="relative">
-              <button
-                onClick={() => toggleTooltip("scenes")}
-                className="bg-blue-600/30 hover:bg-blue-600/40 rounded-lg py-2 text-xs w-full flex justify-center gap-2"
-              >
-                <span>🏠</span> Переместить
-              </button>
-              {tooltips["scenes"] && (
-                <Tooltip
-                  revert
-                  title="Куда"
-                  isOpen
-                  onClose={() => toggleTooltip("scenes")}
-                >
-                  {/* Склада жаб больше нет: у каждой жабы есть биопод, и он — её дом
-                      (`homeId`): жаба в секторе колонии дома не занимает, но помнит его */}
-                  {ownedScenes
-                    .filter((s) => s.id !== getToadHomeId(toad))
-                    .map((s) => (
-                      <button
-                        key={s.id}
-                        onClick={() => handleMove(s.id)}
-                        className="w-full text-left p-2 hover:bg-gray-600 rounded text-xs"
-                      >
-                        🏠 {s.name}
-                      </button>
-                    ))}
-                </Tooltip>
-              )}
+              <ToadAvatar toad={toad} size={75} />
             </div>
-
-            {/* Быстрый возврат домой: жаба в секторе колонии дома не занимает, но помнит
-                его (`homeId`) — одна кнопка, чтобы вернуть её в свой биопод (с проверкой места) */}
-            {toad.roomId && (
-              <button
-                onClick={handleSendHome}
-                title={
-                  toadScene
-                    ? `Вернуть жабу в «${toadScene.name}»`
-                    : "Вернуть жабу в её биопод"
-                }
-                className="col-span-2 bg-cyan-600/30 hover:bg-cyan-600/40 rounded-lg py-2 text-xs flex justify-center gap-2"
-              >
-                <span>🏠</span> Домой
-              </button>
-            )}
-
-            {/* Быстрый разбор жабы в биомассу (Диссоциатор) */}
-            <button
-              onClick={() => setShowDissolve(true)}
-              disabled={cannotDissolve}
-              title={
-                cannotDissolve
-                  ? "Жаба находится в инкубаторе — разбор недоступен"
-                  : "Переработать жабу в биомассу навсегда"
-              }
-              className="col-span-2 bg-amber-600/30 hover:bg-amber-600/40 rounded-lg py-2 text-xs flex justify-center items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <span>♻️</span> Разобрать на биомассу
-              <span className="text-amber-300 font-semibold">
-                +{getDissolveYield(toad)} 🧪
-              </span>
-            </button>
+          )}
+          <div className="flex flex-col gap-1 mr-auto text-sm text-gray-300">
+            <p>{getToadTypeLabel(toad.type)}</p>
+            <p>Поколение {toad.generation}</p>
+            <p>
+              {toad.stage === "adult" ? "Взрослый" : "Детеныш"}: {age} дней
+            </p>
           </div>
-
-          <Colors toad={toad} />
+          {/* Sex Icon */}
+          {toad.sex !== "neuter" && (
+            <div
+              className={`flex items-center justify-center w-8 rounded-xl border-2 ${
+                toad.sex === "male"
+                  ? "bg-blue-900/50 border-blue-500"
+                  : "bg-pink-900/50 border-pink-500"
+              }`}
+            >
+              {TYPE_ICONS[toad.sex]}
+            </div>
+          )}
         </div>
 
-        {/* Navigation Right */}
-        <button
-          onClick={() => handleNav("next")}
-          className="text-gray-300 hover:text-white p-1"
-        >
-          <svg
-            className="w-8 h-8"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+        <div className="flex">
+          {/* Navigation Left */}
+          <button
+            onClick={() => handleNav("prev")}
+            className="text-gray-300 hover:text-white p-1"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M9 5l7 7-7 7"
+            <svg
+              className="w-8 h-8"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15 19l-7-7 7-7"
+              />
+            </svg>
+          </button>
+
+          {/* --- MAIN CONTENT COLUMN --- */}
+          <div className="flex flex-col w-full px-2 ">
+            {/* STATS GRID */}
+            <div className="grid grid-cols-2 gap-2 mb-3 ">
+              <StatCard
+                icon={InfoIcons.rarity}
+                label="Редкость"
+                value={`${rarityConfig.label} (${toad.genes?.rarity?.toFixed(
+                  1,
+                )})`}
+                colorClass={rarityConfig.color}
+              />
+              <StatCard
+                icon={<span>{geneticFault.icon}</span>}
+                label="Генетика"
+                value={`${geneticFault.label} (${
+                  toad.state?.genetic_fault || 0
+                }%)`}
+                colorClass={geneticFault.color}
+                onClick={() => toggleTooltip("genetic")}
+                tooltip={
+                  tooltips["genetic"] && (
+                    <Tooltip
+                      title="Генетика"
+                      isOpen
+                      onClose={() => toggleTooltip("genetic")}
+                      className="right-0 w-[200%]"
+                    >
+                      <p className="text-sm text-gray-200">
+                        {geneticFault.description}
+                      </p>
+                    </Tooltip>
+                  )
+                }
+              />
+              <StatCard
+                icon={InfoIcons.fertility}
+                label="Плодовитость"
+                value={`${toad.genes?.fertility?.toFixed(1)}x`}
+                colorClass={
+                  toad.genes?.fertility > 1 ? "text-green-400" : "text-red-400"
+                }
+              />
+              <StatCard
+                icon={InfoIcons.hunger}
+                label="Аппетит"
+                value={`${toad.genes?.hungerRate?.toFixed(1)}x`}
+                colorClass={
+                  toad.genes?.hungerRate < 1 ? "text-green-400" : "text-red-400"
+                }
+              />
+              <StatCard
+                icon={InfoIcons.weight}
+                label="Размер"
+                value={toad.genes?.weight?.toFixed(2)}
+                colorClass="text-blue-400"
+              />
+              <StatCard
+                icon={InfoIcons.speed}
+                label="Скорость"
+                value={toad.genes?.speed?.toFixed(2)}
+                colorClass="text-blue-400"
+              />
+              <StatCard
+                icon={<span>⚡</span>}
+                label="Силы"
+                value={`${Math.round(energy)} / ${MAX_ENERGY}`}
+                colorClass={
+                  energy >= energyCost ? "text-lime-400" : "text-red-400"
+                }
+                onClick={() => toggleTooltip("energy")}
+                tooltip={
+                  tooltips["energy"] && (
+                    <Tooltip
+                      title="Силы"
+                      isOpen
+                      onClose={() => toggleTooltip("energy")}
+                      className="right-0 w-[200%]"
+                    >
+                      <p className="text-sm text-gray-200">
+                        Силы ⚡ — личный запас жабы, максимум {MAX_ENERGY}.
+                        Спаривание в «Репродукторе» стоит {energyCost} ⚡, а
+                        поход за Периметр — от {EXPEDITION_ENERGY_BASE} ⚡ за
+                        ближний сектор и на {EXPEDITION_ENERGY_PER_DEPTH} ⚡
+                        дороже за каждый следующий (силы тратит каждая жаба
+                        команды). Биомасса на снаряжение платится со склада и к
+                        силам отношения не имеет. Восстанавливаются силы сами: +
+                        {ENERGY_REGEN_PER_HOUR} в час. Снять отдых после
+                        спаривания можно за 1 Астро-квакс.
+                      </p>
+                    </Tooltip>
+                  )
+                }
+              />
+              <StatCard
+                icon={<span>{hpIcon}</span>}
+                label="Здоровье"
+                value={`${hpValue} / ${hpMax}`}
+                colorClass={hpColor}
+                onClick={() => toggleTooltip("hp")}
+                tooltip={
+                  tooltips["hp"] && (
+                    <Tooltip
+                      title="Здоровье и походы"
+                      isOpen
+                      onClose={() => toggleTooltip("hp")}
+                      className="right-0 w-[200%]"
+                    >
+                      <p className="text-sm text-gray-200">
+                        Сейчас жаба {hpStatusLabel}. Походы за Периметр ранят
+                        жаб: провалы событий снимают HP. Дома здоровье капает
+                        очень медленно (+{HP_REGEN_PER_HOUR} в час), на койке
+                        «Лазарета» оно идёт +{HOSPITAL_HP_REGEN_PER_HOUR} в час,
+                        а срок болезни там короче в {HOSPITAL_DISEASE_SPEED}{" "}
+                        раза. Мгновенно поднять жабу можно за{" "}
+                        {getHealCost(toad) || 0} Кваксов — это самый дорогой
+                        способ. Раненая жаба даёт вдвое меньше биомассы, выбитая
+                        — не работает совсем и не может идти в поход.
+                      </p>
+                    </Tooltip>
+                  )
+                }
+              />
+              <StatCard
+                icon={<span>🛏️</span>}
+                label="Разведение"
+                value={breedStatus}
+                colorClass={
+                  isPregnant || isCourting || cooldownLeft > 0
+                    ? "text-amber-400"
+                    : energy >= energyCost
+                      ? "text-green-400"
+                      : "text-red-400"
+                }
+              />
+              {/* Выработка биомассы: голод режет её до трети, содержание съедает часть дохода */}
+              <StatCard
+                icon={<span>🧪</span>}
+                label="Биомасса"
+                value={
+                  toad.stage === "adult"
+                    ? `${biomassRate.toFixed(1)} 🧪/ч`
+                    : "ещё не взрослая"
+                }
+                colorClass={
+                  toad.stage !== "adult"
+                    ? "text-gray-400"
+                    : productionFactor >= 1
+                      ? "text-emerald-400"
+                      : "text-orange-400"
+                }
+                onClick={() => toggleTooltip("biomass")}
+                tooltip={
+                  tooltips["biomass"] && (
+                    <Tooltip
+                      title="Выработка биомассы"
+                      isOpen
+                      onClose={() => toggleTooltip("biomass")}
+                      className="right-0 w-[200%]"
+                    >
+                      <p className="text-sm text-gray-200">
+                        Биомасса 🧪 — топливо колонии: корм жаб, снаряжение
+                        походов, содержание биоподов. Взрослая жаба даёт базовые{" "}
+                        {BIOMASS_PER_TOAD_HOUR} 🧪/ч, а её редкость, вес,
+                        характер и кибер-болезнь меняют это число.
+                      </p>
+                      <div className="mt-2 space-y-0.5 text-xs text-gray-300">
+                        <div className="flex justify-between">
+                          <span>Сейчас (сытость {Math.round(hunger)} %)</span>
+                          <span className="text-white">
+                            {biomassRate.toFixed(2)} 🧪/ч
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Содержание жабы</span>
+                          <span className="text-white">
+                            −{UPKEEP_PER_TOAD_HOUR.toFixed(2)} 🧪/ч
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Чистыми в час</span>
+                          <span
+                            className={
+                              netBiomass >= 0
+                                ? "text-emerald-300"
+                                : "text-red-300"
+                            }
+                          >
+                            {netBiomass.toFixed(2)} 🧪/ч
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Потенциал сытой и здоровой</span>
+                          <span className="text-white">
+                            {biomassPotential.toFixed(2)} 🧪/ч
+                          </span>
+                        </div>
+                      </div>
+                      <p className="mt-2 text-xs text-gray-300">
+                        {hunger <= PRODUCTION_MIN_HUNGER
+                          ? `Жаба голодает (сытость ≤ ${PRODUCTION_MIN_HUNGER} %) и работает на ${Math.round(
+                              PRODUCTION_HUNGRY_FACTOR * 100,
+                            )} %: покормите или поставьте автокормушку в секторе.`
+                          : `Сытость умножает выработку на ${productionFactor.toFixed(
+                              2,
+                            )} — кормить всегда выгоднее, чем морить.`}
+                      </p>
+                    </Tooltip>
+                  )
+                }
+              />
+            </div>
+
+            {/* RELATIVES & PERSONALITY */}
+            <div className="space-y-2 mb-3">
+              <StatCard
+                icon={<span>🔸</span>}
+                label="Родственники"
+                value={`${
+                  relatives.length > 0 ? relatives.length + " найдено" : "Нет"
+                } ${inbreedingRisk ? "(Риск)" : ""}`}
+                colorClass={
+                  inbreedingRisk ? "text-yellow-400" : "text-blue-400"
+                }
+                onClick={() => toggleTooltip("relatives")}
+                tooltip={
+                  tooltips["relatives"] && (
+                    <Tooltip
+                      title="Родственники"
+                      isOpen
+                      onClose={() => toggleTooltip("relatives")}
+                    >
+                      {/* Relatives list logic here (simplified for brevity) */}
+                      <div className="max-h-40 overflow-y-auto">
+                        {relatives.map((rel: any) => (
+                          <div
+                            key={rel.id}
+                            className={`p-1 text-xs border-b border-gray-700  ${
+                              rel.sex !== toad.sex ? "bg-yellow-500/20 " : ""
+                            }`}
+                          >
+                            {rel.sex !== toad.sex ? "🔸 " : " "} {rel.name}
+                          </div>
+                        ))}
+                        {relatives.length === 0 && (
+                          <p>Безопасно для разведения</p>
+                        )}
+                      </div>
+                    </Tooltip>
+                  )
+                }
+              />
+
+              <StatCard
+                icon={InfoIcons.personality}
+                label="Характер"
+                value={getPersonalityLabel(toad.genes?.personality)}
+                colorClass="text-purple-400"
+                onClick={() => personality && toggleTooltip("personality")}
+                tooltip={
+                  tooltips["personality"] &&
+                  personality && (
+                    <Tooltip
+                      title="Характер"
+                      isOpen
+                      onClose={() => toggleTooltip("personality")}
+                    >
+                      <p className="text-xs italic text-gray-300">
+                        {personality.description}
+                      </p>
+                      {/* Влияние характера на гены и отдых */}
+                      <div className="mt-2 text-xs text-gray-300 space-y-0.5">
+                        <div className="flex justify-between">
+                          <span>Аппетит</span>
+                          <span className="text-white">
+                            ×{personality.hungerRate}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Плодовитость</span>
+                          <span className="text-white">
+                            ×{personality.fertility}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Вес</span>
+                          <span className="text-white">
+                            ×{personality.weightMultiplier}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Скорость</span>
+                          <span className="text-white">
+                            ×{personality.speedMultiplier}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Отдых после спаривания</span>
+                          <span className="text-white">×{cooldownMult}</span>
+                        </div>
+                      </div>
+                    </Tooltip>
+                  )
+                }
+              />
+            </div>
+
+            {/* PROGRESS BARS */}
+            {/* Сытость: подписана цифрой — голод режет выработку биомассы (см. карточку «Биомасса») */}
+            <ProgressBar
+              label="Сытость"
+              current={hunger}
+              max={100}
+              color={hunger <= PRODUCTION_MIN_HUNGER ? "red" : "green"}
+              valueLabel={`${Math.round(hunger)} %`}
             />
-          </svg>
-        </button>
-      </div>
+
+            {growth && (
+              <ProgressBar
+                label="Рост"
+                current={growth.progress}
+                max={100}
+                color="purple"
+                action={{
+                  label: "Ускорить",
+                  handler: () => handleAccelerate("growth"),
+                  timeLeft: growth.timeLeft,
+                }}
+              />
+            )}
+
+            {mating && (
+              <ProgressBar
+                label="Ухаживание"
+                current={mating.progress}
+                max={100}
+                color="pink"
+              />
+            )}
+
+            {pregnancy && (
+              <ProgressBar
+                label="Беременность"
+                current={pregnancy.progress}
+                max={100}
+                color="red"
+                action={{
+                  label: "Ускорить",
+                  handler: () => handleAccelerate("pregnancy"),
+                  timeLeft: pregnancy.timeLeft,
+                }}
+              />
+            )}
+
+            {/* ACTIONS */}
+            <div className="bg-color-main rounded-xl p-2 border border-gray-600/50 mt-1 grid grid-cols-2 gap-2">
+              <button
+                onClick={() => {
+                  playCrunchShort();
+                  handleFeedToads([toad.id]);
+                  completeAchivement("feed-one");
+                }}
+                className="bg-green-600/30 hover:bg-green-600/40 rounded-lg py-2 text-xs flex justify-center gap-2"
+              >
+                <span>🍎</span> Накормить
+              </button>
+              <div className="relative">
+                <button
+                  onClick={() => toggleTooltip("scenes")}
+                  className="bg-blue-600/30 hover:bg-blue-600/40 rounded-lg py-2 text-xs w-full flex justify-center gap-2"
+                >
+                  <span>🏠</span> Переместить
+                </button>
+                {tooltips["scenes"] && (
+                  <Tooltip
+                    revert
+                    title="Куда"
+                    isOpen
+                    onClose={() => toggleTooltip("scenes")}
+                  >
+                    {/* Склада жаб больше нет: у каждой жабы есть биопод, и он — её дом
+                      (`homeId`): жаба в секторе колонии дома не занимает, но помнит его */}
+                    {ownedScenes
+                      .filter((s) => s.id !== getToadHomeId(toad))
+                      .map((s) => (
+                        <button
+                          key={s.id}
+                          onClick={() => handleMove(s.id)}
+                          className="w-full text-left p-2 hover:bg-gray-600 rounded text-xs"
+                        >
+                          {s.name}
+                        </button>
+                      ))}
+                  </Tooltip>
+                )}
+              </div>
+
+              {/* Быстрый возврат домой: жаба в секторе колонии дома не занимает, но помнит
+                его (`homeId`) — одна кнопка, чтобы вернуть её в свой биопод (с проверкой места) */}
+              {toad.roomId && (
+                <button
+                  onClick={handleSendHome}
+                  title={
+                    toadScene
+                      ? `Вернуть жабу в «${toadScene.name}»`
+                      : "Вернуть жабу в её биопод"
+                  }
+                  className="col-span-2 bg-cyan-600/30 hover:bg-cyan-600/40 rounded-lg py-2 text-xs flex justify-center gap-2"
+                >
+                  <span>🏠</span> Домой
+                </button>
+              )}
+
+              {/* Быстрый разбор жабы в биомассу (Диссоциатор) */}
+              <button
+                onClick={() =>
+                  dissociatorReady
+                    ? setShowDissolve(true)
+                    : setShowBlockedDissolve(true)
+                }
+                disabled={cannotDissolve}
+                title={
+                  cannotDissolve
+                    ? "Жаба находится в инкубаторе — разбор недоступен"
+                    : "Переработать жабу в биомассу навсегда"
+                }
+                className="col-span-2 bg-amber-600/30 hover:bg-amber-600/40 rounded-lg py-2 text-xs flex justify-center items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <span>♻️</span> Разобрать на биомассу
+                <span className="text-amber-300 font-semibold">
+                  +{getDissolveYield(toad)} 🧪
+                </span>
+              </button>
+            </div>
+
+            <Colors toad={toad} />
+          </div>
+
+          {/* Navigation Right */}
+          <button
+            onClick={() => handleNav("next")}
+            className="text-gray-300 hover:text-white p-1"
+          >
+            <svg
+              className="w-8 h-8"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 5l7 7-7 7"
+              />
+            </svg>
+          </button>
+        </div>
       </Modal>
 
       {/* Подтверждение: жаба уйдёт в биомассу навсегда */}
@@ -862,6 +890,14 @@ export const ToadInfo = () => {
           toads={[toad]}
           onCancel={() => setShowDissolve(false)}
           onConfirm={handleDissolve}
+        />
+      )}
+
+      {/* Диссоциатор ещё не готов: окно-подсказка вместо подтверждения разбора */}
+      {showBlockedDissolve && (
+        <DissolveBlockedModal
+          unpowered={dissociatorBuilt && !dissociatorReady}
+          onClose={() => setShowBlockedDissolve(false)}
         />
       )}
     </>

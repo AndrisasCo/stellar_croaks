@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { COLONY_ROOM_TITLES } from "../../../models/colony";
+import { useEffect, useMemo, useState } from "react";
+import { EMPTY_COLONY } from "../../../models/colony";
 import { Toad, getRarityConfig } from "../../../models/Toad";
 import { useGameState } from "../../../hooks/use-game-state";
 import { useNotifications } from "../../../hooks/use-notification";
@@ -18,15 +18,21 @@ import {
   getToadEnergy,
 } from "../../../utils/gamification-config";
 import {
+  NEST_SLOT_SEXES,
   abortMating,
   checkNestCourtship,
-  getNestOccupancy,
-  isNestRoomId,
+  getNestSlotCandidates,
+  getNestSlotLabel,
+  getNestSlotRejectReason,
+  getNestSlotSex,
   startNestCourtship,
   upgradeNestSlots,
 } from "../../../utils/breeding-manager";
 import { placeToadInRoom, sendToadHome } from "../../../backend/colony";
-import { getToadHomeId, isToadFromEnclosure } from "../../../utils/toad-location";
+import {
+  getToadHomeId,
+  isToadFromEnclosure,
+} from "../../../utils/toad-location";
 import {
   CURRENCY_CONFIG,
   NEST_ROOM_ID,
@@ -41,22 +47,38 @@ import {
 } from "../../../utils/astro-shop";
 import { getToadDisease } from "../../../utils/disease-manager";
 import { completeAchivement } from "../../../backend/achivements-manager";
-import { HEX_ROOM_BY_ID } from "../../HexMap/rooms-config";
+import { resolveColonyRooms } from "../../HexMap/colony-build";
 import { ClickButton } from "../../shared/ClickButton";
+import ModalTabs, { ModalTabItem } from "../../shared/ModalTabs";
+import { ToadPicker } from "../../shared/ToadPicker";
+import { RoomConfig } from "../../HexMap/rooms-config";
+import RoomDataTab, { ROOM_DATA_TAB, RoomDataTabId } from "../RoomDataTab";
 import { useToads } from "../../ToadContext";
+import {
+  TOAD_PICKER_REJECTED_GROUP,
+  getToadSexIcon,
+} from "../../../utils/toad-picker";
 
 /**
  * Модалка репродуктора (Часть 3.2).
  *
- * Репродуктор — сектор на пару (2 взрослые жабы). Здесь видно, кто в нём сидит прямо
- * сейчас, а пустой слот открывает список ВСЕХ половозрелых жаб колонии (кроме тех,
- * что в походе) с указанием сектора, где жаба находится: нажатие переносит её в репродуктор.
+ * Репродуктор — сектор на пару, и у пары места разные: первый слот занимает самка,
+ * второй — самец. Слот — выпадающий список жаб **своего пола** (`shared/ToadPicker`):
+ * тап по строке слота открывает всех, кого можно позвать, — взрослых, не в походе,
+ * не выбитых, не больных и без беременности (`breeding-manager.ts` → `getNestSlotCandidates`).
+ * У жабы в списке видно её краткую сводку (пол, стадия, силы ⚡, сытость 🍽, редкость)
+ * и где она живёт сейчас, а жаб, которых слот не берёт, можно посмотреть с причиной отказа
+ * (переключатель «Не подходят») — чтобы не искать ответ, почему жабы нет в списке.
  *
- * Ухаживание заводит игрок: посадил самца и самку — и нажал «Начать ухаживание».
- * Кнопка активна не всегда: пока пара отдыхает, не хватает биомассы или заняты
- * родильные слоты биопода, под кнопкой висит причина (`checkNestCourtship`).
- * Беременность приходит через 15–30 минут, и из репродуктора жабы не уходят сами —
- * их выносит игрок.
+ * Ухаживание заводит игрок: посадил самку в первый слот, самца во второй — и нажал
+ * «Начать ухаживание». Кнопка активна не всегда: пока пара отдыхает, не хватает
+ * биомассы или заняты родильные слоты биопода, под кнопкой висит причина
+ * (`checkNestCourtship`). Беременность приходит через 15–30 минут, и из репродуктора
+ * жабы не уходят сами — их выносит игрок.
+ *
+ * Табы — общие для всех секторов (`shared/ModalTabs`): пары репродуктора первыми, «Данные
+ * сектора» (`modals/RoomDataTab.tsx`) — последним. Репродуктор открывают и из лаборатории
+ * (тогда гекса нет и таб один), и с гекса карты — тогда у модалки есть данные сектора.
  */
 
 /** «12м» / «1ч 05м» — отсчёт ухаживания в репродукторе */
@@ -79,99 +101,90 @@ const formatCooldown = (ms: number): string => {
   return minutes > 0 ? `${minutes}м ${seconds}с` : `${seconds}с`;
 };
 
-const EnergyBar = ({ value }: { value: number }) => (
-  <div className="w-full h-1.5 bg-gray-700/60 rounded-full overflow-hidden">
-    <div
-      className="h-full bg-gradient-to-r from-lime-400 to-emerald-500"
-      style={{ width: `${Math.min(100, (value / MAX_ENERGY) * 100)}%` }}
-    />
-  </div>
-);
-
-/** Строка жабы в списке свободного слота: имя, редкость, сектор и готовность */
-const CandidateRow = ({
-  toad,
-  room,
-  onPick,
-}: {
-  toad: Toad;
-  room: string;
-  onPick: () => void;
-}) => {
-  const rarity = getRarityConfig(toad.genes.rarity);
+/**
+ * Готовность жабы к паре — строка под именем в списке слота: по ней видно, кого звать
+ * первым (готова), а кого слот возьмёт только после отдыха или кормления.
+ */
+const readinessNote = (toad: Toad): string => {
+  const cooldownLeft = (toad.breedCooldownUntil ?? 0) - Date.now();
   const energy = getToadEnergy(toad);
   const cost = getEnergyCost(toad);
-  const cooldownLeft = (toad.breedCooldownUntil ?? 0) - Date.now();
-  const isDown = (toad.hp ?? 1) <= 0;
-  const isPregnant = Boolean(toad.pregnancy?.isPregnant);
-  const isReady = !isDown && !isPregnant && cooldownLeft <= 0 && energy >= cost;
 
-  const status = isDown
-    ? "выбита из строя"
-    : isPregnant
-      ? "🍼 вынашивает"
-      : cooldownLeft > 0
-        ? `отдых: ${formatCooldown(cooldownLeft)}`
-        : energy < cost
-          ? `нужно ⚡${cost}`
-          : "готова к паре";
+  if (cooldownLeft > 0) {
+    return `отдых: ${formatCooldown(cooldownLeft)}`;
+  }
 
-  return (
-    <button
-      type="button"
-      disabled={isDown}
-      onClick={onPick}
-      className={`w-full text-left rounded-lg p-2 border transition-all ${
-        isDown
-          ? "opacity-50 cursor-not-allowed border-gray-600/40 bg-color-main"
-          : isReady
-            ? "border-emerald-500/40 bg-color-main hover:border-emerald-400"
-            : "border-gray-600/50 bg-color-main hover:border-emerald-400/50"
-      }`}
-    >
-      <div className="flex items-center justify-between gap-1">
-        <span className={`text-xs font-semibold truncate ${rarity.color}`}>
-          {TYPE_ICONS[toad.sex as keyof typeof TYPE_ICONS] ?? "○"} {toad.name}
-        </span>
-        <span className="text-2xs text-gray-400 shrink-0">
-          {toad.genes.rarity.toFixed(1)}
-        </span>
-      </div>
-      <div className="mt-1 flex items-center gap-1.5">
-        <span className="text-2xs text-lime-300 shrink-0">
-          ⚡{Math.round(energy)}
-        </span>
-        <EnergyBar value={energy} />
-      </div>
-      <div className="mt-1 text-2xs text-gray-400 truncate">
-        {room} · {rarity.label} · {status}
-      </div>
-    </button>
-  );
+  if (energy < cost) {
+    return `нужно ⚡${cost}`;
+  }
+
+  return "готова к паре";
 };
+
+/** Что слот ищет — подсказка вверху раскрытого списка жаб */
+const slotHint = (slotIndex: number): string => {
+  const sex = getNestSlotSex(slotIndex);
+  const who = sex === "female" ? "самку" : "самца";
+
+  return `${getNestSlotLabel(
+    slotIndex,
+  )} берёт взрослую ${who} колонии: не в походе, не выбитую, не больную и без беременности. Сверху — самые редкие, под именем — готовность к паре и место жабы.`;
+};
+
+/** Что сказать, когда слот никого не может позвать */
+const slotEmptyText = (slotIndex: number): string =>
+  getNestSlotSex(slotIndex) === "female"
+    ? "Свободных самок нет: у остальных есть причина отказа — раскройте список ниже."
+    : "Свободных самцов нет: у остальных есть причина отказа — раскройте список ниже.";
 
 interface NestModalProps {
   /** id гекса-репродуктора, из которого открыли модалку: репродукторов в колонии может быть несколько */
   roomId?: string;
+  /** Гекс, из которого открыли модалку: по нему появляется последний таб «Данные сектора» */
+  room?: RoomConfig;
 }
 
-export default function NestModal({ roomId = NEST_ROOM_ID }: NestModalProps) {
+/** Табы репродуктора: пары первыми, «Данные сектора» — последним */
+type NestTab = "nest" | RoomDataTabId;
+
+export default function NestModal({
+  roomId = NEST_ROOM_ID,
+  room,
+}: NestModalProps) {
   const { allToads, account } = useToads();
   const { addNotification } = useNotifications();
   const { playOk, playExited } = useSoundEffects();
   const gameState = useGameState();
   // Раз в секунду обновляем обратные отсчёты: ухаживание, отдых, статусы жаб
   const [, setTick] = useState(0);
-  /** Открыт ли список жаб для свободного слота */
-  const [pickerOpen, setPickerOpen] = useState(false);
+  /** Состояние сектора: пары репродуктора (по умолчанию) или данные сектора */
+  const [tab, setTab] = useState<NestTab>("nest");
+
+  /** Табы: пары репродуктора и, если модалку открыл гекс, «Данные сектора» */
+  const tabs: ModalTabItem<NestTab>[] = [
+    { id: "nest", label: "🪺 Пары", color: "text-purple-400" },
+    ...(room ? [{ ...ROOM_DATA_TAB }] : []),
+  ];
 
   useEffect(() => {
     const id = setInterval(() => setTick((t) => t + 1), 1000);
     return () => clearInterval(id);
   }, []);
 
-  const colonyRooms = gameState.colony?.rooms ?? [];
   const scenes = gameState.scenes ?? [];
+  /**
+   * Сектора карты: у каждого гекса своё имя с номером экземпляра — «Репродуктор #2»
+   * (`components/HexMap/room-names.ts`). Собираем ту же карту, что рисует экран колонии,
+   * чтобы подписи списка жаб сходились с ней: своего состояния карты у модалки нет.
+   */
+  const mapRooms = useMemo(
+    () =>
+      resolveColonyRooms(
+        gameState.colony ?? EMPTY_COLONY,
+        gameState.scenes ?? [],
+      ),
+    [gameState.colony, gameState.scenes],
+  );
 
   /** Жабы, которые физически стоят в этом репродукторе: их и показывают слоты */
   const nestToads = allToads.filter(
@@ -194,12 +207,19 @@ export default function NestModal({ roomId = NEST_ROOM_ID }: NestModalProps) {
     scenes[0] ??
     null;
 
-  /** Два места репродуктора: занятые жабами и пустые (нажатие на пустое открывает список) */
-  const slots = Array.from(
-    { length: NEST_ROOM_TOAD_SLOTS },
-    (_, index) => nestAdults[index] ?? null,
+  /**
+   * Два места репродуктора: первый слот — самка, второй — самец (Часть 3.2). Слота два,
+   * поэтому жабы раскладываются по полу, а не по порядку: пара всегда встаёт на свои места
+   * (и слоты, и список жаб читают одни и те же правила, `breeding-manager.ts`).
+   */
+  const slots = NEST_SLOT_SEXES.map(
+    (sex) => nestAdults.find((toad) => toad.sex === sex) ?? null,
   );
-  const hasFreeSlot = nestAdults.length < NEST_ROOM_TOAD_SLOTS;
+  /**
+   * Взрослые, которым пол не дал слота: сейв, где в репродуктор посадили не пару
+   * (нейтрал или двое одного пола). Они видны отдельным списком — жаба не пропадает с экрана.
+   */
+  const extraNestAdults = nestAdults.filter((toad) => !slots.includes(toad));
 
   /** Статус жабы в репродукторе: ухаживает / вынашивает / ждёт пару */
   const toadStatus = (toad: Toad): string => {
@@ -224,15 +244,29 @@ export default function NestModal({ roomId = NEST_ROOM_ID }: NestModalProps) {
     return "ждёт пару";
   };
 
-  /** Список для пустого слота: ВСЕ половозрелые жабы, кроме похода и тех, кто уже в репродукторе */
-  const candidates = allToads
-    .filter(
-      (toad) =>
-        toad.stage === "adult" &&
-        toad.status !== "out" &&
-        !isNestRoomId(toad.roomId),
-    )
-    .sort((a, b) => b.genes.rarity - a.genes.rarity);
+  /**
+   * Строки списка слота: кого слот берёт — `getNestSlotCandidates` (взрослые жабы его пола,
+   * не в походе, не выбитые, не больные, без беременности; сверху самые редкие), и кого нет —
+   * с причиной отказа `getNestSlotRejectReason`. Отбор и причины живут в менеджере
+   * репродуктора: теми же правилами пользуются подсказки, проверки пары и эта модалка.
+   */
+  const getSlotPicker = (slotIndex: number) => ({
+    available: getNestSlotCandidates(slotIndex).map((toad) => ({
+      toad,
+      // Место в списке: пару собирают из самых редких жаб колонии
+      rank: toad.genes.rarity,
+      note: readinessNote(toad),
+    })),
+    // Жабы самого репродуктора и так видны в слотах — в «не подходят» им делать нечего
+    rejected: allToads
+      .filter((toad) => toad.roomId !== roomId)
+      .map((toad) => ({
+        toad,
+        rank: toad.genes.rarity,
+        reason: getNestSlotRejectReason(toad, slotIndex),
+      }))
+      .filter((item) => Boolean(item.reason)),
+  });
 
   /** В каком секторе жаба живёт сейчас (для списка жаб) */
   const roomLabelOf = (toad: Toad): string => {
@@ -241,32 +275,16 @@ export default function NestModal({ roomId = NEST_ROOM_ID }: NestModalProps) {
       return scene?.name ?? "Биопод";
     }
 
-    const baseRoom = HEX_ROOM_BY_ID[toad.roomId];
-
-    if (baseRoom && baseRoom.kind !== "empty") {
-      return baseRoom.title;
-    }
-
-    const builtRoom = colonyRooms.find((room) => room.id === toad.roomId);
-
-    return builtRoom ? COLONY_ROOM_TITLES[builtRoom.kind] : "Сектор колонии";
+    // Сектора с таким id в карте нет только у сейва со снесённым гексом — тогда имя общее
+    return (
+      mapRooms.find((room) => room.id === toad.roomId)?.name || "Сектор колонии"
+    );
   };
 
   /** Название репродуктора, из которого открыли модалку (базовое или построенное) */
-  const nestRoomTitle = (() => {
-    const baseRoom = HEX_ROOM_BY_ID[roomId];
+  const nestRoomTitle =
+    mapRooms.find((room) => room.id === roomId)?.name || "Репродуктор";
 
-    if (baseRoom && baseRoom.kind !== "empty") {
-      return baseRoom.title;
-    }
-
-    const builtRoom = colonyRooms.find((room) => room.id === roomId);
-
-    return builtRoom ? COLONY_ROOM_TITLES[builtRoom.kind] : "Репродуктор";
-  })();
-
-  const occupancy = getNestOccupancy(hostScene?.id ?? null);
-  const nestSlotsFull = occupancy.used >= occupancy.limit;
   const pregnant = allToads.filter(
     (toad) =>
       isToadFromEnclosure(toad, hostScene?.id) &&
@@ -313,11 +331,15 @@ export default function NestModal({ roomId = NEST_ROOM_ID }: NestModalProps) {
     }
 
     if (nestAdults.length === 0) {
-      return "Посадите в репродуктор самца и самку ";
+      return "Посадите пару: самку в первый слот, самца во второй.";
     }
 
-    if (!nestMale || !nestFemale) {
-      return "В репродукторе нужны самец и самка — посадите жабу в свободный слот.";
+    if (!nestFemale) {
+      return "Не хватает самки — она садится в первый слот.";
+    }
+
+    if (!nestMale) {
+      return "Не хватает самца — он садится во второй слот.";
     }
 
     return null;
@@ -327,7 +349,6 @@ export default function NestModal({ roomId = NEST_ROOM_ID }: NestModalProps) {
   const handlePlace = (toad: Toad) => {
     placeToadInRoom(toad.id, roomId);
     playOk();
-    setPickerOpen(false);
     // Ухаживание не стартует само: игрок сначала сажает пару, а потом жмёт
     // «Начать ухаживание» в блоке ниже (кнопка объяснит, чего не хватает)
     setTick((t) => t + 1);
@@ -448,324 +469,369 @@ export default function NestModal({ roomId = NEST_ROOM_ID }: NestModalProps) {
         </div>
       </div>
 
-      <div className="flex flex-col gap-3">
-        {/* Сводка */}
-        <div className="flex items-center justify-between text-xs bg-color-main rounded-xl px-3 py-2 border border-gray-500/30">
-          <span className="text-emerald-300">
-            🪺 Слоты биопода: {occupancy.used}/{occupancy.limit}
-          </span>
-          <span className="text-cyan-300">
-            👥 В репродукторе: {nestAdults.length}/{NEST_ROOM_TOAD_SLOTS}
-          </span>
-          <span className="text-lime-300">🧪 {biomass}</span>
-          <span className="text-purple-300">★ {astro}</span>
-        </div>
+      {/* Переключение вкладок: вид один на все секторы (`shared/ModalTabs`) */}
+      {tabs.length > 1 && (
+        <ModalTabs tabs={tabs} active={tab} onChange={setTab} />
+      )}
 
-        <p className="text-1xs text-gray-400 text-center leading-snug">
-          Посадите в репродуктор самца и самку и нажмите «Начать ухаживание»:
-          ухаживание занимает {MATING_MIN_MINUTES}–{MATING_MAX_MINUTES} мин, и
-          только потом у самки стартует беременность. Из репродуктора жабы не уходят —
-          и после ухаживания, и после родов их выносит игрок. Головастики,
-          рождённые в репродукторе, остаются рядом с матерью, даже если репродуктор
-          переполнено.
-        </p>
+      {tab === "nest" && (
+        <>
+          <div className="flex flex-col gap-3">
+            {/* Сводка */}
+            <div className="flex items-center justify-between text-xs bg-color-main rounded-xl px-3 py-2 border border-gray-500/30">
+              <span className="text-cyan-300">
+                👥 В репродукторе: {nestAdults.length}/{NEST_ROOM_TOAD_SLOTS}
+              </span>
+              <span className="text-lime-300">🧪 {biomass}</span>
+              <span className="text-purple-300">★ {astro}</span>
+            </div>
 
-        {/* Места репродуктора: занятые жабы и пустые слоты */}
-        <div className="bg-color-main rounded-xl px-3 py-2 border border-purple-500/40 flex flex-col gap-2">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-purple-200 font-semibold">
-              🪺 Места репродуктора
-            </span>
-            <span className="text-2xs text-gray-400">{nestRoomTitle}</span>
-          </div>
+            <p className="text-1xs text-gray-400 text-center leading-snug">
+              Репродуктор — на пару: самка садится в первый слот, самец во
+              второй. Посадите пару и нажмите «Начать ухаживание»: ухаживание
+              занимает {MATING_MIN_MINUTES}–{MATING_MAX_MINUTES} мин, и только
+              потом у самки стартует беременность. Из репродуктора жабы не
+              уходят — и после ухаживания, и после родов их выносит игрок.
+              Головастики, рождённые в репродукторе, остаются рядом с матерью,
+              даже если репродуктор переполнено.
+            </p>
 
-          {slots.map((toad, index) =>
-            toad ? (
-              <div
-                key={toad.id}
-                className="rounded-lg p-2 bg-black/20 border border-purple-500/30 flex flex-col gap-1.5"
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <span
-                    className={`text-xs font-semibold truncate ${
-                      getRarityConfig(toad.genes.rarity).color
+            {/* Слоты пары: каждый слот — выпадающий список жаб своего пола */}
+            <div className="bg-color-main rounded-xl px-3 py-2 border border-purple-500/40 flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-purple-200 font-semibold">
+                  🪺 Места репродуктора
+                </span>
+                <span className="text-2xs text-gray-400">{nestRoomTitle}</span>
+              </div>
+
+              {slots.map((toad, index) => {
+                const picker = getSlotPicker(index);
+
+                return (
+                  <div
+                    key={`nest-slot-${index}`}
+                    className={`rounded-lg p-2 bg-black/20 border flex flex-col gap-1.5 ${
+                      toad
+                        ? "border-purple-500/30"
+                        : "border-dashed border-emerald-500/40"
                     }`}
                   >
-                    {TYPE_ICONS[toad.sex as keyof typeof TYPE_ICONS] ?? "○"}{" "}
-                    {toad.name}
-                  </span>
-                  <span className="text-2xs text-gray-400 shrink-0">
-                    {getRarityConfig(toad.genes.rarity).label} ·{" "}
-                    {toad.genes.rarity.toFixed(1)}
-                  </span>
-                </div>
+                    {/*
+                     * Слот — выпадающий список жаб своего пола: тап по строке открывает всех,
+                     * кого слот возьмёт, а жаба в слоте меняется выбором из того же списка.
+                     */}
+                    <ToadPicker
+                      icon={getToadSexIcon(NEST_SLOT_SEXES[index])}
+                      caption={getNestSlotLabel(index)}
+                      label={getNestSlotLabel(index)}
+                      picked={toad}
+                      placeholder="＋ посадить жабу"
+                      pickedSummary={
+                        toad ? (
+                          <span className="shrink-0 text-2xs text-lime-300">
+                            ⚡{Math.round(getToadEnergy(toad))}
+                          </span>
+                        ) : undefined
+                      }
+                      groups={[
+                        {
+                          label: `Можно взять (${picker.available.length})`,
+                          items: picker.available,
+                        },
+                      ]}
+                      rejected={{
+                        label: TOAD_PICKER_REJECTED_GROUP,
+                        items: picker.rejected,
+                      }}
+                      hint={slotHint(index)}
+                      emptyText={slotEmptyText(index)}
+                      locationOf={roomLabelOf}
+                      onPick={handlePlace}
+                    />
 
-                <div className="flex items-center gap-1.5">
-                  <span className="text-2xs text-lime-300 shrink-0">
-                    ⚡{Math.round(getToadEnergy(toad))}
-                  </span>
-                  <EnergyBar value={getToadEnergy(toad)} />
-                </div>
+                    {toad && (
+                      <>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-2xs text-lime-300 shrink-0">
+                            ⚡{Math.round(getToadEnergy(toad))}
+                          </span>
+                          {/* Полоска сил: видно, дотянет ли жаба до пары (`getEnergyCost`) */}
+                          <div className="w-full h-1.5 bg-gray-700/60 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-gradient-to-r from-lime-400 to-emerald-500"
+                              style={{
+                                width: `${Math.min(
+                                  100,
+                                  (getToadEnergy(toad) / MAX_ENERGY) * 100,
+                                )}%`,
+                              }}
+                            />
+                          </div>
+                        </div>
 
-                <div className="text-2xs text-gray-300 truncate">
-                  {toadStatus(toad)}
-                </div>
+                        <div className="text-2xs text-gray-300 truncate">
+                          {toadStatus(toad)}
+                        </div>
 
-                {getToadDisease(toad) && (
-                  <div className="text-2xs text-red-300 truncate">
-                    {getToadDisease(toad)?.icon} {getToadDisease(toad)?.name}
+                        {getToadDisease(toad) && (
+                          <div className="text-2xs text-red-300 truncate">
+                            {getToadDisease(toad)?.icon}{" "}
+                            {getToadDisease(toad)?.name}
+                          </div>
+                        )}
+                      </>
+                    )}
+
+                    {toad && (
+                      <div className="flex flex-wrap gap-1.5">
+                        <ClickButton
+                          onClick={() => handleRelease(toad)}
+                          className="px-2 py-1 rounded-md text-2xs bg-color-main border border-gray-500/50 text-gray-200"
+                        >
+                          {toad.mating
+                            ? "Прервать и вынести"
+                            : "Вынести в биопод"}
+                        </ClickButton>
+                        {toad.mating && (
+                          <ClickButton
+                            onClick={() => handleAbortMating(toad)}
+                            className="px-2 py-1 rounded-md text-2xs bg-color-main border border-amber-500/50 text-amber-200"
+                          >
+                            Только прервать
+                          </ClickButton>
+                        )}
+                        {(toad.breedCooldownUntil ?? 0) > Date.now() && (
+                          <ClickButton
+                            onClick={() => handleResetCooldown(toad)}
+                            className="px-2 py-1 rounded-md text-2xs bg-color-main border border-purple-500/50 text-purple-200"
+                          >
+                            Сбросить отдых ★{ASTRO_PRICES.resetCooldown}
+                          </ClickButton>
+                        )}
+                      </div>
+                    )}
                   </div>
-                )}
+                );
+              })}
 
-                <div className="flex flex-wrap gap-1.5">
-                  <ClickButton
-                    onClick={() => handleRelease(toad)}
-                    className="px-2 py-1 rounded-md text-2xs bg-color-main border border-gray-500/50 text-gray-200"
-                  >
-                    {toad.mating ? "Прервать и вынести" : "Вынести в биопод"}
-                  </ClickButton>
-                  {toad.mating && (
-                    <ClickButton
-                      onClick={() => handleAbortMating(toad)}
-                      className="px-2 py-1 rounded-md text-2xs bg-color-main border border-amber-500/50 text-amber-200"
+              {/* Не пара: сейв с жабами не того пола. Показываем их отдельно — жаба не пропадает с экрана */}
+              {extraNestAdults.length > 0 && (
+                <div className="rounded-lg p-2 bg-black/20 border border-amber-500/40 flex flex-col gap-1.5">
+                  <div className="text-2xs text-amber-200 leading-snug">
+                    Ещё в репродукторе: {extraNestAdults.length} — слоты заняты
+                    парой (самка и самец). Эти жабы места пары не занимают, но и
+                    пару не образуют.
+                  </div>
+
+                  {extraNestAdults.map((toad) => (
+                    <div
+                      key={`nest-extra-${toad.id}`}
+                      className="flex items-center justify-between gap-2"
                     >
-                      Только прервать
-                    </ClickButton>
-                  )}
-                  {(toad.breedCooldownUntil ?? 0) > Date.now() && (
-                    <ClickButton
-                      onClick={() => handleResetCooldown(toad)}
-                      className="px-2 py-1 rounded-md text-2xs bg-color-main border border-purple-500/50 text-purple-200"
-                    >
-                      Сбросить отдых ★{ASTRO_PRICES.resetCooldown}
-                    </ClickButton>
-                  )}
+                      <span
+                        className={`text-2xs font-semibold truncate ${
+                          getRarityConfig(toad.genes.rarity).color
+                        }`}
+                      >
+                        {TYPE_ICONS[toad.sex as keyof typeof TYPE_ICONS] ?? "○"}{" "}
+                        {toad.name}
+                      </span>
+                      <ClickButton
+                        onClick={() => handleRelease(toad)}
+                        className="px-2 py-1 rounded-md text-2xs bg-color-main border border-gray-500/50 text-gray-200 shrink-0"
+                      >
+                        Вынести в биопод
+                      </ClickButton>
+                    </div>
+                  ))}
                 </div>
+              )}
+
+              {nestHint && (
+                <div className="text-2xs text-amber-200 leading-snug">
+                  {nestHint}
+                </div>
+              )}
+            </div>
+
+            {/* Кнопка ухаживания: пару заводит игрок, а не репродуктор само (Часть 3.2) */}
+            <div className="bg-color-main rounded-xl px-3 py-2 border border-pink-500/40 flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-pink-200 font-semibold">
+                  ♥ Ухаживание пары
+                </span>
+                <span className="text-2xs text-gray-400">
+                  {MATING_MIN_MINUTES}–{MATING_MAX_MINUTES} мин
+                </span>
               </div>
-            ) : (
-              <button
-                key={`nest-free-slot-${index}`}
-                type="button"
-                onClick={() => setPickerOpen((open) => !open)}
-                className="w-full rounded-lg p-2 border border-dashed border-emerald-500/50 text-2xs text-emerald-200 hover:border-emerald-400 transition-all"
-              >
-                ＋ Свободный слот — посадить жабу
-              </button>
-            ),
-          )}
 
-          {nestHint && (
-            <div className="text-2xs text-amber-200 leading-snug">
-              {nestHint}
-            </div>
-          )}
-        </div>
-
-        {/* Кнопка ухаживания: пару заводит игрок, а не репродуктор само (Часть 3.2) */}
-        <div className="bg-color-main rounded-xl px-3 py-2 border border-pink-500/40 flex flex-col gap-2">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-pink-200 font-semibold">
-              ♥ Ухаживание пары
-            </span>
-            <span className="text-2xs text-gray-400">
-              {MATING_MIN_MINUTES}–{MATING_MAX_MINUTES} мин
-            </span>
-          </div>
-
-          <div className="flex items-center justify-between text-2xs">
-            <span className="text-lime-300">⚡ пара: {pairEnergyCost}</span>
-            <span
-              className={enoughBiomass ? "text-cyan-300" : "text-amber-300"}
-            >
-              🧪 {pairBiomassCost}
-            </span>
-            <span
-              className={nestSlotsFull ? "text-amber-300" : "text-emerald-300"}
-            >
-              🪺 слоты: {occupancy.used}/{occupancy.limit}
-            </span>
-          </div>
-
-          <ClickButton
-            disabled={!courtship.ready}
-            onClick={handleStartCourtship}
-            className={`w-full rounded-lg px-3 py-2 text-xs border transition-all ${
-              courtship.ready
-                ? "border-pink-500/60 text-pink-100 hover:border-pink-400"
-                : "opacity-50 cursor-not-allowed border-gray-600/50 text-gray-400"
-            }`}
-          >
-            ♥ Начать ухаживание
-          </ClickButton>
-
-          <div
-            className={`text-2xs leading-snug ${
-              courtship.ready ? "text-emerald-200" : "text-amber-200"
-            }`}
-          >
-            {courtship.message}
-          </div>
-        </div>
-
-        {/* Головастики, рождённые в репродукторе: переполнение разрешено, их выносит игрок */}
-        {nestChildren.length > 0 && (
-          <div className="bg-color-main rounded-xl px-3 py-2 border border-amber-500/40 flex flex-col gap-1">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-amber-200 font-semibold">
-                🐸 Головастики в репродукторе: {nestChildren.length}
-              </span>
-              <span className="text-2xs text-gray-400">
-                мест: {NEST_ROOM_TOAD_SLOTS}
-              </span>
-            </div>
-            <div className="text-2xs text-gray-400 leading-snug">
-              Они родились здесь и переполняют репродуктор. Перенесите их в биопод на
-              карте колонии — репродуктор примет ещё пару.
-            </div>
-            <div className="flex flex-col gap-1">
-              {nestChildren.map((child) => (
-                <button
-                  key={child.id}
-                  type="button"
-                  disabled={(child.hp ?? 1) <= 0}
-                  onClick={() => handleRelease(child)}
-                  className="w-full text-left rounded-lg px-2 py-1 border border-gray-600/50 bg-black/20 text-2xs text-gray-200 hover:border-amber-400/60 transition-all"
+              <div className="flex items-center justify-between text-2xs">
+                <span className="text-lime-300">⚡ пара: {pairEnergyCost}</span>
+                <span
+                  className={enoughBiomass ? "text-cyan-300" : "text-amber-300"}
                 >
-                  <span className={getRarityConfig(child.genes.rarity).color}>
-                    {child.name}
-                  </span>{" "}
-                  · {toadStatus(child)} · вынести в биопод
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Список всех половозрелых жаб на свободный слот репродуктора */}
-        {pickerOpen && hasFreeSlot && (
-          <div className="bg-color-main rounded-xl px-3 py-2 border border-emerald-500/40 flex flex-col gap-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-emerald-200 font-semibold">
-                Кого позвать в репродуктор
-              </span>
-              <span className="text-2xs text-gray-400">
-                {candidates.length} жаб · сектор указана у каждой
-              </span>
-            </div>
-
-            {candidates.length === 0 ? (
-              <div className="text-2xs text-gray-400">
-                Половозрелых жаб нет: все в походах или уже сидят в репродукторе.
+                  🧪 {pairBiomassCost}
+                </span>
               </div>
-            ) : (
-              <div className="flex flex-col gap-1.5 max-h-[36vh] overflow-y-auto pr-1">
-                {candidates.map((toad) => (
-                  <CandidateRow
-                    key={toad.id}
-                    toad={toad}
-                    room={roomLabelOf(toad)}
-                    onPick={() => handlePlace(toad)}
-                  />
-                ))}
+
+              <ClickButton
+                disabled={!courtship.ready}
+                onClick={handleStartCourtship}
+                className={`w-full rounded-lg px-3 py-2 text-xs border transition-all ${
+                  courtship.ready
+                    ? "border-pink-500/60 text-pink-100 hover:border-pink-400"
+                    : "opacity-50 cursor-not-allowed border-gray-600/50 text-gray-400"
+                }`}
+              >
+                ♥ Начать ухаживание
+              </ClickButton>
+
+              <div
+                className={`text-2xs leading-snug ${
+                  courtship.ready ? "text-emerald-200" : "text-amber-200"
+                }`}
+              >
+                {courtship.message}
+              </div>
+            </div>
+
+            {/* Головастики, рождённые в репродукторе: переполнение разрешено, их выносит игрок */}
+            {nestChildren.length > 0 && (
+              <div className="bg-color-main rounded-xl px-3 py-2 border border-amber-500/40 flex flex-col gap-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-amber-200 font-semibold">
+                    🐸 Головастики в репродукторе: {nestChildren.length}
+                  </span>
+                  <span className="text-2xs text-gray-400">
+                    мест: {NEST_ROOM_TOAD_SLOTS}
+                  </span>
+                </div>
+                <div className="text-2xs text-gray-400 leading-snug">
+                  Они родились здесь и переполняют репродуктор. Перенесите их в
+                  биопод на карте колонии — репродуктор примет ещё пару.
+                </div>
+                <div className="flex flex-col gap-1">
+                  {nestChildren.map((child) => (
+                    <button
+                      key={child.id}
+                      type="button"
+                      disabled={(child.hp ?? 1) <= 0}
+                      onClick={() => handleRelease(child)}
+                      className="w-full text-left rounded-lg px-2 py-1 border border-gray-600/50 bg-black/20 text-2xs text-gray-200 hover:border-amber-400/60 transition-all"
+                    >
+                      <span
+                        className={getRarityConfig(child.genes.rarity).color}
+                      >
+                        {child.name}
+                      </span>{" "}
+                      · {toadStatus(child)} · вынести в биопод
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
-          </div>
-        )}
 
-        {/* Цена ухаживания: её списывает кнопка «Начать ухаживание», когда пара готова */}
-        <div className="bg-color-main rounded-xl px-3 py-2 border border-gray-500/30 text-xs flex flex-col gap-1">
-          <div className="flex items-center justify-between">
-            <span className="text-gray-400">Энергия пары за ухаживание</span>
-            <span className="text-lime-300">⚡ {pairEnergyCost}</span>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-gray-400">Биомасса за пару</span>
-            <span
-              className={enoughBiomass ? "text-emerald-300" : "text-red-400"}
-            >
-              🧪 {pairBiomassCost}
-            </span>
-          </div>
-          <div className="text-2xs text-gray-500 leading-snug">
-            Списывается один раз — когда репродуктор начинает ухаживание. Отдых после
-            пары считается у каждой жабы отдельно.
-          </div>
-        </div>
-
-        {/* Кваксы: расширение репродуктора биопода (Часть 3.2) */}
-        <div className="bg-color-main rounded-xl px-3 py-2 border border-gray-500/30 flex flex-col gap-2">
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-gray-400">Родильные слоты биопода</span>
-            <span className="text-emerald-300">
-              {occupancy.used}/{occupancy.limit}
-            </span>
-          </div>
-
-          {canUpgrade ? (
-            <ClickButton
-              disabled={tokens < nestUpgradeCost}
-              onClick={handleUpgradeNest}
-              className={`w-full rounded-lg px-3 py-2 text-xs border transition-all ${
-                tokens < nestUpgradeCost
-                  ? "opacity-50 cursor-not-allowed border-gray-600/50 text-gray-400"
-                  : "border-emerald-500/50 text-emerald-200 hover:border-emerald-400"
-              }`}
-            >
-              Расширить репродуктор: +1 слот · {CURRENCY_CONFIG.tokens.icon}{" "}
-              {nestUpgradeCost} · {CURRENCY_CONFIG.tokens.icon} у вас {tokens}
-            </ClickButton>
-          ) : (
-            <div className="text-2xs text-gray-400">
-              Репродуктор расширен до предела: {NEST_MAX_SLOTS} родильных слотов на
-              биопод.
+            {/* Цена ухаживания: её списывает кнопка «Начать ухаживание», когда пара готова */}
+            <div className="bg-color-main rounded-xl px-3 py-2 border border-gray-500/30 text-xs flex flex-col gap-1">
+              <div className="flex items-center justify-between">
+                <span className="text-gray-400">
+                  Энергия пары за ухаживание
+                </span>
+                <span className="text-lime-300">⚡ {pairEnergyCost}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-400">Биомасса за пару</span>
+                <span
+                  className={
+                    enoughBiomass ? "text-emerald-300" : "text-red-400"
+                  }
+                >
+                  🧪 {pairBiomassCost}
+                </span>
+              </div>
+              <div className="text-2xs text-gray-500 leading-snug">
+                Списывается один раз — когда репродуктор начинает ухаживание.
+                Отдых после пары считается у каждой жабы отдельно.
+              </div>
             </div>
-          )}
 
-          <div className="text-2xs text-gray-500 leading-snug">
-            Слот занимают и ухаживание в репродукторе, и беременность: пока все слоты
-            биопода заняты, новая пара не заведётся.
+            {/* Кваксы: расширение репродуктора биопода (Часть 3.2) */}
+            <div className="bg-color-main rounded-xl px-3 py-2 border border-gray-500/30 flex flex-col gap-2">
+              {canUpgrade ? (
+                <ClickButton
+                  disabled={tokens < nestUpgradeCost}
+                  onClick={handleUpgradeNest}
+                  className={`w-full rounded-lg px-3 py-2 text-xs border transition-all ${
+                    tokens < nestUpgradeCost
+                      ? "opacity-50 cursor-not-allowed border-gray-600/50 text-gray-400"
+                      : "border-emerald-500/50 text-emerald-200 hover:border-emerald-400"
+                  }`}
+                >
+                  Расширить репродуктор: +1 слот · {CURRENCY_CONFIG.tokens.icon}{" "}
+                  {nestUpgradeCost} · {CURRENCY_CONFIG.tokens.icon} у вас{" "}
+                  {tokens}
+                </ClickButton>
+              ) : (
+                <div className="text-2xs text-gray-400">
+                  Репродуктор расширен до предела: {NEST_MAX_SLOTS} родильных
+                  слотов на биопод.
+                </div>
+              )}
+
+              <div className="text-2xs text-gray-500 leading-snug">
+                Слот занимают и ухаживание в репродукторе, и беременность: пока
+                все слоты биопода заняты, новая пара не заведётся.
+              </div>
+            </div>
+
+            {/* Разовые ускорения за астро-кваксы (Часть 3.7) */}
+            <div className="bg-color-main rounded-xl px-3 py-2 border border-purple-500/30 flex flex-col gap-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-purple-200 font-semibold">
+                  Астро-кваксы
+                </span>
+                <span className="text-purple-300">★ {astro}</span>
+              </div>
+
+              {courting.map((toad) => (
+                <ClickButton
+                  key={`courtship-${toad.id}`}
+                  disabled={astro < ASTRO_PRICES.acceleratePregnancy}
+                  onClick={() => handleAccelerate(toad)}
+                  className="w-full rounded-lg px-3 py-2 text-xs border border-purple-500/40 text-purple-200 hover:border-purple-400 disabled:opacity-50"
+                >
+                  Ускорить ухаживание · {toad.name} (★
+                  {ASTRO_PRICES.acceleratePregnancy})
+                </ClickButton>
+              ))}
+
+              {pregnant.map((toad) => (
+                <ClickButton
+                  key={`pregnancy-${toad.id}`}
+                  disabled={astro < ASTRO_PRICES.acceleratePregnancy}
+                  onClick={() => handleAccelerate(toad)}
+                  className="w-full rounded-lg px-3 py-2 text-xs border border-green-500/40 text-green-200 hover:border-green-400 disabled:opacity-50"
+                >
+                  Ускорить роды · {toad.name} (★
+                  {ASTRO_PRICES.acceleratePregnancy})
+                </ClickButton>
+              ))}
+
+              <ClickButton
+                disabled={astro < ASTRO_PRICES.quarantine}
+                onClick={handleQuarantine}
+                className="w-full rounded-lg px-3 py-2 text-xs border border-sky-500/40 text-sky-200 hover:border-sky-400 disabled:opacity-50"
+              >
+                Карантин биопода: лечит всех жаб (★{ASTRO_PRICES.quarantine})
+              </ClickButton>
+            </div>
           </div>
-        </div>
+        </>
+      )}
 
-        {/* Разовые ускорения за астро-кваксы (Часть 3.7) */}
-        <div className="bg-color-main rounded-xl px-3 py-2 border border-purple-500/30 flex flex-col gap-2">
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-purple-200 font-semibold">Астро-кваксы</span>
-            <span className="text-purple-300">★ {astro}</span>
-          </div>
-
-          {courting.map((toad) => (
-            <ClickButton
-              key={`courtship-${toad.id}`}
-              disabled={astro < ASTRO_PRICES.acceleratePregnancy}
-              onClick={() => handleAccelerate(toad)}
-              className="w-full rounded-lg px-3 py-2 text-xs border border-purple-500/40 text-purple-200 hover:border-purple-400 disabled:opacity-50"
-            >
-              Ускорить ухаживание · {toad.name} (★
-              {ASTRO_PRICES.acceleratePregnancy})
-            </ClickButton>
-          ))}
-
-          {pregnant.map((toad) => (
-            <ClickButton
-              key={`pregnancy-${toad.id}`}
-              disabled={astro < ASTRO_PRICES.acceleratePregnancy}
-              onClick={() => handleAccelerate(toad)}
-              className="w-full rounded-lg px-3 py-2 text-xs border border-green-500/40 text-green-200 hover:border-green-400 disabled:opacity-50"
-            >
-              Ускорить роды · {toad.name} (★{ASTRO_PRICES.acceleratePregnancy})
-            </ClickButton>
-          ))}
-
-          <ClickButton
-            disabled={astro < ASTRO_PRICES.quarantine}
-            onClick={handleQuarantine}
-            className="w-full rounded-lg px-3 py-2 text-xs border border-sky-500/40 text-sky-200 hover:border-sky-400 disabled:opacity-50"
-          >
-            Карантин биопода: лечит всех жаб (★{ASTRO_PRICES.quarantine})
-          </ClickButton>
-        </div>
-      </div>
+      {/* ВКЛАДКА «Данные сектора»: описание, улучшения и снос гекса репродуктора */}
+      {tab === "room-data" && room && <RoomDataTab room={room} />}
     </>
   );
 }

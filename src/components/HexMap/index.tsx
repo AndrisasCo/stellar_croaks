@@ -26,7 +26,7 @@ import { useModal } from "../ModalContext";
 import { useToads } from "../ToadContext";
 import { BurgerMenu } from "../modals/BurgerMenuModal";
 import BuildRoomModal from "../modals/BuildRoomModal";
-import RoomUpgradeModal from "../modals/RoomUpgradeModal";
+import HospitalModal from "../modals/HospitalModal";
 import ExpeditionModal from "../modals/ExpeditionModal";
 import DissolveModal from "../modals/Lab/DissolveModal";
 import ToadCollider from "../modals/Lab/ToadColliderModal";
@@ -64,8 +64,12 @@ const pluralizeHexes = (count: number): string => {
   return "гексов";
 };
 
-/** Модалка, которую открывает действие сектора, и фон для неё (лаборатория — свой). */
-type RoomModalEntry = { render: () => ReactElement; bg?: string } | null;
+/** Модалка, которую открывает действие сектора: ей передают сам гекс (он открывает в модалке
+ *  последним табом «Данные сектора»), а `bg` — свой фон, если модалке он нужен (лаборатория). */
+type RoomModalEntry = {
+  render: (room: RoomConfig) => ReactElement;
+  bg?: string;
+} | null;
 
 /**
  * Действия секторов каталога → существующие модалки: карта только выбирает, какую показать.
@@ -74,27 +78,29 @@ type RoomModalEntry = { render: () => ReactElement; bg?: string } | null;
  * новое действие в каталог — компилятор напомнит про модалку.
  */
 const ROOM_MODAL_BY_ACTION: Record<RoomActionId, RoomModalEntry> = {
-  // Ядро: улучшение жилого сектора — модалка сама показывает список секторов и берёт апгрейды
-  // из состояния колонии, поэтому ей ничего передавать не нужно.
-  "room-upgrade": { render: () => <RoomUpgradeModal /> },
+  // Ядро ничего не открывает: улучшения и снос переехали к самим секторам — в последний таб
+  // их модалок «Данные сектора» (`modals/RoomDataTab.tsx`). Модалки «Сектора колонии» больше нет.
+  "room-upgrade": null,
   // Биопод открывается сам: модалке нужен биопод гекса (`RoomConfig.sceneId`), а не общий
   // «текущий биопод» — см. обработчик клика. Здесь запасной путь без привязки к гексу.
   "toad-list": null,
   "scene-info": null,
   feed: null,
-  // Репродукторов в колонии может быть несколько: гекс открывает модалку сам (см. обработчик клика),
-  // здесь — запасной путь для базового репродуктора `NEST_ROOM_ID`.
-  nest: { render: () => <NestModal /> },
-  collider: { render: () => <ToadCollider /> },
-  incubator: { render: () => <ToadSlotModal /> },
-  dissociator: { render: () => <DissolveModal /> },
-  shop: { render: () => <ShopMenu /> },
-  storage: { render: () => <StorageModal /> },
-  // «Разведка» на карте открывается по гексу (модалке нужен `roomId`: команду собирают из жаб
-  // этого сектора — см. обработчик клика). Здесь — запасной путь из бургер-меню: модалка сама
-  // найдёт «Разведку» с жабами внутри, а если такой нет — первую построенную.
-  scout: { render: () => <ExpeditionModal /> },
-  hospital: { render: () => <ExpeditionModal initialTab="infirmary" /> },
+  // Репродукторов в колонии может быть несколько: гекс открывает модалку сам (см. обработчик
+  // клика) — гексу модалка и обязана: он её сектор с его парами и данными.
+  nest: { render: (room) => <NestModal roomId={room.id} room={room} /> },
+  collider: { render: (room) => <ToadCollider room={room} /> },
+  incubator: { render: (room) => <ToadSlotModal room={room} /> },
+  dissociator: { render: (room) => <DissolveModal room={room} /> },
+  shop: { render: (room) => <ShopMenu room={room} /> },
+  storage: { render: (room) => <StorageModal room={room} /> },
+  // «Разведка»: модалке нужен её гекс — из жаб этого сектора собирают команду, и данные
+  // сектора тоже его. Из бургер-меню «Разведка» открывается отдельно и без гекса: модалка
+  // сама ищет сектор с жабами внутри (см. ExpeditionModal).
+  scout: { render: (room) => <ExpeditionModal roomId={room.id} /> },
+  // «Лазарет» на карте открывается по гексу (модалке нужен сам сектор: его койки и его
+  // пациенты — см. обработчик клика). Здесь — запасной путь без привязки к гексу.
+  hospital: null,
   // ⚡-сектор открывается отдельно: её модалке нужна сам сектор
   "power-room": null,
 };
@@ -109,7 +115,7 @@ const ROOM_MODAL_BY_ACTION: Record<RoomActionId, RoomModalEntry> = {
  * Гексы — только цвет: иконок, подписей и кнопок внутри секторов нет, в центре гекса
  * живут сами жабы. Поэтому тап по гексу открывает действие сектора из каталога
  * (`rooms-config.ts` → `ROOM_MODAL_BY_ACTION`):
- *  - ядро        → улучшение сектора (автокормушка для жилого сектора);
+ *  - ядро        → ничего: улучшения и снос живут в табе «Данные сектора» у самих секторов;
  *  - биопод      → список жаб и кормление;
  *  - репродуктор      → размножение;
  *  - коллайдер / инкубатор / диссоциатор → лаборатория;
@@ -342,7 +348,7 @@ export default function HexMapScreen() {
 
       // Репродуктор: репродукторов в колонии может быть несколько — модалка знает, какой гекс открыли
       if (room.kind === "breeding") {
-        openModal(() => <NestModal roomId={room.id} />);
+        openModal(() => <NestModal roomId={room.id} room={room} />);
         return;
       }
 
@@ -354,7 +360,7 @@ export default function HexMapScreen() {
           return;
         }
 
-        openModal(() => <ToadListModal sceneId={sceneId} />);
+        openModal(() => <ToadListModal sceneId={sceneId} room={room} />);
         return;
       }
 
@@ -365,6 +371,13 @@ export default function HexMapScreen() {
         return;
       }
 
+      // «Лазарет»: у сектора своя модалка (койки, пациенты и данные сектора), и ей нужен
+      // именно этот гекс — лечат жаб его коек (`modals/HospitalModal.tsx`)
+      if (room.kind === "hospital") {
+        openModal(() => <HospitalModal room={room} />);
+        return;
+      }
+
       const actionId = room.actions[0]?.id;
       const modal = actionId ? ROOM_MODAL_BY_ACTION[actionId] : null;
 
@@ -372,7 +385,7 @@ export default function HexMapScreen() {
         return;
       }
 
-      openModal(modal.render, modal.bg ? { bg: modal.bg } : undefined);
+      openModal(() => modal.render(room), modal.bg ? { bg: modal.bg } : undefined);
     },
     [addNotification, openModal, rooms],
   );
@@ -506,7 +519,9 @@ export default function HexMapScreen() {
         type: "warn",
         content:
           reason ??
-          `${toad.name ?? "Жабу"} нельзя перенести в сектор «${room.title}».`,
+          `${toad.name ?? "Жабу"} нельзя перенести в сектор «${
+            room.name || room.title
+          }».`,
         timeout: 4500,
       });
     },

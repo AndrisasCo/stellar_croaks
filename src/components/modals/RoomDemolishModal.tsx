@@ -92,7 +92,7 @@ export default function RoomDemolishModal({ room }: { room: RoomConfig }) {
     playOk();
     addNotification({
       type: "success",
-      content: `${room.icon} ${room.title || "Сектор"} снесена: гекс свободен${
+      content: `${room.icon} ${room.name || room.title || "Сектор"} снесена: гекс свободен${
         price.saving > 0
           ? `, следующая такой сектор дешевле на ${price.saving} ${CURRENCY_CONFIG.tokens.icon}`
           : ""
@@ -124,7 +124,7 @@ export default function RoomDemolishModal({ room }: { room: RoomConfig }) {
             <span className="text-2xl">{room.icon}</span>
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-1 text-sm font-semibold text-amber-100">
-                {room.title}
+                {room.name || room.title}
                 {sceneName && (
                   <span className="text-2xs font-normal text-gray-400">
                     «{sceneName}»
@@ -156,8 +156,9 @@ export default function RoomDemolishModal({ room }: { room: RoomConfig }) {
           )}
           {price.saving > 0 ? (
             <div className="text-emerald-300">
-              💰 Следующая «{room.title}» будет стоить {price.after} вместо {price.now}{" "}
-              {CURRENCY_CONFIG.tokens.icon} — снос делает шаг назад по цене.
+              💰 Следующий сектор того же вида («{room.title}») будет стоить{" "}
+              {price.after} вместо {price.now} {CURRENCY_CONFIG.tokens.icon} — снос
+              делает шаг назад по цене.
             </div>
           ) : (
             <div>

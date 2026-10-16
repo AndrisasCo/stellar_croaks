@@ -66,6 +66,14 @@ export interface RoomConfig {
   id: string;
   kind: RoomKind;
   title: string;
+  /**
+   * Полное имя сектора с номером экземпляра: «Репродуктор #2». Его показывают модалки и
+   * уведомления, когда речь о конкретном гексе. У вида, который строится много раз, номер
+   * обязателен, а у единственного сектора (коллайдер, магазин, диссоциатор) и ядра его нет:
+   * «Коллайдер», «Ядро». Номера расставляет карта — см. `room-names.ts`, `title` остаётся
+   * названием вида.
+   */
+  name: string;
   subtitle: string;
   /** Эмодзи-иконка сектора. */
   icon: string;
@@ -380,6 +388,10 @@ export const createColonyRoom = (
     ...slot,
     kind,
     title: blueprint.title,
+    // Имя без номера: номер экземпляра зависит от состава колонии и его дописывает карта
+    // (`room-names.ts` → `withRoomNames`). Здесь имя нужно каталогу — по нему гекс подписан,
+    // пока карта ещё не собрана.
+    name: blueprint.title,
     subtitle: blueprint.subtitle,
     icon: blueprint.icon,
     palette: blueprint.palette,
@@ -400,6 +412,8 @@ const CORE_ROOM: RoomConfig = {
   id: "core",
   kind: "core",
   title: "Ядро",
+  // Ядро одно с начала игры — номер в имени ему не нужен (второго ядра не построить)
+  name: "Ядро",
   subtitle: "Центр колонии",
   icon: "🏛",
   coord: ORIGIN,
@@ -412,6 +426,8 @@ const emptySlot = (id: string, coord: AxialCoord): RoomConfig => ({
   id,
   kind: "empty",
   title: "",
+  // Пустой слот ничего не построил — имени у него нет (подпись рисовать нечего)
+  name: "",
   subtitle: "",
   icon: "+",
   coord,

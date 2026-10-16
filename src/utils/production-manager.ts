@@ -91,27 +91,45 @@ export const processEnergyRegen = (hoursPassed: number): void => {
 };
 
 /**
- * Обмен всей биомассы на Кваксы (Часть 3.7).
- * Неполная биомасса, которой не хватает на целый Квакс, остаётся на счету.
+ * Обмен биомассы на Кваксы (Часть 3.7).
+ *
+ * Ползунок в «Космическом рынке» продаёт **часть** биомассы, поэтому количество
+ * приходит аргументом (`amount`): без него обменивается вся биомасса — как было
+ * кнопкой «Обменять». Неполный Квакс не берётся: например, при курсе 2 🧪 = 1 🔷
+ * из 5 🧪 уйдёт только 4 🧪, а 1 🧪 останется на счету (`getBiomassExchangeSpent`).
  */
-export const exchangeBiomassForTokens = (): {
+
+/** Сколько Кваксов даст обмен этой биомассы (неполный Квакс остаётся на счету) */
+export const getBiomassExchangeTokens = (biomassAmount: number): number =>
+  Math.max(0, Math.floor(Math.max(0, biomassAmount) * BIOMASS_TO_TOKENS_RATE));
+
+/** Сколько биомассы реально уйдёт за эти Кваксы: остаток, не дотянувший до Квакса, остаётся */
+export const getBiomassExchangeSpent = (tokensGained: number): number =>
+  Math.max(0, tokensGained) / BIOMASS_TO_TOKENS_RATE;
+
+export const exchangeBiomassForTokens = (
+  /** Сколько биомассы продать: не больше той, что есть (без аргумента — вся) */
+  amount?: number
+): {
   success: boolean;
   tokensGained: number;
+  biomassSpent: number;
 } => {
   const state = getGameState();
   const biomass = state.user.biomass || 0;
-  const tokensGained = Math.floor(biomass * BIOMASS_TO_TOKENS_RATE);
+  const requested = Math.max(0, Math.min(amount ?? biomass, biomass));
+  const tokensGained = getBiomassExchangeTokens(requested);
 
   if (tokensGained <= 0) {
-    return { success: false, tokensGained: 0 };
+    return { success: false, tokensGained: 0, biomassSpent: 0 };
   }
 
-  const spentBiomass = tokensGained / BIOMASS_TO_TOKENS_RATE;
+  const biomassSpent = getBiomassExchangeSpent(tokensGained);
 
   updateUser({
-    biomass: Math.round((biomass - spentBiomass) * 100) / 100,
+    biomass: Math.round((biomass - biomassSpent) * 100) / 100,
     tokens: state.user.tokens + tokensGained,
   });
 
-  return { success: true, tokensGained };
+  return { success: true, tokensGained, biomassSpent };
 };

@@ -1,12 +1,14 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Modal from "../shared/Header";
 import { ClickButton } from "../shared/ClickButton";
+import { HpBar } from "../shared/HpBar";
+import ModalTabs, { ModalTabItem } from "../shared/ModalTabs";
+import RoomDataTab, { ROOM_DATA_TAB } from "./RoomDataTab";
 import { SwipeSlides } from "../shared/SwipeSlides";
 import { useNotifications } from "../../hooks/use-notification";
 import { useGameState } from "../../hooks/use-game-state";
 import { useColony } from "../../hooks/use-colony";
 import { Toad } from "../../models/Toad";
-import { getDiseaseCureCost, getToadDisease } from "../../models/disease";
 import {
   DEFAULT_EXPEDITION_STATS,
   Expedition,
@@ -29,7 +31,6 @@ import {
   getExpeditionEnergyCost,
   getExpeditionSuccessChance,
   getExpeditionToadEnergyCost,
-  getHealCost,
   getRoleStat,
   getSectorSuccessFactor,
   getSpeedUpReturnCost,
@@ -48,7 +49,6 @@ import {
   getExpeditionProgress,
   getExpeditionTeamStatus,
   getReturnProgress,
-  healToad,
   isToadOnExpedition,
   processExpeditions,
   speedUpReturn,
@@ -63,19 +63,8 @@ import {
   PRODUCTION_MIN_HUNGER,
   getToadEnergy,
 } from "../../utils/gamification-config";
-import { cureToadForTokens } from "../../utils/disease-manager";
-import {
-  HOSPITAL_DISEASE_SPEED,
-  HOSPITAL_HP_REGEN_PER_HOUR,
-  HOSPITAL_ROOM_TOAD_SLOTS,
-  getHospitalPatients,
-  getHoursToFullHp,
-  getToadsNeedingCare,
-  isToadInHospital,
-  needsHospitalCare,
-} from "../../utils/hospital";
 import { RoomConfig } from "../HexMap/rooms-config";
-import { canMoveToadToRoom, getToadMoveIssue } from "../HexMap/toad-move-rules";
+import { ToadPicker } from "../shared/ToadPicker";
 import {
   assignToadToRole,
   emptyExpeditionSlots,
@@ -115,34 +104,6 @@ const formatClock = (at: number): string =>
     minute: "2-digit",
   });
 
-const HpBar: React.FC<{ hp: number; maxHp: number; className?: string }> = ({
-  hp,
-  maxHp,
-  className,
-}) => {
-  const ratio = maxHp > 0 ? Math.max(0, Math.min(1, hp / maxHp)) : 0;
-  const color =
-    ratio <= 0
-      ? "bg-red-600"
-      : ratio < 0.35
-      ? "bg-red-500"
-      : ratio < 0.7
-      ? "bg-yellow-500"
-      : "bg-green-500";
-
-  return (
-    <div
-      className={`h-1.5 w-full bg-gray-700 rounded-full overflow-hidden ${
-        className || ""
-      }`}
-    >
-      <div
-        className={`h-full rounded-full transition-all duration-500 ${color}`}
-        style={{ width: `${ratio * 100}%` }}
-      />
-    </div>
-  );
-};
 
 /**
  * Значки состояния жабы в списках команды: **сытость** 🍽 и **силы** ⚡.
@@ -171,7 +132,7 @@ const ToadVitals: React.FC<{
       : "text-red-400";
 
   return (
-    <div
+    <span
       className={`flex items-center gap-2 text-3xs font-medium ${
         className ?? ""
       }`}
@@ -190,7 +151,7 @@ const ToadVitals: React.FC<{
       >
         🍽{hunger}%
       </span>
-    </div>
+    </span>
   );
 };
 
@@ -262,258 +223,33 @@ const TeamStatusList: React.FC<{ expedition: Expedition }> = ({
   </div>
 );
 
-/** Группа жаб в выпадающем списке роли: «В «Разведке»» / «Жабы колонии» */
+/**
+ * Группа жаб в выпадающем списке роли: «В «Разведке»» / «Жабы колонии».
+ * Строки списка рисует общий `shared/ToadPicker` — здесь только состав групп.
+ */
 interface RoleToadGroup {
   label: string;
   toads: Toad[];
 }
 
-/** Высота панели списка (max-h-60 = 15rem) — по ней решаем, открывать список вверх или вниз */
-const ROLE_MENU_HEIGHT = 240;
+type ExpeditionTab = "runs" | "send" | "room-data";
 
 /**
- * Выпадающий список жабы для слота роли.
+ * Модалка разведки: походы, сборка новой команды и данные сектора.
  *
- * Список отсортирован по силе роли (`sortToadsByRolePower`): сверху те, кому роль подходит
- * больше, — рядом с каждой жабой её характеристика роли, сила в процентах и полоска.
- * Жаба, занятая **другой** ролью, подсвечена янтарным и подписана ролью, в которой стоит:
- * выбор перенесёт её сюда (одна жаба — одна роль, `assignToadToRole`); жаба «на этой роли» —
- * зелёная. Родной `<select>` так не умеет: цвет строки, полоску и подпись роли в нём
- * не нарисовать, а на iOS список рисует система.
- *
- * Правила поведения: список закрывается тапом мимо и клавишей Esc (Esc гасим в
- * capture-фазе, иначе нажатие закрыло бы всю модалку — `ModalProvider` слушает ту же клавишу),
- * а если снизу не хватает места — раскрывается вверх, не уезжая за край экрана.
- */
-const RoleToadPicker: React.FC<{
-  role: ExpeditionRole;
-  /** id выбранной жабы или "" — слот пуст */
-  value: string;
-  /** Жаба в слоте (для строки-заголовка) */
-  picked?: Toad;
-  groups: RoleToadGroup[];
-  /** Какая роль занята жабой (undefined — жаба свободна) */
-  assignedRole: (toadId: number) => ExpeditionRole | undefined;
-  /** Силы на поход в выбранный сектор — по ним красится значок ⚡ у каждой жабы */
-  energyCost: number;
-  /** Куда сообщить выбор ("" — снять жабу с роли) */
-  onPick: (value: string) => void;
-}> = ({ role, value, picked, groups, assignedRole, energyCost, onPick }) => {
-  const [open, setOpen] = useState(false);
-  /** Не хватает места снизу — список раскрывается вверх: иначе он уходит за край экрана */
-  const [dropUp, setDropUp] = useState(false);
-  const rootRef = useRef<HTMLDivElement | null>(null);
-  const config = ROLE_CONFIG[role];
-
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-
-    const measure = () => {
-      const rect = rootRef.current?.getBoundingClientRect();
-
-      if (rect) {
-        setDropUp(window.innerHeight - rect.bottom < ROLE_MENU_HEIGHT);
-      }
-    };
-
-    measure();
-
-    const handlePointerDown = (event: MouseEvent | TouchEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) {
-        setOpen(false);
-      }
-    };
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        setOpen(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handlePointerDown);
-    document.addEventListener("touchstart", handlePointerDown);
-    document.addEventListener("keydown", handleKeyDown, true);
-    window.addEventListener("resize", measure);
-    // Тело модалки скроллится: список едет вместе с ним, поэтому направление пересчитываем
-    window.addEventListener("scroll", measure, true);
-
-    return () => {
-      document.removeEventListener("mousedown", handlePointerDown);
-      document.removeEventListener("touchstart", handlePointerDown);
-      document.removeEventListener("keydown", handleKeyDown, true);
-      window.removeEventListener("resize", measure);
-      window.removeEventListener("scroll", measure, true);
-    };
-  }, [open]);
-
-  const toadsCount = groups.reduce((sum, group) => sum + group.toads.length, 0);
-
-  return (
-    <div ref={rootRef} className="relative min-w-0 flex-1">
-      <ClickButton
-        onClick={() => setOpen((prev) => !prev)}
-        aria-expanded={open}
-        title={
-          picked
-            ? `Заменить жабу в роли «${config.label}»`
-            : `Поставить жабу в роль «${config.label}»`
-        }
-        className={`flex w-full items-center gap-2 rounded-lg border px-2 py-1.5 transition-colors duration-300 ${
-          open
-            ? "border-amber-400/60 bg-slate-800/90"
-            : "border-gray-600/40 bg-slate-800/70 hover:bg-slate-700/70"
-        }`}
-      >
-        <span className="shrink-0 text-2xs">{config.icon}</span>
-        <span
-          className={`min-w-0 flex-1 truncate text-left text-2xs ${
-            picked ? "text-gray-100" : "text-gray-400"
-          }`}
-        >
-          {picked ? picked.name : "— пусто —"}
-        </span>
-        {picked && (
-          <ToadVitals toad={picked} energyCost={energyCost} className="shrink-0" />
-        )}
-        {picked && (
-          <span className="shrink-0 text-2xs font-bold text-amber-200">
-            {getRolePowerPercent(picked, role)}%
-          </span>
-        )}
-        <span
-          className={`shrink-0 text-3xs text-gray-400 transition-transform duration-300 ${
-            open ? "rotate-180" : ""
-          }`}
-        >
-          ▼
-        </span>
-      </ClickButton>
-
-      {open && (
-        <div
-          className={`no-overscroll absolute left-0 right-0 z-30 max-h-60 overflow-y-auto rounded-xl border border-gray-600/50 bg-slate-900/95 shadow-xl backdrop-blur-md ${
-            dropUp ? "bottom-full mb-1" : "top-full mt-1"
-          }`}
-        >
-          <p className="sticky top-0 z-10 bg-slate-900/95 px-2 py-1.5 text-3xs leading-snug text-gray-400">
-            Сверху — сильнее для роли «{config.label}» ({config.statLabel}).
-            Янтарная жаба уже в другой роли: выбор перенесёт её сюда. Под именем —
-            ⚡ силы (красные: на этот сектор не хватит) и 🍽 сытость.
-          </p>
-
-          {value !== "" && (
-            <ClickButton
-              onClick={() => {
-                onPick("");
-                setOpen(false);
-              }}
-              className="w-full border-b border-gray-700/40 px-2 py-1.5 text-left text-2xs text-gray-400 transition-colors duration-300 hover:bg-slate-700/60"
-            >
-              ✕ Снять жабу с роли
-            </ClickButton>
-          )}
-
-          {toadsCount === 0 && (
-            <p className="px-2 py-3 text-2xs leading-snug text-gray-400">
-              Нет доступных жаб: остальные в походе, ранены или ещё не выросли.
-            </p>
-          )}
-
-          {groups.map((group) => (
-            <div key={group.label}>
-              <p className="bg-slate-800/80 px-2 py-1 text-3xs uppercase tracking-wide text-amber-200/80">
-                {group.label}
-              </p>
-
-              {group.toads.map((toad) => {
-                const other = assignedRole(toad.id);
-                const own = other === role || String(toad.id) === value;
-                const percent = getRolePowerPercent(toad, role);
-
-                return (
-                  <ClickButton
-                    key={toad.id}
-                    onClick={() => {
-                      onPick(String(toad.id));
-                      setOpen(false);
-                    }}
-                    title={
-                      other && !own
-                        ? `Сейчас ${ROLE_CONFIG[other].label}: выбор перенесёт жабу в «${config.label}»`
-                        : `Поставить ${toad.name} в роль «${config.label}»`
-                    }
-                    className={`flex w-full items-center gap-2 border-b border-gray-700/30 px-2 py-1.5 text-left transition-colors duration-300 last:border-0 ${
-                      own
-                        ? "bg-emerald-900/40 hover:bg-emerald-800/50"
-                        : other
-                        ? "bg-amber-900/30 hover:bg-amber-800/40"
-                        : "hover:bg-slate-700/60"
-                    }`}
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-2xs font-semibold text-gray-100">
-                        {toad.name}
-                      </p>
-                      <p className="truncate text-3xs text-gray-400">
-                        {getRoleStat(toad, role).toFixed(2)} {config.statLabel} ·{" "}
-                        {getToadHpStatusLabel(toad)}
-                        {own
-                          ? " · ✓ на этой роли"
-                          : other
-                          ? ` · в команде: ${ROLE_CONFIG[other].icon} ${
-                              ROLE_CONFIG[other].label
-                            }`
-                          : ""}
-                      </p>
-                      <ToadVitals
-                        toad={toad}
-                        energyCost={energyCost}
-                        className="mt-0.5"
-                      />
-                    </div>
-
-                    <div className="w-12 shrink-0 text-right">
-                      <p className="text-2xs font-bold text-amber-200">
-                        {percent}%
-                      </p>
-                      <div className="mt-0.5 h-1 w-full overflow-hidden rounded-full bg-gray-700">
-                        <div
-                          className={`h-full rounded-full ${
-                            percent >= 70
-                              ? "bg-emerald-400"
-                              : percent >= 40
-                              ? "bg-amber-400"
-                              : "bg-red-400"
-                          }`}
-                          style={{ width: `${Math.min(100, percent)}%` }}
-                        />
-                      </div>
-                    </div>
-                  </ClickButton>
-                );
-              })}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
-
-type ExpeditionTab = "runs" | "send" | "infirmary";
-
-/**
- * Модалка разведки: походы, сборка новой команды и лазарет.
+ * Табы — общие для всех секторов (`shared/ModalTabs`): «Походы», «Новый поход» и, если
+ * модалку открыли по гексу «Разведки», последний таб «Данные сектора»
+ * (`modals/RoomDataTab.tsx`) — описание, статистика похода, апгрейды и снос. Сектор
+ * «Лазарет» эту модалку больше не открывает: у него своя (`modals/HospitalModal.tsx`).
  *
  * Команду собирают **из жаб сектора «Разведка»**: гекс, из которого открыли модалку, приходит
  * в `roomId`, и его жильцы идут первым списком — тап по жабе ставит её на сильную роль,
  * повторный тап выводит из команды, а «Собрать команду» занимает все свободные роли
  * (`utils/expedition-crew.ts`). В списках ролей жабы сектора тоже идут первыми группой,
  * а внутри группы — по силе роли (`sortToadsByRolePower`), как и в выпадающем списке роли
- * (`RoleToadPicker`).
+ * (`shared/ToadPicker`). Слоты ролей собраны так же, как места репродуктора
+ * (`Lab/NestModal.tsx`): карточка на роль — пунктирная, пока роль пуста, с описанием роли
+ * и полоской HP под строкой выбора.
  *
  * Сектора Периметра — **горизонтальный слайдер**: на странице один поход (`SwipeSlides`),
  * листается свайпом вправо-влево, стрелками и точками, и страница сразу выбирает сектор —
@@ -521,16 +257,14 @@ type ExpeditionTab = "runs" | "send" | "infirmary";
  */
 const ExpeditionModal: React.FC<{
   onClose?: () => void;
-  /** Вкладка, с которой открывается модалка: сектор «Лазарет» открывает свою вкладку. */
-  initialTab?: ExpeditionTab;
   /** Гекс «Разведки», из которого открыли модалку: его жильцы — экипаж для команды. */
   roomId?: string;
-}> = ({ initialTab = "runs", roomId }) => {
+}> = ({ roomId }) => {
   const { addNotification } = useNotifications();
   const state = useGameState();
   const [, setTick] = useState(0);
 
-  const [tab, setTab] = useState<ExpeditionTab>(initialTab);
+  const [tab, setTab] = useState<ExpeditionTab>("runs");
   const [sectorId, setSectorId] = useState<number>(SECTORS[0].id);
   const [slots, setSlots] = useState<ExpeditionSlots>(emptyExpeditionSlots());
 
@@ -607,18 +341,8 @@ const ExpeditionModal: React.FC<{
     expeditions.length < teamLimit &&
     sectorUnlocked;
 
-  // Лазарет: койки сектора и два списка — кто лежит и кому ещё нужна помощь.
   // Сектора и жаб по секторам берём из колонии теми же вычислениями, что и карта.
-  const { rooms, powerGrid, toadsByRoom, placeToad, releaseToad } = useColony();
-
-  const hospitalRooms = useMemo(
-    () => rooms.filter((room) => room.kind === "hospital"),
-    [rooms]
-  );
-  const hospitalIds = useMemo(
-    () => hospitalRooms.map((room) => room.id),
-    [hospitalRooms]
-  );
+  const { rooms, toadsByRoom } = useColony();
 
   /**
    * Сектор «Разведка», из которой открыли модалку: её жильцы — экипаж, из которого
@@ -639,6 +363,21 @@ const ExpeditionModal: React.FC<{
       null
     );
   }, [rooms, roomId, toadsByRoom]);
+
+  /**
+   * Табы модалки: походы, отправка и «Данные сектора». Таб данных — только когда
+   * модалку открыли по гексу «Разведки»: данным нужен свой сектор (его жильцы,
+   * апгрейды и снос), а из бургер-меню гекса нет.
+   */
+  const expeditionTabs: ModalTabItem<ExpeditionTab>[] = [
+    {
+      id: "runs",
+      label: `🚁 Походы${expeditions.length ? ` (${expeditions.length})` : ""}`,
+      color: "text-amber-400",
+    },
+    { id: "send", label: "🎯 Новый поход", color: "text-emerald-400" },
+    ...(crewRoom ? [{ ...ROOM_DATA_TAB }] : []),
+  ];
 
   /** Экипаж сектора: те же жабы, что рисует карта (ушедшие в поход сектор покинули) */
   const crew = useMemo(
@@ -686,65 +425,6 @@ const ExpeditionModal: React.FC<{
     [crewAvailable, otherAvailable]
   );
 
-  /** Жабы в походе: их не лечат и не переносят, пока команда не вернётся */
-  const awayToads = useMemo(
-    () => state.toads.filter((toad) => isToadOnExpedition(toad.id, expeditions)),
-    [state.toads, expeditions]
-  );
-  const homeToads = useMemo(
-    () => state.toads.filter((toad) => !isToadOnExpedition(toad.id, expeditions)),
-    [state.toads, expeditions]
-  );
-
-  /** Первый список лазарета: жабы, которые лежат на койках прямо сейчас */
-  const patients = getHospitalPatients(homeToads, hospitalIds);
-
-  /** Второй список: все раненые и больные дома, кого ещё не положили в лазарет */
-  const needingCare = getToadsNeedingCare(homeToads).filter(
-    (toad) => !isToadInHospital(toad, hospitalIds)
-  );
-
-  /** Сколько коек в колонии: в каждом лазарете по шесть */
-  const hospitalCapacity = hospitalIds.length * HOSPITAL_ROOM_TOAD_SLOTS;
-
-  /** Раненые и больные в походе: ими займёмся, когда команда вернётся */
-  const awayWounded = awayToads.filter((toad) => needsHospitalCare(toad)).length;
-
-  /**
-   * Куда положить жабу из списка «нужна помощь»: первый лазарет, который её принимает.
-   * Проверяем теми же правилами, что и перенос по карте (`canMoveToadToRoom`): место
-   * на койке, ток в секторе, возраст, поход — чтобы кнопка не обещала лишнего.
-   */
-  const getAdmission = (
-    toad: Toad
-  ): { room: RoomConfig | null; issue: string | null } => {
-    if (hospitalRooms.length === 0) {
-      return { room: null, issue: "в колонии нет лазарета" };
-    }
-
-    let firstIssue: string | null = null;
-
-    for (const room of hospitalRooms) {
-      const check = canMoveToadToRoom(toad, room, {
-        roomToads: (toadsByRoom[room.id] ?? []).filter(
-          (item) => item.id !== toad.id
-        ),
-        // Переносим в лазарет, а не в биопод: жильё тут не считается
-        aviaryCount: 0,
-        aviaryCapacity: 0,
-        rooms,
-        powerGrid,
-      });
-
-      if (check.ok) {
-        return { room, issue: null };
-      }
-
-      firstIssue = firstIssue ?? check.reason ?? null;
-    }
-
-    return { room: null, issue: firstIssue };
-  };
 
   /** Команда с самими жабами: по ней считаем шанс удачного завершения */
   const team: ExpeditionTeamMember[] = members
@@ -788,170 +468,7 @@ const ExpeditionModal: React.FC<{
   const handleSpeedUp = (id: string) => notify(speedUpReturn(id));
   const handleExtract = (id: string) =>
     notify(extractExpedition(id, addNotification));
-  const handleHeal = (toadId: number) => notify(healToad(toadId));
   const handleBuyDispatch = () => notify(buyDispatchOffice());
-
-  /** Мгновенный курс от болезни за Кваксы — самый дорогой способ, зато сразу */
-  const handleCure = (toadId: number) => notify(cureToadForTokens(toadId));
-
-  /** Положить жабу на койку лазарета (место и ток проверила `getAdmission`) */
-  const handleAdmit = (toad: Toad, room: RoomConfig) => {
-    placeToad(toad.id, room.id);
-    addNotification({
-      type: "success",
-      content: `${toad.name} на койке в «Лазарете» — здесь жабы поправляются быстро 🛏️`,
-    });
-  };
-
-  /**
-   * Выписать жабу из лазарета домой — в её биопод (`homeId`).
-   *
-   * Жильё жаба не меняла (пока лежала на койке, места в биоподе она не занимала), но
-   * свободного места там может уже не быть — тогда она остаётся на койке, а игроку надо
-   * построить биопод или переселить её в другой.
-   */
-  const handleDischarge = (toad: Toad) => {
-    const result = releaseToad(toad.id);
-
-    if (!result.ok) {
-      addNotification({
-        type: "warn",
-        content:
-          result.reason === "no-space"
-            ? `${toad.name} остаётся на койке: в биоподе «${result.scene?.name}» нет места — постройте биопод или переселите её в другой.`
-            : `${toad.name} остаётся на койке: биопод, в котором она жила, не найден — переселите её в другой.`,
-        timeout: 9000,
-      });
-      return;
-    }
-
-    addNotification({
-      type: "success",
-      content: `${toad.name} выписана из лазарета в биопод`,
-    });
-  };
-
-  /** Карточка жабы в списках лазарета: HP, болезнь, прогноз и кнопки помощи */
-  const renderCareCard = (toad: Toad, options: { inBed: boolean }) => {
-    const maxHp = getToadMaxHp(toad);
-    const hp = getToadHp(toad);
-    const missingHp = Math.max(0, maxHp - hp);
-    const wounded = missingHp > 0;
-    const disease = getToadDisease(toad);
-    const healCost = getHealCost(toad);
-    const cureCost = getDiseaseCureCost(toad);
-    const inBed = options.inBed;
-    const admission = inBed ? null : getAdmission(toad);
-    // Выписывают в биопод по любым причинам, поэтому выбитого пациента тоже отпускаем:
-    // правило «сначала подлечите» здесь не мешает (allowDown) — это же лазарет
-    const dischargeIssue = inBed
-      ? getToadMoveIssue(toad, { allowDown: true })
-      : null;
-    const affordable = tokens >= healCost;
-    const cureAffordable = tokens >= cureCost;
-
-    return (
-      <div
-        key={toad.id}
-        className="bg-color-main rounded-2xl p-3 border border-gray-600/30 flex flex-col gap-1.5"
-      >
-        <div className="flex items-center justify-between">
-          <p className="text-xs font-bold text-white">
-            {toad.name}{" "}
-            <span className="text-2xs font-normal text-gray-400">
-              · {getToadHpStatusLabel(toad)}
-              {disease && ` · ${disease.icon} ${disease.name}`}
-              {inBed && " · на койке"}
-            </span>
-          </p>
-          <span className="text-2xs text-gray-300">
-            {Math.round(hp)}/{maxHp} HP
-          </span>
-        </div>
-
-        <HpBar hp={hp} maxHp={maxHp} />
-
-        {wounded && (
-          <p className="text-2xs text-gray-400">
-            До полного HP:{" "}
-            {inBed
-              ? `${getHoursToFullHp(missingHp, true)} ч на койке`
-              : `дома ~${getHoursToFullHp(
-                  missingHp,
-                  false
-                )} ч · в лазарете ~${getHoursToFullHp(missingHp, true)} ч`}
-          </p>
-        )}
-
-        {!wounded && disease && (
-          <p className="text-2xs text-gray-400">
-            Раны зажили — осталась болезнь: на койке срок идёт в{" "}
-            {HOSPITAL_DISEASE_SPEED} раза быстрее, а пациент никого не заражает.
-          </p>
-        )}
-
-        {wounded && (
-          <ClickButton
-            onClick={() => handleHeal(toad.id)}
-            disabled={!affordable}
-            className={`w-full py-2 rounded-xl text-2xs font-bold border transition-colors duration-300 ${
-              affordable
-                ? "bg-emerald-900/50 border-emerald-500/50 text-emerald-100 hover:bg-emerald-800/60"
-                : "bg-slate-800/40 border-gray-700/40 text-gray-500"
-            }`}
-          >
-            🩹 Мгновенно вылечить за {healCost} 🔷
-          </ClickButton>
-        )}
-
-        {disease && (
-          <ClickButton
-            onClick={() => handleCure(toad.id)}
-            disabled={!cureAffordable}
-            className={`w-full py-2 rounded-xl text-2xs font-bold border transition-colors duration-300 ${
-              cureAffordable
-                ? "bg-sky-900/50 border-sky-500/50 text-sky-100 hover:bg-sky-800/60"
-                : "bg-slate-800/40 border-gray-700/40 text-gray-500"
-            }`}
-          >
-            💊 Мгновенный курс от болезни за {cureCost} 🔷
-          </ClickButton>
-        )}
-
-        {!inBed && (
-          <ClickButton
-            onClick={() => admission?.room && handleAdmit(toad, admission.room)}
-            disabled={!admission?.room}
-            className={`w-full py-2 rounded-xl text-2xs font-bold border transition-colors duration-300 ${
-              admission?.room
-                ? "bg-amber-900/50 border-amber-500/50 text-amber-100 hover:bg-amber-800/60"
-                : "bg-slate-800/40 border-gray-700/40 text-gray-500"
-            }`}
-          >
-            {admission?.room
-              ? "🛏️ Положить в лазарет"
-              : `🛏️ В лазарет нельзя: ${admission?.issue ?? "некуда"}`}
-          </ClickButton>
-        )}
-
-        {inBed && (
-          <ClickButton
-            onClick={() => handleDischarge(toad)}
-            disabled={Boolean(dischargeIssue)}
-            className={`w-full py-2 rounded-xl text-2xs font-bold border transition-colors duration-300 ${
-              dischargeIssue
-                ? "bg-slate-800/40 border-gray-700/40 text-gray-500"
-                : "bg-slate-800/60 border-gray-500/50 text-gray-200 hover:bg-slate-700/70"
-            }`}
-          >
-            {dischargeIssue
-              ? `🚪 Выписать нельзя: ${dischargeIssue}`
-              : "🚪 Выписать в биопод"}
-          </ClickButton>
-        )}
-      </div>
-    );
-  };
 
   /**
    * Строка экипажа сектора: кто живёт в «Разведке» и что с ним можно сделать.
@@ -1204,38 +721,8 @@ const ExpeditionModal: React.FC<{
           </div>
         </div>
 
-        {/* Переключение вкладок */}
-        <div className="grid grid-cols-3 gap-1.5">
-          {(
-            [
-              {
-                id: "runs",
-                label: `🚁 Походы${
-                  expeditions.length ? ` (${expeditions.length})` : ""
-                }`,
-              },
-              { id: "send", label: "🎯 Новый поход" },
-              {
-                id: "infirmary",
-                label: `🩹 Лазарет${
-                  hospitalCapacity ? ` (${patients.length}/${hospitalCapacity})` : ""
-                }`,
-              },
-            ] as { id: ExpeditionTab; label: string }[]
-          ).map((item) => (
-            <ClickButton
-              key={item.id}
-              onClick={() => setTab(item.id)}
-              className={`py-2 rounded-xl text-2xs font-bold border transition-colors duration-300 ${
-                tab === item.id
-                  ? "bg-amber-800/60 border-amber-400/70 text-amber-100"
-                  : "bg-slate-800/50 border-gray-600/40 text-gray-300 hover:bg-slate-700/60"
-              }`}
-            >
-              {item.label}
-            </ClickButton>
-          ))}
-        </div>
+        {/* Переключение вкладок: вид один на все секторы (`shared/ModalTabs`) */}
+        <ModalTabs tabs={expeditionTabs} active={tab} onChange={setTab} />
 
         {/* ВКЛАДКА: активные походы */}
         {tab === "runs" && (
@@ -1369,11 +856,16 @@ const ExpeditionModal: React.FC<{
               slides={sectorSlides}
             />
 
-            {/* Слоты ролей команды */}
-            <div className="bg-color-main rounded-2xl p-3 border border-gray-600/30 flex flex-col gap-2">
-              <p className="text-xs font-bold text-white">
-                👥 Команда: {members.length}/{EXPEDITION_TEAM_SIZE}
-              </p>
+            {/* Слоты ролей команды: как места репродуктора — панель с заголовком и карточка на роль */}
+            <div className="bg-color-main rounded-xl px-3 py-2 border border-amber-500/40 flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-amber-200 font-semibold">
+                  👥 Места команды
+                </span>
+                <span className="text-2xs text-gray-400">
+                  собрано {members.length} из {EXPEDITION_TEAM_SIZE}
+                </span>
+              </div>
 
               {EXPEDITION_ROLE_ORDER.map((role) => {
                 const config = ROLE_CONFIG[role];
@@ -1386,30 +878,103 @@ const ExpeditionModal: React.FC<{
                 return (
                   <div
                     key={role}
-                    className="flex flex-col gap-1 pb-2 border-b border-gray-700/40 last:border-0 last:pb-0"
+                    className={`rounded-lg p-2 bg-black/20 border flex flex-col gap-1.5 ${
+                      picked
+                        ? "border-amber-500/30"
+                        : "border-dashed border-emerald-500/40"
+                    }`}
                   >
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-2xs font-bold text-gray-100">
-                        {config.icon} {config.label}
-                      </p>
-                      <p className="text-2xs text-gray-400 text-right">
-                        {config.description}
-                      </p>
-                    </div>
-
-                    {/* Красивый список: сортировка по силе роли и цвет «уже в другой роли» */}
-                    <RoleToadPicker
-                      role={role}
-                      value={String(pickedId)}
+                    {/* Слот роли — тот же выпадающий список, что и в репродукторе */}
+                    <ToadPicker
+                      icon={config.icon}
+                      caption={config.label}
+                      label={config.label}
                       picked={picked}
-                      groups={roleGroups[role]}
-                      assignedRole={(toadId) => getAssignedRole(slots, toadId)}
-                      energyCost={energyCostPerToad}
-                      onPick={(value) => handleRolePick(role, value)}
+                      placeholder="＋ посадить жабу"
+                      pickedSummary={
+                        picked ? (
+                          <span className="flex shrink-0 items-center gap-2">
+                            <ToadVitals
+                              toad={picked}
+                              energyCost={energyCostPerToad}
+                            />
+                            <span className="text-2xs font-bold text-amber-200">
+                              {getRolePowerPercent(picked, role)}%
+                            </span>
+                          </span>
+                        ) : undefined
+                      }
+                      groups={roleGroups[role].map((group) => ({
+                        label: group.label,
+                        items: group.toads.map((toad) => {
+                          const other = getAssignedRole(slots, toad.id);
+                          const own =
+                            other === role || String(toad.id) === String(pickedId);
+                          const percent = getRolePowerPercent(toad, role);
+
+                          return {
+                            toad,
+                            rank: getRoleStat(toad, role),
+                            tone: own ? "selected" : other ? "warn" : "default",
+                            note: (
+                              <span className="flex items-center gap-1.5">
+                                <span className="truncate">
+                                  {getRoleStat(toad, role).toFixed(2)}{" "}
+                                  {config.statLabel} · {getToadHpStatusLabel(toad)}
+                                  {own
+                                    ? " · ✓ на этой роли"
+                                    : other
+                                    ? ` · в команде: ${
+                                        ROLE_CONFIG[other].icon
+                                      } ${ROLE_CONFIG[other].label}`
+                                    : ""}
+                                </span>
+                                <ToadVitals
+                                  toad={toad}
+                                  energyCost={energyCostPerToad}
+                                />
+                              </span>
+                            ),
+                            meter: {
+                              value: percent,
+                              label: `${percent}%`,
+                            },
+                          };
+                        }),
+                      }))}
+                      hint={`Сверху — сильнее для роли «${config.label}» (${
+                        config.statLabel
+                      }). Янтарная жаба уже в другой роли: выбор перенесёт её сюда. Под именем — ⚡ силы (красные: на этот сектор не хватит) и 🍽 сытость.`}
+                      emptyText="Нет доступных жаб: остальные в походе, ранены или ещё не выросли."
+                      clear={
+                        pickedId !== ""
+                          ? {
+                              label: "Снять жабу с роли",
+                              onClear: () => handleRolePick(role, ""),
+                            }
+                          : undefined
+                      }
+                      onPick={(toad) => handleRolePick(role, String(toad.id))}
                     />
 
+                    {/* Роль — строка под слотом, как статус жабы в репродукторе */}
+                    <div className="text-2xs text-gray-300 leading-snug">
+                      {config.description}
+                    </div>
+
                     {picked && (
-                      <HpBar hp={getToadHp(picked)} maxHp={getToadMaxHp(picked)} />
+                      <div className="flex items-center gap-1.5">
+                        <span className="shrink-0 text-2xs text-red-300">
+                          ❤ {Math.round(getToadHp(picked))}/
+                          {getToadMaxHp(picked)}
+                        </span>
+                        {/* Полоска HP: видно, дотянет ли жаба до конца похода */}
+                        <HpBar
+                          hp={getToadHp(picked)}
+                          maxHp={getToadMaxHp(picked)}
+                          className="flex-1"
+                        />
+                      </div>
                     )}
                   </div>
                 );
@@ -1418,7 +983,7 @@ const ExpeditionModal: React.FC<{
 
             {/* Жабы сектора «Разведка»: экипаж, из которого команда собирается в один тап */}
             {crewRoom && (
-              <div className="bg-color-main rounded-2xl p-3 border border-gray-600/30 flex flex-col gap-2">
+              <div className="bg-color-main rounded-xl px-3 py-2 border border-gray-600/30 flex flex-col gap-2">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-xs font-bold text-white">
                     🧭 В «Разведке»: {crew.length}/{EXPEDITION_TEAM_SIZE}
@@ -1449,7 +1014,7 @@ const ExpeditionModal: React.FC<{
             )}
 
             {/* Итог отправки */}
-            <div className="bg-color-main rounded-2xl p-3 border border-gray-600/30 flex flex-col gap-2">
+            <div className="bg-color-main rounded-xl px-3 py-2 border border-gray-600/30 flex flex-col gap-2">
               <div className="flex items-center justify-between text-2xs text-gray-300">
                 <span>Снаряжение: {sendCost} 🧪</span>
                 <span>В запасе: {Math.round(biomass)} 🧪</span>
@@ -1544,65 +1109,29 @@ const ExpeditionModal: React.FC<{
           </div>
         )}
 
-        {/* ВКЛАДКА: лазарет — койки и список всех, кому нужна помощь */}
-        {tab === "infirmary" && (
-          <div className="flex flex-col gap-2">
-            <p className="text-2xs text-gray-400">
-              Дома жаба восстанавливает всего {HP_REGEN_PER_HOUR} HP в час. Койка в
-              лазарете лечит +{HOSPITAL_HP_REGEN_PER_HOUR} HP в час (в{" "}
-              {HOSPITAL_HP_REGEN_PER_HOUR / HP_REGEN_PER_HOUR} раз быстрее), а
-              срок болезни там идёт в {HOSPITAL_DISEASE_SPEED} раза быстрее — и
-              пациент никого не заражает. Мгновенное лечение за Кваксы самое
-              дорогое: это способ пропустить ожидание.
-            </p>
-
-            {hospitalRooms.length === 0 && (
-              <p className="text-2xs text-amber-200/90 bg-amber-950/30 border border-amber-500/30 rounded-xl px-3 py-2">
-                🏥 В колонии нет «Лазарета»: постройте сектор на свободном гексе
-                карты — только на койке жабы выздоравливают быстро.
-              </p>
-            )}
-
-            {/* СПИСОК 1: кто лежит на койках прямо сейчас */}
-            <div className="flex items-center justify-between pt-1">
-              <p className="text-2xs font-bold text-amber-200 uppercase tracking-wide">
-                🛏️ В лазарете ({patients.length}/{hospitalCapacity})
-              </p>
-              <span className="text-2xs text-gray-500">🔷 {tokens} в запасе</span>
-            </div>
-
-            {patients.length === 0 && (
-              <p className="text-2xs text-gray-500">
-                {hospitalRooms.length
-                  ? "Койки свободны: перенесите сюда раненых и больных — здесь они поправятся в разы быстрее."
-                  : "Койки появятся вместе с лазаретом."}
-              </p>
-            )}
-
-            {patients.map((toad) => renderCareCard(toad, { inBed: true }))}
-
-            {/* СПИСОК 2: все жабы с ранами и болезнями — лечить или переносить в лазарет */}
-            <div className="flex items-center justify-between pt-1">
-              <p className="text-2xs font-bold text-amber-200 uppercase tracking-wide">
-                📋 Нуждаются в помощи ({needingCare.length})
-              </p>
-            </div>
-
-            {awayWounded > 0 && (
-              <p className="text-2xs text-gray-500">
-                Ещё {awayWounded} жаб(ы) с ранами в походе: займёмся ими, когда
-                команда вернётся домой.
-              </p>
-            )}
-
-            {needingCare.length === 0 && (
-              <p className="text-2xs text-gray-500">
-                Все жабы в форме: ни ран, ни кибер-болезней.
-              </p>
-            )}
-
-            {needingCare.map((toad) => renderCareCard(toad, { inBed: false }))}
-          </div>
+        {/* ВКЛАДКА: данные сектора — описание, статистика, улучшения и снос */}
+        {tab === "room-data" && crewRoom && (
+          <RoomDataTab
+            room={crewRoom}
+            stats={
+              <div className="grid grid-cols-3 gap-1.5 text-center text-2xs">
+                <div className="rounded-lg bg-slate-900/40 px-1 py-1">
+                  <p className="text-gray-400">🧭 В секторе</p>
+                  <p className="font-bold text-white">{crew.length}</p>
+                </div>
+                <div className="rounded-lg bg-slate-900/40 px-1 py-1">
+                  <p className="text-gray-400">✅ Готовы к походу</p>
+                  <p className="font-bold text-white">{crewSendable.length}</p>
+                </div>
+                <div className="rounded-lg bg-slate-900/40 px-1 py-1">
+                  <p className="text-gray-400">🚁 Команд</p>
+                  <p className="font-bold text-white">
+                    {expeditions.length}/{teamLimit}
+                  </p>
+                </div>
+              </div>
+            }
+          />
         )}
       </div>
     </Modal>

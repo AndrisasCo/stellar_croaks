@@ -128,12 +128,22 @@ export const EXPEDITION_MIN_DAMAGE = 6;
 /** Максимальный HP (страховка от абсурдных значений) */
 export const HP_SOFT_CAP = 400;
 
-/** Максимум HP жабы (масса даёт «броню», редкость — запас) */
+/**
+ * Максимум HP жабы (масса даёт «броню», редкость — запас).
+ *
+ * Максимум — ЧИСТАЯ функция генов: он не зависит от того, что записано в сейве.
+ * Поле `toad.maxHp` — только кэш для интерфейса и для `processHpRegen` (видно, что
+ * значение изменилось). Раньше сохранённый `maxHp` брался за базу и бонусы генов
+ * начислялись поверх: `processHpRegen` пишет посчитанный максимум в сейв, поэтому на
+ * каждом следующем тике (раз в 5 минут) максимум рос на `вес*2 + редкость*3`, а hp
+ * стоял на месте — у новорождённой жабы здоровье проседало само по себе
+ * (`tmp-verify-hp-drift.mjs`).
+ */
 export const getToadMaxHp = (toad: Toad): number =>
   Math.round(
     Math.min(
       HP_SOFT_CAP,
-      (toad.maxHp && toad.maxHp > 0 ? toad.maxHp : EXPEDITION_BASE_HP) +
+      EXPEDITION_BASE_HP +
         (toad.genes?.weight || 0) * EXPEDITION_HP_PER_WEIGHT +
         (toad.genes?.rarity || 0) * EXPEDITION_HP_PER_RARITY,
     ),

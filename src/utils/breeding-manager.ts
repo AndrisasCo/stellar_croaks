@@ -4,6 +4,7 @@ import {
   MatingState,
   Toad,
 } from "../models/Toad";
+import { isToadSick } from "../models/disease";
 import {
   createToads,
   updateScene,
@@ -43,7 +44,7 @@ export class TimeManager {
 
   constructor() {
     this.lastPlayTime = new Date(
-      getGameState().lastSaved || Date.now()
+      getGameState().lastSaved || Date.now(),
     ).getTime();
     this.currentTime = Date.now();
   }
@@ -78,21 +79,24 @@ export const processBreeding = (hoursPassed: number, addNotification: any) => {
 const groupToadsByScene = (toads: Toad[]): Record<string, Toad[]> => {
   return toads
     .filter((toad) => getToadHomeId(toad) != null)
-    .reduce((groups, toad) => {
-      const sceneId = String(getToadHomeId(toad));
-      if (!groups[sceneId]) {
-        groups[sceneId] = [];
-      }
-      groups[sceneId].push(toad);
-      return groups;
-    }, {} as Record<string, Toad[]>);
+    .reduce(
+      (groups, toad) => {
+        const sceneId = String(getToadHomeId(toad));
+        if (!groups[sceneId]) {
+          groups[sceneId] = [];
+        }
+        groups[sceneId].push(toad);
+        return groups;
+      },
+      {} as Record<string, Toad[]>,
+    );
 };
 
 const processSceneBreeding = async (
   sceneId: string,
   sceneToads: Toad[],
   hoursPassed: number,
-  addNotification: any
+  addNotification: any,
 ) => {
   const pregnant = sceneToads.filter((t) => t.pregnancy);
 
@@ -123,7 +127,7 @@ const processSceneBreeding = async (
       const hunger = getHunger(
         t.state.hunger,
         t.genes.hungerRate,
-        HOURS_TO_GROW_UP
+        HOURS_TO_GROW_UP,
       );
 
       if (t.state.hunger - hunger < 0) {
@@ -164,7 +168,8 @@ const MATING_LEAD_SEX = "female";
  * Жаба перестала ухаживать, но осталась в репродукторе: выносит её только игрок
  * (перенос на карте или кнопка в модалке «Репродуктор»).
  */
-const clearMating = (toad: Toad) => updateToadById(toad.id, { mating: null }, true);
+const clearMating = (toad: Toad) =>
+  updateToadById(toad.id, { mating: null }, true);
 
 /** «2 ч 15 мин» из длительности беременности в часах */
 const formatPregnancyEta = (hours: number): string => {
@@ -203,7 +208,7 @@ const getMatingBreakReason = (toad: Toad, partner: Toad | null): string => {
 const startMating = (
   female: Toad,
   male: Toad,
-  nestRoomId: string = NEST_ROOM_ID
+  nestRoomId: string = NEST_ROOM_ID,
 ): { minutes: number; startAt: number } => {
   const now = Date.now();
   const minutes = getMatingMinutes(female, male);
@@ -245,7 +250,7 @@ const finishMating = (female: Toad, male: Toad, addNotification: any) => {
   addNotification?.({
     type: "success",
     content: `♥ ${male.name ?? "Самец"} ♥ ${female.name ?? "Самка"}: ухаживание удалось, беременность началась! Роды примерно через ${formatPregnancyEta(
-      mother.pregnancy?.pregnancyDuration ?? 0
+      mother.pregnancy?.pregnancyDuration ?? 0,
     )}.`,
     timeout: 9000,
   });
@@ -263,7 +268,7 @@ const finishMating = (female: Toad, male: Toad, addNotification: any) => {
 const processMating = (
   toad: Toad,
   sceneToads: Toad[],
-  addNotification: any
+  addNotification: any,
 ) => {
   const mating = toad.mating;
 
@@ -322,7 +327,7 @@ export const startPregnancy = async (toad: Toad, father: Toad) => {
     pregnancyStart: Date.now(),
     pregnancyDuration: Math.min(
       getPregnancyDuration() + toad.genes.rarity / 2,
-      8
+      8,
     ),
     fatherId: father.id,
     father,
@@ -336,7 +341,7 @@ const calculateOffspringCount = (female: Toad): number => {
   // Базовое количество + влияние fertility
   const baseCount = Math.ceil(female.genes.fertility / female.genes.rarity);
   const bonusCount = Math.floor(
-    Math.random() * 1 + female.genes.fertility / 10
+    Math.random() * 1 + female.genes.fertility / 10,
   );
   return Math.min(baseCount + bonusCount, 5);
 };
@@ -378,7 +383,7 @@ export const endPregnancy = async (toad: Toad, addNotification: any) => {
         ...child,
         homeId: currentSceneId,
         roomId: toad.roomId,
-      })
+      }),
     );
 
     createToads(born, true);
@@ -397,14 +402,14 @@ export const endPregnancy = async (toad: Toad, addNotification: any) => {
   // Биопод матери мог пропасть (её дом — снесли карту/сейв): тогда потомство просто
   // раскладывается по любым свободным биоподам — «предпочтительный» тогда не находится.
   const homeSceneExists = getGameState().scenes.some(
-    (scene) => scene.id === currentSceneId
+    (scene) => scene.id === currentSceneId,
   );
 
   // Склада жаб больше нет: потомство раскладываем по биоподам, начиная с биопода матери.
   // Тем, кому места не хватило, биопод придётся построить — они не появляются на свет.
   const { assigned, rejected } = assignToadsToScenes(
     children,
-    homeSceneExists ? currentSceneId : null
+    homeSceneExists ? currentSceneId : null,
   );
 
   if (rejected > 0) {
@@ -425,27 +430,6 @@ export const endPregnancy = async (toad: Toad, addNotification: any) => {
 
   completeAchivement("first-offspring");
   finishBirth();
-};
-
-/**
- * Занятость родильных слотов биопода (Часть 3.2).
- * used — число занятых слотов: ухаживание в репродукторе (пара) и беременность,
- * limit — лимит слотов купола.
- *
- * Считаем по дому (`homeId`): родильные слоты — свойство биопода, а пара в это время
- * живёт в репродукторе и места в биоподе не занимает (`utils/toad-location.ts`).
- */
-export const getNestOccupancy = (
-  sceneId: number | null
-): { used: number; limit: number } => {
-  const state = getGameState();
-  const scene = state.scenes.find((s) => s.id === sceneId) ?? null;
-  // Слот занят и пока идёт ухаживание (жаба в репродукторе), и пока она вынашивает
-  const used = state.toads.filter(
-    (t) => getToadHomeId(t) === sceneId && (t.mating || t.pregnancy?.isPregnant)
-  ).length;
-
-  return { used, limit: getNestSlots(scene) };
 };
 
 /** Результат действия в репродукторе: прерывание ухаживания, апгрейд слотов */
@@ -488,9 +472,7 @@ export const abortMating = (toadId: number): NestActionResult => {
  * Апгрейд постройки «Репродуктор» (Часть 3.2): +1 родильный слот за Кваксы.
  * Цена растёт с каждым апгрейдом, максимум — NEST_MAX_SLOTS.
  */
-export const upgradeNestSlots = (
-  sceneId: number | null
-): NestActionResult => {
+export const upgradeNestSlots = (sceneId: number | null): NestActionResult => {
   const state = getGameState();
   const scene = state.scenes.find((s) => s.id === sceneId);
 
@@ -512,7 +494,7 @@ export const upgradeNestSlots = (
     return {
       success: false,
       message: `Не хватает Кваксов на Репродуктор: нужно ${cost}, есть ${Math.floor(
-        tokens
+        tokens,
       )}`,
     };
   }
@@ -542,15 +524,105 @@ export const isNestRoomId = (roomId?: string | null): boolean => {
   }
 
   return (getGameState().colony?.rooms ?? []).some(
-    (room) => room.id === roomId && room.kind === "breeding"
+    (room) => room.id === roomId && room.kind === "breeding",
   );
 };
 
 /** Взрослые жабы, которые прямо сейчас сидят в секторе-репродукторе */
 export const getNestToads = (roomId: string = NEST_ROOM_ID): Toad[] =>
   getGameState().toads.filter(
-    (toad) => toad.roomId === roomId && toad.stage === "adult"
+    (toad) => toad.roomId === roomId && toad.stage === "adult",
   );
+
+/**
+ * Слоты репродуктора (Часть 3.2): первый слот занимает самка, второй — самец.
+ *
+ * Репродуктор — сектор на пару, но места у пары разные: самка садится в первый слот,
+ * самец во второй. Пол слота решает, кого предложит список жаб, поэтому в репродуктор
+ * не посадить двух самцов и сразу видно, кого паре не хватает.
+ */
+export const NEST_SLOT_SEXES = ["female", "male"] as const;
+
+export type NestSlotSex = (typeof NEST_SLOT_SEXES)[number];
+
+/** Пол слота репродуктора: слотов всего два (`NEST_ROOM_TOAD_SLOTS`), дальше слотов нет */
+export const getNestSlotSex = (slotIndex: number): NestSlotSex | null =>
+  NEST_SLOT_SEXES[slotIndex] ?? null;
+
+/** Как называется слот в интерфейсе репродуктора */
+export const getNestSlotLabel = (slotIndex: number): string => {
+  const sex = getNestSlotSex(slotIndex);
+
+  if (sex === "female") {
+    return "Слот самки";
+  }
+
+  if (sex === "male") {
+    return "Слот самца";
+  }
+
+  return "Слот репродуктора";
+};
+
+/**
+ * Чем жаба не годится для слота репродуктора (`null` — годится).
+ *
+ * Репродуктор берёт только взрослую жабу нужного пола: не в походе, не выбитую,
+ * без кибер-болезни и не вынашивающую потомство. Правила одни и те же для списка жаб
+ * (`getNestSlotCandidates`) и для причины, почему жабу в список не позвали.
+ */
+export const getNestSlotRejectReason = (
+  toad: Toad,
+  slotIndex: number,
+): string | null => {
+  const sex = getNestSlotSex(slotIndex);
+
+  if (!sex) {
+    return "В репродукторе всего два слота: самки и самца.";
+  }
+
+  if (toad.stage !== "adult") {
+    return "В репродуктор берут только взрослых жаб.";
+  }
+
+  if (toad.sex !== sex) {
+    return sex === "female"
+      ? "Первый слот репродуктора занимает самка."
+      : "Второй слот репродуктора занимает самец.";
+  }
+
+  if (toad.status === "out" || isToadOnExpedition(toad.id)) {
+    return "Жаба в походе за Периметр — размножение только дома.";
+  }
+
+  if (isToadDown(toad)) {
+    return "Выбитая жаба не может размножаться — сначала подлечите её.";
+  }
+
+  if (isToadSick(toad)) {
+    return "Больная жаба не может размножаться — сначала вылечите её.";
+  }
+
+  if (toad.pregnancy?.isPregnant) {
+    return "Жаба уже вынашивает потомство — дождитесь родов.";
+  }
+
+  if (isNestRoomId(toad.roomId)) {
+    return "Жаба уже сидит в репродукторе.";
+  }
+
+  return null;
+};
+
+/**
+ * Кого можно позвать в слот репродуктора: взрослые жабы нужного пола, здоровые и свободные —
+ * не в походе, не выбитые, не больные, без беременности и не из другого репродуктора.
+ * Сверху — самые редкие: пару собирают из лучших жаб колонии.
+ */
+export const getNestSlotCandidates = (slotIndex: number): Toad[] =>
+  getGameState()
+    .toads.filter((toad) => getNestSlotRejectReason(toad, slotIndex) === null)
+    .sort((a, b) => b.genes.rarity - a.genes.rarity);
 
 /** Результат нажатия кнопки «Начать ухаживание» в модалке репродуктора */
 export interface CourtshipResult {
@@ -575,11 +647,11 @@ export interface CourtshipCheck {
  * проверке кнопки, и в запуске пары, чтобы проверки и старт не разъезжались.
  */
 const getNestPair = (
-  roomId: string
+  roomId: string,
 ): { adults: Toad[]; male: Toad | null; female: Toad | null } => {
   const free = (toad: Toad) => !toad.mating && !toad.pregnancy?.isPregnant;
   const adults = getGameState().toads.filter(
-    (toad) => toad.roomId === roomId && toad.stage === "adult"
+    (toad) => toad.roomId === roomId && toad.stage === "adult",
   );
 
   return {
@@ -598,7 +670,7 @@ const getNestPair = (
  * начавшейся беременности) кнопка ничего не запустит.
  */
 export const checkNestCourtship = (
-  roomId: string = NEST_ROOM_ID
+  roomId: string = NEST_ROOM_ID,
 ): CourtshipCheck => {
   const state = getGameState();
   const { adults, male, female } = getNestPair(roomId);
@@ -643,6 +715,15 @@ export const checkNestCourtship = (
     };
   }
 
+  // Кибер-болезнь (Часть 3.6): больных в пару не берут — как и в списке жаб репродуктора
+  if (isToadSick(male) || isToadSick(female)) {
+    return {
+      ready: false,
+      message: "Больная жаба не может размножаться — сначала вылечите её.",
+      pair: null,
+    };
+  }
+
   if (isToadOnExpedition(male.id) || isToadOnExpedition(female.id)) {
     return {
       ready: false,
@@ -666,18 +747,8 @@ export const checkNestCourtship = (
     return {
       ready: false,
       message: `Не хватает биомассы на пару: нужно ${biomassCost}, есть ${Math.floor(
-        biomass
+        biomass,
       )}.`,
-      pair: null,
-    };
-  }
-
-  const { used, limit } = getNestOccupancy(getToadHomeId(female));
-
-  if (used >= limit) {
-    return {
-      ready: false,
-      message: "Все родильные слоты биопода заняты — дождитесь родов.",
       pair: null,
     };
   }
@@ -702,7 +773,7 @@ export const checkNestCourtship = (
  */
 export const startNestCourtship = (
   roomId: string = NEST_ROOM_ID,
-  addNotification?: (notification: any) => void
+  addNotification?: (notification: any) => void,
 ): CourtshipResult => {
   const check = checkNestCourtship(roomId);
 
@@ -748,4 +819,3 @@ export const startNestCourtship = (
     message: `Ухаживание в репродукторе: беременность через ~${minutes} мин`,
   };
 };
-

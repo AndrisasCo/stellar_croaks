@@ -188,7 +188,7 @@ export const canMoveToadToRoom = (
     case "shop": {
       return {
         ok: false,
-        reason: `«${room.title}» — рабочий сектор: жабам здесь жить негде.`,
+        reason: `«${room.name || room.title}» — рабочий сектор: жабам здесь жить негде.`,
       };
     }
 

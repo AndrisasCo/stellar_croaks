@@ -68,13 +68,13 @@ export const achievementGroups: AchievementGroup[] = [
     description: "Освойте базовые механики игры",
     color: "green",
     achievements: [
-      {
-        id: "feed-all",
-        icon: "🍽️",
-        name: "Шведский стол",
-        description: "Покормить всех жаб одновременно",
-        completed: false,
-      },
+      // {
+      //   id: "feed-all",
+      //   icon: "🍽️",
+      //   name: "Шведский стол",
+      //   description: "Покормить всех жаб одновременно",
+      //   completed: false,
+      // },
       {
         id: "feed-one",
         icon: "🍎",
@@ -522,7 +522,8 @@ export const achievementGroups: AchievementGroup[] = [
   {
     id: "perimeter-scouts",
     title: "🧭 Разведчики Периметра",
-    description: "Собирайте команды жаб, ходите в походы и тащите домой чужое добро",
+    description:
+      "Собирайте команды жаб, ходите в походы и тащите домой чужое добро",
     color: "blue",
     achievements: [
       {

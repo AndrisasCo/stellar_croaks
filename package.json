@@ -18,7 +18,10 @@
     "verify:crew": "node tmp-verify-expedition-crew.mjs",
     "verify:assets": "node tmp-verify-assets.mjs",
     "verify:place": "node tmp-verify-toad-place.mjs",
-    "verify": "npm run verify:init-data && npm run verify:stars && npm run verify:platform && npm run verify:colony && npm run verify:crew && npm run verify:assets && npm run verify:place"
+    "verify:names": "node tmp-verify-room-names.mjs",
+    "verify:toad-picker": "node tmp-verify-toad-picker.mjs",
+    "verify:biomass": "node tmp-verify-biomass-sell.mjs",
+    "verify": "npm run verify:init-data && npm run verify:stars && npm run verify:platform && npm run verify:colony && npm run verify:crew && npm run verify:assets && npm run verify:place && npm run verify:names && npm run verify:toad-picker && npm run verify:biomass"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.81.0",
