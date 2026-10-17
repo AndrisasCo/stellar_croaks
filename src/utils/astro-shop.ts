@@ -1,7 +1,7 @@
 import { updateToadById, updateUser } from "../backend";
 import { getGameState } from "../backend/localStorage";
 import { Toad } from "../models/Toad";
-import { quarantineScene } from "./disease-manager";
+import { getSceneSickCount, quarantineScene } from "./disease-manager";
 
 /**
  * АСТРО-КВАКСЫ — «премиум-манипуляции» (Часть 3.7).
@@ -123,8 +123,20 @@ export const acceleratePregnancy = (toadId: number): AstroPurchaseResult => {
   };
 };
 
-/** Карантин биопода: лечит всех заражённых жаб сцены */
+/**
+ * Карантин биопода: лечит всех заражённых жаб сцены.
+ * Больных нет — астро не списываем: игрок не должен платить за пустое действие.
+ */
 export const buyQuarantine = (sceneId: number | null): AstroPurchaseResult => {
+  const sick = getSceneSickCount(sceneId);
+
+  if (sick === 0) {
+    return {
+      success: false,
+      message: "В этом биоподе нет больных жаб: карантин не нужен",
+    };
+  }
+
   if (!spendAstro(ASTRO_PRICES.quarantine)) {
     return {
       success: false,
@@ -136,9 +148,6 @@ export const buyQuarantine = (sceneId: number | null): AstroPurchaseResult => {
   return {
     success: true,
     cured,
-    message:
-      cured > 0
-        ? `Карантин проведён, вылечено жаб: ${cured}`
-        : "Карантин проведён: больных жаб не найдено",
+    message: `Карантин проведён, вылечено жаб: ${cured}`,
   };
 };

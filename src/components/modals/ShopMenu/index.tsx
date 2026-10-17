@@ -49,7 +49,7 @@ export default function ShopMenu({ room }: { room?: RoomConfig }) {
   };
 
   return (
-    <Modal title="Космический рынок">
+    <Modal title={room?.name}>
       <div className="pb-4 px-2 border-b border-gray-700">
         {/* Валюта */}
         <div className="flex gap-4 mt-3 text-sm">

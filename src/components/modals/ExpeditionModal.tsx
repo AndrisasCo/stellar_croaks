@@ -44,9 +44,12 @@ import {
   buyDispatchOffice,
   canSendToad,
   extractExpedition,
+  finishExpedition,
+  getExpeditionBiomassValue,
   getExpeditionEtaMs,
   getExpeditionLootSummary,
   getExpeditionProgress,
+  getExpeditionStorageCheck,
   getExpeditionTeamStatus,
   getReturnProgress,
   isToadOnExpedition,
@@ -281,6 +284,17 @@ const ExpeditionModal: React.FC<{
   }, []);
 
   const expeditions = state.expeditions ?? [];
+  /**
+   * Завершённые походы ждут разбора добычи: они не занимают лимит «Диспетчерской»
+   * и показываются отдельным блоком над активными. Команда всё ещё в походе —
+   * жабы освобождаются только после «Завершить»/«В биомассу».
+   */
+  const completedExpeditions = expeditions.filter(
+    (expedition) => expedition.phase === "completed"
+  );
+  const activeExpeditions = expeditions.filter(
+    (expedition) => expedition.phase !== "completed"
+  );
   const stats = {
     ...DEFAULT_EXPEDITION_STATS,
     ...(state.expeditionStats ?? {}),
@@ -338,7 +352,7 @@ const ExpeditionModal: React.FC<{
     members.length > 0 &&
     biomass >= sendCost &&
     tiredMembers.length === 0 &&
-    expeditions.length < teamLimit &&
+    activeExpeditions.length < teamLimit &&
     sectorUnlocked;
 
   // Сектора и жаб по секторам берём из колонии теми же вычислениями, что и карта.
@@ -456,13 +470,21 @@ const ExpeditionModal: React.FC<{
     });
 
   const handleSend = () => {
-    const result = startExpedition(sectorId, members);
+    const result = startExpedition(sectorId, members, crewRoom?.id);
     notify(result);
     if (result.success) {
       setSlots(emptyExpeditionSlots());
       setTab("runs");
     }
   };
+
+  /**
+   * Разбор добычи завершённого похода. После успеха жабы уже стоят в «Разведке»,
+   * а карточка исчезает из списка: модалка остаётся открытой, чтобы игрок видел
+   * обновлённый экипаж (и мог сразу отправить его снова).
+   */
+  const handleFinish = (id: string, mode: "storage" | "biomass") =>
+    notify(finishExpedition(id, mode));
 
   const handleWithdraw = (id: string) => notify(withdrawExpedition(id));
   const handleSpeedUp = (id: string) => notify(speedUpReturn(id));
@@ -714,9 +736,9 @@ const ExpeditionModal: React.FC<{
             <p className="text-base font-bold text-white">{stats.bestDepth}</p>
           </div>
           <div className="bg-color-main rounded-xl py-2 px-1 border border-gray-600/30">
-            <p className="text-2xs text-gray-400">Команды</p>
+            <p className="text-2xs text-gray-400">Активные команды</p>
             <p className="text-base font-bold text-white">
-              {expeditions.length}/{teamLimit}
+              {activeExpeditions.length}/{teamLimit}
             </p>
           </div>
         </div>
@@ -727,14 +749,109 @@ const ExpeditionModal: React.FC<{
         {/* ВКЛАДКА: активные походы */}
         {tab === "runs" && (
           <div className="flex flex-col gap-3">
-            {expeditions.length === 0 && (
+            {completedExpeditions.map((expedition) => {
+              const sectorDef = getSectorById(expedition.sectorId);
+              const storage = getExpeditionStorageCheck(expedition);
+              const biomassValue = getExpeditionBiomassValue(expedition);
+              const survived = expedition.success !== false;
+
+              return (
+                <div
+                  key={expedition.id}
+                  className={`rounded-2xl p-3 border flex flex-col gap-2 ${
+                    survived
+                      ? "bg-emerald-950/30 border-emerald-500/40"
+                      : "bg-red-950/20 border-red-500/30"
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold text-white">
+                        {sectorDef.icon} {sectorDef.name}
+                      </p>
+                      <p className="text-2xs text-gray-400">
+                        глубина {sectorDef.depth} • команда из{" "}
+                        {expedition.team.length} жаб
+                      </p>
+                    </div>
+                    <span
+                      className={`shrink-0 text-2xs font-bold px-2 py-1 rounded-lg ${
+                        survived
+                          ? "bg-emerald-900/60 text-emerald-200"
+                          : "bg-red-900/50 text-red-200"
+                      }`}
+                    >
+                      {survived ? "✅ поход удался" : "⚠️ провал"}
+                    </span>
+                  </div>
+
+                  <p className="text-2xs text-gray-300 leading-snug">
+                    {survived
+                      ? "Команда вернулась с добычей. Заберите её на склад или переработайте в биомассу — после этого жабы вернутся в «Разведку»."
+                      : "Сектор потрепал команду: добыча скромнее, жабы вернулись ранеными. Разберите трофеи, чтобы вернуть их в строй."}
+                  </p>
+
+                  <TeamStatusList expedition={expedition} />
+
+                  <p className="text-2xs text-gray-300">
+                    🎒 Добыча: {getExpeditionLootSummary(expedition)}
+                  </p>
+                  {expedition.loot.samples > 0 && (
+                    <p className="text-2xs text-cyan-200">
+                      🧬 Образцов в секторе: {expedition.loot.samples}
+                    </p>
+                  )}
+
+                  <p
+                    className={`text-2xs ${
+                      storage.ok ? "text-gray-500" : "text-amber-300"
+                    }`}
+                  >
+                    {storage.needed > 0
+                      ? storage.ok
+                        ? `📦 На склад: ${storage.needed} предмет(ов), свободно ${storage.free}`
+                        : `📦 Склад полон: нужно ${storage.needed}, свободно ${storage.free}. Освободите место или переработайте лут.`
+                      : "📦 Предметов нет — на склад идти не за чем."}
+                  </p>
+
+                  <div className="flex flex-wrap gap-1.5">
+                    <ClickButton
+                      onClick={() => handleFinish(expedition.id, "storage")}
+                      disabled={!storage.ok}
+                      title={
+                        storage.ok
+                          ? "Забрать предметы на склад, а биомассу, Кваксы и образцы — в колонию"
+                          : "На складе не хватает места: постройте «Склад» или переработайте лут в биомассу"
+                      }
+                      className={`flex-1 py-2 rounded-xl text-2xs font-bold border ${
+                        storage.ok
+                          ? "bg-emerald-900/50 hover:bg-emerald-800/60 text-emerald-100 border-emerald-500/40"
+                          : "bg-slate-800/40 text-gray-500 border-gray-600/30 cursor-not-allowed"
+                      }`}
+                    >
+                      Завершить
+                    </ClickButton>
+                    <ClickButton
+                      onClick={() => handleFinish(expedition.id, "biomass")}
+                      title="Переработать всю добычу похода, включая предметы и образцы, в биомассу"
+                      className="flex-1 py-2 rounded-xl bg-lime-900/50 hover:bg-lime-800/60 text-lime-100 text-2xs font-bold border border-lime-500/40"
+                    >
+                      🧪 Превратить лут в биомассу (+{biomassValue} 🧪)
+                    </ClickButton>
+                  </div>
+                </div>
+              );
+            })}
+
+            {activeExpeditions.length === 0 && (
               <p className="text-xs text-gray-400 text-center py-3">
-                Никто не в походе. Соберите команду из жаб и отправьте её за
-                Периметр — добыча и образцы того стоят.
+                {completedExpeditions.length > 0
+                  ? "Активных походов нет: разберите добычу завершённых и отправляйте команду снова."
+                  : "Никто не в походе. Соберите команду из жаб и отправьте её за Периметр — добыча и образцы того стоят."}
               </p>
             )}
 
-            {expeditions.map((expedition) => {
+            {activeExpeditions.map((expedition) => {
               const sectorDef = getSectorById(expedition.sectorId);
               const returning = expedition.phase === "returning";
               const progress = returning
@@ -1063,7 +1180,7 @@ const ExpeditionModal: React.FC<{
                 </p>
               )}
 
-              {expeditions.length >= teamLimit && (
+              {activeExpeditions.length >= teamLimit && (
                 <p className="text-2xs text-amber-300">
                   Все команды уже в походе: дождитесь возврата или постройте
                   «Диспетчерскую».
@@ -1124,9 +1241,9 @@ const ExpeditionModal: React.FC<{
                   <p className="font-bold text-white">{crewSendable.length}</p>
                 </div>
                 <div className="rounded-lg bg-slate-900/40 px-1 py-1">
-                  <p className="text-gray-400">🚁 Команд</p>
+                  <p className="text-gray-400">🚁 Активных команд</p>
                   <p className="font-bold text-white">
-                    {expeditions.length}/{teamLimit}
+                    {activeExpeditions.length}/{teamLimit}
                   </p>
                 </div>
               </div>

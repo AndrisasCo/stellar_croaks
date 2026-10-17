@@ -185,14 +185,23 @@ export const resolveColonyRooms = (
    * Мирные вызовы (прогноз тока, проверки) сцены не передают — тогда биоподы стоят без
    * биопода: их жильцы не рисуются, но и не мешают (ток от биопода не зависит).
    */
+  /**
+   * Только те постройки, чей вид ещё есть в каталоге. Старый сейв мог сохранить сектор,
+   * которого больше нет (инкубатор переехал в модалку коллайдера): его гекс показываем
+   * свободным слотом, а не падаем на `ROOM_BLUEPRINTS[kind]` в `createColonyRoom`.
+   * Сам гекс и его соседи остаются на карте: фронт застройки считаем по всем постройкам.
+   */
+  const knownRooms = colony.rooms.filter(
+    (room) => room.kind in ROOM_BLUEPRINTS,
+  );
   const claimedScenes = new Set(
-    colony.rooms
+    knownRooms
       .map((room) => room.sceneId)
       .filter((sceneId): sceneId is number => sceneId !== undefined),
   );
   const freeScene = scenes.find((scene) => !claimedScenes.has(scene.id));
   const rooms = getUnlockedRooms(colony.rooms, colony.demolished).map((room) => {
-    const built = colony.rooms.find((item) => item.id === room.id);
+    const built = knownRooms.find((item) => item.id === room.id);
 
     // Слот застроили — на карте стоит сектор того вида, который выбрал игрок
     if (!built) {
@@ -212,7 +221,7 @@ export const resolveColonyRooms = (
     rooms.map((room) =>
       canBuildOnSlot(room, rooms) ? { ...room, icon: room.icon || "+" } : room,
     ),
-    colony.rooms.map((room) => room.id),
+    knownRooms.map((room) => room.id),
   );
 };
 

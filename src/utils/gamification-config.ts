@@ -1,5 +1,4 @@
 import { getPersonalityMultipliers, Toad } from "../models/Toad";
-import { Scene } from "../models/scene";
 import { getDiseasePenaltyMultiplier } from "../models/disease";
 
 // === Размножение: энергия и cooldown (Часть 3.2) ===
@@ -14,8 +13,6 @@ export const BREED_ENERGY_BASE = 25;
 export const BREED_BIOMASS_BASE = 8;
 /** Базовый отдых после скрещивания — 10 минут */
 export const BREED_COOLDOWN_BASE_MS = 10 * 60 * 1000;
-/** Базовое число родильных слотов на купол (постройка «Репродуктор») */
-export const NEST_BASE_SLOTS = 2;
 /** Сколько жаб влезает в гекс «Репродуктор»: пара (самец + самка) на ухаживание */
 export const NEST_ROOM_TOAD_SLOTS = 2;
 
@@ -216,25 +213,6 @@ export const getBiomassRate = (toad: Toad): number =>
   getDiseasePenaltyMultiplier(toad.state?.diseaseId) *
   getProductionFactor(toad.state.hunger);
 
-/** Число доступных родильных слотов купола */
-export const getNestSlots = (scene?: Scene | null): number =>
-  scene?.nestSlots ?? NEST_BASE_SLOTS;
-
-/** Максимум родильных слотов купола (постройка «Репродуктор» апгрейдится за Кваксы) */
-export const NEST_MAX_SLOTS = 6;
-/** Базовая цена первого апгрейда Репродуктора в Кваксах (аудит: было 40 — почти бесплатно) */
-export const NEST_SLOT_UPGRADE_BASE_COST = 150;
-/** Во сколько раз дорожает каждый следующий родильный слот */
-export const NEST_SLOT_UPGRADE_GROWTH = 2.4;
-
-/** Цена следующего родильного слота в Кваксах (дорожает с каждым апгрейдом) */
-export const getNestSlotUpgradeCost = (scene?: Scene | null): number => {
-  const steps = Math.max(0, getNestSlots(scene) - NEST_BASE_SLOTS);
-  return Math.round(
-    NEST_SLOT_UPGRADE_BASE_COST * Math.pow(NEST_SLOT_UPGRADE_GROWTH, steps)
-  );
-};
-
-/** Можно ли ещё расширить Репродуктор биопода */
-export const canUpgradeNest = (scene?: Scene | null): boolean =>
-  getNestSlots(scene) < NEST_MAX_SLOTS;
+// Родильные слоты не продаются по одному: в репродукторе всегда два места (самка и самец),
+// а вторая пара требует нового «Репродуктора» на карте. Апгрейд слотов за Кваксы удалён
+// вместе с UI — иначе скрытая цена ×2.4 за слот ломала бы общий рост цен секторов (×1.5).

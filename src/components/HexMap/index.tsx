@@ -30,7 +30,6 @@ import HospitalModal from "../modals/HospitalModal";
 import ExpeditionModal from "../modals/ExpeditionModal";
 import DissolveModal from "../modals/Lab/DissolveModal";
 import ToadCollider from "../modals/Lab/ToadColliderModal";
-import ToadSlotModal from "../modals/Lab/ToadSlotModal";
 import NestModal from "../modals/Lab/NestModal";
 import PowerRoomModal from "../modals/PowerRoomModal";
 import ShopMenu from "../modals/ShopMenu";
@@ -89,8 +88,8 @@ const ROOM_MODAL_BY_ACTION: Record<RoomActionId, RoomModalEntry> = {
   // Репродукторов в колонии может быть несколько: гекс открывает модалку сам (см. обработчик
   // клика) — гексу модалка и обязана: он её сектор с его парами и данными.
   nest: { render: (room) => <NestModal roomId={room.id} room={room} /> },
+  // Коллайдер открывает и смешивание, и инкубатор: это две вкладки одной модалки
   collider: { render: (room) => <ToadCollider room={room} /> },
-  incubator: { render: (room) => <ToadSlotModal room={room} /> },
   dissociator: { render: (room) => <DissolveModal room={room} /> },
   shop: { render: (room) => <ShopMenu room={room} /> },
   storage: { render: (room) => <StorageModal room={room} /> },
@@ -118,7 +117,7 @@ const ROOM_MODAL_BY_ACTION: Record<RoomActionId, RoomModalEntry> = {
  *  - ядро        → ничего: улучшения и снос живут в табе «Данные сектора» у самих секторов;
  *  - биопод      → список жаб и кормление;
  *  - репродуктор      → размножение;
- *  - коллайдер / инкубатор / диссоциатор → лаборатория;
+ *  - коллайдер (с вкладкой инкубатора) / диссоциатор → лаборатория;
  *  - магазин, склад, лазарет → их собственные модалки;
  *  - разведка    → походы: модалке передаётся гекс, а команду собирают из жаб этого сектора;
  *  - ⚡-сектор   → жабы-энергетики внутри;
@@ -234,18 +233,6 @@ export default function HexMapScreen() {
   const resources = useMemo(
     () => [
       {
-        key: "food",
-        icon: "🍎",
-        value: account?.storage?.food ?? 0,
-        tone: "text-pink-200",
-      },
-      {
-        key: "biomass",
-        icon: "🧪",
-        value: Math.floor(account?.biomass || 0),
-        tone: "text-lime-200",
-      },
-      {
         key: "tokens",
         icon: CURRENCY_CONFIG.tokens.icon,
         value: account?.tokens || 0,
@@ -257,6 +244,19 @@ export default function HexMapScreen() {
         value: account?.astro_quax || 0,
         tone: "text-purple-200",
       },
+      {
+        key: "biomass",
+        icon: "🧪",
+        value: Math.floor(account?.biomass || 0),
+        tone: "text-lime-200",
+      },
+      {
+        key: "food",
+        icon: "🍎",
+        value: account?.storage?.food ?? 0,
+        tone: "text-pink-200",
+      },
+
       {
         key: "toads",
         icon: "🐸",
@@ -385,7 +385,10 @@ export default function HexMapScreen() {
         return;
       }
 
-      openModal(() => modal.render(room), modal.bg ? { bg: modal.bg } : undefined);
+      openModal(
+        () => modal.render(room),
+        modal.bg ? { bg: modal.bg } : undefined,
+      );
     },
     [addNotification, openModal, rooms],
   );
@@ -501,14 +504,7 @@ export default function HexMapScreen() {
         }
       }
     },
-    [
-      addNotification,
-      placeToad,
-      playBeep,
-      playCroakSmall,
-      playOk,
-      releaseToad,
-    ],
+    [addNotification, placeToad, playBeep, playCroakSmall, playOk, releaseToad],
   );
 
   /** Перенести жабу не вышло: она уже летит назад — показываем причину. */
@@ -589,8 +585,6 @@ export default function HexMapScreen() {
 
           <ClickButton
             title="Меню колонии"
-            // Меню — столбик кнопок, ему широкая карточка десктопа (md:max-w-5xl в
-            // ModalProvider) ни к чему: просим узкую, как телефонную.
             onClick={() =>
               openModal(() => <BurgerMenu />, { className: "md:max-w-lg" })
             }
@@ -601,34 +595,16 @@ export default function HexMapScreen() {
         </div>
 
         {/* Ресурсы колонии — плавающие чипы поверх карты. Чип 🍎 кормит всех жаб */}
-        <div className="pointer-events-none flex flex-wrap items-center gap-1.5">
+        <div className="pointer-events-none flex flex-col gap-1.5 w-16">
           {resources.map((item) => {
-            const chipClass = `flex items-center gap-1 rounded-lg border border-white/5 bg-slate-950/55 px-2 py-1 text-[11px] font-semibold backdrop-blur-md ${item.tone}`;
-            const content = (
-              <>
+            return (
+              <div
+                key={item.key}
+                className={`flex items-center gap-1 rounded-lg border border-white/5 bg-slate-950/55 px-2 py-1 text-[11px] font-semibold backdrop-blur-md ${item.tone}`}
+              >
                 <span className="text-[12px] leading-none">{item.icon}</span>
                 <span className="tabular-nums">{item.value}</span>
-              </>
-            );
-
-            if (item.key !== "food") {
-              return (
-                <div key={item.key} className={chipClass}>
-                  {content}
-                </div>
-              );
-            }
-
-            // Кормление всех жаб: раньше это была иконка 🍎 внутри гекса-биопода
-            return (
-              <ClickButton
-                key={item.key}
-                title="Покормить всех жаб"
-                onClick={handleShowFoodTooltip}
-                className={`pointer-events-auto duration-200 active:scale-95 ${chipClass}`}
-              >
-                {content}
-              </ClickButton>
+              </div>
             );
           })}
         </div>

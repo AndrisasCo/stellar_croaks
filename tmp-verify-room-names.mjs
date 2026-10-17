@@ -59,7 +59,6 @@ const NEST = constants.NEST_ROOM_ID;
 const MULTI = [
   "aviary",
   "breeding",
-  "incubator",
   "scout",
   "storage",
   "hospital",
@@ -143,6 +142,18 @@ check(
 );
 check("всего секторов на старте", start.filter((item) => item.kind !== "empty").length, 3);
 
+// === 2.1 Инкубатор из старого сейва =======================================
+console.log("\n=== 2.1 Инкубатор из старого сейва ===");
+const legacy = map(colony([room("slot-north", "incubator")]));
+const legacyHex = legacy.find((item) => item.id === "slot-north");
+check("гекс старого инкубатора остался на карте", Boolean(legacyHex), true);
+check("инкубатор стал свободным слотом", legacyHex?.kind, "empty");
+check("у свободного слота нет имени", legacyHex?.name, "");
+check(
+  "слот старого инкубатора можно застроить заново",
+  legacyHex ? colonyBuild.canBuildOnSlot(legacyHex, legacy) : false,
+  true,
+);
 
 // === 3. Нумерация построек ================================================
 console.log("\n=== 3. Нумерация построек ===");

@@ -1,8 +1,4 @@
-import {
-  Expedition,
-  ExpeditionRole,
-  SectorDef,
-} from "../models/expedition";
+import { Expedition, ExpeditionRole, SectorDef } from "../models/expedition";
 import { Toad } from "../models/Toad";
 import { Items } from "../models/user";
 import {
@@ -80,26 +76,29 @@ export interface ExpeditionEventDef {
 }
 
 /** Урон события с учётом опасности сектора */
-export const scaleDamage = (ctx: ExpeditionEventContext, base: number): number =>
+export const scaleDamage = (
+  ctx: ExpeditionEventContext,
+  base: number,
+): number =>
   Math.max(
     EXPEDITION_MIN_DAMAGE,
-    Math.round(base * ctx.sector.dangerMultiplier)
+    Math.round(base * ctx.sector.dangerMultiplier),
   );
 
 /** Базовая добыча «за шаг пути»: биомасса и Кваксы с разбросом */
 export const stepLoot = (
   ctx: ExpeditionEventContext,
-  mult = 1
+  mult = 1,
 ): ExpeditionLootDelta => {
   const factor = getSectorLootFactor(ctx.sector) * mult;
   return {
     biomass: Math.max(
       1,
-      Math.round(EXPEDITION_STEP_BIOMASS * factor * (0.7 + ctx.rng() * 0.6))
+      Math.round(EXPEDITION_STEP_BIOMASS * factor * (0.7 + ctx.rng() * 0.6)),
     ),
     tokens: Math.max(
       1,
-      Math.round(EXPEDITION_STEP_TOKENS * factor * (0.6 + ctx.rng() * 0.5))
+      Math.round(EXPEDITION_STEP_TOKENS * factor * (0.6 + ctx.rng() * 0.5)),
     ),
   };
 };
@@ -169,6 +168,30 @@ export const describeLoot = (delta: ExpeditionLootDelta): string => {
 export const getRoleLabel = (role: ExpeditionRole): string =>
   ROLE_CONFIG[role].label;
 
+/**
+ * Событие роли, которой в команде нет: роль не заняли или её жабу уже выбили.
+ * Проверка в этом случае не бросается — событие выходит провальным **всегда**,
+ * а урон получает случайная живая жаба (`ctx.randomMember`), чтобы пустая роль
+ * стоила команде дороже. Если бить некого (вся команда выбита) — ничего не происходит.
+ */
+const failMissingRole = (
+  ctx: ExpeditionEventContext,
+  base: number,
+  text: (victim: ExpeditionEventMember, dealt: number) => string,
+): void => {
+  const victim = ctx.randomMember();
+  if (!victim) {
+    return;
+  }
+
+  const dealt = ctx.damage(victim, scaleDamage(ctx, base));
+  ctx.log({
+    member: victim,
+    kind: "bad",
+    text: text(victim, dealt),
+  });
+};
+
 // === Пул событий похода ===
 
 export const EXPEDITION_EVENTS: ExpeditionEventDef[] = [
@@ -176,7 +199,7 @@ export const EXPEDITION_EVENTS: ExpeditionEventDef[] = [
     id: "quiet_corridor",
     run: (ctx) => {
       ctx.log({
-        text: "Тихо. Только капель по куполам и гул далёких турбин.",
+        text: "Тихо. Слышен гул суперсерверов.",
         kind: "info",
       });
       if (ctx.rng() < 0.4) {
@@ -190,26 +213,29 @@ export const EXPEDITION_EVENTS: ExpeditionEventDef[] = [
     run: (ctx) => {
       const scout = ctx.byRole("scout");
       if (!scout) {
+        failMissingRole(
+          ctx,
+          10,
+          (victim, dealt) =>
+            `мостки рухнули: ${victim.toad.name} в провале (−${dealt} HP), обход искать было некому`,
+        );
         return;
       }
+
       if (ctx.check(scout, 0.5)) {
         const delta = { ...stepLoot(ctx, 1.2), ...rareLoot(ctx) };
         ctx.loot(delta);
         ctx.log({
           member: scout,
           kind: "good",
-          text: `нашла обход по ржавым фермам. Тащим: ${describeLoot(delta)}`,
+          text: `нашел обход по ржавым вентилляционным шахтам. Найдено: ${describeLoot(delta)}`,
         });
       } else {
-        const victim = ctx.randomMember() ?? scout;
-        const dealt = ctx.damage(victim, scaleDamage(ctx, 10));
+        const dealt = ctx.damage(scout, scaleDamage(ctx, 10));
         ctx.log({
           member: scout,
           kind: "bad",
-          text: `провалилась в провал, следом рухнул ${
-            victim.toad.name
-          } (−${dealt} HP)`,
-          hpDelta: victim.toadId === scout.toadId ? -dealt : undefined,
+          text: `обход оказался провалом (−${dealt} HP)`,
         });
       }
     },
@@ -220,8 +246,15 @@ export const EXPEDITION_EVENTS: ExpeditionEventDef[] = [
     run: (ctx) => {
       const tank = ctx.byRole("tank");
       if (!tank) {
+        failMissingRole(
+          ctx,
+          16,
+          (victim, dealt) =>
+            `залп турельной сетки достал ${victim.toad.name} (−${dealt} HP): щитоносца в команде не было`,
+        );
         return;
       }
+
       if (ctx.check(tank, 0.5)) {
         const delta = {
           ...stepLoot(ctx),
@@ -233,7 +266,7 @@ export const EXPEDITION_EVENTS: ExpeditionEventDef[] = [
           member: tank,
           kind: "good",
           text: `продавил турельную решётку и выгреб обломки: ${describeLoot(
-            delta
+            delta,
           )}`,
         });
       } else {
@@ -242,7 +275,6 @@ export const EXPEDITION_EVENTS: ExpeditionEventDef[] = [
           member: tank,
           kind: "bad",
           text: `словил весь залп сетки (−${dealt} HP), но остальных прикрыл`,
-          hpDelta: -dealt,
         });
       }
     },
@@ -253,13 +285,22 @@ export const EXPEDITION_EVENTS: ExpeditionEventDef[] = [
     run: (ctx) => {
       const hacker = ctx.byRole("hacker");
       if (!hacker) {
+        failMissingRole(
+          ctx,
+          8,
+          (victim, dealt) =>
+            `ловушка сейфа накрыла ${victim.toad.name} (−${dealt} HP): вскрывать было некому`,
+        );
         return;
       }
+
       if (ctx.check(hacker, 0.45)) {
         const delta = {
           tokens: Math.max(
             2,
-            Math.round(EXPEDITION_STEP_TOKENS * getSectorLootFactor(ctx.sector)),
+            Math.round(
+              EXPEDITION_STEP_TOKENS * getSectorLootFactor(ctx.sector),
+            ),
           ),
           ...rareLoot(ctx),
         };
@@ -275,7 +316,6 @@ export const EXPEDITION_EVENTS: ExpeditionEventDef[] = [
           member: hacker,
           kind: "bad",
           text: `поймал ловушку-приманку в терминале (−${dealt} HP)`,
-          hpDelta: -dealt,
         });
       }
     },
@@ -286,6 +326,12 @@ export const EXPEDITION_EVENTS: ExpeditionEventDef[] = [
     run: (ctx) => {
       const biologist = ctx.byRole("negotiator");
       if (!biologist) {
+        failMissingRole(
+          ctx,
+          7,
+          (victim, dealt) =>
+            `споры плесени накрыли ${victim.toad.name} (−${dealt} HP): переговорщика в команде нет`,
+        );
         return;
       }
       if (ctx.check(biologist, 0.5)) {
@@ -301,14 +347,14 @@ export const EXPEDITION_EVENTS: ExpeditionEventDef[] = [
         const disease = ctx.infect(victim);
         if (disease) {
           ctx.log({
-            member: biologist,
+            member: victim,
             kind: "bad",
-            text: `подхватила ${disease} от кратера с плесенью`,
+            text: `кратер с плесенью наградил ${victim.toad.name}: ${disease}`,
           });
         } else {
           const dealt = ctx.damage(victim, scaleDamage(ctx, 7));
           ctx.log({
-            member: biologist,
+            member: victim,
             kind: "bad",
             text: `распылила споры в шлем ${victim.toad.name} (−${dealt} HP)`,
           });
@@ -322,6 +368,12 @@ export const EXPEDITION_EVENTS: ExpeditionEventDef[] = [
     run: (ctx) => {
       const medic = ctx.byRole("medic");
       if (!medic) {
+        failMissingRole(
+          ctx,
+          9,
+          (victim, dealt) =>
+            `пресс нано-отсека придавил ${victim.toad.name} (−${dealt} HP): ремонтника в команде нет`,
+        );
         return;
       }
       const power = getRolePower(medic.toad, "medic");
@@ -369,7 +421,7 @@ export const EXPEDITION_EVENTS: ExpeditionEventDef[] = [
       ctx.log({
         kind: "good",
         text: `контейнеры дрейфуют с орбиты — вскрыли на месте: ${describeLoot(
-          delta
+          delta,
         )}`,
       });
     },
@@ -380,12 +432,20 @@ export const EXPEDITION_EVENTS: ExpeditionEventDef[] = [
     run: (ctx) => {
       const hacker = ctx.byRole("hacker");
       if (!hacker) {
+        failMissingRole(
+          ctx,
+          10,
+          (victim, dealt) =>
+            `защита терминала ударила ${victim.toad.name} током (−${dealt} HP): оператора в команде нет`,
+        );
         return;
       }
       const delta = {
         tokens: Math.max(
           3,
-          Math.round(EXPEDITION_STEP_TOKENS * 1.6 * getSectorLootFactor(ctx.sector)),
+          Math.round(
+            EXPEDITION_STEP_TOKENS * 1.6 * getSectorLootFactor(ctx.sector),
+          ),
         ),
         items: { [Items.craftDust]: 1 },
         ...rareLoot(ctx),
@@ -406,7 +466,7 @@ export const EXPEDITION_EVENTS: ExpeditionEventDef[] = [
       ctx.log({
         kind: "good",
         text: `под ногами чавкнула биомассовая отмель — зачерпнули горстями: ${describeLoot(
-          delta
+          delta,
         )}`,
       });
     },
@@ -417,6 +477,12 @@ export const EXPEDITION_EVENTS: ExpeditionEventDef[] = [
     run: (ctx) => {
       const tank = ctx.byRole("tank");
       if (!tank) {
+        failMissingRole(
+          ctx,
+          14,
+          (victim, dealt) =>
+            `клапан охлаждайки сорвало, струя достала ${victim.toad.name} (−${dealt} HP): щитоносца в команде нет`,
+        );
         return;
       }
       if (ctx.check(tank, 0.55)) {
@@ -447,6 +513,12 @@ export const EXPEDITION_EVENTS: ExpeditionEventDef[] = [
     run: (ctx) => {
       const scout = ctx.byRole("scout");
       if (!scout) {
+        failMissingRole(
+          ctx,
+          12,
+          (victim, dealt) =>
+            `сканер дрона вцепился в ${victim.toad.name} (−${dealt} HP): разведчика в команде не было`,
+        );
         return;
       }
       if (ctx.check(scout, 0.55)) {
@@ -461,7 +533,6 @@ export const EXPEDITION_EVENTS: ExpeditionEventDef[] = [
           member: scout,
           kind: "bad",
           text: `подставилась под сканер дрона (−${dealt} HP)`,
-          hpDelta: -dealt,
         });
       }
     },
@@ -478,7 +549,7 @@ export const EXPEDITION_EVENTS: ExpeditionEventDef[] = [
         ctx.log({
           kind: "good",
           text: `поймали чужой сигнал и обменяли координаты на ${describeLoot(
-            delta
+            delta,
           )}`,
         });
       } else {
@@ -500,6 +571,12 @@ export const EXPEDITION_EVENTS: ExpeditionEventDef[] = [
     run: (ctx) => {
       const biologist = ctx.byRole("negotiator");
       if (!biologist) {
+        failMissingRole(
+          ctx,
+          10,
+          (victim, dealt) =>
+            `генбассейн принял ${victim.toad.name} с головой (−${dealt} HP): договариваться было некому`,
+        );
         return;
       }
       if (ctx.check(biologist, 0.45)) {
@@ -522,7 +599,6 @@ export const EXPEDITION_EVENTS: ExpeditionEventDef[] = [
           member: biologist,
           kind: "bad",
           text: `провалилась в генбассейн с головой (−${dealt} HP)`,
-          hpDelta: -dealt,
         });
       }
     },
@@ -530,18 +606,12 @@ export const EXPEDITION_EVENTS: ExpeditionEventDef[] = [
 ];
 
 /**
- * Случайное событие из пула: события ролей требуют живую жабу в этой роли,
- * общие события выпадают всегда.
+ * Случайное событие из пула. Состав команды пул не фильтрует: событие роли, которую
+ * никто не занял (или её жабу уже выбили), всё равно выпадает — и всегда проваливается
+ * уроном случайной жабе (`failMissingRole`). Так пустые роли стоят команде дороже.
  */
 export const pickExpeditionEvent = (
-  roles: ExpeditionRole[],
-  rng: () => number = Math.random
+  rng: () => number = Math.random,
 ): ExpeditionEventDef => {
-  const pool = EXPEDITION_EVENTS.filter(
-    (event) => !event.role || roles.includes(event.role)
-  );
-  const source =
-    pool.length > 0 ? pool : EXPEDITION_EVENTS.filter((event) => !event.role);
-  return source[Math.floor(rng() * source.length)];
+  return EXPEDITION_EVENTS[Math.floor(rng() * EXPEDITION_EVENTS.length)];
 };
-

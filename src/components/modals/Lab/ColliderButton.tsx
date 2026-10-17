@@ -1,9 +1,6 @@
-import { useState } from "react";
 import { useSoundEffects } from "../../../hooks/use-sound-effects";
 import { ClickButton } from "../../shared/ClickButton";
 import { useToads } from "../../ToadContext";
-import ToadCollider from "./ToadColliderModal";
-import ToadSlotModal from "./ToadSlotModal";
 import { useNotifications } from "../../../hooks/use-notification";
 import { useModal } from "../../ModalContext";
 import { ColliderMenu } from "./LabMenu";
@@ -11,7 +8,7 @@ import { ColliderMenu } from "./LabMenu";
 export default function ColliderButton() {
   const { colliderState, allToads } = useToads();
   const { playClickCollider } = useSoundEffects();
-  const { openModal, closeModal } = useModal();
+  const { openModal } = useModal();
 
   const { addNotification } = useNotifications();
   // Ручное размножение доступно с самого начала (нужна хотя бы пара жаб),

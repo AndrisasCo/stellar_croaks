@@ -34,7 +34,7 @@ const getObtainedByIcon = (obtainedBy?: ToadObtainedBy) => {
     case "start":
       return { icon: "", label: "Стартовая" };
     case "shop":
-      return { icon: "🛒", label: "Магазин" };
+      return { icon: "🛒", label: "Торговая капсула" };
     case "lootbox":
       return { icon: "🎁", label: "Лутбокс" };
     case "achievement":
@@ -220,10 +220,10 @@ export const DetailedView: React.FC = ({ selectedItem }) => {
                 {selectedItem.rarity === "legendary"
                   ? "Легендарная"
                   : selectedItem.rarity === "epic"
-                  ? "Эпическая"
-                  : selectedItem.rarity === "rare"
-                  ? "Редкая"
-                  : "Обычная"}
+                    ? "Эпическая"
+                    : selectedItem.rarity === "rare"
+                      ? "Редкая"
+                      : "Обычная"}
               </div>
             </div>
             <div className="bg-black/30 rounded p-3">

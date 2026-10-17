@@ -21,7 +21,8 @@ import {
 const BOT_TOKEN = process.env.BOT_TOKEN;
 /** Адрес игры (https!) для кнопки web_app — из бота это единственный вход в мини-апп. */
 const APP_URL = process.env.APP_URL ?? process.env.VITE_APP_URL ?? "";
-const SUPABASE_URL = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL ?? "";
+const SUPABASE_URL =
+  process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL ?? "";
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
 
 if (!BOT_TOKEN) {
@@ -100,7 +101,10 @@ const shopKeyboard = () =>
   );
 
 bot.command("buy", (ctx) =>
-  ctx.reply("Наборы кваксов за Telegram Stars ⭐", shopKeyboard()),
+  ctx.reply(
+    "скажи спасибо разработчику за Telegram Stars ⭐  - получи набор Кваксов",
+    shopKeyboard(),
+  ),
 );
 
 /**

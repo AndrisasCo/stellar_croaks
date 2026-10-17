@@ -23,7 +23,8 @@ import { getIncubatingToadIds } from "./dissolve-manager";
 import { getToadDisease, infectToad } from "./disease-manager";
 import { generateRandomHexColor } from "./randomize-toad-characteristics";
 import { assignToadsToScenes } from "./housing";
-import { fitItemsInStorage } from "./storage";
+import { canFitInStorage, fitItemsInStorage, getStorageCapacityInfo } from "./storage";
+import { getToadHomeId } from "./toad-location";
 import {
   EXTRACTION_ASTRO_COST,
   EXPEDITION_BASE_EVENT_CHANCE,
@@ -45,6 +46,7 @@ import {
   getExpeditionSuccessChance,
   getExpeditionToadEnergyCost,
   getHealCost,
+  getLootBiomassValue,
   getLootValue,
   getMaxExpeditions,
   getReturnRemainingHours,
@@ -63,7 +65,10 @@ import {
   describeLoot,
   pickExpeditionEvent,
 } from "./expedition-events";
-import { ExpeditionTeamMember, getSectorSuccessFactor } from "./expedition-config";
+import {
+  ExpeditionTeamMember,
+  getSectorSuccessFactor,
+} from "./expedition-config";
 import { getToadEnergy } from "./gamification-config";
 import { getHpRegenPerHour, getHospitalRoomIds } from "./hospital";
 
@@ -103,7 +108,19 @@ const clamp = (value: number, min: number, max: number): number =>
 
 // === Чтение состояния ===
 
-export const getExpeditions = (): Expedition[] => getGameState().expeditions ?? [];
+export const getExpeditions = (): Expedition[] =>
+  getGameState().expeditions ?? [];
+
+/**
+ * Поход ещё в работе. Завершённый (`completed`) поход ждёт разбора добычи на вкладке
+ * «Походы»: команда уже дома, но жабы ещё заняты и новую команду не ограничивают.
+ */
+export const isExpeditionActive = (expedition: Expedition): boolean =>
+  expedition.phase !== "completed";
+
+/** Активные походы: только они считаются лимитом «Диспетчерской» */
+export const getActiveExpeditions = (): Expedition[] =>
+  getExpeditions().filter(isExpeditionActive);
 
 export const getExpeditionStats = (): ExpeditionStats => ({
   ...DEFAULT_EXPEDITION_STATS,
@@ -116,16 +133,16 @@ export const getExpeditionById = (id: string): Expedition | undefined =>
 /** Поход, в котором участвует жаба (или undefined) */
 export const getToadExpedition = (
   toadId: number,
-  expeditions: Expedition[] = getExpeditions()
+  expeditions: Expedition[] = getExpeditions(),
 ): Expedition | undefined =>
   expeditions.find((expedition) =>
-    expedition.team.some((member) => member.toadId === toadId)
+    expedition.team.some((member) => member.toadId === toadId),
   );
 
 /** Жаба сейчас в походе */
 export const isToadOnExpedition = (
   toadId: number,
-  expeditions: Expedition[] = getExpeditions()
+  expeditions: Expedition[] = getExpeditions(),
 ): boolean => Boolean(getToadExpedition(toadId, expeditions));
 
 /** Сколько команд может быть одновременно (Диспетчерская) */
@@ -135,7 +152,7 @@ export const getTeamLimit = (): number =>
 /** Можно ли взять жабу в поход */
 export const canSendToad = (
   toad: Toad,
-  expeditions: Expedition[] = getExpeditions()
+  expeditions: Expedition[] = getExpeditions(),
 ): { ok: boolean; reason?: string } => {
   if (toad.stage !== "adult") {
     return { ok: false, reason: "ещё головастик" };
@@ -162,7 +179,7 @@ export const canSendToad = (
 /** Прогресс открытия сектора для UI */
 export const getSectorUnlockStatus = (
   sector: SectorDef,
-  stats: ExpeditionStats = getExpeditionStats()
+  stats: ExpeditionStats = getExpeditionStats(),
 ): { unlocked: boolean; completed: number; required: number } => ({
   unlocked: isSectorUnlocked(sector, stats),
   completed: stats.completed,
@@ -175,12 +192,14 @@ export const getSectorUnlockStatus = (
  * Отправить команду в сектор.
  * Списывает биомассу на снаряжение, помечает жаб `status: "out"` и заводит запись
  * похода. Уходя, жаба освобождает место в секторе (`roomId` сбрасывается): она в
- * походе, а не в ⚡-секторе или «Разведке» — двух мест сразу не бывает. Вернувшись,
- * жаба оказывается в биоподе, и её сажают на место заново.
+ * походе, а не в ⚡-секторе или «Разведке» — двух мест сразу не бывает. После разбора
+ * добычи жаба возвращается в «Разведку», откуда ушла команда (`originRoomId`).
  */
 export const startExpedition = (
   sectorId: number,
-  members: ExpeditionMember[]
+  members: ExpeditionMember[],
+  /** Гекс «Разведки», из которого ушла команда: сюда жабы вернутся после похода */
+  originRoomId?: string,
 ): ExpeditionActionResult => {
   const state = getGameState();
   const sector = getSectorById(sectorId);
@@ -206,7 +225,8 @@ export const startExpedition = (
 
   const expeditions = getExpeditions();
   const limit = getTeamLimit();
-  if (expeditions.length >= limit) {
+  const activeCount = expeditions.filter(isExpeditionActive).length;
+  if (activeCount >= limit) {
     return {
       success: false,
       message:
@@ -248,7 +268,7 @@ export const startExpedition = (
     return {
       success: false,
       message: `На снаряжение нужно ${cost} 🧪 (сейчас ${Math.floor(
-        state.user.biomass || 0
+        state.user.biomass || 0,
       )})`,
     };
   }
@@ -264,7 +284,7 @@ export const startExpedition = (
     return {
       success: false,
       message: `${tired.name}: не хватает сил — нужно ${energyCost} ⚡ (сейчас ${Math.round(
-        getToadEnergy(tired)
+        getToadEnergy(tired),
       )})`,
     };
   }
@@ -284,7 +304,7 @@ export const startExpedition = (
         ...getAwayToadUpdate(toad),
         energy: Math.max(0, getToadEnergy(toad) - energyCost),
       },
-      true
+      true,
     );
   });
 
@@ -301,8 +321,9 @@ export const startExpedition = (
     successChance: getExpeditionSuccessChance(
       successMembers,
       sector,
-      rollExpeditionLuck()
+      rollExpeditionLuck(),
     ),
+    originRoomId: originRoomId || undefined,
     loot: createEmptyLoot(),
     log: [],
   };
@@ -317,9 +338,9 @@ export const startExpedition = (
     role: "system",
     kind: "info",
     text: `шанс вернуться с удачей: ${Math.round(
-      (expedition.successChance ?? 0) * 100
+      (expedition.successChance ?? 0) * 100,
     )}% (каждая роль даёт +20%, сложность сектора ×${getSectorSuccessFactor(
-      sector
+      sector,
     ).toFixed(2)})`,
   });
 
@@ -340,9 +361,12 @@ const startReturn = (
   expedition: Expedition,
   sector: SectorDef,
   now: number,
-  forced: boolean
+  forced: boolean,
 ): void => {
-  const progress = Math.max(expedition.progress, getExpeditionProgress(expedition, now));
+  const progress = Math.max(
+    expedition.progress,
+    getExpeditionProgress(expedition, now),
+  );
   const traveledHours = Math.max(0.05, progress * sector.durationHours);
 
   expedition.progress = progress;
@@ -350,7 +374,7 @@ const startReturn = (
   expedition.returnStartedAt = now;
   expedition.returnHours = Math.max(
     EXPEDITION_MIN_RETURN_HOURS,
-    Math.round(traveledHours * EXPEDITION_RETURN_RATIO * 100) / 100
+    Math.round(traveledHours * EXPEDITION_RETURN_RATIO * 100) / 100,
   );
   expedition.forced = forced;
 
@@ -371,11 +395,22 @@ export const withdrawExpedition = (id: string): ExpeditionActionResult => {
   if (!expedition) {
     return { success: false, message: "Поход не найден" };
   }
+  if (expedition.phase === "completed") {
+    return {
+      success: false,
+      message: "Поход уже завершён — заберите добычу на вкладке «Походы»",
+    };
+  }
   if (expedition.phase === "returning") {
     return { success: false, message: "Команда уже возвращается" };
   }
 
-  startReturn(expedition, getSectorById(expedition.sectorId), Date.now(), false);
+  startReturn(
+    expedition,
+    getSectorById(expedition.sectorId),
+    Date.now(),
+    false,
+  );
   updateGameState({ expeditions: [...expeditions] }, true);
 
   return {
@@ -411,8 +446,10 @@ export const speedUpReturn = (id: string): ExpeditionActionResult => {
   const remainingMs =
     returnStartedAt + (expedition.returnHours || 0) * HOUR_MS - now;
 
-  expedition.returnStartedAt = returnStartedAt + remainingMs / 2;
+  expedition.returnStartedAt = returnStartedAt - remainingMs / 2;
   expedition.speedups = (expedition.speedups || 0) + 1;
+
+  console.log({ expedition });
 
   pushLog(expedition, {
     role: "system",
@@ -425,19 +462,29 @@ export const speedUpReturn = (id: string): ExpeditionActionResult => {
   });
   updateGameState({ expeditions: [...expeditions] }, true);
 
-  return { success: true, message: `Возврат ускорен за ${cost} 🧪`, expedition };
+  return {
+    success: true,
+    message: `Возврат ускорен за ${cost} 🧪`,
+    expedition,
+  };
 };
 
 /** «Экстренный маяк»: моментально вытащить команду за Астро-кваксы */
 export const extractExpedition = (
   id: string,
-  addNotification?: (notification: any) => void
+  addNotification?: (notification: any) => void,
 ): ExpeditionActionResult => {
   const state = getGameState();
   const expedition = getExpeditionById(id);
 
   if (!expedition) {
     return { success: false, message: "Поход не найден" };
+  }
+  if (expedition.phase === "completed") {
+    return {
+      success: false,
+      message: "Поход уже завершён — заберите добычу на вкладке «Походы»",
+    };
   }
 
   const astro = state.user.astro_quax || 0;
@@ -449,14 +496,17 @@ export const extractExpedition = (
   }
 
   updateUser({ astro_quax: astro - EXTRACTION_ASTRO_COST });
-  const summary = applyArrival(expedition, { instant: true });
+  const summary = completeArrival(expedition, { instant: true });
 
   addNotification?.({
     type: "success",
     content: `🚁 Экстренный маяк: команда дома. ${summary}`,
   });
 
-  return { success: true, message: "Команда эвакуирована маяком" };
+  return {
+    success: true,
+    message: "Команда эвакуирована маяком — добыча ждёт разбора в «Походах»",
+  };
 };
 
 /** Мгновенное лечение жабы за Кваксы (Часть 2) */
@@ -574,8 +624,8 @@ const buildEventContext = (
   sector: SectorDef,
   runtime: TeamRuntime,
   rng: () => number,
-  onDowned?: (name: string) => void
-): { ctx: ExpeditionEventContext; roles: ExpeditionRole[] } => {
+  onDowned?: (name: string) => void,
+): ExpeditionEventContext => {
   const aliveMembers = (): ExpeditionEventMember[] =>
     expedition.team
       .filter((member) => (runtime.hp.get(member.toadId) ?? 0) > 0)
@@ -639,7 +689,7 @@ const buildEventContext = (
 
     const rest = total - absorbed;
     const others = aliveMembers().filter(
-      (member) => member.toadId !== tank?.toadId
+      (member) => member.toadId !== tank?.toadId,
     );
 
     if (others.length > 0 && rest > 0) {
@@ -676,13 +726,13 @@ const buildEventContext = (
       return null;
     }
     const toad = getGameState().toads.find((item) => item.id === member.toadId);
-    return toad ? getToadDisease(toad)?.name ?? "кибер-болезнь" : null;
+    return toad ? (getToadDisease(toad)?.name ?? "кибер-болезнь") : null;
   };
 
   /** Шанс успеха = база + сила роли − опасность сектора, с поправкой на раны */
   const check = (
     member: ExpeditionEventMember,
-    baseChance = EXPEDITION_BASE_EVENT_CHANCE
+    baseChance = EXPEDITION_BASE_EVENT_CHANCE,
   ): boolean => {
     const toad = runtime.toads.get(member.toadId) as Toad;
     const maxHp = runtime.maxHp.get(member.toadId) || 1;
@@ -693,7 +743,7 @@ const buildEventContext = (
           getRolePower(toad, member.role) * EXPEDITION_ROLE_CHANCE_BONUS -
           (sector.dangerMultiplier - 1) * EXPEDITION_DANGER_CHANCE_PENALTY,
         0.05,
-        0.95
+        0.95,
       ) *
       (0.6 + 0.4 * hpRatio);
 
@@ -719,7 +769,7 @@ const buildEventContext = (
     rng,
   };
 
-  return { ctx, roles: aliveMembers().map((member) => member.role) };
+  return ctx;
 };
 
 /** Один шаг пути: тянем случайное событие и разыгрываем его */
@@ -727,16 +777,16 @@ const runExpeditionStep = (
   expedition: Expedition,
   sector: SectorDef,
   runtime: TeamRuntime,
-  onDowned?: (name: string) => void
+  onDowned?: (name: string) => void,
 ): ExpeditionEventContext => {
-  const { ctx, roles } = buildEventContext(
+  const ctx = buildEventContext(
     expedition,
     sector,
     runtime,
     Math.random,
-    onDowned
+    onDowned,
   );
-  pickExpeditionEvent(roles).run(ctx);
+  pickExpeditionEvent().run(ctx);
   return ctx;
 };
 
@@ -744,7 +794,7 @@ const runExpeditionStep = (
 const getStepsDue = (
   expedition: Expedition,
   sector: SectorDef,
-  now: number
+  now: number,
 ): number => {
   const totalMs = sector.durationHours * HOUR_MS;
   const elapsed = Math.max(0, now - expedition.startedAt);
@@ -755,7 +805,7 @@ const getStepsDue = (
 
   return Math.min(
     STEPS_TOTAL,
-    Math.floor(elapsed / (totalMs * EXPEDITION_EVENT_PROGRESS_STEP)) + 1
+    Math.floor(elapsed / (totalMs * EXPEDITION_EVENT_PROGRESS_STEP)) + 1,
   );
 };
 
@@ -764,7 +814,7 @@ const getStepsDue = (
  * команды домой и выдаёт добычу. Идемпотентно — можно звать хоть каждый кадр.
  */
 export const processExpeditions = (
-  addNotification?: (notification: any) => void
+  addNotification?: (notification: any) => void,
 ): ExpeditionTickResult => {
   const state = getGameState();
   const expeditions = state.expeditions ?? [];
@@ -779,6 +829,13 @@ export const processExpeditions = (
   let dirty = false;
 
   expeditions.forEach((expedition) => {
+    // Завершённый поход ждёт решения игрока: события не идут, команда занята,
+    // но лимит команд «Диспетчерской» он больше не занимает (`getActiveExpeditions`).
+    if (!isExpeditionActive(expedition)) {
+      remaining.push(expedition);
+      return;
+    }
+
     const sector = getSectorById(expedition.sectorId);
 
     if (expedition.phase === "outbound") {
@@ -805,7 +862,7 @@ export const processExpeditions = (
         dirty = true;
 
         const anyAlive = expedition.team.some(
-          (member) => (runtime.hp.get(member.toadId) ?? 0) > 0
+          (member) => (runtime.hp.get(member.toadId) ?? 0) > 0,
         );
 
         if (!anyAlive) {
@@ -821,7 +878,7 @@ export const processExpeditions = (
       if (expedition.phase === "outbound") {
         const stepProgress = Math.min(
           1,
-          expedition.resolvedSteps * EXPEDITION_EVENT_PROGRESS_STEP
+          expedition.resolvedSteps * EXPEDITION_EVENT_PROGRESS_STEP,
         );
 
         if (stepProgress !== expedition.progress) {
@@ -847,10 +904,11 @@ export const processExpeditions = (
         (expedition.returnHours || 0) * HOUR_MS;
 
       if (now >= eta) {
-        const summary = applyArrival(expedition);
+        const summary = completeArrival(expedition);
         result.arrivals += 1;
         dirty = true;
         addNotification?.({ type: "success", content: `🏠 ${summary}` });
+        remaining.push(expedition);
         return;
       }
     }
@@ -900,7 +958,8 @@ const createSampleToads = (count: number, sector: SectorDef): Toad[] => {
       speed:
         Math.round((0.5 + Math.random() * (0.3 + sector.depth * 0.12)) * 100) /
         100,
-      rarity: Math.round((1 + sector.depth * 0.8 + Math.random() * 2) * 10) / 10,
+      rarity:
+        Math.round((1 + sector.depth * 0.8 + Math.random() * 2) * 10) / 10,
       hungerRate: Math.round((0.6 + Math.random() * 0.9) * 100) / 100,
       fertility:
         Math.round((0.7 + Math.random() * (0.6 + sector.depth * 0.15)) * 100) /
@@ -915,7 +974,9 @@ const createSampleToads = (count: number, sector: SectorDef): Toad[] => {
   const { assigned, rejected } = assignToadsToScenes(data);
 
   if (rejected > 0) {
-    console.info(`Образцы из «${sector.name}»: ${rejected} остались в секторе — нет мест`);
+    console.info(
+      `Образцы из «${sector.name}»: ${rejected} остались в секторе — нет мест`,
+    );
   }
 
   if (assigned.length === 0) {
@@ -926,14 +987,29 @@ const createSampleToads = (count: number, sector: SectorDef): Toad[] => {
 };
 
 /**
- * Команда дома: выдаёт «рюкзак» в валюту и склад, снимает статусы, копит
- * статистику и удаляет поход из активных. Возвращает текст отчёта.
+ * Итоговая добыча завершённого похода и его исход. Чистый расчёт: состояние
+ * игрока не меняется — валюту/предметы выдаёт только `finishExpedition`.
  */
-const applyArrival = (
+interface ArrivalLoot {
+  success: boolean;
+  loot: ExpeditionLoot;
+  /** Сколько Кваксов добрано до нормы «поход выгоднее фермы» */
+  floorTopUp: number;
+  /** Вся плата за принудительную эвакуацию (кошелёк + рюкзак) */
+  paidFee: number;
+  /** Часть платы, которую удалось списать из кошелька сразу */
+  walletFee: number;
+}
+
+/**
+ * Считает итог похода: удачу, добычу с множителями и плату за эвакуацию.
+ * Ничего не записывает в сохранение — вызывающий сам решает, когда выдавать лут.
+ */
+const buildArrivalLoot = (
   expedition: Expedition,
-  options: { instant?: boolean } = {}
-): string => {
-  const state = getGameState();
+  state: ReturnType<typeof getGameState>,
+  options: { instant?: boolean },
+): ArrivalLoot => {
   const sector = getSectorById(expedition.sectorId);
   const forced = Boolean(expedition.forced);
   const lossFactor = forced ? FORCED_LOOT_LOSS : 0;
@@ -941,8 +1017,8 @@ const applyArrival = (
   // 0. Удачное завершение (Часть 5.4): каждая роль команды дала шанс, бросок — за нас.
   // Удача умножает добычу и добавляет шансы на образец и Астро-кваксы.
   const successChance = expedition.successChance ?? 0;
-  const goodFinish = !forced && Math.random() < Math.min(1, successChance);
-  const finishFactor = goodFinish ? EXPEDITION_GOOD_FINISH_LOOT : 1;
+  const success = !forced && Math.random() < Math.min(1, successChance);
+  const finishFactor = success ? EXPEDITION_GOOD_FINISH_LOOT : 1;
 
   // 0.1 Норма «поход выгоднее фермы»: считаем, сколько те же жабы наработали бы
   // дома за время отсутствия (путь туда + обратно) и добираем добычу до нормы.
@@ -950,12 +1026,12 @@ const applyArrival = (
     (Date.now() - expedition.startedAt) / HOUR_MS +
     (expedition.returnHours ?? 0);
   const teamToads = state.toads.filter((toad) =>
-    expedition.team.some((member) => member.toadId === toad.id)
+    expedition.team.some((member) => member.toadId === toad.id),
   );
   const profitFloor = getExpeditionProfitFloor(
     teamToads,
     awayHours,
-    getExpeditionSendCost(sector, expedition.team.length)
+    getExpeditionSendCost(sector, expedition.team.length),
   );
   const lootValue = getLootValue(expedition.loot);
   const floorTopUp = Math.max(0, profitFloor - lootValue * finishFactor);
@@ -963,17 +1039,17 @@ const applyArrival = (
   // 1. Добыча: при экстренной эвакуации половина остаётся в секторе
   const biomass = Math.max(
     0,
-    Math.round(expedition.loot.biomass * (1 - lossFactor) * finishFactor)
+    Math.round(expedition.loot.biomass * (1 - lossFactor) * finishFactor),
   );
   const tokens = Math.max(
     0,
     Math.round(
-      expedition.loot.tokens * (1 - lossFactor) * finishFactor + floorTopUp
-    )
+      expedition.loot.tokens * (1 - lossFactor) * finishFactor + floorTopUp,
+    ),
   );
   const astro = Math.max(
     0,
-    Math.round(expedition.loot.astro_quax * (1 - lossFactor) * finishFactor)
+    Math.round(expedition.loot.astro_quax * (1 - lossFactor) * finishFactor),
   );
   const items: Partial<Record<Items, number>> = {};
 
@@ -986,81 +1062,90 @@ const applyArrival = (
     }
   });
 
-  // 2. Плата за принудительную эвакуацию (маяк — уже оплачен Астро-кваксами)
+  // 2. Плата за принудительную эвакуацию (маяк — уже оплачен Астро-кваксами).
+  // Сначала списываем из кошелька, недостающее — из добычи похода.
   const fee =
     forced && !options.instant
       ? FORCED_EXTRACTION_FEE_PER_TOAD * expedition.team.length
       : 0;
-  const walletBiomass = Math.max(0, (state.user.biomass || 0) + biomass);
-  const paidFee = Math.min(fee, walletBiomass);
+  const wallet = Math.max(0, state.user.biomass || 0);
+  const walletFee = Math.min(fee, wallet);
+  const lootFee = Math.min(fee - walletFee, biomass);
 
-  // 3. Валюта и склад: склад предметов ограничен постройками «Склад», поэтому
-  //    излишки, которые не влезли на полки, остаются в секторе.
-  const storage = { ...state.user.storage };
-  const acceptedItems = fitItemsInStorage(storage, items);
-  Object.entries(acceptedItems).forEach(([item, amount]) => {
-    const key = item as Items;
-    storage[key] = (storage[key] || 0) + (amount || 0);
-  });
+  return {
+    success,
+    loot: {
+      biomass: Math.max(0, Math.round((biomass - lootFee) * 100) / 100),
+      tokens,
+      astro_quax: astro,
+      items,
+      samples: Math.max(0, Math.floor(expedition.loot.samples || 0)),
+    },
+    floorTopUp,
+    paidFee: Math.round((walletFee + lootFee) * 100) / 100,
+    walletFee,
+  };
+};
 
-  const lostItems = Object.entries(items).reduce(
-    (sum, [item, amount]) =>
-      sum + Math.max(0, (amount || 0) - (acceptedItems[item as Items] || 0)),
-    0
-  );
+/**
+ * Команда дома: фиксирует итог похода, снимает статусы и копит статистику.
+ * Добыча остаётся в рюкзаке похода (`phase: "completed"`) — её разбирают
+ * кнопками «Завершить» / «Превратить в биомассу» на вкладке «Походы».
+ */
+const completeArrival = (
+  expedition: Expedition,
+  options: { instant?: boolean } = {},
+): string => {
+  const state = getGameState();
+  const sector = getSectorById(expedition.sectorId);
+  const forced = Boolean(expedition.forced);
+  const rawBiomass = expedition.loot.biomass;
+  const rawTokens = expedition.loot.tokens;
+  const arrival = buildArrivalLoot(expedition, state, options);
+  const samplesCount = arrival.loot.samples;
 
-  if (lostItems > 0) {
-    pushLog(expedition, {
-      role: "system",
-      kind: "bad",
-      text: `на складе не нашлось места: ${lostItems} предмет(ов) осталось в секторе`,
+  expedition.loot = arrival.loot;
+  expedition.success = arrival.success;
+  expedition.phase = "completed";
+  expedition.completedAt = Date.now();
+  expedition.progress = 1;
+
+  if (arrival.walletFee > 0) {
+    updateUser({
+      biomass:
+        Math.round(
+          Math.max(0, (state.user.biomass || 0) - arrival.walletFee) * 100,
+        ) / 100,
     });
   }
 
-  updateUser({
-    biomass: walletBiomass - paidFee,
-    tokens: (state.user.tokens || 0) + tokens,
-    astro_quax: (state.user.astro_quax || 0) + astro,
-    storage,
-  });
-
-  // 4. Образцы вырастают в жаб
-  const samples = createSampleToads(expedition.loot.samples, sector);
-
-  // 5. Статусы команды: 0 HP — «injured», остальные — «ok»
+  // Статусы команды: 0 HP — «injured», остальные — «ok». Место в секторе
+  // вернёт `finishExpedition`, когда игрок разберёт добычу.
   let downedNow = 0;
   const fresh = getGameState();
-  expedition.team.forEach((member) => {
-    const toad = fresh.toads.find((item) => item.id === member.toadId);
-    if (!toad) {
-      return;
+  const teamIds = new Set(expedition.team.map((member) => member.toadId));
+  const toads = fresh.toads.map((toad) => {
+    if (!teamIds.has(toad.id)) {
+      return toad;
     }
+
     const maxHp = getToadMaxHp(toad);
     const hp = Math.max(0, Math.round(getToadHp(toad) * 100) / 100);
+    const status: ToadStatus = hp > 0 ? "ok" : "injured";
 
     if (hp <= 0) {
       downedNow += 1;
     }
 
-    updateToadById(
-      member.toadId,
-      { hp, maxHp, status: hp > 0 ? "ok" : "injured" },
-      true
-    );
+    return { ...toad, hp, maxHp, status };
   });
 
-  // 6. Статистика, ачивки и удаление похода
+  // Статистика и ачивки считаются при возврате — поход уже завершён, даже если
+  // игрок ещё не нажал «Завершить». Сам поход остаётся в сохранении, чтобы
+  // карточка с добычей дождалась решения игрока.
   const stats = getExpeditionStats();
-  updateGameState(
-    {
-      expeditionStats: {
-        completed: stats.completed + 1,
-        bestDepth: Math.max(stats.bestDepth, sector.depth),
-        downed: stats.downed + downedNow,
-      },
-      expeditions: getExpeditions().filter((item) => item.id !== expedition.id),
-    },
-    true
+  const expeditions = getExpeditions().map((item) =>
+    item.id === expedition.id ? expedition : item,
   );
 
   completeAchivementCounter("expedition", 1);
@@ -1073,65 +1158,289 @@ const applyArrival = (
 
   // 7. Отчёт для уведомления и чата похода
   const lootText = describeLoot({
-    biomass,
-    tokens,
-    astro_quax: astro,
-    items,
-    sample: samples.length,
+    biomass: arrival.loot.biomass,
+    tokens: arrival.loot.tokens,
+    astro_quax: arrival.loot.astro_quax,
+    items: arrival.loot.items,
+    sample: samplesCount,
   });
-  let summary = goodFinish
+  let summary = arrival.success
     ? `Удачный поход в «${sector.name}»: ${lootText || "пусто, зато живые"}`
-    : `Команда вернулась из «${sector.name}»: ${
+    : forced
+    ? `Команда выбита в «${sector.name}» и вернулась на маяке: ${
+        lootText || "пусто, зато живые"
+      }`
+    : `Поход в «${sector.name}» сложился неудачно: ${
         lootText || "пусто, зато живые"
       }`;
 
-  if (goodFinish) {
+  if (arrival.success) {
     pushLog(expedition, {
       role: "system",
       kind: "good",
       text: `роли сложились (шанс ${Math.round(
-        successChance * 100
+        (expedition.successChance ?? 0) * 100,
       )}%): добыча ×${EXPEDITION_GOOD_FINISH_LOOT}`,
     });
   }
-  if (floorTopUp > 0) {
+  if (arrival.floorTopUp > 0) {
     pushLog(expedition, {
       role: "system",
       kind: "info",
       text: `на обратном пути команда добрала норму: +${Math.round(
-        floorTopUp
+        arrival.floorTopUp,
       )} 🔷 (поход всегда выгоднее фермы)`,
     });
-    summary += `. Добор до нормы: +${Math.round(floorTopUp)} 🔷`;
+    summary += `. Добор до нормы: +${Math.round(arrival.floorTopUp)} 🔷`;
   }
-  if (lostItems > 0) {
-    summary += `. ${lostItems} предмет(ов) не влезли на склад — постройте «Склад»`;
-  }
-
-  if (forced && lossFactor > 0) {
+  if (forced && FORCED_LOOT_LOSS > 0) {
     summary += `. Половина добычи осталась в секторе (−${Math.round(
-      expedition.loot.biomass - biomass
-    )} 🧪, −${Math.round(expedition.loot.tokens - tokens)} 🔷)`;
+      rawBiomass * FORCED_LOOT_LOSS,
+    )} 🧪, −${Math.round(rawTokens * FORCED_LOOT_LOSS)} 🔷)`;
   }
-  if (paidFee > 0) {
-    summary += `. Эвакуация обошлась в ${paidFee} 🧪`;
+  if (arrival.paidFee > 0) {
+    summary += `. Эвакуация обошлась в ${arrival.paidFee} 🧪`;
   }
   if (downedNow > 0) {
     summary += `. Выбитых жаб: ${downedNow} — ждут лечения за Кваксы`;
   }
-  if (samples.length > 0) {
-    summary += `. В инвентаре новые образцы: ${samples
-      .map((toad) => toad.name)
-      .join(", ")}`;
+  if (samplesCount > 0) {
+    summary += `. В рюкзаке ${samplesCount} образц(ов) — при разборе добычи они поселятся в биоподах`;
   }
+  summary += `. Добыча ждёт разбора на вкладке «Походы»`;
 
   pushLog(expedition, {
     role: "system",
-    kind: forced ? "bad" : "good",
+    kind: forced ? "bad" : arrival.success ? "good" : "info",
     text: summary,
   });
 
+  updateGameState(
+    {
+      toads,
+      expeditionStats: {
+        completed: stats.completed + 1,
+        bestDepth: Math.max(stats.bestDepth, sector.depth),
+        downed: stats.downed + downedNow,
+      },
+      expeditions,
+    },
+    true,
+  );
+
   return summary;
+};
+
+/**
+ * Хватает ли места на складе под предметы завершённого похода.
+ * Кнопка «Завершить» в модалке разведки блокируется по этому ответу: лут,
+ * который не влезет, игроку не показывают как «потерянный» — он ждёт склада.
+ */
+export const getExpeditionStorageCheck = (
+  expedition: Expedition,
+): { ok: boolean; needed: number; free: number } => {
+  const needed = Object.values(expedition.loot.items ?? {}).reduce(
+    (sum, amount) => sum + Math.max(0, Math.floor(amount || 0)),
+    0,
+  );
+  const { free } = getStorageCapacityInfo();
+
+  return {
+    ok: canFitInStorage(getGameState().user.storage, expedition.loot.items),
+    needed,
+    free,
+  };
+};
+
+/** Сколько биомассы даст переработка всей добычи похода */
+export const getExpeditionBiomassValue = (expedition: Expedition): number =>
+  getLootBiomassValue(expedition.loot);
+
+/**
+ * Возвращает команду в «Разведку», из которой она ушла (`originRoomId`).
+ * Если исходного сектора уже нет, берём первую построенную «Разведку»; когда
+ * разведки нет вовсе (или места в ней не хватило) — жабы расходятся по биоподам.
+ */
+const returnTeamToScout = (
+  expedition: Expedition,
+): { rejoined: number; home: number } => {
+  const state = getGameState();
+  const teamIds = new Set(expedition.team.map((member) => member.toadId));
+  const scoutRooms = (state.colony?.rooms ?? []).filter(
+    (room) => room.kind === "scout",
+  );
+  const target =
+    scoutRooms.find((room) => room.id === expedition.originRoomId) ??
+    scoutRooms[0] ??
+    null;
+
+  let used = target
+    ? state.toads.filter(
+        (toad) => toad.roomId === target.id && !teamIds.has(toad.id),
+      ).length
+    : 0;
+  let rejoined = 0;
+  let home = 0;
+
+  const toads = state.toads.map((toad) => {
+    if (!teamIds.has(toad.id)) {
+      return toad;
+    }
+
+    const maxHp = getToadMaxHp(toad);
+    const hp = Math.max(0, Math.round(getToadHp(toad) * 100) / 100);
+    const status: ToadStatus = hp > 0 ? "ok" : "injured";
+    const canRejoin = Boolean(target) && used < EXPEDITION_TEAM_SIZE;
+
+    if (canRejoin && target) {
+      used += 1;
+      rejoined += 1;
+
+      return {
+        ...toad,
+        hp,
+        maxHp,
+        status,
+        roomId: target.id,
+        scene_id: null,
+      };
+    }
+
+    home += 1;
+
+    return {
+      ...toad,
+      hp,
+      maxHp,
+      status,
+      roomId: null,
+      scene_id: getToadHomeId(toad),
+    };
+  });
+
+  updateGameState({ toads }, true);
+
+  return { rejoined, home };
+};
+
+export type ExpeditionFinishMode = "storage" | "biomass";
+
+export interface ExpeditionFinishResult extends ExpeditionActionResult {
+  /** Сколько биомассы начислено при переработке лута */
+  biomassGained?: number;
+  /** Сколько жаб вернулось в «Разведку» */
+  returnedToScout?: number;
+}
+
+/**
+ * Разобрать добычу завершённого похода:
+ *
+ * - `storage` — предметы на склад, биомасса/Кваксы/Астро-кваксы в кошелёк,
+ *   образцы вырастают в жаб в биоподах. Если на складе нет места на все
+ *   предметы, действие не проходит (кнопка «Завершить» заблокирована);
+ * - `biomass` — весь лут, включая предметы и образцы, перерабатывается в
+ *   биомассу по курсу рынка (см. `getLootBiomassValue`).
+ *
+ * После любого варианта команда возвращается в «Разведку», а карточка
+ * завершённого похода исчезает с вкладки «Походы».
+ */
+export const finishExpedition = (
+  id: string,
+  mode: ExpeditionFinishMode,
+): ExpeditionFinishResult => {
+  const state = getGameState();
+  const expedition = (state.expeditions ?? []).find((item) => item.id === id);
+
+  if (!expedition) {
+    return { success: false, message: "Поход не найден" };
+  }
+  if (expedition.phase !== "completed") {
+    return { success: false, message: "Поход ещё не завершён" };
+  }
+
+  const sector = getSectorById(expedition.sectorId);
+  let message = "";
+  let biomassGained: number | undefined;
+
+  if (mode === "storage") {
+    const check = getExpeditionStorageCheck(expedition);
+    if (!check.ok) {
+      return {
+        success: false,
+        message: `На складе нет места: нужно ${check.needed}, свободно ${check.free} — постройте «Склад» или переработайте лут в биомассу`,
+      };
+    }
+
+    const storage = { ...state.user.storage };
+    const accepted = fitItemsInStorage(storage, expedition.loot.items);
+    let acceptedCount = 0;
+
+    Object.entries(accepted).forEach(([item, amount]) => {
+      const key = item as Items;
+      storage[key] = (storage[key] || 0) + (amount || 0);
+      acceptedCount += amount || 0;
+    });
+
+    const requestedSamples = Math.min(expedition.loot.samples, 3);
+    const samples =
+      requestedSamples > 0 ? createSampleToads(requestedSamples, sector) : [];
+
+    updateUser({
+      biomass:
+        Math.round(
+          ((state.user.biomass || 0) + expedition.loot.biomass) * 100,
+        ) / 100,
+      tokens: (state.user.tokens || 0) + expedition.loot.tokens,
+      astro_quax: (state.user.astro_quax || 0) + expedition.loot.astro_quax,
+      storage,
+    });
+
+    const lootText = describeLoot({
+      biomass: expedition.loot.biomass,
+      tokens: expedition.loot.tokens,
+      astro_quax: expedition.loot.astro_quax,
+      items: accepted,
+      sample: samples.length,
+    });
+    message = `Добыча со склада: ${lootText || "пусто, зато живые"}`;
+
+    if (acceptedCount < check.needed) {
+      message += `. ${check.needed - acceptedCount} предмет(ов) не влезли на склад`;
+    }
+    if (samples.length < requestedSamples) {
+      message += `. ${requestedSamples - samples.length} образц(ов) осталось в секторе — нет мест в биоподах`;
+    }
+  } else if (mode === "biomass") {
+    biomassGained = getLootBiomassValue(expedition.loot);
+    updateUser({
+      biomass:
+        Math.round(((state.user.biomass || 0) + biomassGained) * 100) / 100,
+    });
+    message = `Лут с «${sector.name}» переработан в ${biomassGained} 🧪`;
+  } else {
+    return { success: false, message: "Неизвестный способ разбора добычи" };
+  }
+
+  const returned = returnTeamToScout(expedition);
+  const remaining = getExpeditions().filter(
+    (item) => item.id !== expedition.id,
+  );
+  updateGameState({ expeditions: remaining }, true);
+
+  if (returned.rejoined > 0) {
+    message += `. Жабы вернулись в «Разведку»: ${returned.rejoined}`;
+  }
+  if (returned.home > 0) {
+    message += `. В биоподы вернулись: ${returned.home}`;
+  }
+
+  return {
+    success: true,
+    message,
+    expedition,
+    biomassGained,
+    returnedToScout: returned.rejoined,
+  };
 };
 
 // === Регенерация HP дома (Часть 2) ===
@@ -1164,8 +1473,8 @@ export const processHpRegen = (hoursPassed: number): number => {
     const nextHp = Math.min(
       maxHp,
       Math.round(
-        (hp + getHpRegenPerHour(toad, hospitalIds) * hoursPassed) * 100
-      ) / 100
+        (hp + getHpRegenPerHour(toad, hospitalIds) * hoursPassed) * 100,
+      ) / 100,
     );
     const nextStatus: ToadStatus = nextHp > 0 ? "ok" : "injured";
 
@@ -1190,27 +1499,39 @@ export const processHpRegen = (hoursPassed: number): number => {
 /** Прогресс похода 0..1 по реальному времени */
 export const getExpeditionProgress = (
   expedition: Expedition,
-  now = Date.now()
+  now = Date.now(),
 ): number => {
+  if (expedition.phase === "completed") {
+    return 1;
+  }
+
   if (expedition.phase === "returning") {
     return 1;
   }
 
   const sector = getSectorById(expedition.sectorId);
-  return clamp((now - expedition.startedAt) / (sector.durationHours * HOUR_MS), 0, 1);
+  return clamp(
+    (now - expedition.startedAt) / (sector.durationHours * HOUR_MS),
+    0,
+    1,
+  );
 };
 
 /** Сколько миллисекунд осталось до прибытия (в сектор или домой) */
 export const getExpeditionEtaMs = (
   expedition: Expedition,
-  now = Date.now()
+  now = Date.now(),
 ): number => {
+  if (expedition.phase === "completed") {
+    return 0;
+  }
+
   const sector = getSectorById(expedition.sectorId);
 
   if (expedition.phase === "outbound") {
     return Math.max(
       0,
-      expedition.startedAt + sector.durationHours * HOUR_MS - now
+      expedition.startedAt + sector.durationHours * HOUR_MS - now,
     );
   }
 
@@ -1220,7 +1541,7 @@ export const getExpeditionEtaMs = (
 /** Прогресс обратного пути 0..1 */
 export const getReturnProgress = (
   expedition: Expedition,
-  now = Date.now()
+  now = Date.now(),
 ): number => {
   if (expedition.phase !== "returning" || !expedition.returnHours) {
     return 0;
@@ -1229,7 +1550,7 @@ export const getReturnProgress = (
   return clamp(
     1 - getReturnRemainingHours(expedition, now) / expedition.returnHours,
     0,
-    1
+    1,
   );
 };
 
@@ -1264,7 +1585,7 @@ export const getAvailableToads = (): Toad[] => {
 /** ID всех жаб, которые сейчас в походах */
 export const getActiveExpeditionToadIds = (): number[] =>
   getExpeditions().flatMap((expedition) =>
-    expedition.team.map((member) => member.toadId)
+    expedition.team.map((member) => member.toadId),
   );
 
 /** Добыча «в рюкзаке» одной строкой — для карточек активного похода */

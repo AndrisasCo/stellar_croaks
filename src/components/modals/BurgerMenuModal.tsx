@@ -1,7 +1,13 @@
 import { MenuIcons } from "../../assets/icons";
+import { detectPlatformName } from "../../platform";
+import { ColonyRoomKind } from "../../models/colony";
+import { useColony } from "../../hooks/use-colony";
+import { useNotifications } from "../../hooks/use-notification";
+import { isRoomKindBuilt } from "../HexMap/colony-build";
 import { useModal } from "../ModalContext";
 import Modal from "../shared/Header";
 import AchivementsModal from "./AchivementsModal";
+import AuthModal from "./AuthModal";
 import ExpeditionModal from "./ExpeditionModal";
 import LeaderboardModal from "./LeaderboardModal";
 import SettingsModal from "./SettingsModal";
@@ -18,7 +24,9 @@ type MenuId =
   | "stats"
   | "leaderboard"
   | "tutorial"
-  | "settings";
+  | "settings"
+  | "auth";
+
 
 // Иконка настроек
 const SettingsIcon = (
@@ -50,9 +58,16 @@ const MENU_ITEMS: {
   desc: string;
   color: string;
   target: JSX.Element;
+  /**
+   * Сектор, без которого пункт меню закрыт. «Рынок» открывается только после того,
+   * как на карте колонии построен «Магазин»: до постройки торговли в колонии нет.
+   */
+  requiresRoom?: ColonyRoomKind;
+  /** Подсказка вместо описания, пока нужный сектор не построен. */
+  lockedDesc?: string;
 }[] = [
-  // Пока что рынок и склад живут в меню: на карте под них зарезервированы
-  // пустые гексы, когда сектора появятся — пункты меню уберём.
+  // Рынок и склад по-прежнему доступны из меню, но «Рынок» открывается только когда
+  // на карте колонии построен «Магазин» (`requiresRoom`): без сектора торговли нет.
   {
     id: "shop",
     icon: MenuIcons.shop,
@@ -60,6 +75,8 @@ const MENU_ITEMS: {
     desc: "Жабы, предметы и улучшения",
     color: "bg-fuchsia-900/50 border-fuchsia-500/50",
     target: <ShopMenu />,
+    requiresRoom: "shop",
+    lockedDesc: "Сначала постройте «Магазин» на карте колонии",
   },
   {
     id: "storage",
@@ -145,19 +162,72 @@ const MENU_ITEMS: {
     color: "bg-gray-900/50 border-gray-500/50",
     target: <SettingsModal />,
   },
+  {
+    // Вход по почте — только для браузера: в Telegram личность уже подтверждена
+    // подписью `initData`, и аккаунт там заводить нечего (см. backend/auth.ts).
+    id: "auth",
+    icon: (
+      <svg
+        className="w-6 h-6"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={1.5}
+          d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+        />
+      </svg>
+    ),
+    label: "Аккаунт",
+    desc: "Вход и регистрация по почте",
+    color: "bg-emerald-900/50 border-emerald-500/50",
+    target: <AuthModal />,
+  },
 ];
 
 export const BurgerMenu = () => {
   const { openModal } = useModal();
+  const { addNotification } = useNotifications();
+  const { colony } = useColony();
+
+  // В браузере аккаунт заводит сам игрок (почта + пароль), в Telegram он уже есть —
+  // поэтому пункт меню показываем только веб-версии.
+  const items = MENU_ITEMS.filter(
+    (item) => item.id !== "auth" || detectPlatformName() === "web"
+  ).map((item) => ({
+    ...item,
+    // Сектор ещё не построен — пункт меню остаётся на месте, но не открывает модалку
+    locked: item.requiresRoom
+      ? !isRoomKindBuilt(colony, item.requiresRoom)
+      : false,
+  }));
 
   return (
     <Modal title="Меню">
       <div className="mb-3 flex flex-col gap-3">
-        {MENU_ITEMS.map((item, index) => (
+        {items.map((item, index) => (
           <button
             key={item.id}
-            onClick={() => openModal(() => item.target)}
-            className={`w-full ${item.color} rounded-xl py-4 px-2 shadow-lg border-2 hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02] active:scale-95 group`}
+            onClick={() => {
+              if (item.locked) {
+                addNotification({
+                  type: "warn",
+                  content: `${item.label}: ${item.lockedDesc ?? "сектор не построен"}`,
+                  timeout: 5000,
+                });
+                return;
+              }
+
+              openModal(() => item.target);
+            }}
+            className={`w-full ${item.color} rounded-xl py-4 px-2 shadow-lg border-2 transition-all duration-300 transform group ${
+              item.locked
+                ? "cursor-not-allowed opacity-45 grayscale"
+                : "hover:shadow-xl hover:scale-[1.02] active:scale-95"
+            }`}
             style={{
               animationDelay: `${index * 70}ms`,
               animation: "slideInUp 0.4s ease-out forwards",
@@ -172,11 +242,11 @@ export const BurgerMenu = () => {
                   {item.label}
                 </div>
                 <div className="text-2xs text-gray-300 group-hover:text-gray-200 transition-colors duration-300">
-                  {item.desc}
+                  {item.locked ? item.lockedDesc : item.desc}
                 </div>
               </div>
               <div className="text-gray-500 group-hover:text-green-400 transition-colors duration-300 text-lg">
-                ›
+                {item.locked ? "🔒" : "›"}
               </div>
             </div>
           </button>

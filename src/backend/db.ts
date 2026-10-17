@@ -35,7 +35,6 @@ const resolveAccountId = async (): Promise<string | null> => {
   return account.id;
 };
 
-
 export type ToadCollection = {
   rarest_toad: Toad;
   weight_max_toad: Toad;
@@ -91,18 +90,18 @@ export const createLeaderbord = async (accountId?: string) => {
       weight_max_toad: toads.sort((a, b) => b.genes.weight - a.genes.weight)[0],
       weight_min_toad: toads.sort((a, b) => a.genes.weight - b.genes.weight)[0],
       fertility_max_toad: toads.sort(
-        (a, b) => b.genes.fertility - a.genes.fertility
+        (a, b) => b.genes.fertility - a.genes.fertility,
       )[0],
       fertility_min_toad: toads.sort(
-        (a, b) => a.genes.fertility - b.genes.fertility
+        (a, b) => a.genes.fertility - b.genes.fertility,
       )[0],
       speed_max_toad: toads.sort((a, b) => b.genes.speed - a.genes.speed)[0],
       speed_min_toad: toads.sort((a, b) => a.genes.speed - b.genes.speed)[0],
       hunger_max_toad: toads.sort(
-        (a, b) => b.genes.hungerRate - a.genes.hungerRate
+        (a, b) => b.genes.hungerRate - a.genes.hungerRate,
       )[0],
       hunger_min_toad: toads.sort(
-        (a, b) => a.genes.hungerRate - b.genes.hungerRate
+        (a, b) => a.genes.hungerRate - b.genes.hungerRate,
       )[0],
     },
   };
@@ -149,18 +148,18 @@ export const updateLeaderbord = async (accountId?: string) => {
       weight_max_toad: toads.sort((a, b) => b.genes.weight - a.genes.weight)[0],
       weight_min_toad: toads.sort((a, b) => a.genes.weight - b.genes.weight)[0],
       fertility_max_toad: toads.sort(
-        (a, b) => b.genes.fertility - a.genes.fertility
+        (a, b) => b.genes.fertility - a.genes.fertility,
       )[0],
       fertility_min_toad: toads.sort(
-        (a, b) => a.genes.fertility - b.genes.fertility
+        (a, b) => a.genes.fertility - b.genes.fertility,
       )[0],
       speed_max_toad: toads.sort((a, b) => b.genes.speed - a.genes.speed)[0],
       speed_min_toad: toads.sort((a, b) => a.genes.speed - b.genes.speed)[0],
       hunger_max_toad: toads.sort(
-        (a, b) => b.genes.hungerRate - a.genes.hungerRate
+        (a, b) => b.genes.hungerRate - a.genes.hungerRate,
       )[0],
       hunger_min_toad: toads.sort(
-        (a, b) => a.genes.hungerRate - b.genes.hungerRate
+        (a, b) => a.genes.hungerRate - b.genes.hungerRate,
       )[0],
     },
   };
@@ -221,8 +220,6 @@ export const createGameStateDB = async (accountId?: string) => {
     content: getGameState(),
     achievements: getAchievementState(),
     collider: loadColliderState(),
-    // Состояние магазина раньше не синхронизировалось вовсе: ассортимент и
-    // кулдауны обновлений терялись при смене устройства. Колонка `shop` (jsonb).
     shop: getShopState(),
   };
 
@@ -360,7 +357,7 @@ const mergeGameState = async (accountId: string) => {
   const lastVisitDb = new Date(gameStateStored.content.lastSaved).getTime();
 
   console.log(
-    `last saved ls: ${currentGS.lastSaved}, last saved db: ${gameStateStored.content.lastSaved}`
+    `last saved ls: ${currentGS.lastSaved}, last saved db: ${gameStateStored.content.lastSaved}`,
   );
 
   // последний синк меньше чем 3 минуты - много багов у пользователй, может какие-то тормоза мешают

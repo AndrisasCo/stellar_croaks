@@ -18,7 +18,6 @@
 export type ColonyRoomKind =
   | "aviary"
   | "breeding"
-  | "incubator"
   | "collider"
   | "scout"
   | "storage"

@@ -1,4 +1,5 @@
 import { updateToadById, updateUser } from "../backend";
+import { completeAchivement } from "../backend/achivements-manager";
 import { getGameState } from "../backend/localStorage";
 import { Toad } from "../models/Toad";
 import {
@@ -117,17 +118,33 @@ export const cureToadForTokens = (toadId: number): DiseaseCurePurchase => {
   };
 };
 
+/** Больные жабы, которые живут в биоподе прямо сейчас (пациенты лазарета не в счёте) */
+export const getSceneSickCount = (
+  sceneId: number | null,
+  now = Date.now()
+): number =>
+  getGameState().toads.filter(
+    (toad) => toad.scene_id === sceneId && isToadSick(toad, now)
+  ).length;
+
 /**
  * Карантин биопода: лечит всех жаб, которые живут в нём сейчас (`scene_id`).
  * Пациенты лазарета — не в биоподе: они на койке, поэтому их карантин не трогает
  * (их лечит `cureToadForTokens` — см. `utils/hospital.ts`).
+ *
+ * Достижение «Санитарный день» закрывается только реальным лечением: пустой карантин
+ * (больных нет) не должен считаться выполненным.
  */
 export const quarantineScene = (sceneId: number | null): number => {
   const sick = getGameState().toads.filter(
-    (toad) => toad.scene_id === sceneId && getToadDisease(toad)
+    (toad) => toad.scene_id === sceneId && isToadSick(toad)
   );
 
   sick.forEach((toad) => cureToad(toad.id));
+
+  if (sick.length > 0) {
+    completeAchivement("quarantine-cure");
+  }
 
   return sick.length;
 };

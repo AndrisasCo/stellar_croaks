@@ -20,8 +20,7 @@ import { ToadAvatar } from "../../shared/ToadAvatar";
 import { ToadGender } from "../../shared/ToadGender";
 import { useToads } from "../../ToadContext";
 import { MixingInProgress } from "./MixingInProgress";
-import { useModal } from "../../ModalContext";
-import ToadSlotModal from "./ToadSlotModal";
+import IncubatorTab from "./IncubatorTab";
 import ModalTabs, { ModalTabItem } from "../../shared/ModalTabs";
 import { RoomConfig } from "../../HexMap/rooms-config";
 import RoomDataTab, { ROOM_DATA_TAB, RoomDataTabId } from "../RoomDataTab";
@@ -29,10 +28,11 @@ import RoomDataTab, { ROOM_DATA_TAB, RoomDataTabId } from "../RoomDataTab";
 /**
  * Генетический коллайдер 🧬 — сектор, где из нескольких жаб собирают одного гибрида.
  *
- * Модалка живёт в двух местах: из лаборатории и по гексу коллайдера на карте — тогда в ней
- * есть и последний таб «Данные сектора», как у остальных секторов (`shared/ModalTabs`).
+ * Инкубатор больше не отдельный сектор карты: его колбы — вкладка этой же модалки. Модалка
+ * живёт в двух местах: из лаборатории и по гексу коллайдера на карте — тогда в ней есть и
+ * последний таб «Данные сектора», как у остальных секторов (`shared/ModalTabs`).
  */
-type ColliderTab = "collider" | RoomDataTabId;
+type ColliderTab = "collider" | "incubator" | RoomDataTabId;
 
 // Функция для определения цвета редкости
 const getRarityColor = (rarity: number): string => {
@@ -77,14 +77,17 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
   // после явного подтверждения.
   const [showWarning, setShowWarning] = useState(false);
 
-  const { closeModal, openModal } = useModal();
   const { startBreeding, updateBreeding, allToads } = useToads();
-  /** Состояние сектора: смешивание жаб (по умолчанию) или данные сектора */
+  /** Состояние сектора: смешивание жаб (по умолчанию), инкубатор или данные сектора */
   const [tab, setTab] = useState<ColliderTab>("collider");
 
-  /** Табы коллайдера: смешивание первым, «Данные сектора» — последним */
+  /**
+   * Табы коллайдера: смешивание, колбы инкубатора и — только у гекса на карте —
+   * «Данные сектора» последним табом, как у остальных секторов.
+   */
   const tabs: ModalTabItem<ColliderTab>[] = [
-    { id: "collider", label: "🧬 Смешивание", color: "text-purple-400" },
+    { id: "collider", label: "🧬 Коллайдер", color: "text-purple-400" },
+    { id: "incubator", label: "🧫 Инкубатор", color: "text-emerald-400" },
     ...(room ? [{ ...ROOM_DATA_TAB }] : []),
   ];
 
@@ -194,8 +197,9 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
 
     setCustomName("");
     setBreedingResult(null);
-    closeModal();
-    openModal(() => <ToadSlotModal />);
+    // Гибрид уже в колбе (`startBreeding`): показываем инкубатор в этой же модалке,
+    // а не открываем отдельное окно — инкубатор больше не отдельная комната.
+    setTab("incubator");
   };
 
   /** Подтверждение: жабы уходят в коллайдер навсегда */
@@ -704,6 +708,9 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
           )}
         </>
       )}
+
+      {/* ВКЛАДКА «Инкубатор»: те же колбы, что раньше были отдельным сектором карты */}
+      {tab === "incubator" && <IncubatorTab />}
 
       {/* ВКЛАДКА «Данные сектора»: описание, улучшения и снос гекса коллайдера */}
       {tab === "room-data" && room && <RoomDataTab room={room} />}

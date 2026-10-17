@@ -1,6 +1,9 @@
 import { updateToadsBulkEnergy, updateUser } from "../backend";
 import { getGameState } from "../backend/localStorage";
-import { completeAchivement } from "../backend/achivements-manager";
+import {
+  completeAchivement,
+  completeAchivementCounter,
+} from "../backend/achivements-manager";
 import { Toad } from "../models/Toad";
 import {
   BIOMASS_TO_TOKENS_RATE,
@@ -130,6 +133,10 @@ export const exchangeBiomassForTokens = (
     biomass: Math.round((biomass - biomassSpent) * 100) / 100,
     tokens: state.user.tokens + tokensGained,
   });
+
+  // Обмен биомассы — такой же заработок, как продажа жаб: без этого счётчик «earn»
+  // обходил целый экономический цикл и достижения торговой группы копились неравномерно.
+  completeAchivementCounter("earn", tokensGained);
 
   return { success: true, tokensGained, biomassSpent };
 };

@@ -67,18 +67,18 @@ export default function RoomDataTab({ room, stats }: RoomDataTabProps) {
     () => getRoomUpgrades(room),
     // Апгрейды лежат в состоянии колонии: меняются — пересчитываем
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [room.id, colony]
+    [room.id, colony],
   );
   const powered = isRoomPowered(room, powerGrid);
   /** Апгрейды есть только у жилых секторов: остальным кормушка ни к чему */
   const canUpgrade = isToadRoom(room);
   const installed = ROOM_UPGRADES.filter((option) =>
-    hasUpgrade(upgrades, option.upgrade)
+    hasUpgrade(upgrades, option.upgrade),
   ).length;
   const kind = getBuiltRoomKind(room);
   const description = kind ? getRoomBlueprint(kind).description : room.subtitle;
   const scene = room.sceneId
-    ? ownedScenes.find((item) => item.id === room.sceneId) ?? null
+    ? (ownedScenes.find((item) => item.id === room.sceneId) ?? null)
     : null;
   const demolishIssue = getRoomDemolishIssue(room, roomToads);
 
@@ -178,8 +178,7 @@ export default function RoomDataTab({ room, stats }: RoomDataTabProps) {
 
         {!canUpgrade && (
           <p className="text-2xs leading-snug text-gray-400">
-            У этого сектора улучшений нет: апгрейды (например, «Автокормушка»)
-            ставятся только в жилые секторы с жабами.
+            У этого сектора улучшений нет.
           </p>
         )}
 
@@ -216,8 +215,8 @@ export default function RoomDataTab({ room, stats }: RoomDataTabProps) {
                     bought
                       ? "border-emerald-500/40 text-emerald-300"
                       : enough
-                      ? "border-amber-500/50 text-amber-100 hover:bg-amber-800/40"
-                      : "border-gray-600/40 text-gray-500"
+                        ? "border-amber-500/50 text-amber-100 hover:bg-amber-800/40"
+                        : "border-gray-600/40 text-gray-500"
                   }`}
                 >
                   {bought
@@ -245,9 +244,9 @@ export default function RoomDataTab({ room, stats }: RoomDataTabProps) {
 
         <p className="text-2xs leading-snug text-gray-400">
           Снос стоит {DEMOLISH_ROOM_COST} {CURRENCY_CONFIG.tokens.icon} и
-          подтверждается отдельным окном. Кваксы за постройку не возвращаются, зато
-          гекс становится свободным — на нём можно построить заново, и следующий
-          сектор того же вида подешевеет.
+          подтверждается отдельным окном. Кваксы за постройку не возвращаются,
+          зато гекс становится свободным — на нём можно построить заново, и
+          следующий сектор того же вида подешевеет.
           {demolishIssue ? ` ${demolishIssue}` : ""}
         </p>
 

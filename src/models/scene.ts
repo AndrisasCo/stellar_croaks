@@ -13,7 +13,10 @@ export interface Scene {
    */
   bonuses?: { autoFeeder?: number };
   capacity: number;
-  /** Число родильных слотов купола (постройка «Репродуктор»), по умолчанию NEST_BASE_SLOTS */
+  /**
+   * @deprecated Легаси-поле старого апгрейда слотов за Кваксы. Слотов всегда два
+   * (`getNestSlotSex`), вторая пара требует нового «Репродуктора» на карте; поле не читается.
+   */
   nestSlots?: number;
 }
 

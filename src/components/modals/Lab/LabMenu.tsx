@@ -3,7 +3,6 @@ import { ClickButton } from "../../shared/ClickButton";
 import DissolveModal from "./DissolveModal";
 import NestModal from "./NestModal";
 import ToadCollider from "./ToadColliderModal";
-import ToadSlotModal from "./ToadSlotModal";
 
 interface LabMenuButton {
   name: string;
@@ -19,11 +18,6 @@ export const ColliderMenu = () => {
       name: "Коллайдер",
       bg: "/assets/collider.webp",
       Component: <ToadCollider />,
-    },
-    {
-      name: "Инкубатор",
-      bg: "/assets/incubator.webp",
-      Component: <ToadSlotModal />,
     },
     {
       name: "Репродуктор",
@@ -51,7 +45,7 @@ export const ColliderMenu = () => {
         </h2>
       </div>
 
-      {/* Основное меню - 4 крупные кнопки */}
+      {/* Основное меню — крупные кнопки инструментов лаборатории */}
       <div className="grid grid-cols-2 gap-y-4 gap-x-2 p-4 mt-4">
         {/* Кнопка Коллайдера */}
         {buttons.map((b) => (

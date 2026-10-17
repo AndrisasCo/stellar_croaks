@@ -75,11 +75,11 @@ export const ROLE_CONFIG: Record<ExpeditionRole, ExpeditionRoleConfig> = {
     statCap: 12,
   },
   negotiator: {
-    label: "Переговорщик",
-    icon: "🌿",
-    statLabel: "Характер",
+    label: "Повар",
+    icon: "🍎",
+    statLabel: "Аппетит",
     description: "Договаривается с местной органикой, добывает образцы.",
-    statCap: 1.4,
+    statCap: 1.5,
   },
 };
 
@@ -244,7 +244,7 @@ export const getSectorLootFactor = (sector: SectorDef): number =>
  */
 export const EXPEDITION_ROLE_SUCCESS_BONUS = 0.2;
 /** Максимум силы роли: 2.0 — жаба сильно перекрывает требования роли (200%) */
-export const EXPEDITION_ROLE_MAX_POWER = 2;
+export const EXPEDITION_ROLE_MAX_POWER = 999;
 /** Множитель вклада для жабы, которая не дотягивает до роли (сила < 1) */
 export const EXPEDITION_ROLE_UNDERFIT_FACTOR = 0.5;
 /** Разброс удачи: шанс умножается на 0.9..1.1 («немного рандома») */
@@ -327,6 +327,25 @@ export const getLootValue = (loot: {
     Math.max(0, loot.samples || 0) * EXPEDITION_SAMPLE_VALUE
   );
 };
+
+/**
+ * Во сколько биомассы оценивается лут при переработке на вкладке «Походы».
+ *
+ * Берём квакс-эквивалент добычи (`getLootValue`) и переводим его обратно в биомассу
+ * по курсу рынка: 1 🔷 = 2 🧪. Так игрок видит честную альтернативу складу —
+ * предметы и образцы тоже растворяются в биомассе, а не пропадают.
+ */
+export const getLootBiomassValue = (loot: {
+  biomass?: number;
+  tokens?: number;
+  astro_quax?: number;
+  items?: Partial<Record<Items, number>>;
+  samples?: number;
+}): number =>
+  Math.max(
+    0,
+    Math.round((getLootValue(loot) / BIOMASS_TO_TOKENS_RATE) * 10) / 10,
+  );
 
 /** Сколько Кваксов-эквивалента те же жабы принесли бы фермой за `hours` часов (нетто) */
 export const getFarmValueForTeam = (toads: Toad[], hours: number): number => {
@@ -430,7 +449,11 @@ export const getSpeedUpReturnCost = (
   }
   return Math.max(
     SPEEDUP_MIN_BIOMASS,
-    Math.ceil(remainingHours * SPEEDUP_BIOMASS_PER_HOUR),
+    Math.ceil(
+      Math.max(remainingHours, expedition.speedups || 1) *
+        SPEEDUP_BIOMASS_PER_HOUR *
+        (expedition.speedups || 1),
+    ),
   );
 };
 

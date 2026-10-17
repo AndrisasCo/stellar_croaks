@@ -8,13 +8,10 @@ import {
   MATING_MAX_MINUTES,
   MATING_MIN_MINUTES,
   MAX_ENERGY,
-  NEST_MAX_SLOTS,
   NEST_ROOM_TOAD_SLOTS,
-  canUpgradeNest,
   getBreedPairBiomassCost,
   getEnergyCost,
   getMatingTimeLeft,
-  getNestSlotUpgradeCost,
   getToadEnergy,
 } from "../../../utils/gamification-config";
 import {
@@ -26,7 +23,6 @@ import {
   getNestSlotRejectReason,
   getNestSlotSex,
   startNestCourtship,
-  upgradeNestSlots,
 } from "../../../utils/breeding-manager";
 import { placeToadInRoom, sendToadHome } from "../../../backend/colony";
 import {
@@ -41,7 +37,6 @@ import {
 import {
   ASTRO_PRICES,
   acceleratePregnancy,
-  buyQuarantine,
   getAstroBalance,
   resetBreedCooldown,
 } from "../../../utils/astro-shop";
@@ -58,6 +53,7 @@ import {
   TOAD_PICKER_REJECTED_GROUP,
   getToadSexIcon,
 } from "../../../utils/toad-picker";
+import { ProgressBar } from "../ToadInfoModal/ProgressBar";
 
 /**
  * Модалка репродуктора (Часть 3.2).
@@ -228,13 +224,13 @@ export default function NestModal({
         (item) => item.id === toad.mating?.partnerId,
       );
 
-      return `🫧 ухаживает: ${formatWait(getMatingTimeLeft(toad))} с ${
+      return ` ухаживает: ${formatWait(getMatingTimeLeft(toad))} с ${
         partner?.name ?? "партнёром"
       }`;
     }
 
     if (toad.pregnancy?.isPregnant) {
-      return "🍼 вынашивает потомство — роды придут сами";
+      return " вынашивает потомство — роды придут сами";
     }
 
     if (toad.stage !== "adult") {
@@ -285,19 +281,8 @@ export default function NestModal({
   const nestRoomTitle =
     mapRooms.find((room) => room.id === roomId)?.name || "Репродуктор";
 
-  const pregnant = allToads.filter(
-    (toad) =>
-      isToadFromEnclosure(toad, hostScene?.id) &&
-      Boolean(toad.pregnancy?.isPregnant),
-  );
-  const courting = nestAdults.filter(
-    (toad) => toad.sex === "female" && toad.mating,
-  );
   const biomass = Math.floor(account?.biomass || 0);
   const astro = Math.floor(getAstroBalance());
-  const tokens = Math.floor(account?.tokens || 0);
-  const canUpgrade = canUpgradeNest(hostScene);
-  const nestUpgradeCost = getNestSlotUpgradeCost(hostScene);
 
   // Пара в репродукторе может быть неполной: по ней считаем цену ухаживания и подсказки
   const nestMale = nestAdults.find((toad) => toad.sex === "male") ?? null;
@@ -321,25 +306,23 @@ export default function NestModal({
       const partner = allToads.find(
         (toad) => toad.id === courtingToad.mating?.partnerId,
       );
-      return `🫧 Ухаживание идёт: ${partner?.name ?? "пара"} — старт беременности через ${formatWait(
-        getMatingTimeLeft(courtingToad),
-      )}`;
+      return `Ухаживание запущено`;
     }
 
     if (pregnantInNest) {
-      return `🍼 ${pregnantInNest.name} вынашивает потомство — роды придут сами`;
+      return ` ${pregnantInNest.name} вынашивает потомство`;
     }
 
     if (nestAdults.length === 0) {
-      return "Посадите пару: самку в первый слот, самца во второй.";
+      return "Посадите пару";
     }
 
     if (!nestFemale) {
-      return "Не хватает самки — она садится в первый слот.";
+      return "Не хватает самки";
     }
 
     if (!nestMale) {
-      return "Не хватает самца — он садится во второй слот.";
+      return "Не хватает самца";
     }
 
     return null;
@@ -418,42 +401,6 @@ export default function NestModal({
       type: result.success ? "success" : "warn",
       content: result.message,
     });
-    result.success ? playOk() : playExited();
-    setTick((t) => t + 1);
-  };
-
-  /** Кваксы: апгрейд постройки «Репродуктор» — больше родильных слотов биопода */
-  const handleUpgradeNest = () => {
-    const result = upgradeNestSlots(hostScene?.id ?? null);
-    addNotification({
-      type: result.success ? "success" : "warn",
-      content: result.message,
-    });
-    result.success ? playOk() : playExited();
-    setTick((t) => t + 1);
-  };
-
-  /** Астро-кваксы: ускорить роды (Часть 3.7) */
-  const handleAccelerate = (toad: Toad) => {
-    const result = acceleratePregnancy(toad.id);
-    addNotification({
-      type: result.success ? "success" : "warn",
-      content: result.message,
-    });
-    result.success ? playOk() : playExited();
-    setTick((t) => t + 1);
-  };
-
-  /** Астро-кваксы: карантин биопода (Часть 3.6/3.7) */
-  const handleQuarantine = () => {
-    const result = buyQuarantine(hostScene?.id ?? null);
-    addNotification({
-      type: result.success ? "success" : "warn",
-      content: result.message,
-    });
-    if (result.success && (result.cured || 0) > 0) {
-      completeAchivement("quarantine-cure");
-    }
     result.success ? playOk() : playExited();
     setTick((t) => t + 1);
   };
@@ -601,14 +548,6 @@ export default function NestModal({
                             Только прервать
                           </ClickButton>
                         )}
-                        {(toad.breedCooldownUntil ?? 0) > Date.now() && (
-                          <ClickButton
-                            onClick={() => handleResetCooldown(toad)}
-                            className="px-2 py-1 rounded-md text-2xs bg-color-main border border-purple-500/50 text-purple-200"
-                          >
-                            Сбросить отдых ★{ASTRO_PRICES.resetCooldown}
-                          </ClickButton>
-                        )}
                       </div>
                     )}
                   </div>
@@ -659,7 +598,7 @@ export default function NestModal({
             <div className="bg-color-main rounded-xl px-3 py-2 border border-pink-500/40 flex flex-col gap-2">
               <div className="flex items-center justify-between">
                 <span className="text-xs text-pink-200 font-semibold">
-                  ♥ Ухаживание пары
+                  Ухаживание
                 </span>
                 <span className="text-2xs text-gray-400">
                   {MATING_MIN_MINUTES}–{MATING_MAX_MINUTES} мин
@@ -675,17 +614,30 @@ export default function NestModal({
                 </span>
               </div>
 
-              <ClickButton
-                disabled={!courtship.ready}
-                onClick={handleStartCourtship}
-                className={`w-full rounded-lg px-3 py-2 text-xs border transition-all ${
-                  courtship.ready
-                    ? "border-pink-500/60 text-pink-100 hover:border-pink-400"
-                    : "opacity-50 cursor-not-allowed border-gray-600/50 text-gray-400"
-                }`}
-              >
-                ♥ Начать ухаживание
-              </ClickButton>
+              {courtingToad && (
+                <ProgressBar
+                  label="Прогресс"
+                  current={
+                    MATING_MAX_MINUTES * 60000 - getMatingTimeLeft(courtingToad)
+                  }
+                  max={MATING_MAX_MINUTES * 60000}
+                  color={"red"}
+                />
+              )}
+
+              {!courtingToad && (
+                <ClickButton
+                  disabled={!courtship.ready}
+                  onClick={handleStartCourtship}
+                  className={`w-full rounded-lg px-3 py-2 text-xs border transition-all ${
+                    courtship.ready
+                      ? "border-pink-500/60 text-pink-100 hover:border-pink-400"
+                      : "opacity-50 cursor-not-allowed border-gray-600/50 text-gray-400"
+                  }`}
+                >
+                  Начать ухаживание
+                </ClickButton>
+              )}
 
               <div
                 className={`text-2xs leading-snug ${
@@ -708,8 +660,7 @@ export default function NestModal({
                   </span>
                 </div>
                 <div className="text-2xs text-gray-400 leading-snug">
-                  Они родились здесь и переполняют репродуктор. Перенесите их в
-                  биопод на карте колонии — репродуктор примет ещё пару.
+                  Перенесите их в биопод на карте колонии
                 </div>
                 <div className="flex flex-col gap-1">
                   {nestChildren.map((child) => (
@@ -754,77 +705,6 @@ export default function NestModal({
                 Списывается один раз — когда репродуктор начинает ухаживание.
                 Отдых после пары считается у каждой жабы отдельно.
               </div>
-            </div>
-
-            {/* Кваксы: расширение репродуктора биопода (Часть 3.2) */}
-            <div className="bg-color-main rounded-xl px-3 py-2 border border-gray-500/30 flex flex-col gap-2">
-              {canUpgrade ? (
-                <ClickButton
-                  disabled={tokens < nestUpgradeCost}
-                  onClick={handleUpgradeNest}
-                  className={`w-full rounded-lg px-3 py-2 text-xs border transition-all ${
-                    tokens < nestUpgradeCost
-                      ? "opacity-50 cursor-not-allowed border-gray-600/50 text-gray-400"
-                      : "border-emerald-500/50 text-emerald-200 hover:border-emerald-400"
-                  }`}
-                >
-                  Расширить репродуктор: +1 слот · {CURRENCY_CONFIG.tokens.icon}{" "}
-                  {nestUpgradeCost} · {CURRENCY_CONFIG.tokens.icon} у вас{" "}
-                  {tokens}
-                </ClickButton>
-              ) : (
-                <div className="text-2xs text-gray-400">
-                  Репродуктор расширен до предела: {NEST_MAX_SLOTS} родильных
-                  слотов на биопод.
-                </div>
-              )}
-
-              <div className="text-2xs text-gray-500 leading-snug">
-                Слот занимают и ухаживание в репродукторе, и беременность: пока
-                все слоты биопода заняты, новая пара не заведётся.
-              </div>
-            </div>
-
-            {/* Разовые ускорения за астро-кваксы (Часть 3.7) */}
-            <div className="bg-color-main rounded-xl px-3 py-2 border border-purple-500/30 flex flex-col gap-2">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-purple-200 font-semibold">
-                  Астро-кваксы
-                </span>
-                <span className="text-purple-300">★ {astro}</span>
-              </div>
-
-              {courting.map((toad) => (
-                <ClickButton
-                  key={`courtship-${toad.id}`}
-                  disabled={astro < ASTRO_PRICES.acceleratePregnancy}
-                  onClick={() => handleAccelerate(toad)}
-                  className="w-full rounded-lg px-3 py-2 text-xs border border-purple-500/40 text-purple-200 hover:border-purple-400 disabled:opacity-50"
-                >
-                  Ускорить ухаживание · {toad.name} (★
-                  {ASTRO_PRICES.acceleratePregnancy})
-                </ClickButton>
-              ))}
-
-              {pregnant.map((toad) => (
-                <ClickButton
-                  key={`pregnancy-${toad.id}`}
-                  disabled={astro < ASTRO_PRICES.acceleratePregnancy}
-                  onClick={() => handleAccelerate(toad)}
-                  className="w-full rounded-lg px-3 py-2 text-xs border border-green-500/40 text-green-200 hover:border-green-400 disabled:opacity-50"
-                >
-                  Ускорить роды · {toad.name} (★
-                  {ASTRO_PRICES.acceleratePregnancy})
-                </ClickButton>
-              ))}
-
-              <ClickButton
-                disabled={astro < ASTRO_PRICES.quarantine}
-                onClick={handleQuarantine}
-                className="w-full rounded-lg px-3 py-2 text-xs border border-sky-500/40 text-sky-200 hover:border-sky-400 disabled:opacity-50"
-              >
-                Карантин биопода: лечит всех жаб (★{ASTRO_PRICES.quarantine})
-              </ClickButton>
             </div>
           </div>
         </>

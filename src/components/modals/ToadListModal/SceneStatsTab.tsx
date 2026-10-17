@@ -1,8 +1,16 @@
 import React, { useEffect, useState } from "react";
 import { Toad } from "../../../models/Toad";
 import { Scene } from "../../../models/scene";
+import { isToadSick } from "../../../models/disease";
 import { getGameState, updateGameState } from "../../../backend/localStorage";
 import { InfoIcons } from "../../../assets/icons";
+import { useNotifications } from "../../../hooks/use-notification";
+import { useSoundEffects } from "../../../hooks/use-sound-effects";
+import {
+  ASTRO_PRICES,
+  buyQuarantine,
+  getAstroBalance,
+} from "../../../utils/astro-shop";
 import { PRODUCTION_MIN_HUNGER } from "../../../utils/gamification-config";
 
 /**
@@ -29,6 +37,24 @@ export const SceneStatsTab: React.FC<{
 }> = ({ scene, toads, hasAutoFeeder }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [sceneName, setSceneName] = useState(scene.name || "");
+  const { addNotification } = useNotifications();
+  const { playOk, playExited } = useSoundEffects();
+
+  /** Заражённые жильцы этого биопода: карантин лечит только их (лазарет — отдельно) */
+  const sickToads = toads.filter((toad) => isToadSick(toad));
+  const astro = getAstroBalance();
+  const quarantineCost = ASTRO_PRICES.quarantine;
+  const canQuarantine = sickToads.length > 0 && astro >= quarantineCost;
+
+  const handleQuarantine = () => {
+    const result = buyQuarantine(scene.id);
+
+    addNotification({
+      type: result.success ? "success" : "warn",
+      content: result.message,
+    });
+    result.success ? playOk() : playExited();
+  };
 
   /**
    * Стрелки листают биоподы, не закрывая вкладку: чужое имя в поле ввода недопустимо,
@@ -280,6 +306,52 @@ export const SceneStatsTab: React.FC<{
               color="text-pink-400"
             />
           </div>
+        </div>
+      </div>
+
+      {/* Карантин биопода: единственная кнопка, которая лечит заражённых жильцов сцены */}
+      <div className="mb-4">
+        <h4 className="text-white font-bold text-sm mb-3 flex items-center gap-2">
+          🛡️ Карантин биопода
+        </h4>
+        <div
+          className={`rounded-lg border p-3 flex flex-col gap-2 ${
+            sickToads.length > 0
+              ? "border-rose-500/40 bg-rose-500/10"
+              : "border-emerald-500/30 bg-emerald-500/10"
+          }`}
+        >
+          <div className="flex items-start justify-between gap-2 text-2xs leading-snug">
+            <span
+              className={
+                sickToads.length > 0 ? "text-rose-100" : "text-emerald-100"
+              }
+            >
+              {sickToads.length > 0
+                ? `Заражены: ${sickToads.length}. Карантин вылечит всех больных этого биопода сразу.`
+                : "Больных жаб нет — карантин не нужен."}
+            </span>
+            <span className="shrink-0 text-purple-200">
+              {quarantineCost} ★ · у вас {astro}
+            </span>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleQuarantine}
+            disabled={!canQuarantine}
+            className={`rounded-lg px-3 py-2 text-xs font-semibold transition-all ${
+              canQuarantine
+                ? "bg-rose-600 text-white hover:bg-rose-500 active:scale-95"
+                : "cursor-not-allowed bg-gray-700/60 text-gray-400"
+            }`}
+          >
+            {sickToads.length === 0
+              ? "Больных нет"
+              : astro < quarantineCost
+                ? `Не хватает ${quarantineCost - astro} ★`
+                : `Провести карантин · ${quarantineCost} ★`}
+          </button>
         </div>
       </div>
 

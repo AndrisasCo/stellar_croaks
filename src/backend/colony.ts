@@ -11,6 +11,7 @@ import { Toad } from "../models/Toad";
 import { MAX_OWNED_SCENES } from "../utils/constants";
 import { getEnclosureToads } from "../utils/housing";
 import { getToadHomeId } from "../utils/toad-location";
+import { completeAchivement } from "./achivements-manager";
 import { getGameState, updateGameState } from "./localStorage";
 import { getToadById, updateToadById } from "./index";
 
@@ -18,10 +19,6 @@ import { getToadById, updateToadById } from "./index";
  * Постройки колонии: гексагональная карта живёт в состоянии игры,
  * поэтому все действия идут через `updateGameState` — экран карты
  * перерисуется сам по событию `gameStateUpdated`.
- *
- * Биоподы больше не покупаются в магазине: каждый построенный на гексе «Биопод»
- * открывает новый биопод (`Scene`) с `INITIAL_CAPACITY` мест, поэтому стройка
- * обновляет сразу и колонию, и список биоподов.
  */
 
 /** Построенные секторы колонии (старые сейвы поля не знают — отдаём пустую колонию). */
@@ -37,12 +34,6 @@ export const saveColonyState = (colony: ColonyState): ColonyState => {
 /**
  * Апгрейды сектора: они лежат в `ColonyState.upgrades` по id гекса, поэтому сектор
  * передаём целиком — гексу-биоподу апгрейд может отдать ещё и его биопод.
- *
- * Легаси: раньше автокормушку покупали «биоподу», и она жила в `Scene.bonuses.autoFeeder`.
- * Покупка теперь всегда пишет в `ColonyState.upgrades`, а старый бонус биопода читается
- * здесь как апгрейд его гекса — апгрейд, купленный до переезда, продолжает работать.
- * Связь «гекс ↔ биопод» знает карта (`RoomConfig.sceneId`), поэтому `sceneId` приходит
- * параметром, а не ищется здесь.
  */
 export const getRoomUpgrades = (room: {
   id: string;
@@ -107,6 +98,7 @@ export const buildColonyRoom = (
   const scenes = [...state.scenes];
 
   let sceneId = previous?.sceneId;
+  let createdEnclosure = false;
 
   if (kind === "aviary" && !scenes.some((scene) => scene.id === sceneId)) {
     if (scenes.length >= MAX_OWNED_SCENES) {
@@ -116,6 +108,7 @@ export const buildColonyRoom = (
     const scene = createEnclosureScene(scenes);
     sceneId = scene.id;
     scenes.push(scene);
+    createdEnclosure = true;
   }
 
   const room: ColonyRoomState = {
@@ -135,6 +128,12 @@ export const buildColonyRoom = (
     },
     scenes,
   });
+
+  // «Недвижимость»: достижение закрывается именно новым биоподом, а не постройкой
+  // любого сектора и не повторной застройкой того же гекса.
+  if (createdEnclosure) {
+    completeAchivement("buy-enclosure");
+  }
 
   return room;
 };
@@ -184,6 +183,12 @@ export const syncColonyScenes = (): number => {
   const colony = state.colony ?? EMPTY_COLONY;
   const scenes = [...state.scenes];
   let created = 0;
+
+  // Игрок мог построить дополнительный биопод до появления триггера: награда
+  // «Недвижимость» не должна потеряться в старом сейве. Вызов идемпотентен.
+  if (colony.rooms.some((room) => room.kind === "aviary")) {
+    completeAchivement("buy-enclosure");
+  }
 
   const rooms = colony.rooms.map((room) => {
     if (
@@ -240,14 +245,15 @@ export type ToadHomeResult =
  */
 const settleToadInScene = (toadId: number, sceneId: number): ToadHomeResult => {
   const toad = getToadById(toadId);
-  const scene = getGameState().scenes.find((item) => item.id === sceneId) ?? null;
+  const scene =
+    getGameState().scenes.find((item) => item.id === sceneId) ?? null;
 
   if (!scene) {
     return { ok: false, reason: "no-scene", scene: null };
   }
 
   const residents = getEnclosureToads(scene.id).filter(
-    (item) => item.id !== toadId
+    (item) => item.id !== toadId,
   ).length;
 
   if (residents >= scene.capacity) {
@@ -305,5 +311,5 @@ export const sendToadHome = (toadId: number): ToadHomeResult => {
  */
 export const moveToadToAviary = (
   toadId: number,
-  sceneId: number
+  sceneId: number,
 ): ToadHomeResult => settleToadInScene(toadId, sceneId);

@@ -21,7 +21,7 @@ export const Colors = ({ toad }: { toad: Toad }) => {
   const inventory = account.storage;
   const [openTooltip, setOpenToopltip] = useState(false);
   const coloredTypes = [ToadTypes.camouflage, ToadTypes.hybrid].includes(
-    toad.type
+    toad.type,
   );
 
   const color = toad.genes.colors[0];
@@ -93,7 +93,7 @@ export const Colors = ({ toad }: { toad: Toad }) => {
       >
         <div className="flex flex-col gap-1 items-start">
           {noPigments
-            ? "У вас нет пигментов для окрашивания, купите их в магазине"
+            ? "У вас нет пигментов для окрашивания, купите их в Торговой капсуле"
             : currentPigments.map((p) => (
                 <ClickButton
                   key={p.key}

@@ -1,4 +1,5 @@
 import { ColonyRoomKind, ColonyRoomState } from "../../models/colony";
+import { INITIAL_CAPACITY } from "../../models/scene";
 import { Toad } from "../../models/Toad";
 import { NEST_ROOM_ID } from "../../utils/constants";
 import {
@@ -30,10 +31,9 @@ export type RoomActionId =
   | "scene-info" // биопод → статистика биопода
   | "feed" // биопод → покормить всех (без модалки)
   | "nest" // репродуктор → размножение
-  | "collider" // коллайдер → смешивание генов
-  | "incubator" // инкубатор → колбы после коллайдера
+  | "collider" // коллайдер → смешивание генов и колбы инкубатора
   | "dissociator" // диссоциатор → расщепление жаб на биомассу
-  | "shop" // магазин → торговля
+  | "shop" // Торговая капсула → торговля
   | "storage" // склад → ресурсы и коробки
   | "scout" // разведка → команды жаб в походы
   | "hospital" // лазарет → лечение жаб
@@ -114,14 +114,6 @@ const PALETTES: Record<RoomKind, RoomPalette> = {
     glow: 0xddd6fe,
     text: 0xffffff,
   },
-  incubator: {
-    face: 0x0b3f4a,
-    inner: 0x06b6d4,
-    edgeShadow: 0x062a33,
-    edge: 0x67e8f9,
-    glow: 0xa5f3fc,
-    text: 0xffffff,
-  },
   collider: {
     face: 0x4a044e,
     inner: 0xc026d3,
@@ -194,8 +186,8 @@ const PALETTES: Record<RoomKind, RoomPalette> = {
  * Цены — по ВРЕМЕНИ игры, а не «на глаз»: ранняя колония из 3-4 жаб даёт ~110 Кваксов
  * в сутки, а на старте у игрока 50 Кваксов. Поэтому первые два гекса обучения —
  * «Разведка» (25) и «Склад» (25) — игрок ставит сразу, не дожидаясь фермы; дальше цена
- * растёт вместе с доходом: полдня фермы (инкубатор, лазарет), сутки (биопод, репродуктор,
- * энергосектор, магазин), несколько суток (лаборатория и коллайдер).
+ * растёт вместе с доходом: полдня фермы (лазарет), сутки (биопод, репродуктор,
+ * энергосектор, магазин), несколько суток (лаборатория и коллайдер с инкубатором).
  * Правятся цены здесь — отсюда их берут и карточки застройки, и сама постройка.
  */
 export interface RoomBlueprint {
@@ -210,7 +202,11 @@ export interface RoomBlueprint {
   unique: boolean;
   /** Цена первой такого сектора в Кваксах 🔷. */
   baseCost: number;
-  /** Во сколько раз дорожает каждая следующая такой сектор. */
+  /**
+   * Во сколько раз дорожает каждая следующая такой сектор.
+   * Все повторяемые секторы растут одинаково (×1.5), чтобы поздняя колония не упиралась
+   * в экспоненциальную стену: раньше разброс 1.6–2.0 делал пятый биопод дороже первых четырёх.
+   */
   costGrowth: number;
   /** Действия сектора: первое — то, что открывает тап по гексу. */
   actions: RoomAction[];
@@ -223,24 +219,23 @@ export const ROOM_BLUEPRINTS: Record<ColonyRoomKind, RoomBlueprint> = {
     subtitle: "Ток для соседей",
     icon: "⚡",
     description:
-      "Даёт ток соседним секторам: 6 жаб внутри закрывают все 6 сторон. Жаб нужно кормить.",
+      "Шесть жаб в колесе — и шесть сторон сектора под напряжением. Кормить обязательно: голодная жаба не вырабатывает энергию",
     palette: PALETTES.power,
     unique: false,
     baseCost: 160,
-    costGrowth: 1.6,
+    costGrowth: 1.5,
     actions: [{ id: "power-room", icon: "⚡", title: "Энергосектор" }],
   },
   aviary: {
     kind: "aviary",
     title: "Биопод",
-    subtitle: "Новый дом для жаб",
+    subtitle: "Вольер для жаб",
     icon: "🐸",
-    description:
-      "Строит ещё один биопод: +20 мест для жаб. Биоподов может быть до 10 — каждый следующий дороже.",
+    description: `Строит ещё один биопод: +${INITIAL_CAPACITY} мест для жаб.`,
     palette: PALETTES.aviary,
     unique: false,
     baseCost: 120,
-    costGrowth: 1.7,
+    costGrowth: 1.5,
     actions: [
       { id: "toad-list", icon: "📋", title: "Список жаб биопода" },
       { id: "scene-info", icon: "ⓘ", title: "О биоподе" },
@@ -253,25 +248,12 @@ export const ROOM_BLUEPRINTS: Record<ColonyRoomKind, RoomBlueprint> = {
     subtitle: "Размножение, беременность",
     icon: "🥚",
     description:
-      "Беременность идёт под присмотром: жабы зреют в репродукторе, потомство уходит в инкубатор.",
+      "Беременность идёт под присмотром: жабы зреют в репродукторе, потомство уходит в инкубатор коллайдера.",
     palette: PALETTES.breeding,
     unique: false,
     baseCost: 150,
-    costGrowth: 2,
+    costGrowth: 1.5,
     actions: [{ id: "nest", icon: "🥚", title: "Репродуктор" }],
-  },
-  incubator: {
-    kind: "incubator",
-    title: "Инкубатор",
-    subtitle: "Колбы после коллайдера",
-    icon: "🧫",
-    description:
-      "Колбы для потомства коллайдера: гибрид дозревает здесь и оттуда отправляется в биопод.",
-    palette: PALETTES.incubator,
-    unique: false,
-    baseCost: 80,
-    costGrowth: 1.8,
-    actions: [{ id: "incubator", icon: "🧫", title: "Инкубатор" }],
   },
   collider: {
     kind: "collider",
@@ -279,7 +261,7 @@ export const ROOM_BLUEPRINTS: Record<ColonyRoomKind, RoomBlueprint> = {
     subtitle: "Смешивание генов",
     icon: "🧬",
     description:
-      "Смешивает гены двух жаб: гибрид уходит в инкубатор. Сектор — в единственном экземпляре.",
+      "Смешивает гены двух жаб: гибрид дозревает во вкладке «Инкубатор». Сектор — в единственном экземпляре.",
     palette: PALETTES.collider,
     unique: true,
     baseCost: 600,
@@ -296,7 +278,7 @@ export const ROOM_BLUEPRINTS: Record<ColonyRoomKind, RoomBlueprint> = {
     palette: PALETTES.scout,
     unique: false,
     baseCost: 25,
-    costGrowth: 1.8,
+    costGrowth: 2,
     actions: [{ id: "scout", icon: "🧭", title: "Разведка" }],
   },
   storage: {
@@ -309,21 +291,20 @@ export const ROOM_BLUEPRINTS: Record<ColonyRoomKind, RoomBlueprint> = {
     palette: PALETTES.storage,
     unique: false,
     baseCost: 25,
-    costGrowth: 1.7,
+    costGrowth: 1.5,
     actions: [{ id: "storage", icon: "📦", title: "Склад" }],
   },
   shop: {
     kind: "shop",
-    title: "Магазин",
+    title: "Торговая капсула",
     subtitle: "Торговля",
     icon: "🛒",
-    description:
-      "Покупка и продажа жаб, элитные заказы за Астро-кваксы. Магазин в колонии один.",
+    description: "Покупка и продажа жаб, элитные заказы за Астро-кваксы. ",
     palette: PALETTES.shop,
     unique: true,
-    baseCost: 450,
+    baseCost: 0,
     costGrowth: 1,
-    actions: [{ id: "shop", icon: "🛒", title: "Магазин" }],
+    actions: [{ id: "shop", icon: "🛒", title: "Торговая капсула" }],
   },
   hospital: {
     kind: "hospital",
@@ -335,7 +316,7 @@ export const ROOM_BLUEPRINTS: Record<ColonyRoomKind, RoomBlueprint> = {
     palette: PALETTES.hospital,
     unique: false,
     baseCost: 95,
-    costGrowth: 1.8,
+    costGrowth: 1.5,
     actions: [{ id: "hospital", icon: "🩹", title: "Лазарет" }],
   },
   dissociator: {
@@ -359,14 +340,13 @@ export const ROOM_BLUEPRINTS: Record<ColonyRoomKind, RoomBlueprint> = {
  * Список и есть порядок карточек — каталог `ROOM_BLUEPRINTS` остаётся без порядка.
  */
 export const ROOM_BLUEPRINT_ORDER: ColonyRoomKind[] = [
-  "scout",
-  "storage",
+  "shop",
   "aviary",
   "power",
+  "scout",
+  "storage",
   "breeding",
-  "incubator",
   "hospital",
-  "shop",
   "collider",
   "dissociator",
 ];
@@ -388,9 +368,6 @@ export const createColonyRoom = (
     ...slot,
     kind,
     title: blueprint.title,
-    // Имя без номера: номер экземпляра зависит от состава колонии и его дописывает карта
-    // (`room-names.ts` → `withRoomNames`). Здесь имя нужно каталогу — по нему гекс подписан,
-    // пока карта ещё не собрана.
     name: blueprint.title,
     subtitle: blueprint.subtitle,
     icon: blueprint.icon,
@@ -441,7 +418,8 @@ const emptySlot = (id: string, coord: AxialCoord): RoomConfig => ({
  * (`BASE_ROOMS`), а на карте обязан показываться слотом — иначе снос базового сектора
  * выглядел бы как «ничего не произошло».
  */
-const toEmptySlot = (room: RoomConfig): RoomConfig => emptySlot(room.id, room.coord);
+const toEmptySlot = (room: RoomConfig): RoomConfig =>
+  emptySlot(room.id, room.coord);
 
 /** Базовые секторы колонии (ядро рисуется отдельно): биопод и репродуктор стоят с начала игры. */
 const baseRoom = (

@@ -1,4 +1,5 @@
 import { platform } from "../platform";
+import { clearGameState } from "./localStorage";
 import { isCloudSyncEnabled, supabase } from "./supabase";
 
 /**
@@ -10,7 +11,7 @@ import { isCloudSyncEnabled, supabase } from "./supabase";
  *    `telegram-auth` (HMAC по токену бота) и выдаёт сессию. Подделать `tg_id` нельзя;
  *  - веб: `signInAnonymously()` — сессия без личности, но со своим uuid. Достаточно,
  *    чтобы синк и лидерборд принадлежали конкретному устройству, а позже к этому
- *    аккаунту можно привязать любой вход.
+ *    аккаунту можно привязать любой вход (почта + пароль, см. ниже).
  *
  * Без настроенного Supabase (`isCloudSyncEnabled === false`) аккаунта нет вовсе, и
  * облачные функции молчат — игра идёт полностью локально.
@@ -19,6 +20,8 @@ import { isCloudSyncEnabled, supabase } from "./supabase";
 export interface Account {
   /** uuid сессии. Это же значение хранится в `user.id` сейва игры. */
   id: string;
+  /** Почта зарегистрированного аккаунта (веб-вход). У анонимной сессии `null`. */
+  email: string | null;
   /** id Telegram — «визитка» для уведомлений из бота. В вебе `null`. */
   tgId: number | null;
   username: string | null;
@@ -28,6 +31,7 @@ export interface Account {
 
 type SessionUser = {
   id: string;
+  email?: string | null;
   is_anonymous?: boolean;
   user_metadata?: Record<string, unknown>;
 };
@@ -51,6 +55,7 @@ const toAccount = (user: SessionUser): Account => {
 
   return {
     id: user.id,
+    email: readString(user.email),
     tgId: readNumber(user.user_metadata?.tg_id),
     username: readString(user.user_metadata?.username) ?? identity.username,
     isAnonymous: Boolean(user.is_anonymous),
@@ -186,4 +191,155 @@ export const ensureAccount = async (): Promise<Account | null> => {
   }
 
   return pendingAccount;
+};
+
+// ---------------------------------------------------------------------------
+// ВХОД И РЕГИСТРАЦИЯ ПО ПОЧТЕ (веб-версия)
+//
+// В Telegram личность подтверждает подпись `initData`, а в браузере подтверждать
+// нечего — поэтому там игрок заводит аккаунт сам: почта + пароль. Ключ аккаунта
+// остаётся прежним (`auth.uid()`), поэтому синк, лидерборд и покупки работают
+// одинаково в обеих версиях.
+//
+// Регистрация из анонимной сессии (в вебе она создаётся на старте) превращает её в
+// постоянный аккаунт. Если в проекте включено подтверждение почты, сервер вернёт
+// пользователя без сессии — тогда игрока ждёт письмо (см. supabase/README.md).
+// ---------------------------------------------------------------------------
+
+export interface AuthResult {
+  /** Запрос принят сервером. */
+  ok: boolean;
+  /** Сессия создана прямо сейчас — игру можно перезапускать под новым аккаунтом. */
+  signedIn: boolean;
+  /** Текст для игрока: успех и ошибка читаются одинаково (`message`). */
+  message: string;
+}
+
+/** Итог выхода из аккаунта. */
+export interface SignOutResult {
+  ok: boolean;
+  message: string;
+}
+
+/** Текущий аккаунт сессии, без ожидания входа (для интерфейса). */
+export const getAccount = (): Account | null => currentAccount;
+
+/**
+ * Подписка на смену аккаунта: вход, выход, обновление токена. Возвращает функцию
+ * отписки. Нужна интерфейсу (модалка «Аккаунт»), чтобы кнопки следовали за сессией.
+ */
+export const subscribeAccount = (
+  listener: (account: Account | null) => void
+): (() => void) => {
+  if (!isCloudSyncEnabled) {
+    listener(null);
+    return () => {};
+  }
+
+  const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+    const account = session?.user ? toAccount(session.user as SessionUser) : null;
+    setAccount(account);
+    listener(account);
+  });
+
+  return () => data.subscription.unsubscribe();
+};
+
+/** Регистрация по почте. Из анонимной сессии делает постоянный аккаунт. */
+export const signUpWithEmail = async (
+  email: string,
+  password: string
+): Promise<AuthResult> => {
+  if (!isCloudSyncEnabled) {
+    return {
+      ok: false,
+      signedIn: false,
+      message: "Облако не настроено: вход недоступен",
+    };
+  }
+
+  const { data, error } = await supabase.auth.signUp({
+    email: email.trim(),
+    password,
+    // Куда вернуть игрока после подтверждения почты — на ту же страницу игры.
+    options: { emailRedirectTo: window.location.origin },
+  });
+
+  if (error) {
+    return { ok: false, signedIn: false, message: error.message };
+  }
+
+  if (!data.session) {
+    // В проекте включено подтверждение почты: аккаунт есть, сессии ещё нет.
+    return {
+      ok: true,
+      signedIn: false,
+      message: "Аккаунт создан. Подтвердите почту и войдите.",
+    };
+  }
+
+  setAccount(toAccount(data.user as SessionUser));
+
+  return { ok: true, signedIn: true, message: "Аккаунт создан — вы вошли" };
+};
+
+/** Вход по почте и паролю. */
+export const signInWithEmail = async (
+  email: string,
+  password: string
+): Promise<AuthResult> => {
+  if (!isCloudSyncEnabled) {
+    return {
+      ok: false,
+      signedIn: false,
+      message: "Облако не настроено: вход недоступен",
+    };
+  }
+
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email: email.trim(),
+    password,
+  });
+
+  if (error || !data.session?.user) {
+    return {
+      ok: false,
+      signedIn: false,
+      message: error?.message ?? "Не удалось войти",
+    };
+  }
+
+  setAccount(toAccount(data.session.user as SessionUser));
+
+  return { ok: true, signedIn: true, message: "Вы вошли" };
+};
+
+/**
+ * Выход из аккаунта: гасим сессию, убираем с устройства прогресс прошлого игрока
+ * (он вернётся из облака при следующем входе) и перезапускаем игру — так проще
+ * всего не оставить в памяти чужие жабы и таймеры.
+ *
+ * Сейв чистится ТОЛЬКО после успешного выхода. `supabase-js` при ошибке сети оставляет
+ * локальную сессию на месте, и если бы мы всё равно стёрли сейв и перезагрузились,
+ * игрок вернулся бы в тот же аккаунт, но уже без локального прогресса.
+ */
+export const signOutAccount = async (): Promise<SignOutResult> => {
+  if (isCloudSyncEnabled) {
+    const { error } = await supabase.auth.signOut();
+
+    if (error) {
+      console.warn("[auth] выход из аккаунта не удался:", error.message);
+
+      return {
+        ok: false,
+        message: "Не удалось выйти. Проверьте связь и попробуйте ещё раз",
+      };
+    }
+  }
+
+  setAccount(null);
+  clearGameState();
+  window.location.reload();
+
+  return { ok: true, message: "Вы вышли" };
 };

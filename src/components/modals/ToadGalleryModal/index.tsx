@@ -41,7 +41,7 @@ const getObtainedByIcon = (obtainedBy?: ToadObtainedBy) => {
     case "start":
       return { icon: "", label: "Стартовая" };
     case "shop":
-      return { icon: "🛒", label: "Магазин" };
+      return { icon: "🛒", label: "Торговая капсула" };
     case "lootbox":
       return { icon: "🎁", label: "Лутбокс" };
     case "achievement":
@@ -203,7 +203,7 @@ export const ToadGalleryModal: React.FC = () => {
   const openedToadsTypes = getAchievementState().toads_collection || [];
 
   const [sortBy, setSortBy] = useState<"rarity" | "unlocked" | "name">(
-    "rarity"
+    "rarity",
   );
 
   const galleryItems: GallerySlot[] = useMemo(() => {
@@ -262,7 +262,7 @@ export const ToadGalleryModal: React.FC = () => {
     unlocked: galleryItems.filter((i) => i.isUnlocked).length,
     byRarity: {
       legendary: galleryItems.filter(
-        (i) => i.isUnlocked && i.rarity === "legendary"
+        (i) => i.isUnlocked && i.rarity === "legendary",
       ).length,
       epic: galleryItems.filter((i) => i.isUnlocked && i.rarity === "epic")
         .length,
@@ -273,13 +273,13 @@ export const ToadGalleryModal: React.FC = () => {
     },
     bySource: {
       lootbox: galleryItems.filter(
-        (i) => i.isUnlocked && i.obtainedBy === "lootbox"
+        (i) => i.isUnlocked && i.obtainedBy === "lootbox",
       ).length,
       achievement: galleryItems.filter(
-        (i) => i.isUnlocked && i.obtainedBy === "achievement"
+        (i) => i.isUnlocked && i.obtainedBy === "achievement",
       ).length,
       collider: galleryItems.filter(
-        (i) => i.isUnlocked && i.obtainedBy === "collider"
+        (i) => i.isUnlocked && i.obtainedBy === "collider",
       ).length,
       shop: galleryItems.filter((i) => i.isUnlocked && i.obtainedBy === "shop")
         .length,
@@ -453,10 +453,10 @@ export const ToadGalleryModal: React.FC = () => {
                   {item.rarity === "legendary"
                     ? "ЛЕГЕНДАРНАЯ"
                     : item.rarity === "epic"
-                    ? "ЭПИЧЕСКАЯ"
-                    : item.rarity === "rare"
-                    ? "РЕДКАЯ"
-                    : "ОБЫЧНАЯ"}
+                      ? "ЭПИЧЕСКАЯ"
+                      : item.rarity === "rare"
+                        ? "РЕДКАЯ"
+                        : "ОБЫЧНАЯ"}
                 </div>
               </div>
 

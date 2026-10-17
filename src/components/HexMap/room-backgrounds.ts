@@ -21,7 +21,6 @@ export const ROOM_BACKGROUNDS: Partial<Record<RoomKind, string>> = {
   collider: "/bg/rooms/collider.webp",
   dissociator: "/bg/rooms/dissosiator.webp",
   power: "/bg/rooms/power.webp",
-  incubator: "/bg/rooms/incubator.webp",
   scout: "/bg/rooms/scout.webp",
   hospital: "/bg/rooms/med.webp",
 };

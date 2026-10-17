@@ -156,14 +156,16 @@ check(
 );
 check("сложность сектора 1 = 1.0", cfg.getSectorSuccessFactor(starter), 1);
 
+// Ровно 200% силы роли: сила = характеристика / `statCap`, значит нужен двойной cap
+// (иначе 3/1.5, 90/40 и 7/3 дают 2.0 + 2.25 + 2.33 и проверка «120%» сравнивала бы разные команды).
 const team200 = ["scout", "tank", "medic"].map((role) => ({
   role,
   toad: toad(
     role === "scout"
       ? { speed: 3 }
       : role === "tank"
-        ? { weight: 90 }
-        : { fertility: 7 },
+        ? { weight: 80 }
+        : { fertility: 6 },
   ),
 }));
 check(
@@ -265,9 +267,27 @@ check(
   true,
 );
 check(
-  "вольер строит новый вольер (+20 мест)",
-  rooms.ROOM_BLUEPRINTS.aviary.description.includes("+20 мест"),
+  "биопод строит новый биопод (+12 мест)",
+  rooms.ROOM_BLUEPRINTS.aviary.description.includes("+12 мест"),
   true,
+);
+const repeatableKinds = [
+  "aviary",
+  "breeding",
+  "hospital",
+  "power",
+  "scout",
+  "storage",
+];
+check(
+  "все повторяемые секторы дорожают одинаково",
+  new Set(repeatableKinds.map((kind) => rooms.ROOM_BLUEPRINTS[kind].costGrowth)).size,
+  1,
+);
+check(
+  "рост цены повторяемого сектора ×1.5",
+  rooms.ROOM_BLUEPRINTS.aviary.costGrowth,
+  1.5,
 );
 check(
   "склад расширяет полки (+300)",

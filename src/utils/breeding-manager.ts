@@ -7,7 +7,6 @@ import {
 import { isToadSick } from "../models/disease";
 import {
   createToads,
-  updateScene,
   updateToadById,
   updateToadsByIds,
   updateUser,
@@ -22,18 +21,14 @@ import { getToadHomeId } from "./toad-location";
 import { placeToadInRoom } from "../backend/colony";
 import { NEST_ROOM_ID } from "./constants";
 import {
-  canUpgradeNest,
   getBreedCooldownMs,
   getBreedPairBiomassCost,
   getEnergyCost,
   getMatingMinutes,
-  getNestSlotUpgradeCost,
-  getNestSlots,
   getToadEnergy,
   isToadReadyToBreed,
   MATING_MAX_MINUTES,
   MATING_MIN_MINUTES,
-  NEST_MAX_SLOTS,
 } from "./gamification-config";
 import { isToadDown } from "./expedition-config";
 import { isToadOnExpedition } from "./expedition-manager";
@@ -432,7 +427,7 @@ export const endPregnancy = async (toad: Toad, addNotification: any) => {
   finishBirth();
 };
 
-/** Результат действия в репродукторе: прерывание ухаживания, апгрейд слотов */
+/** Результат действия в репродукторе (прерывание ухаживания) */
 export interface NestActionResult {
   success: boolean;
   message: string;
@@ -465,48 +460,6 @@ export const abortMating = (toadId: number): NestActionResult => {
     message: `Ухаживание ${
       toad.name ?? "жабы"
     } прервано: жабы остались в репродукторе`,
-  };
-};
-
-/**
- * Апгрейд постройки «Репродуктор» (Часть 3.2): +1 родильный слот за Кваксы.
- * Цена растёт с каждым апгрейдом, максимум — NEST_MAX_SLOTS.
- */
-export const upgradeNestSlots = (sceneId: number | null): NestActionResult => {
-  const state = getGameState();
-  const scene = state.scenes.find((s) => s.id === sceneId);
-
-  if (!scene) {
-    return { success: false, message: "Биопод для апгрейда не найден" };
-  }
-
-  if (!canUpgradeNest(scene)) {
-    return {
-      success: false,
-      message: `Репродуктор уже расширено до предела (${NEST_MAX_SLOTS} слотов)`,
-    };
-  }
-
-  const cost = getNestSlotUpgradeCost(scene);
-  const tokens = state.user.tokens || 0;
-
-  if (tokens < cost) {
-    return {
-      success: false,
-      message: `Не хватает Кваксов на Репродуктор: нужно ${cost}, есть ${Math.floor(
-        tokens,
-      )}`,
-    };
-  }
-
-  const slots = getNestSlots(scene) + 1;
-
-  updateScene(scene.id, { nestSlots: slots });
-  updateUser({ tokens: tokens - cost });
-
-  return {
-    success: true,
-    message: `Репродуктор расширен: ${slots} родильных слотов`,
   };
 };
 

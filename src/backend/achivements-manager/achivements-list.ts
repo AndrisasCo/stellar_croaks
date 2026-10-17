@@ -107,7 +107,7 @@ export const achievementGroups: AchievementGroup[] = [
         id: "buy-food",
         icon: "🛍️",
         name: "Запас провизии",
-        description: "Купить корм в магазине",
+        description: "Купить корм в Торговой капсуле",
         completed: false,
       },
       {
@@ -196,10 +196,10 @@ export const achievementGroups: AchievementGroup[] = [
         id: "earn-1000",
         icon: "💶",
         name: "Жабный олигарх",
-        description: "Заработать 10 000 кваксов",
+        description: "Заработать 1 000 кваксов",
         completed: false,
         taskType: "earn",
-        taskValue: 10000,
+        taskValue: 1000,
       },
       {
         id: "buy-12-toads",

@@ -19,6 +19,7 @@ import {
 } from "../HexMap/colony-build";
 import { isBuiltRoom, RoomConfig } from "../HexMap/rooms-config";
 import { getNextRoomName } from "../HexMap/room-names";
+import { INITIAL_CAPACITY } from "../../models/scene";
 import { MAX_OWNED_SCENES } from "../../utils/constants";
 
 /**
@@ -127,7 +128,7 @@ export default function BuildRoomModal({ slot }: { slot: RoomConfig }) {
       type: "success",
       content:
         option.kind === "aviary"
-          ? `${roomName} построен: новый биопод на 20 мест открыт 🐸`
+          ? `${roomName} построен: новый биопод на ${INITIAL_CAPACITY} мест открыт 🐸`
           : powered
             ? `${roomName} построена и подключена к сети ⚡`
             : option.kind === "power"
