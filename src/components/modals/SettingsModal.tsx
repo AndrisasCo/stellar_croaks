@@ -7,6 +7,7 @@ import {
 } from "../../backend/localStorage";
 import { updateGameStateDB } from "../../backend/db";
 import { useModal } from "../ModalContext";
+import { restartNarrator } from "../../utils/narrator";
 
 const SettingsModal: React.FC = () => {
   const {
@@ -44,6 +45,7 @@ const SettingsModal: React.FC = () => {
     localStorage.clear();
     updateGameState(getDefaultGameState());
     updateGameStateDB();
+    restartNarrator();
     setShowResetConfirmation(false);
     closeModal();
   };

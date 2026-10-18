@@ -10,9 +10,9 @@ export enum LootboxRarity {
   common = "common",
 }
 
-// База данных уникальных жаб с разной редкостью
+// База данных уникальных жаб с разной качеством
 export const UNIQUE_TOADS_BY_RARITY: Record<LootboxRarity, Partial<Toad>[]> = {
-  // Редкость 1-5 (Обычные)
+  // качество 1-5 (Обычные)
   [LootboxRarity.common]: [
     {
       name: "Лесной странник",
@@ -43,7 +43,7 @@ export const UNIQUE_TOADS_BY_RARITY: Record<LootboxRarity, Partial<Toad>[]> = {
       },
     },
   ],
-  // Редкость 6-10 (Необычные)
+  // качество 6-10 (Необычные)
   [LootboxRarity.uncommon]: [
     {
       name: "Изумрудный прыгун",
@@ -74,7 +74,7 @@ export const UNIQUE_TOADS_BY_RARITY: Record<LootboxRarity, Partial<Toad>[]> = {
       },
     },
   ],
-  // Редкость 11-20 (Редкие) - САМАЯ РАСПРОСТРАНЕННАЯ
+  // качество 11-20 (Редкие) - САМАЯ РАСПРОСТРАНЕННАЯ
   [LootboxRarity.rare]: [
     {
       name: "Саванна",
@@ -147,7 +147,7 @@ export const UNIQUE_TOADS_BY_RARITY: Record<LootboxRarity, Partial<Toad>[]> = {
       },
     },
   ],
-  // Редкость 21-35 (Эпические) - ОЧЕНЬ РЕДКИЕ
+  // качество 21-35 (Эпические) - ОЧЕНЬ РЕДКИЕ
   [LootboxRarity.epic]: [
     {
       name: "Кваккон",
@@ -192,7 +192,7 @@ export const UNIQUE_TOADS_BY_RARITY: Record<LootboxRarity, Partial<Toad>[]> = {
       },
     },
   ],
-  // Редкость 36-50 (Легендарные) - СУПЕР РЕДКИЕ
+  // качество 36-50 (Легендарные) - СУПЕР РЕДКИЕ
   [LootboxRarity.legendary]: [
     {
       name: "Галактрон",
@@ -289,8 +289,8 @@ const getToadRarity = (): LootboxRarity => {
 };
 
 /**
- * Редкость гена по тиру лутбокса. В шаблонах у всех жаб стоял `rarity: 5`, поэтому
- * «легендарная» жаба не отличалась редкостью от обычной (аудит P2): теперь тир коробки
+ * качество гена по тиру лутбокса. В шаблонах у всех жаб стоял `rarity: 5`, поэтому
+ * «легендарная» жаба не отличалась качеством от обычной (аудит P2): теперь тир коробки
  * видно и в характеристиках, с небольшим разбросом.
  */
 const TIER_GENE_RARITY: Record<LootboxRarity, number> = {
@@ -359,7 +359,7 @@ export const generateLootboxToad = (
       speed: template.genes?.speed || 0.3 + Math.random() * 0.4,
       rarity:
         Math.round(
-          TIER_GENE_RARITY[rarity] * (0.9 + Math.random() * 0.2) * 10
+          TIER_GENE_RARITY[rarity] * (0.9 + Math.random() * 0.2) * 10,
         ) / 10,
       hungerRate: template.genes?.hungerRate || 0.8 + Math.random() * 0.6,
       fertility: template.genes?.fertility || 0.8 + Math.random() * 0.8,

@@ -38,7 +38,7 @@ export const getToadStageLabel = (stage: string, sex: string): string => {
   return sex === "female" ? "взрослая" : "взрослый";
 };
 
-/** Редкость одной строкой — «Легендарная · 9.5»: подпись группы и само число */
+/** качество одной строкой — «Легендарная · 9.5»: подпись группы и само число */
 export const getToadRarityLine = (toad: Toad): string => {
   const rarity = getRarityConfig(toad.genes.rarity);
 
@@ -66,7 +66,7 @@ export const TOAD_PICKER_REJECTED_GROUP = "Не подходят";
 /** Строка списка жаб: жаба, её место в списке и причина отказа */
 export interface ToadPickerCandidate {
   toad: Toad;
-  /** Место в списке: больше — выше (редкость, сила роли, сытость) */
+  /** Место в списке: больше — выше (качество, сила роли, сытость) */
   rank: number;
   /** Почему жабу взять нельзя; пусто — можно */
   reason?: string | null;
@@ -83,18 +83,20 @@ export interface ToadPickerCandidateGroups {
 /**
  * Раскладывает жаб по двум группам списка: «можно взять» и «не подходят» с причинами.
  *
- * Обе группы идут по убыванию места в списке (редкость, сила роли, сытость), а при равных
+ * Обе группы идут по убыванию места в списке (качество, сила роли, сытость), а при равных
  * местах сохраняется порядок колонии — `Array.sort` стабилен, поэтому список не «дрожит»
  * от перерисовки к перерисовке.
  */
 export const splitToadPickerCandidates = (
-  candidates: ToadPickerCandidate[]
+  candidates: ToadPickerCandidate[],
 ): ToadPickerCandidateGroups => {
   const byRankDesc = (a: ToadPickerCandidate, b: ToadPickerCandidate) =>
     b.rank - a.rank;
 
   return {
     available: candidates.filter((item) => !item.reason).sort(byRankDesc),
-    rejected: candidates.filter((item) => Boolean(item.reason)).sort(byRankDesc),
+    rejected: candidates
+      .filter((item) => Boolean(item.reason))
+      .sort(byRankDesc),
   };
 };

@@ -16,9 +16,9 @@ import { ClickButton } from "./ClickButton";
  * **свои правила** (кого вообще можно взять и почему нет), а вид строки, сортировка, краткая
  * информация и поведение списка — здесь, одни на всех.
  *
- * Строка слота — кнопка: жаба в слоте (имя, редкость, `pickedSummary`) или приглашение; тап
+ * Строка слота — кнопка: жаба в слоте (имя, качество, `pickedSummary`) или приглашение; тап
  * раскрывает панель. В строке списка у каждой жабы одна и та же краткая информация
- * (`utils/toad-picker.ts` → `getToadPickerBrief`: пол, стадия, силы ⚡ и сытость 🍽), редкость
+ * (`utils/toad-picker.ts` → `getToadPickerBrief`: пол, стадия, силы ⚡ и сытость 🍽), качество
  * строкой и место в колонии (📍, если место передало `locationOf`), а ниже — своя заметка
  * слота (сила роли, готовность к паре) и, если нужно, полоска-показатель.
  *
@@ -35,7 +35,7 @@ import { ClickButton } from "./ClickButton";
 export interface ToadPickerItem {
   toad: Toad;
   /**
-   * Место в списке: больше — выше (редкость, сила роли, сытость).
+   * Место в списке: больше — выше (качество, сила роли, сытость).
    * Без места строка остаётся там, куда её поставил слот (порядок не переставляется).
    */
   rank?: number;
@@ -64,9 +64,13 @@ const sortItems = (items: ToadPickerItem[]): ToadPickerItem[] =>
 
 /** Цвет полоски-показателя: зелёный — хорошо, янтарный — середина, красный — плохо */
 const getMeterColor = (percent: number): string =>
-  percent >= 70 ? "bg-emerald-400" : percent >= 40 ? "bg-amber-400" : "bg-red-400";
+  percent >= 70
+    ? "bg-emerald-400"
+    : percent >= 40
+      ? "bg-amber-400"
+      : "bg-red-400";
 
-/** Строка жабы в раскрытом списке: имя, редкость, краткая сводка и место в колонии */
+/** Строка жабы в раскрытом списке: имя, качество, краткая сводка и место в колонии */
 const ToadPickerRow: React.FC<{
   item: ToadPickerItem;
   /** Название слота — идёт в подсказку строки */
@@ -82,10 +86,10 @@ const ToadPickerRow: React.FC<{
   const tone = blocked
     ? ""
     : item.tone === "selected"
-    ? "bg-emerald-900/40 hover:bg-emerald-800/50"
-    : item.tone === "warn"
-    ? "bg-amber-900/30 hover:bg-amber-800/40"
-    : "hover:bg-slate-700/60";
+      ? "bg-emerald-900/40 hover:bg-emerald-800/50"
+      : item.tone === "warn"
+        ? "bg-amber-900/30 hover:bg-amber-800/40"
+        : "hover:bg-slate-700/60";
 
   return (
     <ClickButton
@@ -254,12 +258,13 @@ export const ToadPicker: React.FC<ToadPickerProps> = ({
       groups
         .map((group) => ({ ...group, items: sortItems(group.items) }))
         .filter((group) => group.items.length > 0),
-    [groups]
+    [groups],
   );
 
   const rejectedItems = useMemo(
-    () => sortItems(rejected?.items ?? []).filter((item) => Boolean(item.reason)),
-    [rejected]
+    () =>
+      sortItems(rejected?.items ?? []).filter((item) => Boolean(item.reason)),
+    [rejected],
   );
 
   const pick = (toad: Toad) => {
@@ -269,7 +274,7 @@ export const ToadPicker: React.FC<ToadPickerProps> = ({
 
   const availableCount = sortedGroups.reduce(
     (sum, group) => sum + group.items.length,
-    0
+    0,
   );
 
   return (
@@ -280,13 +285,15 @@ export const ToadPicker: React.FC<ToadPickerProps> = ({
         onClick={toggleOpen}
         aria-expanded={open}
         aria-haspopup="listbox"
-        title={picked ? `Заменить жабу в «${label}»` : `Взять жабу в «${label}»`}
+        title={
+          picked ? `Заменить жабу в «${label}»` : `Взять жабу в «${label}»`
+        }
         className={`flex w-full items-center gap-2 rounded-lg border px-2 py-1.5 transition-colors duration-300 ${
           disabled
             ? "cursor-not-allowed border-gray-600/30 opacity-60"
             : open
-            ? "border-amber-400/60 bg-slate-800/90"
-            : "border-gray-600/40 bg-slate-800/70 hover:bg-slate-700/70"
+              ? "border-amber-400/60 bg-slate-800/90"
+              : "border-gray-600/40 bg-slate-800/70 hover:bg-slate-700/70"
         }`}
       >
         {icon && <span className="shrink-0 text-2xs">{icon}</span>}
@@ -376,8 +383,8 @@ export const ToadPicker: React.FC<ToadPickerProps> = ({
                   showRejected ? "text-gray-300" : "text-gray-400"
                 }`}
               >
-                {showRejected ? "▾" : "▸"}{" "}
-                {rejected?.label ?? "Не подходят"}: {rejectedItems.length}
+                {showRejected ? "▾" : "▸"} {rejected?.label ?? "Не подходят"}:{" "}
+                {rejectedItems.length}
               </ClickButton>
 
               {showRejected &&
@@ -397,4 +404,3 @@ export const ToadPicker: React.FC<ToadPickerProps> = ({
     </div>
   );
 };
-

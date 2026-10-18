@@ -17,6 +17,10 @@ export interface ModalTabItem<T extends string> {
   label: string;
   /** Цвет активного таба: класс `text-*`; полоска берёт из него же цвет `border-*`. */
   color?: string;
+  /** Таб недоступен: у обесточенного сектора так закрыты все рабочие вкладки. */
+  disabled?: boolean;
+  /** Почему таб недоступен — показывается в `title` и подсказывает игроку причину. */
+  disabledHint?: string;
 }
 
 /** Цвет активного таба по умолчанию — янтарный, как у карточки сектора */
@@ -39,19 +43,29 @@ export function ModalTabs<T extends string>({
     <div className="flex border-b border-gray-700">
       {tabs.map((tab) => {
         const color = tab.color ?? DEFAULT_TAB_COLOR;
+        const disabled = tab.disabled === true;
 
         return (
           <button
             key={tab.id}
             type="button"
+            disabled={disabled}
+            aria-disabled={disabled}
+            title={disabled ? tab.disabledHint : undefined}
             onClick={() => {
+              if (disabled) {
+                return;
+              }
+
               playClick();
               onChange(tab.id);
             }}
             className={`flex-1 py-3 relative text-sm font-medium transition-colors ${
-              tab.id === active
-                ? `${color} border-b-2 ${color.replace("text", "border")}`
-                : "text-gray-300 hover:text-gray-200"
+              disabled
+                ? "cursor-not-allowed text-gray-600 opacity-50"
+                : tab.id === active
+                  ? `${color} border-b-2 ${color.replace("text", "border")}`
+                  : "text-gray-300 hover:text-gray-200"
             }`}
           >
             {tab.label}

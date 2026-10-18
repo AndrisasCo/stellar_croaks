@@ -8,6 +8,7 @@ import { SwipeSlides } from "../shared/SwipeSlides";
 import { useNotifications } from "../../hooks/use-notification";
 import { useGameState } from "../../hooks/use-game-state";
 import { useColony } from "../../hooks/use-colony";
+import { useRoomPowerTab } from "../../hooks/use-room-power-tab";
 import { Toad } from "../../models/Toad";
 import {
   DEFAULT_EXPEDITION_STATS,
@@ -107,7 +108,6 @@ const formatClock = (at: number): string =>
     minute: "2-digit",
   });
 
-
 /**
  * Значки состояния жабы в списках команды: **сытость** 🍽 и **силы** ⚡.
  *
@@ -129,10 +129,10 @@ const ToadVitals: React.FC<{
     hunger >= 80
       ? "text-green-300"
       : hunger >= 50
-      ? "text-yellow-300"
-      : hunger >= PRODUCTION_MIN_HUNGER
-      ? "text-orange-300"
-      : "text-red-400";
+        ? "text-yellow-300"
+        : hunger >= PRODUCTION_MIN_HUNGER
+          ? "text-orange-300"
+          : "text-red-400";
 
   return (
     <span
@@ -149,7 +149,7 @@ const ToadVitals: React.FC<{
       <span
         className={hungerColor}
         title={`Сытость: ${hunger} %. Ниже ${PRODUCTION_MIN_HUNGER} % жаба вырабатывает лишь ${Math.round(
-          PRODUCTION_HUNGRY_FACTOR * 100
+          PRODUCTION_HUNGRY_FACTOR * 100,
         )} % биомассы`}
       >
         🍽{hunger}%
@@ -177,18 +177,25 @@ const LogList: React.FC<{ expedition: Expedition }> = ({ expedition }) => {
           entry.kind === "good"
             ? "text-green-300"
             : entry.kind === "bad"
-            ? "text-red-300"
-            : "text-gray-300";
+              ? "text-red-300"
+              : "text-gray-300";
 
         return (
           <p key={entry.id} className={`text-2xs leading-snug ${color}`}>
             <span className="text-gray-500">{formatClock(entry.at)} </span>
             <span className="font-semibold">
-              {role ? `${role.icon} ${entry.toadName ?? role.label}` : "📡 Связь"}:{" "}
+              {role
+                ? `${role.icon} ${entry.toadName ?? role.label}`
+                : "📡 Связь"}
+              :{" "}
             </span>
             {entry.text}
             {typeof entry.hpDelta === "number" && entry.hpDelta !== 0 && (
-              <span className={entry.hpDelta < 0 ? "text-red-400" : "text-green-400"}>
+              <span
+                className={
+                  entry.hpDelta < 0 ? "text-red-400" : "text-green-400"
+                }
+              >
                 {" "}
                 ({entry.hpDelta > 0 ? `+${entry.hpDelta}` : entry.hpDelta} HP)
               </span>
@@ -204,25 +211,27 @@ const TeamStatusList: React.FC<{ expedition: Expedition }> = ({
   expedition,
 }) => (
   <div className="flex flex-col gap-1.5">
-    {getExpeditionTeamStatus(expedition).map(({ member, toad, hp, maxHp, down }) => (
-      <div key={member.toadId} className="flex items-center gap-2">
-        <span className="text-sm w-5 text-center">
-          {ROLE_CONFIG[member.role].icon}
-        </span>
-        <div className="flex-1">
-          <div className="flex items-center justify-between text-2xs">
-            <span className={down ? "text-red-400" : "text-gray-200"}>
-              {toad?.name ?? `Жаба #${member.toadId}`}
-              {down && " — выбита"}
-            </span>
-            <span className="text-gray-400">
-              {hp}/{maxHp} HP
-            </span>
+    {getExpeditionTeamStatus(expedition).map(
+      ({ member, toad, hp, maxHp, down }) => (
+        <div key={member.toadId} className="flex items-center gap-2">
+          <span className="text-sm w-5 text-center">
+            {ROLE_CONFIG[member.role].icon}
+          </span>
+          <div className="flex-1">
+            <div className="flex items-center justify-between text-2xs">
+              <span className={down ? "text-red-400" : "text-gray-200"}>
+                {toad?.name ?? `Жаба #${member.toadId}`}
+                {down && " — выбита"}
+              </span>
+              <span className="text-gray-400">
+                {hp}/{maxHp} HP
+              </span>
+            </div>
+            <HpBar hp={hp} maxHp={maxHp} className="mt-0.5" />
           </div>
-          <HpBar hp={hp} maxHp={maxHp} className="mt-0.5" />
         </div>
-      </div>
-    ))}
+      ),
+    )}
   </div>
 );
 
@@ -237,37 +246,15 @@ interface RoleToadGroup {
 
 type ExpeditionTab = "runs" | "send" | "room-data";
 
-/**
- * Модалка разведки: походы, сборка новой команды и данные сектора.
- *
- * Табы — общие для всех секторов (`shared/ModalTabs`): «Походы», «Новый поход» и, если
- * модалку открыли по гексу «Разведки», последний таб «Данные сектора»
- * (`modals/RoomDataTab.tsx`) — описание, статистика похода, апгрейды и снос. Сектор
- * «Лазарет» эту модалку больше не открывает: у него своя (`modals/HospitalModal.tsx`).
- *
- * Команду собирают **из жаб сектора «Разведка»**: гекс, из которого открыли модалку, приходит
- * в `roomId`, и его жильцы идут первым списком — тап по жабе ставит её на сильную роль,
- * повторный тап выводит из команды, а «Собрать команду» занимает все свободные роли
- * (`utils/expedition-crew.ts`). В списках ролей жабы сектора тоже идут первыми группой,
- * а внутри группы — по силе роли (`sortToadsByRolePower`), как и в выпадающем списке роли
- * (`shared/ToadPicker`). Слоты ролей собраны так же, как места репродуктора
- * (`Lab/NestModal.tsx`): карточка на роль — пунктирная, пока роль пуста, с описанием роли
- * и полоской HP под строкой выбора.
- *
- * Сектора Периметра — **горизонтальный слайдер**: на странице один поход (`SwipeSlides`),
- * листается свайпом вправо-влево, стрелками и точками, и страница сразу выбирает сектор —
- * «на экране» и «что отправят» не расходятся.
- */
 const ExpeditionModal: React.FC<{
   onClose?: () => void;
   /** Гекс «Разведки», из которого открыли модалку: его жильцы — экипаж для команды. */
-  roomId?: string;
+  roomId: string;
 }> = ({ roomId }) => {
   const { addNotification } = useNotifications();
   const state = useGameState();
   const [, setTick] = useState(0);
 
-  const [tab, setTab] = useState<ExpeditionTab>("runs");
   const [sectorId, setSectorId] = useState<number>(SECTORS[0].id);
   const [slots, setSlots] = useState<ExpeditionSlots>(emptyExpeditionSlots());
 
@@ -290,10 +277,10 @@ const ExpeditionModal: React.FC<{
    * жабы освобождаются только после «Завершить»/«В биомассу».
    */
   const completedExpeditions = expeditions.filter(
-    (expedition) => expedition.phase === "completed"
+    (expedition) => expedition.phase === "completed",
   );
   const activeExpeditions = expeditions.filter(
-    (expedition) => expedition.phase !== "completed"
+    (expedition) => expedition.phase !== "completed",
   );
   const stats = {
     ...DEFAULT_EXPEDITION_STATS,
@@ -308,7 +295,7 @@ const ExpeditionModal: React.FC<{
   /** Страница слайдера = выбранный сектор: свайп и стрелки двигают выбор сектора */
   const sectorIndex = Math.max(
     0,
-    SECTORS.findIndex((item) => item.id === selectedSector.id)
+    SECTORS.findIndex((item) => item.id === selectedSector.id),
   );
   /**
    * Сектор открыт? Листать закрытые можно (видно, что впереди), а отправлять — нет:
@@ -316,16 +303,16 @@ const ExpeditionModal: React.FC<{
    */
   const sectorUnlocked = isSectorUnlocked(selectedSector, stats);
   const unlockedSectors = SECTORS.filter((item) =>
-    isSectorUnlocked(item, stats)
+    isSectorUnlocked(item, stats),
   ).length;
 
   const availableToads = useMemo(
     () => state.toads.filter((toad) => canSendToad(toad, expeditions).ok),
-    [state.toads, expeditions]
+    [state.toads, expeditions],
   );
 
   const members: ExpeditionMember[] = EXPEDITION_ROLE_ORDER.filter(
-    (role) => slots[role] !== ""
+    (role) => slots[role] !== "",
   ).map((role) => ({ toadId: slots[role] as number, role }));
 
   const sendCost = getExpeditionSendCost(selectedSector, members.length);
@@ -356,7 +343,8 @@ const ExpeditionModal: React.FC<{
     sectorUnlocked;
 
   // Сектора и жаб по секторам берём из колонии теми же вычислениями, что и карта.
-  const { rooms, toadsByRoom } = useColony();
+  const { rooms, toadsByRoom, powerGrid } = useColony();
+  const room = rooms.find((r) => r.id === roomId);
 
   /**
    * Сектор «Разведка», из которой открыли модалку: её жильцы — экипаж, из которого
@@ -378,6 +366,17 @@ const ExpeditionModal: React.FC<{
     );
   }, [rooms, roomId, toadsByRoom]);
 
+  /** Обесточенная «Разведка»: отправлять и принимать походы нельзя, данные — можно */
+  const {
+    tab,
+    setTab,
+    issue: powerIssue,
+  } = useRoomPowerTab<ExpeditionTab>({
+    room: crewRoom ?? undefined,
+    powerGrid,
+    defaultTab: "runs",
+  });
+
   /**
    * Табы модалки: походы, отправка и «Данные сектора». Таб данных — только когда
    * модалку открыли по гексу «Разведки»: данным нужен свой сектор (его жильцы,
@@ -388,15 +387,23 @@ const ExpeditionModal: React.FC<{
       id: "runs",
       label: `🚁 Походы${expeditions.length ? ` (${expeditions.length})` : ""}`,
       color: "text-amber-400",
+      disabled: Boolean(powerIssue),
+      disabledHint: powerIssue ?? undefined,
     },
-    { id: "send", label: "🎯 Новый поход", color: "text-emerald-400" },
+    {
+      id: "send",
+      label: "🎯 Новый поход",
+      color: "text-emerald-400",
+      disabled: Boolean(powerIssue),
+      disabledHint: powerIssue ?? undefined,
+    },
     ...(crewRoom ? [{ ...ROOM_DATA_TAB }] : []),
   ];
 
   /** Экипаж сектора: те же жабы, что рисует карта (ушедшие в поход сектор покинули) */
   const crew = useMemo(
     () => (crewRoom ? toadsByRoom[crewRoom.id] : undefined) ?? [],
-    [crewRoom, toadsByRoom]
+    [crewRoom, toadsByRoom],
   );
 
   /** Кого из экипажа можно взять в поход — правило то же, что и у команды (`canSendToad`) */
@@ -422,23 +429,25 @@ const ExpeditionModal: React.FC<{
    */
   const roleGroups = useMemo(
     () =>
-      EXPEDITION_ROLE_ORDER.reduce((acc, role) => {
-        acc[role] = [
-          {
-            label: `🧭 В «Разведке» (${crewAvailable.length})`,
-            toads: sortToadsByRolePower(crewAvailable, role),
-          },
-          {
-            label: "Жабы колонии",
-            toads: sortToadsByRolePower(otherAvailable, role),
-          },
-        ].filter((group) => group.toads.length > 0);
+      EXPEDITION_ROLE_ORDER.reduce(
+        (acc, role) => {
+          acc[role] = [
+            {
+              label: `🧭 В «Разведке» (${crewAvailable.length})`,
+              toads: sortToadsByRolePower(crewAvailable, role),
+            },
+            {
+              label: "Жабы колонии",
+              toads: sortToadsByRolePower(otherAvailable, role),
+            },
+          ].filter((group) => group.toads.length > 0);
 
-        return acc;
-      }, {} as Record<ExpeditionRole, RoleToadGroup[]>),
-    [crewAvailable, otherAvailable]
+          return acc;
+        },
+        {} as Record<ExpeditionRole, RoleToadGroup[]>,
+      ),
+    [crewAvailable, otherAvailable],
   );
-
 
   /** Команда с самими жабами: по ней считаем шанс удачного завершения */
   const team: ExpeditionTeamMember[] = members
@@ -460,7 +469,7 @@ const ExpeditionModal: React.FC<{
   const profitNorm = getExpeditionProfitFloor(
     team.map((member) => member.toad),
     awayHours,
-    sendCost
+    sendCost,
   );
 
   const notify = (result: { success: boolean; message: string }) =>
@@ -517,8 +526,8 @@ const ExpeditionModal: React.FC<{
           !assigned
             ? "bg-slate-800/40 border-gray-600/30"
             : offRole
-            ? "bg-amber-950/30 border-amber-500/40"
-            : "bg-emerald-950/30 border-emerald-500/40"
+              ? "bg-amber-950/30 border-amber-500/40"
+              : "bg-emerald-950/30 border-emerald-500/40"
         }`}
       >
         <div className="min-w-0 flex-1">
@@ -529,20 +538,20 @@ const ExpeditionModal: React.FC<{
             {!check.ok && !assigned
               ? `⚠️ ${check.reason}`
               : assigned
-              ? `в команде: ${config.icon} ${config.label} ${getRolePowerPercent(
-                  toad,
-                  assigned
-                )}%${
-                  offRole
-                    ? ` · сильнее: ${ROLE_CONFIG[best].icon} ${
-                        ROLE_CONFIG[best].label
-                      }`
-                    : ""
-                }`
-              : `пойдёт на роль: ${config.icon} ${config.label} ${getRolePowerPercent(
-                  toad,
-                  role
-                )}%`}
+                ? `в команде: ${config.icon} ${config.label} ${getRolePowerPercent(
+                    toad,
+                    assigned,
+                  )}%${
+                    offRole
+                      ? ` · сильнее: ${ROLE_CONFIG[best].icon} ${
+                          ROLE_CONFIG[best].label
+                        }`
+                      : ""
+                  }`
+                : `пойдёт на роль: ${config.icon} ${config.label} ${getRolePowerPercent(
+                    toad,
+                    role,
+                  )}%`}
           </p>
           <ToadVitals
             toad={toad}
@@ -558,15 +567,15 @@ const ExpeditionModal: React.FC<{
             assigned
               ? `Убрать из команды (${config.label})`
               : check.ok
-              ? `В команду: ${config.label}`
-              : check.reason
+                ? `В команду: ${config.label}`
+                : check.reason
           }
           className={`shrink-0 py-1.5 px-2 rounded-lg text-2xs font-bold border transition-colors duration-300 ${
             assigned
               ? "bg-amber-800/60 border-amber-400/70 text-amber-50 hover:bg-amber-700/70"
               : check.ok
-              ? "bg-slate-800/60 border-gray-500/50 text-gray-200 hover:bg-slate-700/70"
-              : "bg-slate-800/40 border-gray-700/40 text-gray-500"
+                ? "bg-slate-800/60 border-gray-500/50 text-gray-200 hover:bg-slate-700/70"
+                : "bg-slate-800/40 border-gray-700/40 text-gray-500"
           }`}
         >
           {assigned ? "✓ В команде" : "→ В команду"}
@@ -593,7 +602,7 @@ const ExpeditionModal: React.FC<{
     }
 
     setSlots((prev) =>
-      assignToadToRole(prev, toad.id, getCrewTapRole(prev, toad))
+      assignToadToRole(prev, toad.id, getCrewTapRole(prev, toad)),
     );
   };
 
@@ -601,7 +610,7 @@ const ExpeditionModal: React.FC<{
   const handleFillFromRoom = () => {
     const next = fillTeamFromCrew(slots, crewSendable);
     const filled = EXPEDITION_ROLE_ORDER.filter(
-      (role) => slots[role] === "" && next[role] !== ""
+      (role) => slots[role] === "" && next[role] !== "",
     ).length;
 
     if (filled === 0) {
@@ -658,8 +667,8 @@ const ExpeditionModal: React.FC<{
           !unlocked
             ? "border-gray-700/40 bg-slate-900/40 text-gray-500"
             : selected
-            ? "border-amber-400/70 bg-amber-900/50 text-amber-50"
-            : "border-gray-600/40 bg-slate-800/50 text-gray-200"
+              ? "border-amber-400/70 bg-amber-900/50 text-amber-50"
+              : "border-gray-600/40 bg-slate-800/50 text-gray-200"
         }`}
       >
         <div className="flex items-start justify-between gap-2">
@@ -674,8 +683,8 @@ const ExpeditionModal: React.FC<{
               !unlocked
                 ? "bg-slate-900/60 text-gray-400"
                 : selected
-                ? "bg-amber-400/20 text-amber-100"
-                : "bg-slate-900/50 text-gray-300"
+                  ? "bg-amber-400/20 text-amber-100"
+                  : "bg-slate-900/50 text-gray-300"
             }`}
           >
             {!unlocked ? "🔒 закрыт" : selected ? "✓ выбран" : "открыт"}
@@ -698,9 +707,9 @@ const ExpeditionModal: React.FC<{
         </div>
 
         <p className="text-2xs text-gray-400">
-          Глубина {item.depth} · обратно ~{backHours} ч · снаряжение {sectorCost} 🧪
-          на команду из {Math.max(1, members.length)} жаб · силы {sectorEnergy} ⚡
-          на жабу
+          Глубина {item.depth} · обратно ~{backHours} ч · снаряжение{" "}
+          {sectorCost} 🧪 на команду из {Math.max(1, members.length)} жаб · силы{" "}
+          {sectorEnergy} ⚡ на жабу
         </p>
 
         <p
@@ -708,22 +717,25 @@ const ExpeditionModal: React.FC<{
             !unlocked
               ? "text-amber-200/90"
               : selected
-              ? "text-lime-300"
-              : "text-gray-500"
+                ? "text-lime-300"
+                : "text-gray-500"
           }`}
         >
           {!unlocked
             ? `🔒 Откроется после ${item.unlockExpeditions} завершённых походов (сейчас ${stats.completed}). Разглядывать можно — отправить нет.`
             : selected
-            ? "Команда полетит отсюда: соберём её в слотах ролей ниже."
-            : "Листайте вправо-влево — на странице один поход."}
+              ? "Команда полетит отсюда: соберём её в слотах ролей ниже."
+              : "Листайте вправо-влево — на странице один поход."}
         </p>
       </div>
     );
   });
 
   return (
-    <Modal title="Разведка Периметра" icon={<span className="text-xl">🧭</span>}>
+    <Modal
+      title={room?.name ?? crewRoom?.name ?? "Разведка"}
+      icon={<span className="text-xl">🧭</span>}
+    >
       <div className="flex flex-col gap-3 px-1">
         {/* Сводка по разведке */}
         <div className="grid grid-cols-3 gap-2 text-center">
@@ -961,7 +973,7 @@ const ExpeditionModal: React.FC<{
                 (item) =>
                   `${item.icon} ${item.name}${
                     isSectorUnlocked(item, stats) ? "" : " (закрыт)"
-                  }`
+                  }`,
               )}
               hint={
                 <p className="text-2xs text-gray-400">
@@ -1026,7 +1038,8 @@ const ExpeditionModal: React.FC<{
                         items: group.toads.map((toad) => {
                           const other = getAssignedRole(slots, toad.id);
                           const own =
-                            other === role || String(toad.id) === String(pickedId);
+                            other === role ||
+                            String(toad.id) === String(pickedId);
                           const percent = getRolePowerPercent(toad, role);
 
                           return {
@@ -1037,14 +1050,15 @@ const ExpeditionModal: React.FC<{
                               <span className="flex items-center gap-1.5">
                                 <span className="truncate">
                                   {getRoleStat(toad, role).toFixed(2)}{" "}
-                                  {config.statLabel} · {getToadHpStatusLabel(toad)}
+                                  {config.statLabel} ·{" "}
+                                  {getToadHpStatusLabel(toad)}
                                   {own
                                     ? " · ✓ на этой роли"
                                     : other
-                                    ? ` · в команде: ${
-                                        ROLE_CONFIG[other].icon
-                                      } ${ROLE_CONFIG[other].label}`
-                                    : ""}
+                                      ? ` · в команде: ${
+                                          ROLE_CONFIG[other].icon
+                                        } ${ROLE_CONFIG[other].label}`
+                                      : ""}
                                 </span>
                                 <ToadVitals
                                   toad={toad}
@@ -1120,9 +1134,9 @@ const ExpeditionModal: React.FC<{
                 {crew.length === 0 && (
                   <p className="text-2xs leading-snug text-gray-400">
                     Сектор пуст: перенесите сюда на карте до{" "}
-                    {EXPEDITION_TEAM_SIZE} взрослых жаб — команда соберётся из них, а из
-                    похода жаба возвращается в биопод (место в «Разведке» она
-                    освобождает).
+                    {EXPEDITION_TEAM_SIZE} взрослых жаб — команда соберётся из
+                    них, а из похода жаба возвращается в биопод (место в
+                    «Разведке» она освобождает).
                   </p>
                 )}
 
@@ -1143,7 +1157,7 @@ const ExpeditionModal: React.FC<{
                   {members.length > 0
                     ? ` (−${getExpeditionEnergyCost(
                         selectedSector,
-                        members.length
+                        members.length,
                       )} ⚡ всего)`
                     : ""}
                 </span>
@@ -1152,7 +1166,10 @@ const ExpeditionModal: React.FC<{
               <p className="text-2xs text-gray-400">
                 {selectedSector.icon} {selectedSector.name}: путь туда{" "}
                 {selectedSector.durationHours} ч, обратно ~
-                {Math.round(selectedSector.durationHours * EXPEDITION_RETURN_RATIO * 10) / 10} ч
+                {Math.round(
+                  selectedSector.durationHours * EXPEDITION_RETURN_RATIO * 10,
+                ) / 10}{" "}
+                ч
               </p>
 
               {/* Итог по ролям: шанс удачного возврата и норма добычи против фермы */}
@@ -1168,15 +1185,15 @@ const ExpeditionModal: React.FC<{
                 </span>
               </div>
               <p className="text-2xs leading-snug text-gray-400">
-                Каждая роль даёт +20% (сила роли умножает вклад, глубина сектора —
-                ×{sectorSuccessFactor.toFixed(2)}). Удачное завершение умножает
-                добычу.
+                Каждая роль даёт +20% (сила роли умножает вклад, глубина сектора
+                — ×{sectorSuccessFactor.toFixed(2)}). Удачное завершение
+                умножает добычу.
               </p>
               {team.length > 0 && (
                 <p className="text-2xs leading-snug text-lime-300">
                   Поход принесёт не меньше {Math.round(profitNorm)} в
-                  🔷-эквиваленте: это выгоднее фермы за{" "}
-                  {awayHours.toFixed(1)} ч и окупает снаряжение.
+                  🔷-эквиваленте: это выгоднее фермы за {awayHours.toFixed(1)} ч
+                  и окупает снаряжение.
                 </p>
               )}
 
@@ -1197,10 +1214,11 @@ const ExpeditionModal: React.FC<{
                   {tiredMembers
                     .map(
                       (toad) =>
-                        `${toad.name} — ${Math.round(getToadEnergy(toad))} ⚡`
+                        `${toad.name} — ${Math.round(getToadEnergy(toad))} ⚡`,
                     )
                     .join(", ")}
-                  . Силы капают дома: +{ENERGY_REGEN_PER_HOUR} ⚡/ч, либо возьмите в ближний сектор.
+                  . Силы капают дома: +{ENERGY_REGEN_PER_HOUR} ⚡/ч, либо
+                  возьмите в ближний сектор.
                 </p>
               )}
               {!sectorUnlocked && (

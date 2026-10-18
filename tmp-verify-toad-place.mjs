@@ -3,7 +3,7 @@
  *
  * Скрипт бандлит модули через esbuild и гоняет те же функции, что работают в игре:
  *   1) место: жаба, посаженная в сектор (`placeToadInRoom`), в биоподе уже не живёт —
- *      `scene_id` пуст, место в биоподе свободно, а дом уехал в `homeId`;
+ *      `scene_id` — id сектора, место в биоподе свободно, а дом уехал в `homeId`;
  *   2) список и статистика биопода считают только тех, кто в нём сейчас
  *      (`getEnclosureToads`, `getHousingInfo`), карта рисует их по гексам
  *      (`getRoomToadLists`), а жабу в секторе показывает сам сектор;
@@ -72,7 +72,6 @@ const toad = (over = {}) => ({
   homeId: 1,
   created_at: new Date().toISOString(),
   parents: null,
-  roomId: null,
   energy: 100,
   breedCooldownUntil: 0,
   hp: 10,
@@ -175,6 +174,9 @@ const constants = bundle("src/utils/constants.ts", "constants");
 const toadLists = bundle("src/components/HexMap/room-toad-lists.ts", "room-toad-lists");
 
 const NEST = constants.NEST_ROOM_ID;
+const AVIARY = constants.AVIARY_ROOM_ID;
+/** Гекс нужного вида: у базовых секторов id гекса отличается от вида (`aviary` → `AVIARY_ROOM_ID`) */
+const roomByKind = (rooms, kind) => rooms.find((room) => room.kind === kind);
 const failures = [];
 const check = (label, actual, expected, tolerance = 1e-9) => {
   const ok =
@@ -218,11 +220,11 @@ check("мест занято", housing.getHousingInfo().used, 3);
 check("мест свободно", housing.getHousingInfo().free, 0);
 
 colony.placeToadInRoom(1, NEST);
-check("жаба ушла в сектор: roomId", findToad(1).roomId, NEST);
-check("жаба ушла в сектор: место в биоподе пусто", findToad(1).scene_id, null);
+check("жаба ушла в сектор: scene_id", findToad(1).scene_id, NEST);
+check("жаба ушла в сектор: место в биоподе больше не занято", housing.getEnclosureToads(1).some((item) => item.id === 1), false);
 check("жаба ушла в сектор: дом помнит биопод", place.getToadHomeId(findToad(1)), 1);
 check("жаба в секторе не жилец биопода", place.isToadInEnclosure(findToad(1)), false);
-check("жаба в секторе — это «в секторе»", place.isToadStationed(findToad(1)), true);
+check("жаба в секторе — это «в секторе»", place.isToadInRoom(findToad(1)), true);
 check("жильцов в биоподе #1 после ухода", housing.getEnclosureToads(1).length, 1);
 check("мест занято после ухода", housing.getHousingInfo().used, 2);
 check("мест свободно после ухода", housing.getHousingInfo().free, 1);
@@ -230,8 +232,8 @@ check("мест свободно после ухода", housing.getHousingInfo(
 console.log("\n[2] Карта: кто на каком гексе");
 console.log("─".repeat(60));
 const colonyRooms = mapRooms();
-check("гекс биопода #1 показывает только свою жилицу", lists().aviary.length, 1);
-check("на гексе биопода #1 — жаба 2", lists().aviary[0].id, 2);
+check("гекс биопода #1 показывает только свою жилицу", lists()[AVIARY].length, 1);
+check("на гексе биопода #1 — жаба 2", lists()[AVIARY][0].id, 2);
 check(
   "гекс биопода #2 показывает свою жилицу",
   lists()["outpost-0"].map((item) => item.id).join(","),
@@ -244,12 +246,12 @@ check(
 );
 check(
   "у базового гекса свой биопод",
-  colonyRooms.find((room) => room.id === "aviary").sceneId,
+  roomByKind(colonyRooms, "aviary").sceneId,
   1,
 );
 check(
   "у построенного гекса свой биопод",
-  colonyRooms.find((room) => room.id === "outpost-0").sceneId,
+  colonyRooms.find((room) => room.slotId === "outpost-0").sceneId,
   2,
 );
 
@@ -259,7 +261,6 @@ const homeResult = colony.sendToadHome(1);
 check("вернулась домой", homeResult.ok, true);
 check("домой — в свой биопод", homeResult.scene?.id, 1);
 check("место в биоподе записано", findToad(1).scene_id, 1);
-check("сектор освобождён", findToad(1).roomId, null);
 check("дом не изменился", findToad(1).homeId, 1);
 check("жильцов в биоподе #1 снова", housing.getEnclosureToads(1).length, 2);
 check("мест свободно снова", housing.getHousingInfo().free, 0);
@@ -278,8 +279,8 @@ check("домой не пустили", fullResult.ok, false);
 check("причина — нет места", fullResult.reason, "no-space");
 check("в отказе назван тот самый биопод", fullResult.scene?.id, 1);
 checkText("дом жабы на месте", colony.getToadHomeScene(1)?.name, /Биопод #1/);
-check("жаба осталась в секторе", findToad(1).roomId, NEST);
-check("жаба по-прежнему вне биопода", findToad(1).scene_id, null);
+check("жаба осталась в секторе", findToad(1).scene_id, NEST);
+check("жаба по-прежнему в секторе, а не в биоподе", place.isToadInEnclosure(findToad(1)), false);
 check("дом жабы не потерялся", place.getToadHomeId(findToad(1)), 1);
 check(
   "жаба в секторе в жильцах не числится",
@@ -292,18 +293,17 @@ console.log("─".repeat(60));
 const moveFull = colony.moveToadToAviary(1, 2);
 check("в полный биопод не переехала", moveFull.ok, false);
 check("причина — нет места", moveFull.reason, "no-space");
-check("жаба осталась в секторе", findToad(1).roomId, NEST);
+check("жаба осталась в секторе", findToad(1).scene_id, NEST);
 
 colony.placeToadInRoom(3, "power");
-check("соседка ушла в ⚡-сектор", findToad(3).roomId, "power");
-check("соседка место в биоподе освободила", findToad(3).scene_id, null);
+check("соседка ушла в ⚡-сектор", findToad(3).scene_id, "power");
+check("соседка в секторе, а не в биоподе", place.isToadInRoom(findToad(3)), true);
 check("соседка помнит свой дом", colony.getToadHomeScene(3)?.id, 2);
 
 const moved = colony.moveToadToAviary(1, 2);
 check("переехала в биопод #2", moved.ok, true);
 check("новое место", findToad(1).scene_id, 2);
 check("новый дом", findToad(1).homeId, 2);
-check("сектор освобождён", findToad(1).roomId, null);
 check("старый биопод её больше не считает", housing.getEnclosureToads(1).length, 2);
 check("в новом биоподе она жилец", housing.getEnclosureToads(2).length, 1);
 check("в секторе после переезда пусто", lists()[NEST]?.length ?? 0, 0);
@@ -318,9 +318,8 @@ const tadpole = backend.createToads(
       id: 900,
       name: "Головастик",
       stage: "toadpole",
-      scene_id: 2,
+      scene_id: NEST,
       homeId: 2,
-      roomId: NEST,
     }),
   ],
   true,
@@ -330,8 +329,7 @@ check(
   housing.getHousingInfo().free,
   freeBefore,
 );
-check("головастик в репродукторе: место не записано", tadpole.scene_id, null);
-check("головастик в репродукторе: сектор записан", tadpole.roomId, NEST);
+check("головастик в репродукторе: место — репродуктор", tadpole.scene_id, NEST);
 check("головастик в репродукторе: дом — биопод матери", tadpole.homeId, 2);
 
 const born = backend.createToad(
@@ -351,13 +349,39 @@ check(
 
 console.log("\n[7] Миграция старых сейвов");
 console.log("─".repeat(60));
-// Старый сейв: `scene_id` был домом — жаба в репродукторе его сохраняла, поля `homeId`
+// Старые сейвы: `scene_id` был домом, сектор колонии лежал в `roomId`, поля `homeId`
 // ещё нет, а «складская» жаба жила с пустым `scene_id`
 reset({
   toads: [
-    toad({ id: 1, name: "Домашний", scene_id: 1 }),
-    toad({ id: 2, name: "В репродукторе", sex: "female", scene_id: 1, roomId: NEST }),
-    toad({ id: 3, name: "На складе", sex: "female", scene_id: null }),
+    toad({ id: 1, name: "Домашний", scene_id: 1, homeId: undefined }),
+    toad({
+      id: 2,
+      name: "В репродукторе",
+      sex: "female",
+      scene_id: 1,
+      homeId: undefined,
+      roomId: "breeding",
+    }),
+    toad({
+      id: 3,
+      name: "На складе",
+      sex: "female",
+      scene_id: null,
+      homeId: undefined,
+    }),
+    toad({
+      id: 4,
+      name: "В лазарете",
+      scene_id: null,
+      homeId: undefined,
+      roomId: "hospital",
+    }),
+    toad({
+      id: 5,
+      name: "В разведке",
+      scene_id: "scout",
+      homeId: undefined,
+    }),
   ],
 });
 const migrated = storage.getGameState();
@@ -365,13 +389,22 @@ const migratedToad = (id) => migrated.toads.find((item) => item.id === id);
 check("домашняя жаба: дом из старых данных", migratedToad(1).homeId, 1);
 check("домашняя жаба: место на месте", migratedToad(1).scene_id, 1);
 check("жаба в репродукторе: дом сохранён", migratedToad(2).homeId, 1);
-check("жаба в репродукторе: биопод освобождён", migratedToad(2).scene_id, null);
+check("жаба в репродукторе: место — репродуктор", migratedToad(2).scene_id, NEST);
 check("«складская» жаба расселена", migratedToad(3).scene_id, 1);
 check("«складская» жаба получила дом", migratedToad(3).homeId, 1);
+check("жаба в лазарете: место — лазарет", migratedToad(4).scene_id, "hospital");
+check("жаба в лазарете: дом восстановлен", typeof migratedToad(4).homeId, "number");
+check("жаба в разведке: место — разведка", migratedToad(5).scene_id, "scout");
+check("жаба в разведке: дом восстановлен", typeof migratedToad(5).homeId, "number");
+check(
+  "у всех жаб после миграции есть дом",
+  migrated.toads.every((item) => typeof item.homeId === "number"),
+  true,
+);
 check("биопод #1 знает только своих", housing.getEnclosureToads(1).length, 2);
 check(
   "мигранты видны на гексах",
-  lists().aviary.map((item) => item.id).join(","),
+  lists()[AVIARY].map((item) => item.id).join(","),
   "1,3",
 );
 check(

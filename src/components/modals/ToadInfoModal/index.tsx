@@ -356,7 +356,7 @@ export const ToadInfo = () => {
               <button
                 className="text-gray-300"
                 onClick={() => {
-                  setEditedName(toad.name);
+                  setEditedName(toad.name ?? "");
                   setIsEditingName(true);
                 }}
               >
@@ -430,7 +430,7 @@ export const ToadInfo = () => {
             <div className="grid grid-cols-2 gap-2 mb-3 ">
               <StatCard
                 icon={InfoIcons.rarity}
-                label="Редкость"
+                label="качество"
                 value={`${rarityConfig.label} (${toad.genes?.rarity?.toFixed(
                   1,
                 )})`}
@@ -587,7 +587,7 @@ export const ToadInfo = () => {
                       <p className="text-sm text-gray-200">
                         Биомасса 🧪 — топливо колонии: корм жаб, снаряжение
                         походов, содержание биоподов. Взрослая жаба даёт базовые{" "}
-                        {BIOMASS_PER_TOAD_HOUR} 🧪/ч, а её редкость, вес,
+                        {BIOMASS_PER_TOAD_HOUR} 🧪/ч, а её качество, вес,
                         характер и кибер-болезнь меняют это число.
                       </p>
                       <div className="mt-2 space-y-0.5 text-xs text-gray-300">
@@ -742,17 +742,26 @@ export const ToadInfo = () => {
             />
 
             {growth && (
-              <ProgressBar
-                label="Рост"
-                current={growth.progress}
-                max={100}
-                color="purple"
-                action={{
-                  label: "Ускорить",
-                  handler: () => handleAccelerate("growth"),
-                  timeLeft: growth.timeLeft,
-                }}
-              />
+              <>
+                <ProgressBar
+                  label="Рост"
+                  current={growth.progress}
+                  max={100}
+                  color="purple"
+                  valueLabel={growth.hungry ? "нужен корм" : undefined}
+                  action={{
+                    label: "Ускорить",
+                    handler: () => handleAccelerate("growth"),
+                    timeLeft: growth.timeLeft,
+                  }}
+                />
+                {growth.hungry && (
+                  <p className="-mt-2 mb-3 rounded-lg border border-amber-400/30 bg-amber-400/10 px-2 py-1.5 text-2xs leading-snug text-amber-200">
+                    🍽️ Голодный головастик не растёт. Покормите его, чтобы
+                    запустить рост.
+                  </p>
+                )}
+              </>
             )}
 
             {mating && (
@@ -823,7 +832,7 @@ export const ToadInfo = () => {
 
               {/* Быстрый возврат домой: жаба в секторе колонии дома не занимает, но помнит
                 его (`homeId`) — одна кнопка, чтобы вернуть её в свой биопод (с проверкой места) */}
-              {toad.roomId && (
+              {typeof toad.scene_id === "string" && (
                 <button
                   onClick={handleSendHome}
                   title={

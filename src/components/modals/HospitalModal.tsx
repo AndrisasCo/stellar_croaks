@@ -1,4 +1,3 @@
-import { useState } from "react";
 import Modal from "../shared/Header";
 import ModalTabs, { ModalTabItem } from "../shared/ModalTabs";
 import { ClickButton } from "../shared/ClickButton";
@@ -7,6 +6,7 @@ import { ToadPicker } from "../shared/ToadPicker";
 import { useGameState } from "../../hooks/use-game-state";
 import { useColony } from "../../hooks/use-colony";
 import { useNotifications } from "../../hooks/use-notification";
+import { useRoomPowerTab } from "../../hooks/use-room-power-tab";
 import { Toad } from "../../models/Toad";
 import { getDiseaseCureCost, getToadDisease } from "../../models/disease";
 import { cureToadForTokens } from "../../utils/disease-manager";
@@ -71,7 +71,22 @@ export default function HospitalModal({ room }: HospitalModalProps) {
   const state = useGameState();
   const { rooms, powerGrid, toadsByRoom, placeToad, releaseToad } = useColony();
   const { addNotification } = useNotifications();
-  const [tab, setTab] = useState<HospitalTab>("beds");
+  const {
+    tab,
+    setTab,
+    issue: powerIssue,
+  } = useRoomPowerTab<HospitalTab>({ room, powerGrid, defaultTab: "beds" });
+
+  /** Обесточенный лазарет: койки и пациенты закрыты, открыты только данные сектора */
+  const hospitalTabs: ModalTabItem<HospitalTab>[] = HOSPITAL_TABS.map((tab) =>
+    tab.id === "room-data"
+      ? tab
+      : {
+          ...tab,
+          disabled: Boolean(powerIssue),
+          disabledHint: powerIssue ?? undefined,
+        },
+  );
 
   const expeditions = state.expeditions ?? [];
   const tokens = state.user.tokens || 0;
@@ -84,10 +99,10 @@ export default function HospitalModal({ room }: HospitalModalProps) {
 
   /** Жабы в походе: их не лечат и не переносят, пока команда не вернётся */
   const awayToads = state.toads.filter((toad) =>
-    isToadOnExpedition(toad.id, expeditions)
+    isToadOnExpedition(toad.id, expeditions),
   );
   const homeToads = state.toads.filter(
-    (toad) => !isToadOnExpedition(toad.id, expeditions)
+    (toad) => !isToadOnExpedition(toad.id, expeditions),
   );
 
   /** Кто лежит на койках колонии прямо сейчас (у модалки — свои, у «Пациентов» — все) */
@@ -101,7 +116,9 @@ export default function HospitalModal({ room }: HospitalModalProps) {
   const freeSlots = Math.max(0, HOSPITAL_ROOM_TOAD_SLOTS - roomToads.length);
 
   /** Раненые и больные в походе: ими займёмся, когда команда вернётся */
-  const awayWounded = awayToads.filter((toad) => needsHospitalCare(toad)).length;
+  const awayWounded = awayToads.filter((toad) =>
+    needsHospitalCare(toad),
+  ).length;
 
   /** Правила переноса для этого гекса — те же, что у карты (`toad-move-rules`) */
   const moveContext = (toad: Toad) => ({
@@ -119,7 +136,7 @@ export default function HospitalModal({ room }: HospitalModalProps) {
    * на койке, ток в секторе, возраст, поход — чтобы кнопка не обещала лишнего.
    */
   const getAdmission = (
-    toad: Toad
+    toad: Toad,
   ): { room: RoomConfig | null; issue: string | null } => {
     if (hospitalRooms.length === 0) {
       return { room: null, issue: "в колонии нет лазарета" };
@@ -130,7 +147,7 @@ export default function HospitalModal({ room }: HospitalModalProps) {
     for (const hospital of hospitalRooms) {
       const check = canMoveToadToRoom(toad, hospital, {
         roomToads: (toadsByRoom[hospital.id] ?? []).filter(
-          (item) => item.id !== toad.id
+          (item) => item.id !== toad.id,
         ),
         aviaryCount: 0,
         aviaryCapacity: 0,
@@ -150,8 +167,10 @@ export default function HospitalModal({ room }: HospitalModalProps) {
 
   /** Где жаба живёт сейчас — строкой списка подсадки: сектор колонии или её биопод */
   const locationOf = (toad: Toad) => {
-    if (toad.roomId) {
-      const roomName = rooms.find((item) => item.id === toad.roomId)?.name;
+    if (typeof toad.scene_id === "string") {
+      const roomName = rooms.find(
+        (item) => item.id === toad.scene_id || item.slotId === toad.scene_id,
+      )?.name;
 
       if (roomName) {
         return `📍 ${roomName}`;
@@ -171,7 +190,7 @@ export default function HospitalModal({ room }: HospitalModalProps) {
   const candidates = splitToadPickerCandidates(
     homeToads
       // Пациенты этого лазарета и так стоят списком выше
-      .filter((toad) => toad.roomId !== room.id)
+      .filter((toad) => toad.scene_id !== room.id)
       .map((toad) => {
         const check = canMoveToadToRoom(toad, room, moveContext(toad));
 
@@ -180,9 +199,9 @@ export default function HospitalModal({ room }: HospitalModalProps) {
           rank: needsHospitalCare(toad) ? 1 : 0,
           reason: check.ok
             ? null
-            : check.reason ?? "жабу нельзя поместить в лазарет",
+            : (check.reason ?? "жабу нельзя поместить в лазарет"),
         };
-      })
+      }),
   );
 
   const notify = (result: { success: boolean; message: string }) =>
@@ -296,7 +315,7 @@ export default function HospitalModal({ room }: HospitalModalProps) {
               ? `${getHoursToFullHp(missingHp, true)} ч на койке`
               : `дома ~${getHoursToFullHp(
                   missingHp,
-                  false
+                  false,
                 )} ч · в лазарете ~${getHoursToFullHp(missingHp, true)} ч`}
           </p>
         )}
@@ -389,23 +408,24 @@ export default function HospitalModal({ room }: HospitalModalProps) {
         </div>
       </div>
 
-      <ModalTabs tabs={HOSPITAL_TABS} active={tab} onChange={setTab} />
+      <ModalTabs tabs={hospitalTabs} active={tab} onChange={setTab} />
 
       <div className="flex flex-col gap-2 px-1 pt-3">
         {/* ВКЛАДКА «Койки»: кто лежит в этом лазарете и подсадка жаб на лечение */}
         {tab === "beds" && (
           <>
             <p className="text-2xs leading-snug text-gray-400">
-              Дома жаба восстанавливает всего {HP_REGEN_PER_HOUR} HP в час. Койка в
-              лазарете лечит +{HOSPITAL_HP_REGEN_PER_HOUR} HP в час (в{" "}
-              {HOSPITAL_HP_REGEN_PER_HOUR / HP_REGEN_PER_HOUR} раз быстрее), а срок
-              болезни там идёт в {HOSPITAL_DISEASE_SPEED} раза быстрее — и пациент
-              никого не заражает.
+              Дома жаба восстанавливает всего {HP_REGEN_PER_HOUR} HP в час.
+              Койка в лазарете лечит +{HOSPITAL_HP_REGEN_PER_HOUR} HP в час (в{" "}
+              {HOSPITAL_HP_REGEN_PER_HOUR / HP_REGEN_PER_HOUR} раз быстрее), а
+              срок болезни там идёт в {HOSPITAL_DISEASE_SPEED} раза быстрее — и
+              пациент никого не заражает.
             </p>
 
             <div className="flex items-center justify-between">
               <p className="text-2xs font-bold uppercase tracking-wide text-amber-200">
-                🛏️ В «{room.name}» ({roomToads.length}/{HOSPITAL_ROOM_TOAD_SLOTS})
+                🛏️ В «{room.name}» ({roomToads.length}/
+                {HOSPITAL_ROOM_TOAD_SLOTS})
               </p>
               <span className="text-2xs text-gray-500">
                 свободно мест: {freeSlots}
@@ -414,8 +434,8 @@ export default function HospitalModal({ room }: HospitalModalProps) {
 
             {roomToads.length === 0 && (
               <p className="text-2xs leading-snug text-gray-500">
-                Койки свободны: возьмите жабу из списка ниже — сюда можно положить
-                любую, а поправляется она на койке в разы быстрее.
+                Койки свободны: возьмите жабу из списка ниже — сюда можно
+                положить любую, а поправляется она на койке в разы быстрее.
               </p>
             )}
 
@@ -466,22 +486,23 @@ export default function HospitalModal({ room }: HospitalModalProps) {
         {tab === "patients" && (
           <>
             <p className="text-2xs leading-snug text-gray-400">
-              Все раненые и больные жабы колонии в одном списке: отсюда их быстро
-              отправляют на койку (в любой лазарет, где есть место) или лечат
-              мгновенно за Кваксы — это самый дорогой способ, зато без ожидания.
+              Все раненые и больные жабы колонии в одном списке: отсюда их
+              быстро отправляют на койку (в любой лазарет, где есть место) или
+              лечат мгновенно за Кваксы — это самый дорогой способ, зато без
+              ожидания.
             </p>
 
             {hospitalRooms.length === 0 && (
               <p className="rounded-xl border border-amber-500/30 bg-amber-950/30 px-3 py-2 text-2xs leading-snug text-amber-200/90">
-                🏥 В колонии нет «Лазарета»: постройте этот сектор на свободном гексе —
-                только на койке жабы выздоравливают быстро.
+                🏥 В колонии нет «Лазарета»: постройте этот сектор на свободном
+                гексе — только на койке жабы выздоравливают быстро.
               </p>
             )}
 
             {awayWounded > 0 && (
               <p className="text-2xs text-gray-500">
-                Ещё {awayWounded} жаб(ы) с ранами в походе: займёмся ими, когда команда
-                вернётся домой.
+                Ещё {awayWounded} жаб(ы) с ранами в походе: займёмся ими, когда
+                команда вернётся домой.
               </p>
             )}
 

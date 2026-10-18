@@ -286,13 +286,13 @@ export const TOAD_SPECIES_CONFIG: ToadSpeciesConfig[] = [
 
 // Хелперы
 export const getToadConfigByType = (
-  type: ToadTypes
+  type: ToadTypes,
 ): ToadSpeciesConfig | undefined => {
   return TOAD_SPECIES_CONFIG.find((toad) => toad.type === type);
 };
 
 export const getToadConfigById = (
-  id: string
+  id: string,
 ): ToadSpeciesConfig | undefined => {
   return TOAD_SPECIES_CONFIG.find((toad) => toad.id === id);
 };
@@ -306,7 +306,7 @@ export const getLootboxHint = (chanceLevel?: LootboxChanceLevel): string => {
     rare: "Редкая находка",
     epic: "Очень редкая",
     legendary: "Невероятно редкая",
-    mythical: "Легендарная редкость",
+    mythical: "Легендарная качество",
   };
 
   return hints[chanceLevel];

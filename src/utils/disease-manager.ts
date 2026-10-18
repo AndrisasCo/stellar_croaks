@@ -16,6 +16,7 @@ import {
   getHospitalRoomIds,
   isToadInHospital,
 } from "./hospital";
+import { isToadInEnclosure } from "./toad-location";
 
 /**
  * КИБЕР-БОЛЕЗНИ (Часть 3.6).
@@ -197,11 +198,16 @@ export const processDiseases = (hoursPassed: number): DiseaseTickResult => {
     }
   });
 
-  // 2. Контакт: больные заражают соседей по биоподу (жаб на койках не считаем, а жаб
-  // в секторах колонии тут нет вовсе: они биопод не занимают — `utils/toad-location.ts`)
+  // 2. Контакт: больные заражают соседей по биоподу. Жаба в секторе колонии
+  // (`scene_id` — строка) живёт не в биоподе, а на рабочем месте, поэтому здесь
+  // её не считаем: иначе зараза пошла бы по ⚡-сектору или «Разведке».
   state.toads.forEach((toad) => {
     const disease = getToadDisease(toad);
-    if (!disease || !toad.scene_id || isToadInHospital(toad, hospitalIds)) {
+    if (
+      !disease ||
+      !isToadInEnclosure(toad) ||
+      isToadInHospital(toad, hospitalIds)
+    ) {
       return;
     }
 

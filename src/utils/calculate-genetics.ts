@@ -50,19 +50,19 @@ export const inheritTrait = (parents: number[], multiplier: number): number => {
   return average * (1 + mutation) * (0.7 + multiplier * 0.3);
 };
 
-// макс редкость 1 + 0.9 + 0.5 = 2.4
-// макс редкость если есть мутация 12.4
-// мин редкость 1 +  -0.5 = 0.5
-// мин редкость если есть мутация  10.5
+// макс качество 1 + 0.9 + 0.5 = 2.4
+// макс качество если есть мутация 12.4
+// мин качество 1 +  -0.5 = 0.5
+// мин качество если есть мутация  10.5
 export const calculateRarity = (
   parents: number[],
-  mutationChance: boolean
+  mutationChance: boolean,
 ): number => {
   let baseRarity = getSum(parents) / parents.length;
   baseRarity += 1;
   baseRarity += (3 * calculateRarityBonus(parents.length)) / 100;
 
-  // Мутация - шанс на повышенную редкость
+  // Мутация - шанс на повышенную качество
   if (mutationChance) {
     return baseRarity + 10 * Math.random(); // Сильнее мутации + 0-10 ед
   }
@@ -74,11 +74,11 @@ export const calculateRarity = (
 
 export const calculateBreedingTime = (
   rarity: number,
-  speedMultiplier: number = 1
+  speedMultiplier: number = 1,
 ): number => {
   // Базовое время: 2 часов для средней редкости (50)
   const baseTime = 60 * 60 * 1000; // 1 часов в миллисекундах
-  const rarityFactor = rarity / 50; // Чем выше редкость, тем дольше
+  const rarityFactor = rarity / 50; // Чем выше качество, тем дольше
   const time = baseTime * rarityFactor;
 
   return time / speedMultiplier;
@@ -124,7 +124,7 @@ const calculateInbreedingLevel = (parents: Toad[]): number => {
   // Проверяем общих родителей
   const commonParents =
     parent1.parents?.filter((parentId) =>
-      parent2.parents?.includes(parentId)
+      parent2.parents?.includes(parentId),
     ) || [];
 
   if (commonParents.length === 2) {
@@ -140,7 +140,7 @@ const calculateInbreedingLevel = (parents: Toad[]): number => {
 const calculateGeneticFault = (
   parents: Toad[],
   isCollider: boolean,
-  inbreedingLevel: number
+  inbreedingLevel: number,
 ): number => {
   const parentFaults = parents.map((p) => p.state?.genetic_fault || 0);
   const maxParentFault = Math.max(...parentFaults);
@@ -175,7 +175,7 @@ const calculateGeneticFault = (
 const getType = (parents: Toad[]) => {
   const isType = parents.reduce(
     (_, curr) => curr.type === parents[0].type,
-    true
+    true,
   );
 
   if (isType) {
@@ -183,7 +183,7 @@ const getType = (parents: Toad[]) => {
   }
 
   const breedToad = parents.find(
-    (p) => p.type && [ToadTypes.camouflage].includes(p.type)
+    (p) => p.type && [ToadTypes.camouflage].includes(p.type),
   );
 
   if (breedToad) {
@@ -199,11 +199,11 @@ export const generateChildToad = (
     mutationChance: boolean;
     genesBreakChance: boolean;
     isMutant: boolean;
-  }
+  },
 ): Partial<Toad> => {
   const childColor = mixColors(parents.map((p) => p.genes.colors[0]));
   const childColor2 = mixColors(
-    parents.map((p) => p.genes.colors[1]).filter(Boolean)
+    parents.map((p) => p.genes.colors[1]).filter(Boolean),
   );
 
   // Наследование типа окраски
@@ -214,7 +214,7 @@ export const generateChildToad = (
   const childRarity = isCollider
     ? calculateRarity(
         parents.map((p) => p.genes.rarity),
-        chances?.mutationChance || false
+        chances?.mutationChance || false,
       )
     : (parents[0].genes.rarity + parents[1].genes.rarity) / 2 +
       Math.ceil(Math.random() * 3) / 10;
@@ -225,29 +225,27 @@ export const generateChildToad = (
 
   const childSize = inheritTrait(
     parents.map((p) => p.genes.weight),
-    personalityTrait?.weightMultiplier || 1
+    personalityTrait?.weightMultiplier || 1,
   );
   const childSpeed = inheritTrait(
     parents.map((p) => p.genes.speed),
-    personalityTrait?.speedMultiplier || 1
+    personalityTrait?.speedMultiplier || 1,
   );
 
   const hungerRate = inheritTrait(
     parents.map((p) => p.genes.hungerRate),
-    personality ? personalityTrait.hungerRate : 1
+    personality ? personalityTrait.hungerRate : 1,
   );
 
   const fertility = inheritTrait(
     parents.map((p) => p.genes.fertility),
-    personality ? personalityTrait.fertility : 1
+    personality ? personalityTrait.fertility : 1,
   );
 
   // Расчет генетической поломки
-  const inbreedingLevel = isCollider
-    ? 0
-    : calculateInbreedingLevel(parents);
+  const inbreedingLevel = isCollider ? 0 : calculateInbreedingLevel(parents);
   const geneticFault = Math.round(
-    calculateGeneticFault(parents, isCollider, inbreedingLevel)
+    calculateGeneticFault(parents, isCollider, inbreedingLevel),
   );
 
   return {
@@ -260,6 +258,8 @@ export const generateChildToad = (
         ? "neuter"
         : getSex(isCollider, chances?.genesBreakChance || false),
     stage: "toadpole",
+    // Рост запустит первое кормление: новорождённый выходит с hunger: 0
+    growthStartedAt: null,
     // Дом первого родителя — ориентир для потомства: место в биоподе ребёнку выдаст
     // `assignToadsToScenes` (или `createToad`, если его несли в инкубатор коллайдера)
     homeId: getToadHomeId(parents[0]),

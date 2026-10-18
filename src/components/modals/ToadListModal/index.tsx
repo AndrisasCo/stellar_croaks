@@ -25,9 +25,14 @@ import { dissolveToads } from "../../../utils/dissolve-manager";
 import { getHousingInfo } from "../../../utils/housing";
 import { getRoomUpgrades } from "../../../backend/colony";
 import { useColony } from "../../../hooks/use-colony";
+import { useRoomPowerTab } from "../../../hooks/use-room-power-tab";
 import { SceneStatsTab } from "./SceneStatsTab";
 import ModalTabs, { ModalTabItem } from "../../shared/ModalTabs";
 import { RoomConfig } from "../../HexMap/rooms-config";
+import {
+  getRoomPowerIssue,
+  ROOM_UNPOWERED_TITLE,
+} from "../../HexMap/colony-build";
 import RoomDataTab, { ROOM_DATA_TAB, RoomDataTabId } from "../RoomDataTab";
 
 /**
@@ -43,6 +48,9 @@ import RoomDataTab, { ROOM_DATA_TAB, RoomDataTabId } from "../RoomDataTab";
  * (`modals/RoomDataTab.tsx`): описание, апгрейды и снос того же гекса.
  */
 type ToadListTab = "toads" | "stats" | RoomDataTabId;
+
+/** Без тока у биопода остаётся только список жаб: смотреть жильцов можно, статистика — нет */
+const TOAD_LIST_TABS_ALWAYS_ALLOWED: readonly ToadListTab[] = ["toads"];
 
 /** Табы биопода без «Данных сектора»: список жаб и статистика биопода */
 const TOAD_LIST_TABS: ModalTabItem<ToadListTab>[] = [
@@ -61,6 +69,21 @@ const ToadListModal: React.FC<{
   const { handleFeedToads, ownedScenes, selectToad, allToads, selectedToad } =
     useToads();
   const { addNotification } = useNotifications();
+  const { rooms, powerGrid } = useColony();
+  /**
+   * Обесточенный биопод открывается на данных сектора, но список жаб остаётся живым:
+   * смотреть и кормить жильцов можно, а биомассу такой биопод не вырабатывает.
+   */
+  const {
+    tab,
+    setTab,
+    issue: powerIssue,
+  } = useRoomPowerTab<ToadListTab>({
+    room,
+    powerGrid,
+    defaultTab: "toads",
+    allowedWhenUnpowered: TOAD_LIST_TABS_ALWAYS_ALLOWED,
+  });
 
   // Биопод списка: гекс задаёт стартовый, стрелки листают остальные
   const [sceneIndex, setSceneIndex] = useState(() => {
@@ -69,6 +92,36 @@ const ToadListModal: React.FC<{
     return index >= 0 ? index : 0;
   });
   const scene = ownedScenes[sceneIndex] ?? ownedScenes[0] ?? null;
+
+  /** Гекс-биопод открытого списка: по нему видно питание и апгрейды сектора (автокормушка) */
+  const enclosureRoom = React.useMemo(
+    () => rooms.find((room) => room.sceneId === scene?.id) ?? null,
+    [rooms, scene?.id],
+  );
+
+  /**
+   * Питание текущего биопода. Стрелки листают биоподы, не закрывая модалку, поэтому
+   * ориентируемся на показанный гекс, а не на тот, с которого модалку открыли.
+   */
+  const currentPowerIssue = enclosureRoom
+    ? getRoomPowerIssue(enclosureRoom, powerGrid)
+    : powerIssue;
+
+  /**
+   * Без тока рабочие вкладки недоступны. Если стрелки привели на обесточенный биопод,
+   * уводим со статистики: на данных сектора (когда гекс известен) или на список жаб.
+   */
+  useEffect(() => {
+    if (!currentPowerIssue) {
+      return;
+    }
+
+    if (tab === "toads" || (tab === "room-data" && room)) {
+      return;
+    }
+
+    setTab(room ? "room-data" : "toads");
+  }, [currentPowerIssue, room, setTab, tab]);
 
   /**
    * Жабы открытого биопода — только те, кто в нём **сейчас** (`scene_id`). Жаба в секторе
@@ -79,7 +132,7 @@ const ToadListModal: React.FC<{
   const toads = React.useMemo(
     () =>
       allToads
-        .filter((toad) => toad.scene_id === scene?.id && !toad.roomId)
+        .filter((toad) => toad.scene_id === scene?.id)
         .sort((a, b) => b.genes.rarity - a.genes.rarity),
     [allToads, scene?.id],
   );
@@ -95,12 +148,21 @@ const ToadListModal: React.FC<{
   } = useFilters(toads);
 
   const [viewMode, setViewMode] = useState<"detailed" | "compact">("detailed");
-  /** Состояние биопода: список жаб (по умолчанию) или статистика биопода */
-  const [tab, setTab] = useState<ToadListTab>("toads");
 
-  /** Табы биопода: список жаб, статистика и, если модалку открыл гекс, «Данные сектора» */
+  /**
+   * Табы биопода: список жаб, статистика и, если модалку открыл гекс, «Данные сектора».
+   * Без тока статистика закрыта, а список жаб остаётся: жильцы доступны всегда.
+   */
   const tabs: ModalTabItem<ToadListTab>[] = [
-    ...TOAD_LIST_TABS,
+    ...TOAD_LIST_TABS.map((tab) =>
+      tab.id === "toads"
+        ? tab
+        : {
+            ...tab,
+            disabled: Boolean(currentPowerIssue),
+            disabledHint: currentPowerIssue ?? undefined,
+          },
+    ),
     ...(room ? [{ ...ROOM_DATA_TAB }] : []),
   ];
   const [selectedToads, setSelectedToads] = useState<Set<number>>(new Set());
@@ -116,16 +178,8 @@ const ToadListModal: React.FC<{
   /** Места в биоподах колонии: склада жаб больше нет, поэтому это единственный дом */
   const housing = getHousingInfo();
 
-  const { rooms } = useColony();
-
   // Диссоциатор принимает жаб, только когда его сектор построен и под током
   const { ready: dissociatorReady, built: dissociatorBuilt } = useDissociator();
-
-  /** Гекс-биопод открытого списка: по нему видно апгрейды сектора (автокормушка) */
-  const enclosureRoom = React.useMemo(
-    () => rooms.find((room) => room.sceneId === scene?.id) ?? null,
-    [rooms, scene?.id],
-  );
 
   /**
    * Автокормушка биопода: апгрейд стоит у гекса (`getRoomUpgrades`), и легаси-бонус
@@ -225,7 +279,7 @@ const ToadListModal: React.FC<{
     // Жильцы биопода без самих переезжающих: они как раз уходят из своих биоподов
     const residents =
       state.toads.filter(
-        (t) => t.scene_id === sceneId && !t.roomId && !selectedToads.has(t.id),
+        (t) => t.scene_id === sceneId && !selectedToads.has(t.id),
       ).length + selectedToads.size;
 
     if (!nextScene || nextScene.capacity < residents) {
@@ -236,7 +290,6 @@ const ToadListModal: React.FC<{
     updateToadsByIds(Array.from(selectedToads), {
       scene_id: sceneId,
       homeId: sceneId,
-      roomId: null,
     });
 
     setSelectedToads(new Set());
@@ -352,6 +405,19 @@ const ToadListModal: React.FC<{
           подвал нужны только здесь: у вкладки статистики свои секции. */}
       {tab === "toads" && (
         <>
+          {/* Ошибка сектора: жильцы доступны, но биомасса у обесточенного биопода не растёт */}
+          {currentPowerIssue && (
+            <div className="mx-1 mb-3 rounded-xl border border-rose-500/60 bg-rose-950/40 p-2">
+              <p className="text-xs font-bold text-rose-200">
+                ⚠️ {ROOM_UNPOWERED_TITLE}
+              </p>
+              <p className="mt-1 text-2xs leading-snug text-rose-100/80">
+                Биопод обесточен: жабы остаются доступны, но биомассу он не
+                вырабатывает. Подключите сектор к ядру или энергосектору ⚡.
+              </p>
+            </div>
+          )}
+
           <Filters
             toads={toads}
             setSortDirection={setSortDirection}

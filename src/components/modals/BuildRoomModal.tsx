@@ -5,6 +5,7 @@ import { useColony } from "../../hooks/use-colony";
 import { useNotifications } from "../../hooks/use-notification";
 import { useSoundEffects } from "../../hooks/use-sound-effects";
 import { CURRENCY_CONFIG } from "../../utils/constants";
+import { getActiveNarratorTask } from "../../utils/narrator";
 import { useToads } from "../ToadContext";
 import { ClickButton } from "../shared/ClickButton";
 import Modal from "../shared/Header";
@@ -15,6 +16,7 @@ import {
   canBuildRoomKind,
   getBuiltRoomsCount,
   getRoomNeighbours,
+  getTutorialBuildIssue,
   willBePoweredAfterBuild,
 } from "../HexMap/colony-build";
 import { isBuiltRoom, RoomConfig } from "../HexMap/rooms-config";
@@ -41,6 +43,8 @@ export default function BuildRoomModal({ slot }: { slot: RoomConfig }) {
   const buildable = canBuildOnSlot(slot, rooms);
   /** Биоподы больше не покупают в магазине: их строят гексом, и их число ограничено */
   const enclosureLimitReached = ownedScenes.length >= MAX_OWNED_SCENES;
+  /** Задание обучения: в «Первом секторе» магазин нельзя ставить на обесточенный гекс. */
+  const narratorTask = getActiveNarratorTask();
 
   /** Соседние построенные секторы — по ним же видно, появится ли ток. */
   const neighbourTitles = useMemo(
@@ -54,21 +58,32 @@ export default function BuildRoomModal({ slot }: { slot: RoomConfig }) {
   /** Карточки каталога: цена, сколько таких уже стоит и прогноз по току. */
   const options = useMemo(
     () =>
-      BUILD_OPTIONS.map((option) => ({
-        option,
-        cost: option.getCost(colony),
-        powered: willBePoweredAfterBuild(
+      BUILD_OPTIONS.map((option) => {
+        const powered = willBePoweredAfterBuild(
           slot,
           option.kind,
           colony,
           toadsByRoom,
-        ),
-        built: getBuiltRoomsCount(colony, option.kind),
-        allowed:
-          canBuildRoomKind(colony, option.kind) &&
-          !(option.kind === "aviary" && enclosureLimitReached),
-      })),
-    [colony, slot, toadsByRoom, enclosureLimitReached],
+        );
+
+        return {
+          option,
+          cost: option.getCost(colony),
+          powered,
+          tutorialIssue: getTutorialBuildIssue(
+            slot,
+            option.kind,
+            colony,
+            toadsByRoom,
+            narratorTask,
+          ),
+          built: getBuiltRoomsCount(colony, option.kind),
+          allowed:
+            canBuildRoomKind(colony, option.kind) &&
+            !(option.kind === "aviary" && enclosureLimitReached),
+        };
+      }),
+    [colony, slot, toadsByRoom, enclosureLimitReached, narratorTask],
   );
 
   const handleBuild = (option: BuildOption, cost: number) => {
@@ -99,6 +114,30 @@ export default function BuildRoomModal({ slot }: { slot: RoomConfig }) {
       return;
     }
 
+    // Прогноз считаем до постройки — состояние колонии ещё старое
+    const powered = willBePoweredAfterBuild(
+      slot,
+      option.kind,
+      colony,
+      toadsByRoom,
+    );
+
+    // Обучение: магазин не должен оказаться на обесточенном гексе — иначе задание
+    // закроется, а сектор останется без тока (см. `getTutorialBuildIssue`).
+    const tutorialIssue = getTutorialBuildIssue(
+      slot,
+      option.kind,
+      colony,
+      toadsByRoom,
+      narratorTask,
+    );
+
+    if (tutorialIssue) {
+      playBeep();
+      addNotification({ type: "warn", content: tutorialIssue });
+      return;
+    }
+
     if (tokens < cost) {
       playBeep();
       addNotification({
@@ -108,19 +147,11 @@ export default function BuildRoomModal({ slot }: { slot: RoomConfig }) {
       return;
     }
 
-    // Прогноз считаем до постройки — состояние колонии ещё старое
-    const powered = willBePoweredAfterBuild(
-      slot,
-      option.kind,
-      colony,
-      toadsByRoom,
-    );
-
     // Имя считаем до постройки: карта ещё без нового сектора, поэтому это ровно тот номер,
     // который получит постройка (`room-names.ts` → `getNextRoomName`)
     const roomName = getNextRoomName(rooms, option.kind);
 
-    buildRoom(slot.id, option.kind);
+    buildRoom(slot.slotId, option.kind);
     updateUser({ tokens: tokens - cost });
     playOk();
 
@@ -174,9 +205,12 @@ export default function BuildRoomModal({ slot }: { slot: RoomConfig }) {
         </div>
 
         <div className="space-y-2">
-          {options.map(({ option, cost, powered, built, allowed }) => {
+          {options.map((item) => {
+            const { option, cost, powered, tutorialIssue, built, allowed } =
+              item;
             const affordable = tokens >= cost;
-            const blocked = !buildable || !allowed || !affordable;
+            const blocked =
+              !buildable || !allowed || !affordable || Boolean(tutorialIssue);
 
             return (
               <div
@@ -208,14 +242,19 @@ export default function BuildRoomModal({ slot }: { slot: RoomConfig }) {
                 </div>
 
                 <div className="mt-1 flex items-center justify-between gap-2">
-                  <span className="text-2xs text-gray-400">
-                    {option.kind === "aviary" && enclosureLimitReached
-                      ? "В колонии максимум биоподов"
-                      : powered
-                        ? "После постройки: под током ⚡"
-                        : option.kind === "power"
-                          ? "После постройки: ток дадут жабы ⚡"
-                          : "После постройки: обесточена 🔌"}
+                  <span
+                    className="text-2xs text-gray-400"
+                    title={tutorialIssue ?? undefined}
+                  >
+                    {tutorialIssue
+                      ? "Обучение: нужен гекс под током ⚡"
+                      : option.kind === "aviary" && enclosureLimitReached
+                        ? "В колонии максимум биоподов"
+                        : powered
+                          ? "После постройки: под током ⚡"
+                          : option.kind === "power"
+                            ? "После постройки: ток дадут жабы ⚡"
+                            : "После постройки: обесточена 🔌"}
                   </span>
                   <span className="text-2xs text-gray-500">
                     {built > 0 ? `в колонии: ${built}` : "в колонии нет"}
@@ -233,11 +272,13 @@ export default function BuildRoomModal({ slot }: { slot: RoomConfig }) {
                         : "bg-amber-600 text-white hover:bg-amber-500 active:scale-95"
                     }`}
                   >
-                    {allowed
-                      ? "Построить"
-                      : option.kind === "aviary"
-                        ? "Максимум"
-                        : "Уже есть"}
+                    {tutorialIssue
+                      ? "Нужен ток"
+                      : allowed
+                        ? "Построить"
+                        : option.kind === "aviary"
+                          ? "Максимум"
+                          : "Уже есть"}
                   </ClickButton>
                 </div>
               </div>

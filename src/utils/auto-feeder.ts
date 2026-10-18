@@ -1,4 +1,8 @@
-import { updateToadStateByIds, updateUser } from "../backend";
+import {
+  updateToadStateByIds,
+  updateToadsByIds,
+  updateUser,
+} from "../backend";
 import { getRoomUpgrades } from "../backend/colony";
 import { getGameState } from "../backend/localStorage";
 import { Toad } from "../models/Toad";
@@ -29,7 +33,7 @@ export const AUTO_FEED_COST = 1;
 /** Гекс-сектор, у которой может стоять апгрейд (структурно совпадает с `RoomConfig`). */
 export interface AutoFeedRoom {
   id: string;
-  sceneId?: number;
+  sceneId?: number | null;
 }
 
 export interface AutoFeedResult {
@@ -43,8 +47,8 @@ export interface AutoFeedResult {
  * Кормит жаб секторов с автокормушкой и списывает корм со склада.
  *
  * `rooms` и `toadsByRoom` передаёт вызывающий: кто живёт в каком секторе, знает карта
- * (`getRoomToadLists`), а не состояние игры — у биопода жильцов ищут по месту (`scene_id`),
- * у энергосектора — по `roomId`.
+ * (`getRoomToadLists`), а не состояние игры — жильцов ищут по их месту в секторе
+ * (`scene_id`), а не по дому (`homeId`).
  */
 export const processAutoFeeders = (
   rooms: AutoFeedRoom[],
@@ -63,6 +67,7 @@ export const processAutoFeeders = (
   // Корм кончился — дальше кормить нечем; жабы в походе (`status: "out"`) дома не едят
   let foodLeft = Math.floor(foodOnStack);
   const hungry: number[] = [];
+  const growthStartIds: number[] = [];
 
   autoFeederRooms.forEach((room) => {
     (toadsByRoom[room.id] ?? []).forEach((toad) => {
@@ -76,6 +81,11 @@ export const processAutoFeeders = (
 
       foodLeft -= AUTO_FEED_COST;
       hungry.push(toad.id);
+
+      // Первое кормление запускает таймер роста головастика.
+      if (toad.stage === "toadpole" && toad.growthStartedAt == null) {
+        growthStartIds.push(toad.id);
+      }
     });
   });
 
@@ -86,6 +96,11 @@ export const processAutoFeeders = (
   const spent = hungry.length * AUTO_FEED_COST;
 
   updateToadStateByIds(hungry, { hunger: 100 });
+
+  if (growthStartIds.length > 0) {
+    updateToadsByIds(growthStartIds, { growthStartedAt: Date.now() });
+  }
+
   updateUser({
     storage: { ...state.user.storage, food: foodOnStack - spent },
   });

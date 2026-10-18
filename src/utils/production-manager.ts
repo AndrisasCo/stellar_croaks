@@ -4,6 +4,13 @@ import {
   completeAchivement,
   completeAchivementCounter,
 } from "../backend/achivements-manager";
+import {
+  getPowerGrid,
+  getUnpoweredAviarySceneIds,
+  resolveColonyRooms,
+} from "../components/HexMap/colony-build";
+import { getRoomToadLists } from "../components/HexMap/room-toad-lists";
+import { EMPTY_COLONY } from "../models/colony";
 import { Toad } from "../models/Toad";
 import {
   BIOMASS_TO_TOKENS_RATE,
@@ -24,9 +31,6 @@ export const INJURED_PRODUCTION_FACTOR = 0.5;
 /** Жаба в походе (разведка) — не работает на ферме и не ест биомассу */
 const isToadAway = (toad: Toad): boolean => toad.status === "out";
 
-/** Жаба работает в секторе колонии (⚡-сектор, «Разведка») — она не на ферме */
-const isToadStationed = (toad: Toad): boolean => Boolean(toad.roomId);
-
 /** Множитель выработки по состоянию здоровья жабы (выбитая — 0) */
 const getInjuryFactor = (toad: Toad): number => {
   if (isToadDown(toad)) {
@@ -38,38 +42,46 @@ const getInjuryFactor = (toad: Toad): number => {
 /**
  * Суммарная выработка биомассы (за час) всеми переданными жабами.
  * Жабы, живущие в секторах колонии (⚡-сектор, «Разведка»), биомассу не вырабатывают.
+ * Жильцы обесточенного биопода тоже стоят без выработки — их сцены приходят набором
+ * `unpoweredSceneIds`, чтобы HUD и тик фермы считали одинаково.
  */
-export const getSceneProductionRate = (toads: Toad[]): number =>
-  toads.reduce(
-    (sum, toad) =>
-      sum +
-      (isToadAway(toad) || isToadStationed(toad)
-        ? 0
-        : getBiomassRate(toad) * getInjuryFactor(toad)),
-    0
-  );
+export const getSceneProductionRate = (
+  toads: Toad[],
+  unpoweredSceneIds?: ReadonlySet<number>,
+): number =>
+  toads.reduce((sum, toad) => {
+    const inUnpoweredScene =
+      typeof toad.scene_id === "number" &&
+      unpoweredSceneIds?.has(toad.scene_id);
 
-/** Расход биомассы на содержание передаваемых жаб (за час) */
-export const getUpkeepRate = (toads: Toad[]): number =>
-  toads.filter((toad) => !isToadAway(toad) && !isToadStationed(toad)).length *
-  UPKEEP_PER_TOAD_HOUR;
+    if (isToadAway(toad) || inUnpoweredScene) {
+      return sum;
+    }
+
+    return sum + getBiomassRate(toad) * getInjuryFactor(toad);
+  }, 0);
 
 /**
  * Начисляет биомассу и вычитает апкипинг за `hoursPassed` часов.
- * Жабы вне биоподов (на складе) не производят и не потребляют.
  * Возвращает разбивку дохода за период (для UI/уведомлений).
  */
 export const processProduction = (
-  hoursPassed: number
+  hoursPassed: number,
 ): { gross: number; upkeep: number; net: number } => {
   const state = getGameState();
-  // Жабы в походе (Часть 5) дома не работают и не потребляют биомассу,
-  // а жабы в секторах колонии (⚡, «Разведка») вместо фермы занимаются делом сектора.
-  // Все остальные живут в биоподах: склада жаб больше нет, поэтому фильтр простой.
-  const sceneToads = state.toads.filter((t) => !isToadAway(t) && !t.roomId);
 
-  const gross = getSceneProductionRate(sceneToads) * hoursPassed;
-  const upkeep = getUpkeepRate(sceneToads) * hoursPassed;
+  const sceneToads = state.toads.filter((t) => !isToadAway(t));
+
+  // Обесточенный биопод остаётся жилым, но биомассу не производит. Содержание жаб
+  // при этом не исчезает: они по-прежнему едят, поэтому upkeep считаем по всем жильцам.
+  const rooms = resolveColonyRooms(state.colony ?? EMPTY_COLONY, state.scenes);
+  const toadsByRoom = getRoomToadLists(rooms, state.toads);
+  const powerGrid = getPowerGrid(rooms, toadsByRoom);
+  const unpoweredSceneIds = getUnpoweredAviarySceneIds(rooms, powerGrid);
+
+  const gross =
+    getSceneProductionRate(sceneToads, unpoweredSceneIds) * hoursPassed;
+  const upkeep = sceneToads.length * UPKEEP_PER_TOAD_HOUR * hoursPassed;
   const net = gross - upkeep;
 
   const currentBiomass = state.user.biomass || 0;
@@ -112,7 +124,7 @@ export const getBiomassExchangeSpent = (tokensGained: number): number =>
 
 export const exchangeBiomassForTokens = (
   /** Сколько биомассы продать: не больше той, что есть (без аргумента — вся) */
-  amount?: number
+  amount?: number,
 ): {
   success: boolean;
   tokensGained: number;

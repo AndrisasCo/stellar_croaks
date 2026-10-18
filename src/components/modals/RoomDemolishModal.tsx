@@ -44,7 +44,7 @@ export default function RoomDemolishModal({ room }: { room: RoomConfig }) {
   const issue = getRoomDemolishIssue(room, roomToads);
   const upgraded = Object.values(getRoomUpgrades(room)).some(Boolean);
   const sceneName =
-    room.sceneId === undefined
+    room.sceneId == null
       ? null
       : ownedScenes.find((scene) => scene.id === room.sceneId)?.name ?? null;
   /** Вид сектора из каталога построек: у гекса он шире (ядро и пустой слот сюда не попадают) */
@@ -61,10 +61,14 @@ export default function RoomDemolishModal({ room }: { room: RoomConfig }) {
     }
 
     const now = getRoomCost(colony, kind);
-    const after = getRoomCostAfterDemolish(colony, { id: room.id, kind });
+    const after = getRoomCostAfterDemolish(colony, {
+      id: room.id,
+      slotId: room.slotId,
+      kind,
+    });
 
     return { now, after, saving: Math.max(0, now - after) };
-  }, [colony, kind, room.id]);
+  }, [colony, kind, room.id, room.slotId]);
 
   const affordable = tokens >= DEMOLISH_ROOM_COST;
   const blocked = issue !== null || !affordable;

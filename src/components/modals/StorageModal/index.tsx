@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useColony } from "../../../hooks/use-colony";
+import { useRoomPowerTab } from "../../../hooks/use-room-power-tab";
 import Modal from "../../shared/Header";
 import ModalTabs, { ModalTabItem } from "../../shared/ModalTabs";
 import { useToads } from "../../ToadContext";
@@ -75,13 +77,24 @@ const StorageModal: React.FC<{ room?: RoomConfig }> = ({ room }) => {
   const { account } = useToads();
   const { playClick, playOk, playLegendary } = useSoundEffects();
   const [showConfetti, setShowConfetti] = useState(0);
-  const [tab, setTab] = useState<StorageTab>("items");
+  const { powerGrid } = useColony();
+  const {
+    tab,
+    setTab,
+    issue: powerIssue,
+  } = useRoomPowerTab<StorageTab>({ room, powerGrid, defaultTab: "items" });
 
   const capacity = getStorageCapacityInfo(account?.storage);
 
   /** Табы модалки: полки и, если модалку открыл гекс склада, «Данные сектора» */
   const storageTabs: ModalTabItem<StorageTab>[] = [
-    { id: "items", label: "📦 Полки", color: "text-blue-400" },
+    {
+      id: "items",
+      label: "📦 Полки",
+      color: "text-blue-400",
+      disabled: Boolean(powerIssue),
+      disabledHint: powerIssue ?? undefined,
+    },
     ...(room ? [{ ...ROOM_DATA_TAB }] : []),
   ];
 

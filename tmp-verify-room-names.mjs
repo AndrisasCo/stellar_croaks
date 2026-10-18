@@ -78,7 +78,8 @@ const room = (id, kind, extra = {}) => ({
 });
 const colony = (rooms, demolished = []) => ({ rooms, demolished });
 const map = (state) => colonyBuild.resolveColonyRooms(state);
-const nameOf = (rooms, id) => rooms.find((item) => item.id === id)?.name;
+const nameOf = (rooms, id) =>
+  rooms.find((item) => item.id === id || item.slotId === id)?.name;
 
 const failures = [];
 const check = (label, actual, expected) => {
@@ -222,7 +223,7 @@ const uniqueState = colony([
 ]);
 const uniqueMap = map(uniqueState);
 check("коллайдер — без номера", nameOf(uniqueMap, "slot-north"), "Коллайдер");
-check("магазин — без номера", nameOf(uniqueMap, "outpost-0"), "Магазин");
+check("торговая капсула — без номера", nameOf(uniqueMap, "outpost-0"), "Торговая капсула");
 check("диссоциатор — без номера", nameOf(uniqueMap, "slot-south"), "Диссоциатор");
 check(
   "второй коллайдер построить нельзя",
@@ -267,7 +268,7 @@ check("следующий биопод — «#2»", roomNames.getNextRoomName(bu
 // === 6. Снос освобождает номер ============================================
 console.log("\n=== 6. Снос освобождает номер ===");
 const withoutNest = map(colony([], [NEST]));
-check("снесённый репродуктор — пустой слот", nameOf(withoutNest, NEST), "");
+check("снесённый репродуктор — пустой слот", nameOf(withoutNest, "breeding"), "");
 const rebuiltNest = map(colony([room("slot-north", "breeding")], [NEST]));
 check("без базы постройка снова «#1»", nameOf(rebuiltNest, "slot-north"), "Репродуктор #1");
 const rebuiltSecond = map(

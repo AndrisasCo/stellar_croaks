@@ -1,15 +1,16 @@
 import { getGameState } from "../backend/localStorage";
 import { INITIAL_CAPACITY, Scene } from "../models/scene";
 import { Toad } from "../models/Toad";
+import { isToadInEnclosure } from "./toad-location";
 
 /**
  * Жильё жаб.
  *
  * У жабы всегда ровно одно место: биопод (`Toad.scene_id`) или сектор колонии
- * (`Toad.roomId`) — см. `toad-location.ts`. Поэтому здесь считаются только «местные»:
+ см. `toad-location.ts`. Поэтому здесь считаются только «местные»:
  * жаба, ушедшая работать в репродуктор или ⚡-энергосектор, место в биоподе не занимает
- * (её `scene_id` пуст), а вернут её домой кнопкой «Домой» — с проверкой свободного места
- * (`backend/colony.ts` → `sendToadHome`).
+ * (её `scene_id` — id сектора), а вернут её домой кнопкой «Домой» — с проверкой
+ * свободного места (`backend/colony.ts` → `sendToadHome`).
  *
  * Склада жаб нет: биопод у жабы всегда есть, поэтому любые новые жабы — покупка на рынке,
  * потомство репродуктора, гибрид коллайдера, образец из похода, награда за достижение —
@@ -36,9 +37,7 @@ export interface HousingInfo {
 
 /** Жабы конкретного биопода: живут в нём сейчас (ушедшие в сектора не в счёт) */
 export const getEnclosureToads = (sceneId: number): Toad[] =>
-  getGameState().toads.filter(
-    (toad) => toad.scene_id === sceneId && !toad.roomId
-  );
+  getGameState().toads.filter((toad) => toad.scene_id === sceneId);
 
 /** Сколько мест осталось в биоподе */
 export const getSceneFreeSlots = (scene: Scene): number =>
@@ -48,8 +47,9 @@ export const getSceneFreeSlots = (scene: Scene): number =>
 export const getHousingInfo = (): HousingInfo => {
   const state = getGameState();
   const capacity = state.scenes.reduce((sum, scene) => sum + scene.capacity, 0);
-  // Жабы в секторах колонии (репродуктор, ⚡, «Разведка», лазарет) биопод не занимают
-  const used = state.toads.filter((toad) => toad.scene_id != null).length;
+  // Жабы в секторах колонии (репродуктор, ⚡, «Разведка», лазарет) биопод не занимают:
+  // их `scene_id` — строка с id сектора, а не число с id биопода
+  const used = state.toads.filter(isToadInEnclosure).length;
 
   return {
     capacity,
@@ -66,9 +66,8 @@ export const getSceneWithFreeSlot = (): Scene | null => {
   return (
     state.scenes.find(
       (scene) =>
-        state.toads.filter(
-          (toad) => toad.scene_id === scene.id && !toad.roomId
-        ).length < scene.capacity,
+        state.toads.filter((toad) => toad.scene_id === scene.id).length <
+        scene.capacity,
     ) ?? null
   );
 };
@@ -114,9 +113,7 @@ export const assignToadsToScenes = <T extends Partial<Toad>>(
   state.scenes.forEach((scene) => {
     occupancy.set(
       scene.id,
-      state.toads.filter(
-        (toad) => toad.scene_id === scene.id && !toad.roomId
-      ).length,
+      state.toads.filter((toad) => toad.scene_id === scene.id).length,
     );
   });
 

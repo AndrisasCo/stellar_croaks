@@ -28,10 +28,10 @@ const ToadHpRow = ({ toad }: { toad: Toad }) => {
     ratio <= 0
       ? "bg-red-600"
       : ratio < 0.35
-      ? "bg-red-500"
-      : ratio < 0.7
-      ? "bg-yellow-500"
-      : "bg-green-500";
+        ? "bg-red-500"
+        : ratio < 0.7
+          ? "bg-yellow-500"
+          : "bg-green-500";
 
   return (
     <div className="flex w-full mt-2 items-center justify-between gap-3">
@@ -64,10 +64,10 @@ const HungerLabel = ({ level }: { level: number }) => {
     level >= 80
       ? "text-green-400"
       : level >= 50
-      ? "text-yellow-400"
-      : level >= PRODUCTION_MIN_HUNGER
-      ? "text-orange-400"
-      : "text-red-400";
+        ? "text-yellow-400"
+        : level >= PRODUCTION_MIN_HUNGER
+          ? "text-orange-400"
+          : "text-red-400";
 
   return (
     <div
@@ -75,7 +75,7 @@ const HungerLabel = ({ level }: { level: number }) => {
       title={
         level <= PRODUCTION_MIN_HUNGER
           ? `Голодный минимум: ниже ${PRODUCTION_MIN_HUNGER} % сытости жаба вырабатывает лишь ${Math.round(
-              PRODUCTION_HUNGRY_FACTOR * 100
+              PRODUCTION_HUNGRY_FACTOR * 100,
             )} % биомассы`
           : "Сытость умножает выработку биомассы: корм на складе, автокормушка сектора кормит сама"
       }
@@ -157,9 +157,7 @@ export const ToadItem = ({
                 {toad.status === "out" && (
                   <>
                     <span>•</span>
-                    <span className="text-amber-300 text-2xs">
-                      🧭 в походе
-                    </span>
+                    <span className="text-amber-300 text-2xs">🧭 в походе</span>
                   </>
                 )}
                 {toad.status === "injured" && (
@@ -175,11 +173,11 @@ export const ToadItem = ({
           {button}
         </div>
 
-        {/* Редкость и генетика в одной строке */}
+        {/* качество и генетика в одной строке */}
         {/* Характеристики */}
         <div className="grid grid-cols-2 gap-2 text-sm">
           <div className={`${getRarityConfig(toad.genes?.rarity).color}`}>
-            <span className="text-gray-500">Редкость:</span>{" "}
+            <span className="text-gray-500">качество:</span>{" "}
             {getRarityConfig(toad.genes?.rarity).icon}{" "}
             <span className="font-semibold">
               {toad.genes?.rarity?.toFixed(1)}
@@ -220,10 +218,10 @@ export const ToadItem = ({
                 toad.state.hunger >= 80
                   ? "bg-green-500"
                   : toad.state.hunger >= 50
-                  ? "bg-yellow-500"
-                  : toad.state.hunger >= PRODUCTION_MIN_HUNGER
-                  ? "bg-orange-500"
-                  : "bg-red-500"
+                    ? "bg-yellow-500"
+                    : toad.state.hunger >= PRODUCTION_MIN_HUNGER
+                      ? "bg-orange-500"
+                      : "bg-red-500"
               }`}
               style={{ width: `${toad.state.hunger}%` }}
             />

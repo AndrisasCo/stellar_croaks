@@ -1,7 +1,11 @@
 import { ColonyState, EMPTY_COLONY } from "../models/colony";
 import { getToadDisease, isToadSick } from "../models/disease";
 import { Toad } from "../models/Toad";
-import { getToadHp, getToadMaxHp, HP_REGEN_PER_HOUR } from "./expedition-config";
+import {
+  getToadHp,
+  getToadMaxHp,
+  HP_REGEN_PER_HOUR,
+} from "./expedition-config";
 
 /**
  * ЛАЗАРЕТ: койки, скорость выздоровления и выборки жаб для интерфейса.
@@ -28,18 +32,23 @@ export const HOSPITAL_HP_REGEN_PER_HOUR = 24;
 /** Во сколько раз быстрее идёт срок болезни под присмотром лазарета */
 export const HOSPITAL_DISEASE_SPEED = 3;
 
-/** id построенных лазаретов колонии (по карте: их может быть несколько) */
+/**
+ * id построенных лазаретов колонии (по карте: их может быть несколько).
+ *
+ * Жаба помнит место по id гекса (`RoomConfig.id`), а постройка в сейве — по своему id
+ * (`вид_число`), поэтому отдаём id гекса: по нему `Toad.scene_id` и находит койку.
+ */
 export const getHospitalRoomIds = (colony?: ColonyState | null): string[] =>
   (colony ?? EMPTY_COLONY).rooms
     .filter((room) => room.kind === "hospital")
-    .map((room) => room.id);
+    .map((room) => room.slotId ?? room.id);
 
 /** Лежит ли жаба в лазарете прямо сейчас */
 export const isToadInHospital = (
   toad: Toad,
   hospitalIds: readonly string[],
 ): boolean =>
-  Boolean(toad.roomId) && hospitalIds.includes(toad.roomId as string);
+  typeof toad.scene_id === "string" && hospitalIds.includes(toad.scene_id);
 
 /** Раненая жаба: HP ниже максимума (выбитая тоже сюда попадает) */
 export const isToadWounded = (toad: Toad): boolean =>

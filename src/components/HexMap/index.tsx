@@ -1,11 +1,4 @@
-import {
-  ReactElement,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MenuIcons } from "../../assets/icons";
 import { useColony } from "../../hooks/use-colony";
 import { useGameState } from "../../hooks/use-game-state";
@@ -14,10 +7,7 @@ import { useSoundEffects } from "../../hooks/use-sound-effects";
 import { Toad } from "../../models/Toad";
 import { CURRENCY_CONFIG } from "../../utils/constants";
 import { checkNestCourtship } from "../../utils/breeding-manager";
-import {
-  getSceneProductionRate,
-  getUpkeepRate,
-} from "../../utils/production-manager";
+import { getSceneProductionRate } from "../../utils/production-manager";
 import { getHousingInfo } from "../../utils/housing";
 import { getToadHomeId } from "../../utils/toad-location";
 import { getStorageCapacityInfo } from "../../utils/storage";
@@ -26,22 +16,15 @@ import { useModal } from "../ModalContext";
 import { useToads } from "../ToadContext";
 import { BurgerMenu } from "../modals/BurgerMenuModal";
 import BuildRoomModal from "../modals/BuildRoomModal";
-import HospitalModal from "../modals/HospitalModal";
-import ExpeditionModal from "../modals/ExpeditionModal";
-import DissolveModal from "../modals/Lab/DissolveModal";
-import ToadCollider from "../modals/Lab/ToadColliderModal";
-import NestModal from "../modals/Lab/NestModal";
-import PowerRoomModal from "../modals/PowerRoomModal";
-import ShopMenu from "../modals/ShopMenu";
-import StorageModal from "../modals/StorageModal";
-import ToadListModal from "../modals/ToadListModal";
+import ColonyModal from "../modals/ColonyModal";
 import { ToadInfo } from "../modals/ToadInfoModal";
-import { useFeedToads } from "../ToadCanvas/use-feed-toads";
 import { ClickButton } from "../shared/ClickButton";
-import { canBuildOnSlot, isRoomPowered } from "./colony-build";
+import { canBuildOnSlot, getUnpoweredAviarySceneIds } from "./colony-build";
 import HexMapCanvas from "./HexMapCanvas";
-import { isRoomOpen, RoomActionId, RoomConfig } from "./rooms-config";
+import { openRoomModal } from "./open-room-modal";
+import { isRoomOpen, RoomConfig } from "./rooms-config";
 import { canMoveToadToRoom, ToadMoveCheck } from "./toad-move-rules";
+import { UPKEEP_PER_TOAD_HOUR } from "../../utils/gamification-config";
 
 /** Локальные часы колонии для HUD (показываются в шапке, обновляются раз в полминуты). */
 const formatClock = (date: Date) =>
@@ -63,47 +46,6 @@ const pluralizeHexes = (count: number): string => {
   return "гексов";
 };
 
-/** Модалка, которую открывает действие сектора: ей передают сам гекс (он открывает в модалке
- *  последним табом «Данные сектора»), а `bg` — свой фон, если модалке он нужен (лаборатория). */
-type RoomModalEntry = {
-  render: (room: RoomConfig) => ReactElement;
-  bg?: string;
-} | null;
-
-/**
- * Действия секторов каталога → существующие модалки: карта только выбирает, какую показать.
- * Действия без модалки (тултип «о биоподе», чип кормления) помечены null — их открывают
- * другие места интерфейса. Таблица намеренно полная (`Record<RoomActionId, …>`): добавил
- * новое действие в каталог — компилятор напомнит про модалку.
- */
-const ROOM_MODAL_BY_ACTION: Record<RoomActionId, RoomModalEntry> = {
-  // Ядро ничего не открывает: улучшения и снос переехали к самим секторам — в последний таб
-  // их модалок «Данные сектора» (`modals/RoomDataTab.tsx`). Модалки «Сектора колонии» больше нет.
-  "room-upgrade": null,
-  // Биопод открывается сам: модалке нужен биопод гекса (`RoomConfig.sceneId`), а не общий
-  // «текущий биопод» — см. обработчик клика. Здесь запасной путь без привязки к гексу.
-  "toad-list": null,
-  "scene-info": null,
-  feed: null,
-  // Репродукторов в колонии может быть несколько: гекс открывает модалку сам (см. обработчик
-  // клика) — гексу модалка и обязана: он её сектор с его парами и данными.
-  nest: { render: (room) => <NestModal roomId={room.id} room={room} /> },
-  // Коллайдер открывает и смешивание, и инкубатор: это две вкладки одной модалки
-  collider: { render: (room) => <ToadCollider room={room} /> },
-  dissociator: { render: (room) => <DissolveModal room={room} /> },
-  shop: { render: (room) => <ShopMenu room={room} /> },
-  storage: { render: (room) => <StorageModal room={room} /> },
-  // «Разведка»: модалке нужен её гекс — из жаб этого сектора собирают команду, и данные
-  // сектора тоже его. Из бургер-меню «Разведка» открывается отдельно и без гекса: модалка
-  // сама ищет сектор с жабами внутри (см. ExpeditionModal).
-  scout: { render: (room) => <ExpeditionModal roomId={room.id} /> },
-  // «Лазарет» на карте открывается по гексу (модалке нужен сам сектор: его койки и его
-  // пациенты — см. обработчик клика). Здесь — запасной путь без привязки к гексу.
-  hospital: null,
-  // ⚡-сектор открывается отдельно: её модалке нужна сам сектор
-  "power-room": null,
-};
-
 /**
  * Главный экран колонии: гексагональная карта вместо старой сцены с жабами и меню.
  *
@@ -113,8 +55,8 @@ const ROOM_MODAL_BY_ACTION: Record<RoomActionId, RoomModalEntry> = {
  *
  * Гексы — только цвет: иконок, подписей и кнопок внутри секторов нет, в центре гекса
  * живут сами жабы. Поэтому тап по гексу открывает действие сектора из каталога
- * (`rooms-config.ts` → `ROOM_MODAL_BY_ACTION`):
- *  - ядро        → ничего: улучшения и снос живут в табе «Данные сектора» у самих секторов;
+ * (`rooms-config.ts` → `open-room-modal.tsx`):
+ *  - ядро        → «Управление колонией»: сводка, все жабы и массовое кормление;
  *  - биопод      → список жаб и кормление;
  *  - репродуктор      → размножение;
  *  - коллайдер (с вкладкой инкубатора) / диссоциатор → лаборатория;
@@ -122,12 +64,13 @@ const ROOM_MODAL_BY_ACTION: Record<RoomActionId, RoomModalEntry> = {
  *  - разведка    → походы: модалке передаётся гекс, а команду собирают из жаб этого сектора;
  *  - ⚡-сектор   → жабы-энергетики внутри;
  *  - свободный гекс → меню застройки (любой сектор — на любой гекс);
- *  - панель колонии в HUD → статистика биопода, чип 🍎 — покормить всех.
+ *  - панель колонии в HUD → статистика биопода; кормление — из ядра.
  *
  * Управление картой: тап открывает сектор, в приближенном виде тап по жабе — её
  * карточка, удержание жабы — перенос в другой сектор, двойной тап — приближение.
  *
- * Модалки берутся существующие — новый UI-слой не создаётся.
+ * Модалки секторов берутся существующие; у ядра своё окно управления колонией,
+ * потому что оно не принадлежит ни одному сектору.
  */
 export default function HexMapScreen() {
   const { openModal } = useModal();
@@ -135,14 +78,6 @@ export default function HexMapScreen() {
   const { account, allToads, ownedScenes, selectToad } = useToads();
   const { playCroak, playCroakBig, playCroakSmall, playBeep, playOk } =
     useSoundEffects();
-  const {
-    showFoodTooltip,
-    handleCancelFeed,
-    handleConfirmFeed,
-    handleShowFoodTooltip,
-    getTooltipMessage,
-    isFoodActive,
-  } = useFeedToads();
 
   // Колония: построенные секторы, энергосеть и жабы по гексам
   const { rooms, powerGrid, toadsByRoom, placeToad, releaseToad } = useColony();
@@ -154,10 +89,14 @@ export default function HexMapScreen() {
    * Свой список у каждого гекса-биопода — его собирает `useColony` (`getRoomToadLists`),
    * потому что у каждого гекса «Биопод» свой биопод (`RoomConfig.sceneId`).
    */
-  const aviaryToads = useMemo(
-    () => allToads.filter((toad) => !toad.roomId),
-    [allToads],
-  );
+
+  const aviaryToads = useMemo(() => {
+    const aviariesIds = ownedScenes.map((s) => s.id);
+
+    return allToads.filter((toad) =>
+      aviariesIds.includes(Number(toad.scene_id)),
+    );
+  }, [allToads, ownedScenes]);
 
   /**
    * Территория колонии растёт фронтом застройки: у нового сектора открываются все её соседние
@@ -191,9 +130,19 @@ export default function HexMapScreen() {
     });
   }, [addNotification, unlockedCount]);
 
+  /**
+   * Обесточенные биоподы: их жильцы остаются в списке, но в выработку не идут.
+   * Upkeep при этом не пропадает — жабы всё равно едят, поэтому HUD может показать минус.
+   */
+  const unpoweredAviarySceneIds = useMemo(
+    () => getUnpoweredAviarySceneIds(rooms, powerGrid),
+    [rooms, powerGrid],
+  );
+
   // Ферма считает только жаб биопода: жабы в энергосекторах не фармят биомассу
   const sceneFarmRate =
-    getSceneProductionRate(aviaryToads) - getUpkeepRate(aviaryToads);
+    getSceneProductionRate(aviaryToads, unpoweredAviarySceneIds) -
+    aviaryToads.length * UPKEEP_PER_TOAD_HOUR;
 
   // Энергия колонии для HUD: сколько построенных секторов реально под током
   const poweredRooms = useMemo(
@@ -340,55 +289,16 @@ export default function HexMapScreen() {
         return;
       }
 
-      // ⚡-сектор: жабы внутри и их кормление — модалке нужна сам сектор
-      if (room.kind === "power") {
-        openModal(() => <PowerRoomModal room={room} />);
+      // Ядро — центр управления колонией: сводка, все жабы и кормление всей колонии
+      // (модалка не привязана к гексу, поэтому открывается до общей таблицы действий).
+      if (room.kind === "core") {
+        openModal(() => <ColonyModal />, { className: "md:max-w-2xl" });
         return;
       }
 
-      // Репродуктор: репродукторов в колонии может быть несколько — модалка знает, какой гекс открыли
-      if (room.kind === "breeding") {
-        openModal(() => <NestModal roomId={room.id} room={room} />);
-        return;
-      }
-
-      // Биопод: список жаб именно этого гекса — биопод его сцены, а не общий «текущий»
-      if (room.kind === "aviary") {
-        const sceneId = room.sceneId;
-
-        if (sceneId === undefined) {
-          return;
-        }
-
-        openModal(() => <ToadListModal sceneId={sceneId} room={room} />);
-        return;
-      }
-
-      // «Разведка»: модалке нужен её гекс — команду собирают из жаб этого сектора
-      // (тап по жабе сектора ставит её на сильную роль, «Собрать команду» занимает роли)
-      if (room.kind === "scout") {
-        openModal(() => <ExpeditionModal roomId={room.id} />);
-        return;
-      }
-
-      // «Лазарет»: у сектора своя модалка (койки, пациенты и данные сектора), и ей нужен
-      // именно этот гекс — лечат жаб его коек (`modals/HospitalModal.tsx`)
-      if (room.kind === "hospital") {
-        openModal(() => <HospitalModal room={room} />);
-        return;
-      }
-
-      const actionId = room.actions[0]?.id;
-      const modal = actionId ? ROOM_MODAL_BY_ACTION[actionId] : null;
-
-      if (!modal) {
-        return;
-      }
-
-      openModal(
-        () => modal.render(room),
-        modal.bg ? { bg: modal.bg } : undefined,
-      );
+      // Остальные секторы открывают свои модалки; ⚡, биопод, репродуктор и лазарет
+      // получают из `openRoomModal` именно тот гекс, по которому тапнули.
+      openRoomModal(room, openModal);
     },
     [addNotification, openModal, rooms],
   );
@@ -413,7 +323,7 @@ export default function HexMapScreen() {
   const handleCanDropToad = useCallback(
     (toad: Toad, room: RoomConfig): ToadMoveCheck => {
       const aviaryScene =
-        room.kind === "aviary" && room.sceneId !== undefined
+        room.kind === "aviary" && room.sceneId != null
           ? (ownedScenes.find((scene) => scene.id === room.sceneId) ?? null)
           : null;
 
@@ -462,7 +372,7 @@ export default function HexMapScreen() {
         // Мест может не хватить — тогда жаба остаётся там, где была (перенос ещё до
         // броска проверяет `canMoveToadToRoom`, а здесь страховка от гонки).
         const movedToOtherAviary =
-          room.sceneId !== undefined && room.sceneId !== getToadHomeId(toad);
+          room.sceneId != null && room.sceneId !== getToadHomeId(toad);
         const result = releaseToad(toad.id, room.sceneId ?? null);
 
         if (!result.ok) {
@@ -547,7 +457,6 @@ export default function HexMapScreen() {
           rooms={rooms}
           poweredRooms={powerGrid.powered}
           toadsByRoom={toadsByRoom}
-          feedRoomId={isFoodActive ? "aviary" : null}
           onRoomTap={handleRoomTap}
           onToadTap={handleToadTap}
           canDropToad={handleCanDropToad}
@@ -594,19 +503,17 @@ export default function HexMapScreen() {
           </ClickButton>
         </div>
 
-        {/* Ресурсы колонии — плавающие чипы поверх карты. Чип 🍎 кормит всех жаб */}
-        <div className="pointer-events-none flex flex-col gap-1.5 w-16">
-          {resources.map((item) => {
-            return (
-              <div
-                key={item.key}
-                className={`flex items-center gap-1 rounded-lg border border-white/5 bg-slate-950/55 px-2 py-1 text-[11px] font-semibold backdrop-blur-md ${item.tone}`}
-              >
-                <span className="text-[12px] leading-none">{item.icon}</span>
-                <span className="tabular-nums">{item.value}</span>
-              </div>
-            );
-          })}
+        {/* Ресурсы колонии — плавающие чипы поверх карты; кормление живёт в ядре */}
+        <div className="pointer-events-none flex w-16 flex-col gap-1.5">
+          {resources.map((item) => (
+            <div
+              key={item.key}
+              className={`flex items-center gap-1 rounded-lg border border-white/5 bg-slate-950/55 px-2 py-1 text-[11px] font-semibold backdrop-blur-md ${item.tone}`}
+            >
+              <span className="text-[12px] leading-none">{item.icon}</span>
+              <span className="tabular-nums">{item.value}</span>
+            </div>
+          ))}
         </div>
       </header>
 
@@ -616,33 +523,6 @@ export default function HexMapScreen() {
           ? "Приближенный вид: тап по жабе — её карточка, тап по гексу — сектор. Удержите жабу, чтобы перенести её в другой сектор."
           : "Обзорный вид: тап по секторе — её интерфейс, двойной тап — приблизиться к гексу, удержание жабы — перенос. Свободный гекс — застройка: любой сектор на любом гексе."}
       </div>
-
-      {/* Кормление: та же механика, что была на старой сцене */}
-      {showFoodTooltip && (
-        <div className="fixed left-1/2 top-1/4 z-50 w-[250px] -translate-x-1/2">
-          <div className="bg-color-main rounded-lg border border-gray-600 p-3 shadow-lg backdrop-blur-sm">
-            <div className="mb-2 text-center text-sm text-white">
-              {getTooltipMessage().message}
-            </div>
-            <div className="flex gap-2">
-              <ClickButton
-                onClick={handleCancelFeed}
-                className="flex-1 rounded bg-gray-600 px-3 py-2 text-sm text-white duration-200 hover:bg-gray-500"
-              >
-                Отмена
-              </ClickButton>
-              <ClickButton
-                onClick={handleConfirmFeed}
-                disabled={getTooltipMessage().disabled || isFoodActive}
-                className="flex flex-1 items-center justify-center gap-1 rounded bg-yellow-600 px-3 py-2 text-sm text-white duration-200 hover:bg-yellow-500 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <img src="/assets/food.webp" width={30} alt="food" />
-                Покормить
-              </ClickButton>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

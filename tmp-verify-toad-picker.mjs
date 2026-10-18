@@ -73,9 +73,9 @@ const toad = (over = {}) => ({
   sex: "male",
   type: "hybrid",
   scene_id: 1,
+  homeId: 1,
   created_at: new Date().toISOString(),
   parents: null,
-  roomId: null,
   energy: 100,
   breedCooldownUntil: 0,
   hp: 10,
@@ -167,7 +167,7 @@ const stubState = (patch = {}) => ({
       id: 9,
       name: "Самец в репродукторе",
       sex: "male",
-      roomId: "outpost-3",
+      scene_id: "outpost-3",
     }),
     toad({ id: 10, name: "Головастик", sex: "female", stage: "toadpole" }),
     toad({ id: 11, name: "Нейтрал", sex: "neuter" }),
@@ -385,14 +385,14 @@ check("подходящий самец отказа не получает", reas
 console.log("\n[5] Жаба из репродуктора не предлагается повторно");
 console.log("─".repeat(60));
 reset();
-patchToad(2, { roomId: NEST });
+patchToad(2, { scene_id: NEST });
 checkIds(
   "самка уже в репродукторе — в списке её нет",
   breeding.getNestSlotCandidates(0),
   "12",
 );
 checkText("причина повторного приглашения", reason(2, 0), /уже сидит/);
-patchToad(2, { roomId: OTHER_NEST });
+patchToad(2, { scene_id: OTHER_NEST });
 checkIds(
   "самка в другом репродукторе — в списке её нет",
   breeding.getNestSlotCandidates(0),
@@ -403,8 +403,8 @@ console.log("\n[6] Пара из списка: кнопка «Начать ух�
 console.log("─".repeat(60));
 reset();
 notes.length = 0;
-patchToad(2, { roomId: NEST });
-patchToad(1, { roomId: NEST });
+patchToad(2, { scene_id: NEST });
+patchToad(1, { scene_id: NEST });
 const ready = breeding.checkNestCourtship(NEST);
 check("пара из списка даёт готовую кнопку", ready.ready, true);
 check("в паре самец из списка слота самца", ready.pair?.male.id, 1);
@@ -417,8 +417,8 @@ check("самец ухаживает", Boolean(findToad(1).mating), true);
 console.log("\n[7] Больная и выбитая жаба пару не образуют");
 console.log("─".repeat(60));
 reset();
-patchToad(4, { roomId: NEST });
-patchToad(1, { roomId: NEST });
+patchToad(4, { scene_id: NEST });
+patchToad(1, { scene_id: NEST });
 const sickCheck = breeding.checkNestCourtship(NEST);
 check("кнопка не готова: самка больна", sickCheck.ready, false);
 checkText("причина — болезнь", sickCheck.message, /Больная/);
@@ -430,8 +430,8 @@ check(
 );
 
 reset();
-patchToad(5, { roomId: NEST });
-patchToad(1, { roomId: NEST });
+patchToad(5, { scene_id: NEST });
+patchToad(1, { scene_id: NEST });
 const downCheck = breeding.checkNestCourtship(NEST);
 check("кнопка не готова: самка выбита", downCheck.ready, false);
 checkText("причина — выбита", downCheck.message, /Выбитая/);

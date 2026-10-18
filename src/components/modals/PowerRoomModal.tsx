@@ -82,7 +82,8 @@ export default function PowerRoomModal({ room }: { room: RoomConfig }) {
 
   /** Как называется сектор, в котором жаба работает сейчас */
   const getRoomName = (id: string): string =>
-    rooms.find((item) => item.id === id)?.name ?? "сектор колонии";
+    rooms.find((item) => item.id === id || item.slotId === id)?.name ??
+    "сектор колонии";
 
   /**
    * Жабы для подсадки в энергосектор — строками общего списка (`shared/ToadPicker`).
@@ -97,14 +98,15 @@ export default function PowerRoomModal({ room }: { room: RoomConfig }) {
       splitToadPickerCandidates(
         allToads
           // Жабы самого энергосектора и так стоят списком выше
-          .filter((toad) => toad.roomId !== room.id)
+          .filter((toad) => toad.scene_id !== room.id)
           .map((toad) => ({
             toad,
             // Сверху — те, кто уже даёт ток: сытые взрослые на своих местах
             rank: isToadPowering(toad) ? 1 : 0,
-            reason: toad.roomId
-              ? `Жаба уже работает в секторе «${getRoomName(toad.roomId)}»`
-              : getToadPowerIssue(toad),
+            reason:
+              typeof toad.scene_id === "string"
+                ? `Жаба уже работает в секторе «${getRoomName(toad.scene_id)}»`
+                : getToadPowerIssue(toad),
           }))
       ),
     [allToads, room.id, rooms]
@@ -112,8 +114,8 @@ export default function PowerRoomModal({ room }: { room: RoomConfig }) {
 
   /** Где жаба живёт сейчас — строкой списка: сектор колонии или её биопод */
   const locationOf = (toad: Toad): string => {
-    if (toad.roomId) {
-      return getRoomName(toad.roomId);
+    if (typeof toad.scene_id === "string") {
+      return getRoomName(toad.scene_id);
     }
 
     const scene = (gameState.scenes ?? []).find(

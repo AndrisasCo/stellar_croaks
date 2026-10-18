@@ -39,9 +39,32 @@ export const MAX_OWNED_SCENES = 10;
 export const DEMOLISH_ROOM_COST = 100;
 
 /**
- * id гекса «Репродуктор» в базовой карте колонии (`HexMap/rooms-config.ts`).
- * Репродукторов на карте может быть несколько, но спаривание идёт в базовом: именно в него
- * уходит пара на ухаживание (15–30 мин), поэтому id держим константой, а не строкой
- * в двух местах.
+ * Уникальный числовой хвост id сектора.
+ *
+ * Формат id сектора — `вид_уникальноеЧисло` (`aviary_1729250000000001`): по id видно,
+ * что это за сектор, а число исключает совпадение двух построек одного вида. Счётчик
+ * внутри миллисекунды защищает от двух построек в одном тике, `Date.now()` — от
+ * совпадения между перезагрузками страницы.
  */
-export const NEST_ROOM_ID = "breeding";
+let roomIdSequence = 0;
+
+export const uniqueRandomNumber = (): number => {
+  roomIdSequence = (roomIdSequence + 1) % 1000;
+
+  return Date.now() * 1000 + roomIdSequence;
+};
+
+/** id сектора: вид плюс уникальное число — `kind_1234567890123`. */
+export const createRoomId = (kind: string): string =>
+  `${kind}_${uniqueRandomNumber()}`;
+
+/**
+ * id базовых секторов карты (`HexMap/rooms-config.ts`).
+ *
+ * Базовые секторы стоят с начала игры и в сохранении не лежат, поэтому их id должны быть
+ * одинаковыми после каждой перезагрузки: по ним `demolished`, апгрейды и жабы в секторах
+ * находят свой гекс. Числа фиксированные, но формат тот же, что у построек игрока.
+ */
+export const CORE_ROOM_ID = "core_100000000";
+export const NEST_ROOM_ID = "breeding_100000001";
+export const AVIARY_ROOM_ID = "aviary_100000002";

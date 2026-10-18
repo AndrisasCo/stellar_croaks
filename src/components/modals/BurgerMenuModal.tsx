@@ -10,6 +10,7 @@ import AchivementsModal from "./AchivementsModal";
 import AuthModal from "./AuthModal";
 import ExpeditionModal from "./ExpeditionModal";
 import LeaderboardModal from "./LeaderboardModal";
+import LoreArchiveModal from "./LoreArchiveModal";
 import SettingsModal from "./SettingsModal";
 import ShopMenu from "./ShopMenu";
 import StorageModal from "./StorageModal";
@@ -24,9 +25,9 @@ type MenuId =
   | "stats"
   | "leaderboard"
   | "tutorial"
+  | "lore"
   | "settings"
   | "auth";
-
 
 // Иконка настроек
 const SettingsIcon = (
@@ -150,9 +151,31 @@ const MENU_ITEMS: {
     id: "tutorial",
     icon: MenuIcons.collection,
     label: "Обучение",
-    desc: "Ваш путеводитель в мире жабоводства",
+    desc: "Полный справочник: карта, жабы и экономика",
     color: "bg-teal-900/50 border-teal-500/50",
     target: <TutorialModal />,
+  },
+  {
+    id: "lore",
+    icon: (
+      <svg
+        className="w-6 h-6"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={1.5}
+          d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"
+        />
+      </svg>
+    ),
+    label: "Архив КВАЗа",
+    desc: "Восстановленные записи станции «Титан-9»",
+    color: "bg-cyan-900/50 border-cyan-500/50",
+    target: <LoreArchiveModal />,
   },
   {
     id: "settings",
@@ -196,7 +219,7 @@ export const BurgerMenu = () => {
   // В браузере аккаунт заводит сам игрок (почта + пароль), в Telegram он уже есть —
   // поэтому пункт меню показываем только веб-версии.
   const items = MENU_ITEMS.filter(
-    (item) => item.id !== "auth" || detectPlatformName() === "web"
+    (item) => item.id !== "auth" || detectPlatformName() === "web",
   ).map((item) => ({
     ...item,
     // Сектор ещё не построен — пункт меню остаётся на месте, но не открывает модалку

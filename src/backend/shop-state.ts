@@ -2,6 +2,12 @@ import { Toad } from "../models/Toad";
 import { ToadTypes } from "../models/Toad/toad-species";
 import { Items } from "../models/user";
 import { randomizeToadCharacteristics } from "../utils/randomize-toad-characteristics";
+import {
+  createScriptedEliteOrder,
+  getScriptedEliteOrder,
+  SCRIPTED_ELITE_KINDS,
+} from "./elite-order-generator";
+import type { EliteOrder } from "./elite-order-generator";
 
 // Интерфейс для состояния магазина
 export interface ShopState {
@@ -277,9 +283,44 @@ export const getNewToads = () => {
   }));
 };
 
-export const getNewElite = () => {
-  const shuffled = [...eliteOrders].sort(() => Math.random() - 0.5);
-  return shuffled.map((e) => e.id).slice(0, 3);
+/** Сколько заказов показывает витрина за одно обновление */
+export const ELITE_ORDERS_PER_REFRESH = 5;
+
+const shuffle = <T>(items: readonly T[]): T[] => {
+  const result = [...items];
+
+  // Фишер–Йетс: в отличие от sort(() => Math.random() - 0.5) не смещает вероятности.
+  for (let index = result.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [result[index], result[swapIndex]] = [result[swapIndex], result[index]];
+  }
+
+  return result;
+};
+
+/**
+ * Резолвит id заказа с витрины: сначала ищет кураторский заказ, затем —
+ * скриптованный. Скриптованные параметры закодированы в id, поэтому после
+ * перезагрузки заказ восстанавливается без хранения замыканий в localStorage.
+ */
+export const getEliteOrderById = (id: string): EliteOrder | undefined =>
+  eliteOrders.find((order) => order.id === id) ??
+  getScriptedEliteOrder(id) ??
+  undefined;
+
+export const getNewElite = (): string[] => {
+  // Каждое обновление гарантирует по одному заказу каждого сценария: характер,
+  // окрас и порог характеристики. Остаток витрины добираем кураторскими заказами,
+  // чтобы редкие ручные условия тоже продолжали попадаться.
+  const scripted = SCRIPTED_ELITE_KINDS.map(
+    (kind) => createScriptedEliteOrder(kind).id,
+  );
+  const curatedSlots = Math.max(0, ELITE_ORDERS_PER_REFRESH - scripted.length);
+  const curated = shuffle(eliteOrders)
+    .slice(0, curatedSlots)
+    .map((order) => order.id);
+
+  return shuffle([...scripted, ...curated]).slice(0, ELITE_ORDERS_PER_REFRESH);
 };
 
 /**
@@ -290,7 +331,7 @@ export const getNewElite = () => {
  * меньше самых простых (аудит P0 «награда ↔ сложность перевёрнуты»).
  */
 
-export const eliteOrders = [
+export const eliteOrders: EliteOrder[] = [
   {
     id: "elite_1",
     title: "Нежный гигант",
@@ -327,30 +368,30 @@ export const eliteOrders = [
   {
     id: "elite_5",
     title: "Исполин рассвета",
-    description: "Жаба редкостью 7 и больше размером более 40",
+    description: "Жаба качеством 7 и больше размером более 40",
     requirement: (toad: Toad) =>
       toad.genes.weight > 40 && toad.genes.rarity >= 7,
-    reward: 600, // масса 40+ И редкость 7+: экстремальная селекция
+    reward: 600, // масса 40+ И качество 7+: экстремальная селекция
     difficulty: "extreme",
   },
   {
     id: "elite_6",
     title: "Вечный странник",
-    description: "Жаба с полом Бесполый и редкостью 7+",
+    description: "Жаба с полом Бесполый и качеством 7+",
     requirement: (toad: Toad) =>
       toad.sex === "neuter" && toad.genes.rarity >= 7,
-    reward: 120, // бесполый И редкость 7+
+    reward: 120, // бесполый И качество 7+
     difficulty: "extreme",
   },
   {
     id: "elite_7",
     title: "Безумный гений",
-    description: "Жаба с характером Новатор или Энергичный и редкостью 6+",
+    description: "Жаба с характером Новатор или Энергичный и качеством 6+",
     requirement: (toad: Toad) =>
       (toad.genes.personality === "innovator" ||
         toad.genes.personality === "energetic") &&
       toad.genes.rarity >= 6,
-    reward: 150, // Новатор или Энергичный И редкость 6+
+    reward: 150, // Новатор или Энергичный И качество 6+
     difficulty: "hard",
   },
   {
@@ -369,7 +410,7 @@ export const eliteOrders = [
   {
     id: "elite_9",
     title: "Наследник легенд",
-    description: "Головастик 8+ поколения с редкостью 6+",
+    description: "Головастик 8+ поколения с качеством 6+",
     requirement: (toad: Toad) =>
       toad.stage === "toadpole" &&
       toad.generation >= 8 &&
@@ -407,10 +448,10 @@ export const eliteOrders = [
   {
     id: "elite_13",
     title: "Повелитель иллюзий",
-    description: "Жаба с характером Лидер и редкостью 5+",
+    description: "Жаба с характером Лидер и качеством 5+",
     requirement: (toad: Toad) =>
       toad.genes.personality === "leader" && toad.genes.rarity >= 5,
-    reward: 90, // Лидер И редкость 5+
+    reward: 90, // Лидер И качество 5+
     difficulty: "medium",
   },
   {
@@ -434,12 +475,12 @@ export const eliteOrders = [
   {
     id: "elite_16",
     title: "Болотная дива",
-    description: "Самка с характером Светская жаба и редкостью 6+",
+    description: "Самка с характером Светская жаба и качеством 6+",
     requirement: (toad: Toad) =>
       toad.sex === "female" &&
       toad.genes.personality === "socialite" &&
       toad.genes.rarity >= 6,
-    reward: 120, // самка, Светская жаба, редкость 6+
+    reward: 120, // самка, Светская жаба, качество 6+
     difficulty: "medium",
   },
   {
@@ -447,7 +488,8 @@ export const eliteOrders = [
     title: "Грёзы реальности",
     description: "Жаба с характером Мечтатель и беременностью",
     requirement: (toad: Toad) =>
-      toad.genes.personality === "dreamer" && toad.pregnancy?.isPregnant,
+      toad.genes.personality === "dreamer" &&
+      Boolean(toad.pregnancy?.isPregnant),
     reward: 70, // Мечтатель и беременна: заказ под окно в 10 минут
     difficulty: "medium",
   },
@@ -492,10 +534,10 @@ export const eliteOrders = [
   {
     id: "elite_22",
     title: "Молчание мудреца",
-    description: "Жаба с характером Отшельник и редкостью 8+",
+    description: "Жаба с характером Отшельник и качеством 8+",
     requirement: (toad: Toad) =>
       toad.genes.personality === "hermit" && toad.genes.rarity >= 8,
-    reward: 180, // Отшельник И редкость 8+
+    reward: 180, // Отшельник И качество 8+
     difficulty: "extreme",
   },
   {
@@ -524,12 +566,12 @@ export const eliteOrders = [
     id: "elite_25",
     title: "Продукт распада",
     description:
-      "Жаба с серьезными генетическими повреждениями (уровень мутации 50+) и редкостью 5+",
+      "Жаба с серьезными генетическими повреждениями (уровень мутации 50+) и качеством 5+",
     requirement: (toad: Toad) =>
       toad.state.genetic_fault !== undefined &&
       toad.state.genetic_fault >= 50 &&
       toad.genes.rarity >= 5,
-    reward: 40, // мутация 50+ И редкость 5+
+    reward: 40, // мутация 50+ И качество 5+
     difficulty: "hard",
   },
   {

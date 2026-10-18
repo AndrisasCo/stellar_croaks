@@ -91,7 +91,7 @@ export const EliteOrderTooltip: React.FC<EliteOrderTooltipProps> = ({
                     <ToadGender gender={toad.sex} />
                   </div>
                   <div className="grid grid-cols-2 gap-x-2 text-xs text-gray-300">
-                    <span>Редкость: {toad.genes.rarity.toFixed(1)}</span>
+                    <span>качество: {toad.genes.rarity.toFixed(1)}</span>
                   </div>
                 </div>
                 {/* Дом жабы — её биопод (`homeId`): у жабы без дома (сейв старой версии,

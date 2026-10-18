@@ -1,6 +1,7 @@
 import { Toad } from "../../models/Toad";
 import { ColonyRoomKind, ColonyState } from "../../models/colony";
 import { Scene } from "../../models/scene";
+import type { NarratorTaskId } from "../../utils/narrator";
 import { hexCoordKey, hexNeighbors } from "./hex-geometry";
 import {
   computePowerGrid,
@@ -102,12 +103,25 @@ export const canBuildRoomKind = (
  */
 export const getRoomCostAfterDemolish = (
   colony: ColonyState,
-  room: { id: string; kind: ColonyRoomKind },
-): number =>
-  getRoomCost(
-    { ...colony, rooms: colony.rooms.filter((item) => item.id !== room.id) },
+  room: { id: string; slotId?: string | null; kind: ColonyRoomKind },
+): number => {
+  const ids = new Set<string>([room.id]);
+
+  if (room.slotId) {
+    ids.add(room.slotId);
+  }
+
+  return getRoomCost(
+    {
+      ...colony,
+      rooms: colony.rooms.filter(
+        (item) =>
+          !ids.has(item.id) && (item.slotId == null || !ids.has(item.slotId)),
+      ),
+    },
     room.kind,
   );
+};
 
 /**
  * Почему сектор нельзя снести прямо сейчас (`null` — можно).
@@ -197,11 +211,13 @@ export const resolveColonyRooms = (
   const claimedScenes = new Set(
     knownRooms
       .map((room) => room.sceneId)
-      .filter((sceneId): sceneId is number => sceneId !== undefined),
+      .filter((sceneId): sceneId is number => sceneId != null),
   );
   const freeScene = scenes.find((scene) => !claimedScenes.has(scene.id));
   const rooms = getUnlockedRooms(colony.rooms, colony.demolished).map((room) => {
-    const built = knownRooms.find((item) => item.id === room.id);
+    const built = knownRooms.find(
+      (item) => (item.slotId ?? item.id) === room.slotId,
+    );
 
     // Слот застроили — на карте стоит сектор того вида, который выбрал игрок
     if (!built) {
@@ -216,12 +232,13 @@ export const resolveColonyRooms = (
 
   // Свободные гексы, доступные под застройку, помечаем плюсом — их видно на карте.
   // Имена с номерами считаем по порядку постройки (`colony.rooms`), а не по порядку гексов:
-  // у уже стоящего сектора номер не должен меняться (см. `room-names.ts`).
+  // у уже стоящего сектора номер не должен меняться (см. `room-names.ts`). Карта зовёт
+  // постройку id гекса, а сейв помнит ещё и её собственный id — в очередь кладём оба.
   return withRoomNames(
     rooms.map((room) =>
       canBuildOnSlot(room, rooms) ? { ...room, icon: room.icon || "+" } : room,
     ),
-    knownRooms.map((room) => room.id),
+    knownRooms.flatMap((room) => [room.id, room.slotId ?? room.id]),
   );
 };
 
@@ -273,6 +290,43 @@ export const getPowerGrid = (
 export const isRoomPowered = (room: RoomConfig, grid: PowerGrid): boolean =>
   !isBuiltRoom(room) || grid.powered[room.id] === true;
 
+/** Заголовок ошибки обесточенного сектора: его показывают таб данных и подсказки вкладок. */
+export const ROOM_UNPOWERED_TITLE = "Сектор обесточен";
+
+/** Почему сектор не работает: без тока у него остаются только данные сектора. */
+export const ROOM_UNPOWERED_MESSAGE =
+  "Сектор обесточен: подключите его к ядру или энергосектору ⚡ — без тока он не работает.";
+
+/** Причина, по которой сектор не работает (null — ток есть или слот ещё не застроен). */
+export const getRoomPowerIssue = (
+  room: RoomConfig,
+  grid: PowerGrid,
+): string | null => (isRoomPowered(room, grid) ? null : ROOM_UNPOWERED_MESSAGE);
+
+/**
+ * Биоподы без тока: их жильцы остаются доступны, но биомассу не вырабатывают.
+ * Возвращаем id сцен, чтобы и тик фермы, и HUD считали выработку одинаково.
+ */
+export const getUnpoweredAviarySceneIds = (
+  rooms: RoomConfig[],
+  grid: PowerGrid,
+): Set<number> => {
+  const sceneIds = new Set<number>();
+
+  rooms.forEach((room) => {
+    if (
+      room.kind === "aviary" &&
+      room.sceneId != null &&
+      isBuiltRoom(room) &&
+      !isRoomPowered(room, grid)
+    ) {
+      sceneIds.add(room.sceneId);
+    }
+  });
+
+  return sceneIds;
+};
+
 /** Сколько единиц тока даёт сектор соседям прямо сейчас. */
 export const getRoomPowerOutput = (room: RoomConfig, toads: Toad[]): number =>
   getSourceCapacity(room.kind, toads);
@@ -306,8 +360,18 @@ export const willBePoweredAfterBuild = (
 ): boolean => {
   const nextColony: ColonyState = {
     ...colony,
-    rooms: [...colony.rooms, { id: slot.id, kind, builtAt: "" }],
-    demolished: colony.demolished?.filter((id) => id !== slot.id),
+    rooms: [
+      ...colony.rooms,
+      {
+        id: `preview_${slot.slotId}`,
+        slotId: slot.slotId,
+        kind,
+        builtAt: "",
+      },
+    ],
+    demolished: colony.demolished?.filter(
+      (id) => id !== slot.slotId && id !== slot.id,
+    ),
   };
 
   return (
@@ -315,4 +379,29 @@ export const willBePoweredAfterBuild = (
       slot.id
     ] === true
   );
+};
+
+/**
+ * Почему постройку нельзя ставить на этот гекс по условиям обучения (`null` — можно).
+ *
+ * В задании «Первый сектор» игрок строит Торговую капсулу. Если поставить её на обесточенный
+ * гекс, обучение закроется, а сектор останется без тока — поэтому во время этого задания
+ * магазин разрешён только там, где после постройки будет ток (рядом с ядром или ⚡-сектором).
+ */
+export const getTutorialBuildIssue = (
+  slot: RoomConfig,
+  kind: ColonyRoomKind,
+  colony: ColonyState,
+  toadsByRoom: Record<string, Toad[]>,
+  task: NarratorTaskId | null,
+): string | null => {
+  if (task !== "build-shop" || kind !== "shop") {
+    return null;
+  }
+
+  if (willBePoweredAfterBuild(slot, kind, colony, toadsByRoom)) {
+    return null;
+  }
+
+  return "Обучение: «Торговая капсула» должна стоять под током — рядом с ядром ⚡.";
 };

@@ -4,17 +4,15 @@ import { Items, User } from "../models/user";
 import { Expedition, ExpeditionStats } from "../models/expedition";
 import { ColonyState, EMPTY_COLONY } from "../models/colony";
 import { platform } from "../platform";
+import { NEST_ROOM_ID } from "../utils/constants";
 
 // Интерфейс для всего состояния игры
 export interface GameState {
   user: User;
   scenes: Scene[];
   toads: Toad[];
-  /** Построенные секторы колонии (гексагональная карта). */
   colony?: ColonyState;
-  /** Активные походы (разведка, Часть 5) */
   expeditions?: Expedition[];
-  /** Статистика разведки: открытие секторов и ачивки */
   expeditionStats?: ExpeditionStats;
   lastSaved: string;
   createdAt: string;
@@ -28,7 +26,6 @@ const LS_KEY = "Game_State6";
  * именно лежит сейв — путь к общему хранилищу (Telegram CloudStorage) открыт.
  */
 const storage = platform.storage;
-
 
 // Инициализация состояния по умолчанию
 export const getDefaultGameState = (): GameState => {
@@ -46,11 +43,11 @@ export const getDefaultGameState = (): GameState => {
       tokens: 50,
 
       astro_quax: 0,
-      biomass: 0,
+      biomass: 50,
       // Стартовая колония: корм есть, остальные полки пустые (склад предметов, Часть 3.7)
       storage: Object.values(Items).reduce(
         (acc, key) => ({ ...acc, [key]: key === Items.food ? 100 : 0 }),
-        {} as Record<Items, number>
+        {} as Record<Items, number>,
       ),
     },
     scenes: [DEFAULT_SCENE],
@@ -89,18 +86,34 @@ export const getGameState = (): GameState => {
 };
 
 /**
+ * id места жабы в старом сейве. До перехода на `scene_id` сектор колонии хранился
+ * в `roomId`; у базового репродуктора этот id был литералом `"breeding"`, а теперь
+ * карта зовёт его постоянным `NEST_ROOM_ID`.
+ */
+const normalizeLegacyRoomId = (roomId: string): string =>
+  roomId === "breeding" ? NEST_ROOM_ID : roomId;
+
+type LegacyToad = Toad & { roomId?: string | null };
+
+const getLegacyRoomId = (toad: LegacyToad): string | null =>
+  typeof toad.roomId === "string" ? normalizeLegacyRoomId(toad.roomId) : null;
+
+/**
  * Приведение старых сейвов к правилу «у жабы одно место» (`utils/toad-location.ts`):
  *
  *  1. **Дом (`homeId`)**: раньше `scene_id` был домом жабы — он не менялся, пока жаба
- *     работала в секторе колонии. Теперь `scene_id` — это место, где жаба **сейчас**,
- *     а дом переехал в `homeId`: переносим его из `scene_id` (если поля ещё нет).
- *  2. **Место**: жаба, сидящая в секторе (`roomId`), в биоподе уже не живёт — очищаем
- *     `scene_id` (место в биоподе освобождается, дом остаётся в `homeId`), иначе она бы
- *     и числилась в биоподе, и висела в секторе.
+ *     работала в секторе колонии. Теперь `scene_id` — это место, где жаба **сейчас**
+ *     (число — биопод, строка — сектор колонии), а дом переехал в `homeId`: переносим
+ *     его из старого `scene_id`, если поля ещё нет.
+ *  2. **Место**: старая жаба в секторе (`roomId`) теперь сидит в нём через `scene_id`.
+ *     Если `roomId` нет, `scene_id` остаётся её биоподом.
  *  3. **Склад жаб отменён**: у каждой жабы всегда есть биопод. Старые сейвы держали лишних
  *     жаб «на складе» (пустой биопод и никакого сектора) — расселяем их по биоподам по
  *     порядку; если мест не хватило, жабы остаются жить в переполненном биоподе до
  *     постройки нового (потерять жаб нельзя).
+ *  4. **Дом не теряется**: даже жаба в секторе должна помнить биопод (`homeId`) — если
+ *     старого дома нет в сейве, подбираем свободный (или первый) биопод. Место в секторе
+ *     при этом не меняется.
  */
 function migrateGameState(state: GameState): GameState {
   if (!state.toads?.length || !state.scenes?.length) {
@@ -108,28 +121,49 @@ function migrateGameState(state: GameState): GameState {
   }
 
   let changed = false;
+  const sceneIds = new Set(state.scenes.map((scene) => scene.id));
+  const isValidScene = (id: unknown): id is number =>
+    typeof id === "number" && sceneIds.has(id);
 
-  // 1–2. Дом и место: жаба либо в биоподе (`scene_id`), либо в секторе (`roomId`)
+  // 1–2. Дом и место: числовой `scene_id` — биопод, строка — сектор колонии
   let toads = state.toads.map((toad) => {
-    const homeId = toad.homeId ?? toad.scene_id ?? null;
-    const sceneId = toad.roomId ? null : homeId;
+    const legacy = toad as LegacyToad;
+    const legacyRoomId = getLegacyRoomId(legacy);
+    // Дом не выбрасываем, если он указывает на существующий биопод: у жабы в секторе
+    // `homeId` мог быть проставлен раньше, а старый `scene_id` при этом уже стал местом.
+    const homeId = isValidScene(toad.homeId)
+      ? toad.homeId
+      : isValidScene(toad.scene_id)
+        ? toad.scene_id
+        : null;
+    const sceneId: number | string | null =
+      legacyRoomId ??
+      (typeof toad.scene_id === "string"
+        ? normalizeLegacyRoomId(toad.scene_id)
+        : isValidScene(toad.scene_id)
+          ? toad.scene_id
+          : null);
 
-    if (homeId === toad.homeId && sceneId === toad.scene_id) {
+    if (
+      homeId === toad.homeId &&
+      sceneId === toad.scene_id &&
+      legacy.roomId === undefined
+    ) {
       return toad;
     }
 
+    const { roomId: _legacyRoomId, ...rest } = legacy;
     changed = true;
 
-    return { ...toad, homeId, scene_id: sceneId };
+    return { ...rest, homeId, scene_id: sceneId } as Toad;
   });
 
-  // 3. Жабы без места вовсе (старый «склад жаб»): биопод не помнит их ни местом, ни домом
-  const homeless = toads.filter(
-    (toad) =>
-      !toad.roomId && !state.scenes.some((scene) => scene.id === toad.homeId)
-  );
+  // 3–4. Жабы без места или без дома: биопод не помнит их ни местом, ни домом
+  const lostPlace = (toad: Toad): boolean =>
+    typeof toad.scene_id === "string" ? false : !isValidScene(toad.scene_id);
+  const lostHome = (toad: Toad): boolean => !isValidScene(toad.homeId);
 
-  if (homeless.length > 0) {
+  if (toads.some((toad) => lostPlace(toad) || lostHome(toad))) {
     const free = new Map<number, number>(
       state.scenes.map((scene) => [
         scene.id,
@@ -137,33 +171,65 @@ function migrateGameState(state: GameState): GameState {
           0,
           scene.capacity -
             toads.filter(
-              (toad) => toad.scene_id === scene.id && !toad.roomId
-            ).length
+              (toad) =>
+                isValidScene(toad.scene_id) && toad.scene_id === scene.id,
+            ).length,
         ),
-      ])
+      ]),
     );
     const fallbackSceneId = state.scenes[0].id;
-    let index = 0;
+    let moved = 0;
+    let homed = 0;
 
     toads = toads.map((toad) => {
-      if (toad.roomId || state.scenes.some((scene) => scene.id === toad.homeId)) {
+      if (!lostPlace(toad) && !lostHome(toad)) {
         return toad;
       }
 
-      const scene = state.scenes.find((candidate) => (free.get(candidate.id) ?? 0) > 0);
+      // Жаба уже в секторе: место не трогаем, только возвращаем ей дом, чтобы
+      // «Домой» знал, куда её вести. Место дома не бронируется (как и в игре).
+      if (!lostPlace(toad)) {
+        const home =
+          state.scenes.find(
+            (scene) =>
+              scene.id === toad.homeId && (free.get(scene.id) ?? 0) > 0,
+          ) ?? state.scenes.find((scene) => (free.get(scene.id) ?? 0) > 0);
+
+        homed += 1;
+
+        return { ...toad, homeId: home?.id ?? fallbackSceneId };
+      }
+
+      // Места нет: сначала пробуем дом жабы (если он ещё существует), потом любой
+      // свободный биопод, в крайнем случае — первый (переполненный, но не потерянный).
+      const scene =
+        state.scenes.find(
+          (candidate) =>
+            isValidScene(toad.homeId) &&
+            candidate.id === toad.homeId &&
+            (free.get(candidate.id) ?? 0) > 0,
+        ) ??
+        state.scenes.find((candidate) => (free.get(candidate.id) ?? 0) > 0);
       const sceneId = scene?.id ?? fallbackSceneId;
 
       if (scene) {
         free.set(scene.id, (free.get(scene.id) ?? 1) - 1);
-        index += 1;
       }
+
+      moved += 1;
 
       return { ...toad, scene_id: sceneId, homeId: sceneId };
     });
 
     changed = true;
 
-    console.info(`Склад жаб закрыт: ${index} жаб переехали в биоподы`);
+    if (moved > 0) {
+      console.info(`Склад жаб закрыт: ${moved} жаб переехали в биоподы`);
+    }
+
+    if (homed > 0) {
+      console.info(`Дом восстановлен: ${homed} жаб в секторах`);
+    }
   }
 
   return changed ? { ...state, toads } : state;
@@ -196,7 +262,7 @@ export const saveGameState = (state: GameState, syntetic: boolean): void => {
 // Обновление состояния (частичное)
 export const updateGameState = (
   updates: Partial<GameState>,
-  syntetic = false
+  syntetic = false,
 ): GameState => {
   const currentState = getGameState();
   const newState = { ...currentState, ...updates };

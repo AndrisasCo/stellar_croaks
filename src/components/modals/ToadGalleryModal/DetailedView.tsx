@@ -215,7 +215,7 @@ export const DetailedView: React.FC = ({ selectedItem }) => {
           {/* Статистика редкости */}
           <div className="grid grid-cols-2 gap-3 text-xs">
             <div className="bg-black/30 rounded p-3">
-              <div className="text-gray-300 mb-1">Редкость</div>
+              <div className="text-gray-300 mb-1">качество</div>
               <div className={detailStyles.titleColor}>
                 {selectedItem.rarity === "legendary"
                   ? "Легендарная"

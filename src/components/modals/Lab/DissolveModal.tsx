@@ -11,6 +11,7 @@ import {
   getIncubatingToadIds,
 } from "../../../utils/dissolve-manager";
 import { DISSOLVE_MAX_BATCH } from "../../../utils/gamification-config";
+import { getToadHomeId } from "../../../utils/toad-location";
 import { ClickButton } from "../../shared/ClickButton";
 import { DissolveConfirm } from "../../shared/DissolveConfirm";
 import ModalTabs, { ModalTabItem } from "../../shared/ModalTabs";
@@ -19,7 +20,9 @@ import { ToadGender } from "../../shared/ToadGender";
 import { useToads } from "../../ToadContext";
 import RoomDataTab, { ROOM_DATA_TAB, RoomDataTabId } from "../RoomDataTab";
 import { RoomConfig } from "../../HexMap/rooms-config";
+import { useColony } from "../../../hooks/use-colony";
 import { useDissociator } from "../../../hooks/use-dissociator";
+import { useRoomPowerTab } from "../../../hooks/use-room-power-tab";
 import { DissolveBlockedModal } from "../../shared/DissolveBlockedModal";
 
 /**
@@ -40,16 +43,27 @@ export default function DissolveModal({ room }: { room?: RoomConfig }) {
 
   // Диссоциатор принимает жаб, только когда его сектор построен и под током
   const { ready: dissociatorReady, built: dissociatorBuilt } = useDissociator();
+  const { powerGrid } = useColony();
 
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [showConfirm, setShowConfirm] = useState(false);
   /** Окно «Диссоциатор недоступен»: разбор не начинается, пока сектор не готов */
   const [showBlocked, setShowBlocked] = useState(false);
-  const [tab, setTab] = useState<DissolveTab>("dissolve");
+  const {
+    tab,
+    setTab,
+    issue: powerIssue,
+  } = useRoomPowerTab<DissolveTab>({ room, powerGrid, defaultTab: "dissolve" });
 
   /** Табы: разбор жаб и, если модалку открыл гекс диссоциатора, «Данные сектора» */
   const tabs: ModalTabItem<DissolveTab>[] = [
-    { id: "dissolve", label: "🧪 Разбор", color: "text-amber-400" },
+    {
+      id: "dissolve",
+      label: "🧪 Разбор",
+      color: "text-amber-400",
+      disabled: Boolean(powerIssue),
+      disabledHint: powerIssue ?? undefined,
+    },
     ...(room ? [{ ...ROOM_DATA_TAB }] : []),
   ];
 
@@ -63,12 +77,14 @@ export default function DissolveModal({ room }: { room?: RoomConfig }) {
     canDissolveToad(toad, incubatingIds),
   );
 
-  // Группы: каждый биопод отдельно. Склада жаб больше нет — у каждой жабы есть биопод.
+  // Группы: каждый биопод отдельно. Склада жаб больше нет — у каждой жабы есть дом
+  // (`homeId`), поэтому жаба, работающая в секторе, остаётся в списке своего биопода,
+  // хотя её место сейчас (`scene_id`) — строка с id сектора.
   const groups = ownedScenes
     .map((scene) => ({
       key: `scene-${scene.id}`,
       label: `🏠 ${scene.name}`,
-      toads: allToads.filter((toad) => toad.scene_id === scene.id),
+      toads: allToads.filter((toad) => getToadHomeId(toad) === scene.id),
     }))
     .filter((group) => group.toads.length > 0);
 
@@ -95,7 +111,7 @@ export default function DissolveModal({ room }: { room?: RoomConfig }) {
     setShowConfirm(false);
 
     // Жабы уходят в биомассу только через построенный и запитанный сектор
-    if (!dissociatorReady) {
+    if (!dissociatorReady || powerIssue) {
       setShowBlocked(true);
       return;
     }
@@ -148,7 +164,7 @@ export default function DissolveModal({ room }: { room?: RoomConfig }) {
               </div>
               <p className="text-2xs text-amber-100 leading-snug">
                 ♻️ Диссоциатор мгновенно перерабатывает жабу в биомассу. Жабы
-                исчезают навсегда: редкость, вес и здоровье влияют на выход,
+                исчезают навсегда: качество, вес и здоровье влияют на выход,
                 головастики дают заметно меньше.
               </p>
               <p className="text-2xs text-gray-400 mt-1">
@@ -177,7 +193,10 @@ export default function DissolveModal({ room }: { room?: RoomConfig }) {
                   </div>
                   <div className="flex flex-col gap-2">
                     {group.toads.map((toad) => {
-                      const isIncubating = !canDissolveToad(toad, incubatingIds);
+                      const isIncubating = !canDissolveToad(
+                        toad,
+                        incubatingIds,
+                      );
                       const isSelected = selectedIds.includes(toad.id);
 
                       return (
@@ -203,7 +222,9 @@ export default function DissolveModal({ room }: { room?: RoomConfig }) {
                             <div className="flex items-center gap-2 text-2xs text-gray-300 mt-0.5">
                               <ToadGender gender={toad.sex} />
                               <span>
-                                {toad.stage === "adult" ? "Взрослый" : "Головастик"}
+                                {toad.stage === "adult"
+                                  ? "Взрослый"
+                                  : "Головастик"}
                               </span>
                               <span className="text-gray-500">
                                 ★ {toad.genes?.rarity?.toFixed(1)}

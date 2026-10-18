@@ -62,37 +62,37 @@ const LeaderboardModal: React.FC = () => {
               total_species: new Set(allToads.map((t) => t.type)).size,
               toads_collection: {
                 rarest_toad: allToads.sort(
-                  (a, b) => b.genes.rarity - a.genes.rarity
+                  (a, b) => b.genes.rarity - a.genes.rarity,
                 )[0],
                 weight_max_toad: allToads.sort(
-                  (a, b) => b.genes.weight - a.genes.weight
+                  (a, b) => b.genes.weight - a.genes.weight,
                 )[0],
                 weight_min_toad: allToads.sort(
-                  (a, b) => a.genes.weight - b.genes.weight
+                  (a, b) => a.genes.weight - b.genes.weight,
                 )[0],
                 fertility_max_toad: allToads.sort(
-                  (a, b) => b.genes.fertility - a.genes.fertility
+                  (a, b) => b.genes.fertility - a.genes.fertility,
                 )[0],
                 fertility_min_toad: allToads.sort(
-                  (a, b) => a.genes.fertility - b.genes.fertility
+                  (a, b) => a.genes.fertility - b.genes.fertility,
                 )[0],
                 speed_max_toad: allToads.sort(
-                  (a, b) => b.genes.speed - a.genes.speed
+                  (a, b) => b.genes.speed - a.genes.speed,
                 )[0],
                 speed_min_toad: allToads.sort(
-                  (a, b) => a.genes.speed - b.genes.speed
+                  (a, b) => a.genes.speed - b.genes.speed,
                 )[0],
                 hunger_max_toad: allToads.sort(
-                  (a, b) => b.genes.hungerRate - a.genes.hungerRate
+                  (a, b) => b.genes.hungerRate - a.genes.hungerRate,
                 )[0],
                 hunger_min_toad: allToads.sort(
-                  (a, b) => a.genes.hungerRate - b.genes.hungerRate
+                  (a, b) => a.genes.hungerRate - b.genes.hungerRate,
                 )[0],
               },
             },
           ]
         : [],
-    }
+    },
   );
 
   if (!players) {
@@ -362,7 +362,7 @@ const LeaderboardModal: React.FC = () => {
       case "rarity":
         toad = player.rarest_toad;
         value = toad?.genes.rarity || 0;
-        label = "Редкость";
+        label = "качество";
         color = isUser ? "text-purple-300" : "text-purple-400";
         break;
       case "weight_max":
@@ -597,8 +597,8 @@ const LeaderboardModal: React.FC = () => {
                         border-blue-400/50 shadow-md shadow-blue-500/20
                       `
                       : index <= 2
-                      ? "border-yellow-500/30 bg-gradient-to-r from-gray-800 to-yellow-900/10"
-                      : "border-gray-600 bg-color-main"
+                        ? "border-yellow-500/30 bg-gradient-to-r from-gray-800 to-yellow-900/10"
+                        : "border-gray-600 bg-color-main"
                   }
                 `}
               >
@@ -618,12 +618,12 @@ const LeaderboardModal: React.FC = () => {
                           isUser
                             ? "text-blue-400"
                             : index === 0
-                            ? "text-yellow-400"
-                            : index === 1
-                            ? "text-gray-200"
-                            : index === 2
-                            ? "text-orange-400"
-                            : "text-gray-300"
+                              ? "text-yellow-400"
+                              : index === 1
+                                ? "text-gray-200"
+                                : index === 2
+                                  ? "text-orange-400"
+                                  : "text-gray-300"
                         }
                       `}
                     >
@@ -721,20 +721,22 @@ const LeaderboardModal: React.FC = () => {
                           activeTab === "rarity"
                             ? player.toads_collection.rarest_toad
                             : activeTab === "weight_max"
-                            ? player.toads_collection.weight_max_toad
-                            : activeTab === "weight_min"
-                            ? player.toads_collection.weight_min_toad
-                            : activeTab === "fertility_max"
-                            ? player.toads_collection.fertility_max_toad
-                            : activeTab === "fertility_min"
-                            ? player.toads_collection.fertility_min_toad
-                            : activeTab === "speed_max"
-                            ? player.toads_collection.speed_max_toad
-                            : activeTab === "speed_min"
-                            ? player.toads_collection.speed_min_toad
-                            : activeTab === "hunger_max"
-                            ? player.toads_collection.hunger_max_toad
-                            : player.toads_collection.hunger_min_toad
+                              ? player.toads_collection.weight_max_toad
+                              : activeTab === "weight_min"
+                                ? player.toads_collection.weight_min_toad
+                                : activeTab === "fertility_max"
+                                  ? player.toads_collection.fertility_max_toad
+                                  : activeTab === "fertility_min"
+                                    ? player.toads_collection.fertility_min_toad
+                                    : activeTab === "speed_max"
+                                      ? player.toads_collection.speed_max_toad
+                                      : activeTab === "speed_min"
+                                        ? player.toads_collection.speed_min_toad
+                                        : activeTab === "hunger_max"
+                                          ? player.toads_collection
+                                              .hunger_max_toad
+                                          : player.toads_collection
+                                              .hunger_min_toad
                         }
                         size={20}
                       />

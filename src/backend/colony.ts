@@ -8,7 +8,12 @@ import {
 } from "../models/colony";
 import { DEFAULT_SCENE, INITIAL_CAPACITY, Scene } from "../models/scene";
 import { Toad } from "../models/Toad";
-import { MAX_OWNED_SCENES } from "../utils/constants";
+import {
+  AVIARY_ROOM_ID,
+  createRoomId,
+  MAX_OWNED_SCENES,
+  NEST_ROOM_ID,
+} from "../utils/constants";
 import { getEnclosureToads } from "../utils/housing";
 import { getToadHomeId } from "../utils/toad-location";
 import { completeAchivement } from "./achivements-manager";
@@ -34,15 +39,24 @@ export const saveColonyState = (colony: ColonyState): ColonyState => {
 /**
  * Апгрейды сектора: они лежат в `ColonyState.upgrades` по id гекса, поэтому сектор
  * передаём целиком — гексу-биоподу апгрейд может отдать ещё и его биопод.
+ *
+ * У сектора два id: карта зовёт его `RoomConfig.id` (id гекса), а постройка в сейве —
+ * `ColonyRoomState.id` (`вид_число`). Апгрейды старых сейвов лежат по id гекса, новые
+ * могут лежать по id постройки — читаем оба, чтобы покупка не пропала после переезда.
  */
 export const getRoomUpgrades = (room: {
   id: string;
-  sceneId?: number;
+  slotId?: string | null;
+  sceneId?: number | null;
 }): RoomUpgrades => {
   const state = getGameState();
-  const stored = state.colony?.upgrades?.[room.id] ?? EMPTY_UPGRADES;
+  const upgrades = state.colony?.upgrades ?? {};
+  const stored =
+    upgrades[room.id] ??
+    (room.slotId == null ? undefined : upgrades[room.slotId]) ??
+    EMPTY_UPGRADES;
 
-  if (stored.autoFeeder || room.sceneId === undefined) {
+  if (stored.autoFeeder || room.sceneId == null) {
     return stored;
   }
 
@@ -94,7 +108,9 @@ export const buildColonyRoom = (
 ): ColonyRoomState | null => {
   const state = getGameState();
   const colony = state.colony ?? EMPTY_COLONY;
-  const previous = colony.rooms.find((item) => item.id === slotId);
+  const previous = colony.rooms.find(
+    (item) => item.id === slotId || item.slotId === slotId,
+  );
   const scenes = [...state.scenes];
 
   let sceneId = previous?.sceneId;
@@ -111,8 +127,22 @@ export const buildColonyRoom = (
     createdEnclosure = true;
   }
 
+  /**
+   * Id сектора: базовые гексы сохраняют свои постоянные id (`aviary_...`, `breeding_...`),
+   * а новая постройка получает `вид_уникальноеЧисло`. Старый сейв без `slotId` ищется по id,
+   * поэтому повторная застройка того же гекса не создаёт вторую постройку.
+   */
+  const baseId =
+    slotId === "aviary"
+      ? AVIARY_ROOM_ID
+      : slotId === "breeding"
+        ? NEST_ROOM_ID
+        : null;
+  const roomId = previous?.id ?? baseId ?? createRoomId(kind);
+
   const room: ColonyRoomState = {
-    id: slotId,
+    id: roomId,
+    slotId,
     kind,
     builtAt: new Date().toISOString(),
     sceneId,
@@ -121,10 +151,17 @@ export const buildColonyRoom = (
   updateGameState({
     colony: {
       ...colony,
-      rooms: [...colony.rooms.filter((item) => item.id !== slotId), room],
+      rooms: [
+        ...colony.rooms.filter(
+          (item) => item.id !== roomId && (item.slotId ?? item.id) !== slotId,
+        ),
+        room,
+      ],
       // Гекс застраивают заново — метка сноса снимается: карта снова показывает сектор
       // (`getUnlockedRooms`), а не пустой слот
-      demolished: colony.demolished?.filter((id) => id !== slotId),
+      demolished: colony.demolished?.filter(
+        (id) => id !== slotId && id !== roomId,
+      ),
     },
     scenes,
   });
@@ -157,14 +194,54 @@ export const demolishColonyRoom = (roomId: string): ColonyState => {
   const state = getGameState();
   const colony = state.colony ?? EMPTY_COLONY;
   const upgrades = { ...(colony.upgrades ?? {}) };
+  const target = colony.rooms.find(
+    (room) => room.id === roomId || room.slotId === roomId,
+  );
 
-  delete upgrades[roomId];
+  /**
+   * У сектора два id (id постройки и id гекса), а у базовых ещё и постоянный id гекса:
+   * сносим по любому из них, поэтому собираем все имена и чистим их разом. Иначе постройка
+   * осталась бы в `rooms`, а гекс на карте так и показывал бы сектор.
+   *
+   * В `demolished` кладём только имена, нужные карте: её `HEX_ROOM_BY_ID` знает id гекса,
+   * а базовый снос узнаёт и по постоянному id. Внутренний id постройки карте не нужен,
+   * а лишняя метка тянула бы за собой старый id после перестройки того же гекса.
+   */
+  const demolishedIds = new Set<string>([roomId]);
+  const upgradeIds = new Set<string>([roomId]);
+
+  if (target) {
+    upgradeIds.add(target.id);
+
+    if (target.slotId) {
+      demolishedIds.add(target.slotId);
+      upgradeIds.add(target.slotId);
+    }
+  }
+
+  if (roomId === AVIARY_ROOM_ID || roomId === "aviary") {
+    upgradeIds.add(AVIARY_ROOM_ID);
+    upgradeIds.add("aviary");
+  }
+
+  if (roomId === NEST_ROOM_ID || roomId === "breeding") {
+    upgradeIds.add(NEST_ROOM_ID);
+    upgradeIds.add("breeding");
+  }
+
+  upgradeIds.forEach((id) => {
+    delete upgrades[id];
+  });
 
   const demolished: ColonyState = {
     ...colony,
-    rooms: colony.rooms.filter((room) => room.id !== roomId),
+    rooms: colony.rooms.filter(
+      (room) =>
+        !demolishedIds.has(room.id) &&
+        (room.slotId == null || !demolishedIds.has(room.slotId)),
+    ),
     upgrades,
-    demolished: [...new Set([...(colony.demolished ?? []), roomId])],
+    demolished: [...new Set([...(colony.demolished ?? []), ...demolishedIds])],
   };
 
   updateGameState({ colony: demolished });
@@ -261,7 +338,6 @@ const settleToadInScene = (toadId: number, sceneId: number): ToadHomeResult => {
   }
 
   const [updated] = updateToadById(toadId, {
-    roomId: null,
     scene_id: scene.id,
     homeId: scene.id,
   });
@@ -269,20 +345,11 @@ const settleToadInScene = (toadId: number, sceneId: number): ToadHomeResult => {
   return { ok: true, toad: updated ?? toad, scene };
 };
 
-/**
- * Помещает жабу в сектор колонии (энергосектор, репродуктор, «Разведка», лазарет).
- *
- * Место у жабы одно: в секторе она в биоподе уже не живёт, поэтому `scene_id` очищается —
- * место в биоподе освобождается (его займёт кто-то другой, см. `utils/housing.ts`), а гекс
- * биопода перестаёт рисовать жабу у себя. Дом при этом не теряется: он уезжает в `homeId`,
- * и кнопка «Домой» вернёт жабу туда, откуда она вышла (`sendToadHome`).
- */
 export const placeToadInRoom = (toadId: number, roomId: string): Toad[] => {
   const toad = getToadById(toadId);
 
   return updateToadById(toadId, {
-    roomId,
-    scene_id: null,
+    scene_id: roomId,
     homeId: getToadHomeId(toad),
   });
 };

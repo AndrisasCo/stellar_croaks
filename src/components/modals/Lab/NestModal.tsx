@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { EMPTY_COLONY } from "../../../models/colony";
 import { Toad, getRarityConfig } from "../../../models/Toad";
+import { useColony } from "../../../hooks/use-colony";
 import { useGameState } from "../../../hooks/use-game-state";
 import { useNotifications } from "../../../hooks/use-notification";
+import { useRoomPowerTab } from "../../../hooks/use-room-power-tab";
 import { useSoundEffects } from "../../../hooks/use-sound-effects";
 import {
   MATING_MAX_MINUTES,
@@ -28,6 +30,7 @@ import { placeToadInRoom, sendToadHome } from "../../../backend/colony";
 import {
   getToadHomeId,
   isToadFromEnclosure,
+  isToadInRoom,
 } from "../../../utils/toad-location";
 import {
   CURRENCY_CONFIG,
@@ -62,7 +65,7 @@ import { ProgressBar } from "../ToadInfoModal/ProgressBar";
  * второй — самец. Слот — выпадающий список жаб **своего пола** (`shared/ToadPicker`):
  * тап по строке слота открывает всех, кого можно позвать, — взрослых, не в походе,
  * не выбитых, не больных и без беременности (`breeding-manager.ts` → `getNestSlotCandidates`).
- * У жабы в списке видно её краткую сводку (пол, стадия, силы ⚡, сытость 🍽, редкость)
+ * У жабы в списке видно её краткую сводку (пол, стадия, силы ⚡, сытость 🍽, качество)
  * и где она живёт сейчас, а жаб, которых слот не берёт, можно посмотреть с причиной отказа
  * (переключатель «Не подходят») — чтобы не искать ответ, почему жабы нет в списке.
  *
@@ -135,7 +138,7 @@ const slotEmptyText = (slotIndex: number): string =>
 
 interface NestModalProps {
   /** id гекса-репродуктора, из которого открыли модалку: репродукторов в колонии может быть несколько */
-  roomId?: string;
+  roomId: string;
   /** Гекс, из которого открыли модалку: по нему появляется последний таб «Данные сектора» */
   room?: RoomConfig;
 }
@@ -151,14 +154,25 @@ export default function NestModal({
   const { addNotification } = useNotifications();
   const { playOk, playExited } = useSoundEffects();
   const gameState = useGameState();
+  const { powerGrid } = useColony();
   // Раз в секунду обновляем обратные отсчёты: ухаживание, отдых, статусы жаб
   const [, setTick] = useState(0);
   /** Состояние сектора: пары репродуктора (по умолчанию) или данные сектора */
-  const [tab, setTab] = useState<NestTab>("nest");
+  const {
+    tab,
+    setTab,
+    issue: powerIssue,
+  } = useRoomPowerTab<NestTab>({ room, powerGrid, defaultTab: "nest" });
 
   /** Табы: пары репродуктора и, если модалку открыл гекс, «Данные сектора» */
   const tabs: ModalTabItem<NestTab>[] = [
-    { id: "nest", label: "🪺 Пары", color: "text-purple-400" },
+    {
+      id: "nest",
+      label: "🪺 Пары",
+      color: "text-purple-400",
+      disabled: Boolean(powerIssue),
+      disabledHint: powerIssue ?? undefined,
+    },
     ...(room ? [{ ...ROOM_DATA_TAB }] : []),
   ];
 
@@ -184,7 +198,7 @@ export default function NestModal({
 
   /** Жабы, которые физически стоят в этом репродукторе: их и показывают слоты */
   const nestToads = allToads.filter(
-    (toad) => toad.roomId === roomId && toad.status !== "out",
+    (toad) => toad.scene_id === roomId && toad.status !== "out",
   );
   /** Взрослые занимают места репродуктора… */
   const nestAdults = nestToads.filter((toad) => toad.stage === "adult");
@@ -255,7 +269,7 @@ export default function NestModal({
     })),
     // Жабы самого репродуктора и так видны в слотах — в «не подходят» им делать нечего
     rejected: allToads
-      .filter((toad) => toad.roomId !== roomId)
+      .filter((toad) => toad.scene_id !== roomId)
       .map((toad) => ({
         toad,
         rank: toad.genes.rarity,
@@ -266,20 +280,23 @@ export default function NestModal({
 
   /** В каком секторе жаба живёт сейчас (для списка жаб) */
   const roomLabelOf = (toad: Toad): string => {
-    if (!toad.roomId) {
+    if (!isToadInRoom(toad)) {
       const scene = scenes.find((s) => s.id === getToadHomeId(toad));
       return scene?.name ?? "Биопод";
     }
 
     // Сектора с таким id в карте нет только у сейва со снесённым гексом — тогда имя общее
     return (
-      mapRooms.find((room) => room.id === toad.roomId)?.name || "Сектор колонии"
+      mapRooms.find(
+        (room) => room.id === toad.scene_id || room.slotId === toad.scene_id,
+      )?.name || "Сектор колонии"
     );
   };
 
   /** Название репродуктора, из которого открыли модалку (базовое или построенное) */
   const nestRoomTitle =
-    mapRooms.find((room) => room.id === roomId)?.name || "Репродуктор";
+    mapRooms.find((room) => room.id === roomId || room.slotId === roomId)
+      ?.name || "Репродуктор";
 
   const biomass = Math.floor(account?.biomass || 0);
   const astro = Math.floor(getAstroBalance());
@@ -554,13 +571,12 @@ export default function NestModal({
                 );
               })}
 
-              {/* Не пара: сейв с жабами не того пола. Показываем их отдельно — жаба не пропадает с экрана */}
+              {/* Показываем их отдельно — жаба не пропадает с экрана */}
               {extraNestAdults.length > 0 && (
-                <div className="rounded-lg p-2 bg-black/20 border border-amber-500/40 flex flex-col gap-1.5">
-                  <div className="text-2xs text-amber-200 leading-snug">
-                    Ещё в репродукторе: {extraNestAdults.length} — слоты заняты
-                    парой (самка и самец). Эти жабы места пары не занимают, но и
-                    пару не образуют.
+                <div className="rounded-lg p-2 bg-black/20 border border-red-500/40 flex flex-col gap-1.5">
+                  <div className="text-2xs text-red-200 leading-snug">
+                    Репродуктор переполнен, очистите слоты прежде чем начать
+                    ухаживание.
                   </div>
 
                   {extraNestAdults.map((toad) => (
@@ -627,7 +643,7 @@ export default function NestModal({
 
               {!courtingToad && (
                 <ClickButton
-                  disabled={!courtship.ready}
+                  disabled={!courtship.ready || !!extraNestAdults.length}
                   onClick={handleStartCourtship}
                   className={`w-full rounded-lg px-3 py-2 text-xs border transition-all ${
                     courtship.ready

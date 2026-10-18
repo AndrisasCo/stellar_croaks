@@ -27,8 +27,17 @@ export type ColonyRoomKind =
   | "power";
 
 export interface ColonyRoomState {
-  /** id слота карты — совпадает с RoomConfig.id из rooms-config. */
+  /**
+   * Канонический id постройки — `вид_уникальноеЧисло`. Карта адресует тот же сектор по
+   * id гекса (`slotId`): жаба помнит место по `RoomConfig.id`, а сейв — по этому id.
+   */
   id: string;
+  /**
+   * id гекса карты (`RoomConfig.slotId`), на котором стоит постройка. Сам гекс сохраняет
+   * прежний id (`slot-north`, `aviary`), а сектор получает новый `id` вида `вид_число`.
+   * У старых сейвов поля нет — тогда id постройки и был id гекса.
+   */
+  slotId?: string;
   kind: ColonyRoomKind;
   /** Когда сектор была построена. */
   builtAt: string;

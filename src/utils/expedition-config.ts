@@ -70,7 +70,7 @@ export const ROLE_CONFIG: Record<ExpeditionRole, ExpeditionRoleConfig> = {
   hacker: {
     label: "Оператор",
     icon: "💻",
-    statLabel: "Редкость",
+    statLabel: "качество",
     description: "Вскрывает сейфы, обходит турели, выкачивает данные.",
     statCap: 12,
   },
@@ -129,13 +129,13 @@ export const EXPEDITION_MIN_DAMAGE = 6;
 export const HP_SOFT_CAP = 400;
 
 /**
- * Максимум HP жабы (масса даёт «броню», редкость — запас).
+ * Максимум HP жабы (масса даёт «броню», качество — запас).
  *
  * Максимум — ЧИСТАЯ функция генов: он не зависит от того, что записано в сейве.
  * Поле `toad.maxHp` — только кэш для интерфейса и для `processHpRegen` (видно, что
  * значение изменилось). Раньше сохранённый `maxHp` брался за базу и бонусы генов
  * начислялись поверх: `processHpRegen` пишет посчитанный максимум в сейв, поэтому на
- * каждом следующем тике (раз в 5 минут) максимум рос на `вес*2 + редкость*3`, а hp
+ * каждом следующем тике (раз в 5 минут) максимум рос на `вес*2 + качество*3`, а hp
  * стоял на месте — у новорождённой жабы здоровье проседало само по себе
  * (`tmp-verify-hp-drift.mjs`).
  */
@@ -162,7 +162,6 @@ export const getToadHp = (toad: Toad): number => {
 export const isToadDown = (toad: Toad): boolean => getToadHp(toad) <= 0;
 
 /**
- * Обновление жабы при отправке в поход: место в секторе сбрасывается (`roomId: null`).
  * Жаба в походе не стоит ни в ⚡-секторе, ни в «Разведке» — двух мест сразу не бывает:
  * уйдя, она освобождает место в секторе и возвращается домой в свой биопод (`scene_id`
  * по `homeId`, см. `toad-location.ts`) — карта её больше не рисует (`isToadVisibleInRoom`),
@@ -176,7 +175,6 @@ export const getAwayToadUpdate = (toad: Toad): Partial<Toad> => {
     status: "out",
     hp: maxHp,
     maxHp,
-    roomId: null,
     scene_id: getToadHomeId(toad),
   };
 };

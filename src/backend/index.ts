@@ -52,29 +52,32 @@ const resolveSceneId = (sceneId?: number | null): number => {
 };
 
 /**
- * Место новой жабы: биопод (`scene_id`) или сектор колонии (`roomId`), плюс её дом
- * (`homeId`) — см. `utils/toad-location.ts`.
- *
+ * Место новой жабы:
  *  - жаба, которую создают в биоподе (покупка, награда, лутбокс, потомство дома),
  *    живёт в нём же, и он становится её домом;
  *  - жаба, которую создают сразу в секторе колонии (головастик, родившийся в
- *    репродукторе), в биоподе не числится: `scene_id` пуст, место там не занято.
- *    Дом ей всё равно нужен — по нему её вернут кнопкой «Домой» (`sendToadHome`),
- *    и тогда место проверят.
+ *    репродукторе), в биоподе не числится: её `scene_id` — id сектора, место там не
+ *    занято. Дом ей всё равно нужен — по нему её вернут кнопкой «Домой»
+ *    (`sendToadHome`), и тогда место проверят.
  */
 const resolveToadPlacement = (
-  toadData: Partial<Toad>
-): { scene_id: number | null; homeId: number } => {
-  if (toadData.roomId) {
-    return {
-      scene_id: null,
-      homeId: resolveSceneId(toadData.homeId ?? toadData.scene_id),
-    };
-  }
+  toadData: Partial<Toad>,
+): { scene_id: number | string | null; homeId: number } => {
+  // Дом — биопод, в который жаба вернётся: у жабы в секторе это `homeId` (например,
+  // биопод матери у головастика), у жильца биопода — сам биопод. Явный дом не теряем.
+  const homeId = resolveSceneId(
+    typeof toadData.scene_id === "number"
+      ? toadData.scene_id
+      : toadData.homeId ?? null,
+  );
 
-  const sceneId = resolveSceneId(toadData.scene_id);
-
-  return { scene_id: sceneId, homeId: sceneId };
+  // Жаба, созданная сразу в секторе колонии, остаётся в нём (`scene_id` — id комнаты),
+  // но домом ей всё равно служит биопод: туда её вернёт кнопка «Домой».
+  return {
+    scene_id:
+      typeof toadData.scene_id === "string" ? toadData.scene_id : homeId,
+    homeId,
+  };
 };
 
 export const createToad = (toadData: Partial<Toad>): Toad[] => {
@@ -100,7 +103,7 @@ export const createToad = (toadData: Partial<Toad>): Toad[] => {
 
 export const createToads = (
   toadsData: Partial<Toad>[],
-  syntetic?: boolean
+  syntetic?: boolean,
 ): Toad[] => {
   const state = getGameState();
   const newToads: Toad[] = toadsData.map((toadData) => {
@@ -159,11 +162,11 @@ export const updateUserStorage = (userData: Record<string, number>) => {
 export const updateToadById = (
   toadId: number,
   toadData: Partial<Toad>,
-  syntetic?: boolean
+  syntetic?: boolean,
 ): Toad[] => {
   const state = getGameState();
   const updatedToads = state.toads.map((toad) =>
-    toad.id === toadId ? { ...toad, ...toadData } : toad
+    toad.id === toadId ? { ...toad, ...toadData } : toad,
   );
 
   updateGameState({ toads: updatedToads }, syntetic);
@@ -175,11 +178,11 @@ export const updateToadById = (
 export const updateToadsByIds = (
   toadIds: number[],
   toadData: Partial<Toad>,
-  syntetic?: boolean
+  syntetic?: boolean,
 ): Toad[] => {
   const state = getGameState();
   const updatedToads = state.toads.map((toad) =>
-    toadIds.includes(toad.id) ? { ...toad, ...toadData } : toad
+    toadIds.includes(toad.id) ? { ...toad, ...toadData } : toad,
   );
 
   updateGameState({ toads: updatedToads }, syntetic);
@@ -191,13 +194,13 @@ export const updateToadsByIds = (
 export const updateToadStateByIds = (
   toadIds: number[],
   toadStateData: Record<string, number>,
-  syntetic?: boolean
+  syntetic?: boolean,
 ): Toad[] => {
   const state = getGameState();
   const updatedToads = state.toads.map((toad) =>
     toadIds.includes(toad.id)
       ? { ...toad, state: { ...toad.state, ...toadStateData } }
-      : toad
+      : toad,
   );
 
   updateGameState({ toads: updatedToads }, syntetic);
@@ -208,11 +211,11 @@ export const updateToadStateByIds = (
 
 export const updateToadsBulkHunger = (
   hoursPassed: number,
-  syntetic?: boolean
+  syntetic?: boolean,
 ) => {
   const state = getGameState();
   // Голод идёт у всех жаб колонии — и дома, и в секторе (репродуктор, ⚡, лазарет):
-  // место (`scene_id` или `roomId`) на это не влияет (`utils/toad-location.ts`)
+  // место (`scene_id`)
   const updatedToads = state.toads.map((toad) =>
     toad.state?.hunger
       ? {
@@ -222,11 +225,11 @@ export const updateToadsBulkHunger = (
             hunger: getHunger(
               toad.state.hunger,
               toad.genes.hungerRate,
-              hoursPassed
+              hoursPassed,
             ),
           },
         }
-      : toad
+      : toad,
   );
 
   updateGameState({ toads: updatedToads }, syntetic);
@@ -238,14 +241,14 @@ export const updateToadsBulkHunger = (
  */
 export const updateToadsBulkEnergy = (
   hoursPassed: number,
-  syntetic?: boolean
+  syntetic?: boolean,
 ) => {
   const state = getGameState();
   const updatedToads = state.toads.map((toad) => ({
     ...toad,
     energy: Math.min(
       MAX_ENERGY,
-      getToadEnergy(toad) + ENERGY_REGEN_PER_HOUR * hoursPassed
+      getToadEnergy(toad) + ENERGY_REGEN_PER_HOUR * hoursPassed,
     ),
   }));
 
@@ -264,11 +267,11 @@ export const deleteToadsByIds = (toadIds: number[]): Toad[] => {
 // Scene operations
 export const updateScene = (
   sceneId: number,
-  sceneData: Partial<Scene>
+  sceneData: Partial<Scene>,
 ): Scene[] => {
   const state = getGameState();
   const updatedScenes = state.scenes.map((scene) =>
-    scene.id === sceneId ? { ...scene, ...sceneData } : scene
+    scene.id === sceneId ? { ...scene, ...sceneData } : scene,
   );
 
   updateGameState({ scenes: updatedScenes });

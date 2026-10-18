@@ -13,7 +13,12 @@ import {
 } from "../../utils/room-upgrades";
 import { useModal } from "../ModalContext";
 import { useToads } from "../ToadContext";
-import { getRoomDemolishIssue, isRoomPowered } from "../HexMap/colony-build";
+import {
+  getRoomDemolishIssue,
+  isRoomPowered,
+  ROOM_UNPOWERED_MESSAGE,
+  ROOM_UNPOWERED_TITLE,
+} from "../HexMap/colony-build";
 import {
   getBuiltRoomKind,
   getRoomBlueprint,
@@ -114,6 +119,19 @@ export default function RoomDataTab({ room, stats }: RoomDataTabProps) {
 
   return (
     <div className="flex flex-col gap-3 px-2 pb-2">
+      {/* Главная ошибка сектора: без тока рабочие вкладки закрыты, а биопод не производит биомассу */}
+      {!powered && (
+        <div className="rounded-xl border border-rose-500/60 bg-rose-950/40 p-2">
+          <p className="text-xs font-bold text-rose-200">
+            ⚠️ {ROOM_UNPOWERED_TITLE}
+          </p>
+          <p className="mt-1 text-2xs leading-snug text-rose-100/80">
+            {ROOM_UNPOWERED_MESSAGE} Его рабочие вкладки закрыты, а жильцы
+            биопода без тока не вырабатывают биомассу.
+          </p>
+        </div>
+      )}
+
       {/* Что это за гекс и кто в нём живёт */}
       <div className="rounded-xl border border-gray-600/40 bg-color-second p-2">
         <div className="flex items-center gap-2">

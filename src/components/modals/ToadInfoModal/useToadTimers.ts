@@ -1,4 +1,4 @@
-import { HOURS_TO_GROW_UP } from "../../../models/Toad";
+import { getToadGrowthInfo } from "../../../utils/toad-growth";
 
 export const useToadTimers = (toad: any) => {
   const calculateAge = () => {
@@ -31,16 +31,9 @@ export const useToadTimers = (toad: any) => {
     };
   };
 
-  const getGrowthInfo = () => {
-    if (toad.stage !== "toadpole") return null;
-    // Рост без ускорений: бонус биопода «ускоренный рост» — легаси и удалён
-    const duration = HOURS_TO_GROW_UP * 3600000;
-    const elapsed = Date.now() - new Date(toad.created_at).getTime();
-    return {
-      progress: Math.min((elapsed / duration) * 100, 100),
-      timeLeft: Math.max(Math.ceil((duration - elapsed) / 60000), 0),
-    };
-  };
+  // Рост без ускорений: бонусы биопода («ускоренный рост») — легаси и удалён.
+  // `hungry` подсказывает, что головастика сначала нужно покормить.
+  const getGrowthInfo = () => getToadGrowthInfo(toad);
 
   return {
     age: calculateAge(),

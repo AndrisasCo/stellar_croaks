@@ -5,7 +5,7 @@ import { Toad } from "../../../../models/Toad";
 import { useToads } from "../../../ToadContext";
 import { CURRENCY_CONFIG } from "../../../../utils/constants";
 import {
-  eliteOrders,
+  getEliteOrderById,
   getNewElite,
   getShopState,
   ELITE_REFRESH_COOLDOWN,
@@ -104,16 +104,24 @@ export const EliteTab: React.FC = () => {
   };
 
   const getAvailableOrders = () => {
-    return eliteOrders
-      .filter((oreder) => shopState.eliteOrders.includes(oreder.id))
-      .map((order) => {
-        const suitableToads = activeToads.filter(order.requirement);
-        return {
+    // Set — защита от дублей в старом/повреждённом сейве: React-ключи заказов
+    // должны оставаться уникальными. Неизвестные id (например, из будущей версии
+    // генератора) спокойно пропускаем, а не роняем всю витрину.
+    return Array.from(new Set(shopState.eliteOrders)).flatMap((orderId) => {
+      const order = getEliteOrderById(orderId);
+      if (!order) {
+        return [];
+      }
+
+      const suitableToads = activeToads.filter(order.requirement);
+      return [
+        {
           ...order,
           canComplete: suitableToads.length > 0,
           suitableToads,
-        };
-      });
+        },
+      ];
+    });
   };
 
   const handleRefreshShop = () => {
@@ -188,9 +196,17 @@ export const EliteTab: React.FC = () => {
         >
           <div className="flex flex-col gap-3">
             <div className="flex-1">
-              <h4 className="text-white font-semibold text-base mb-2">
-                {order.title}
-              </h4>
+              <div className="flex items-center gap-2 mb-2">
+                {order.colorSwatch && (
+                  <span
+                    className="h-3.5 w-3.5 shrink-0 rounded-full border border-white/40"
+                    style={{ backgroundColor: order.colorSwatch }}
+                  />
+                )}
+                <h4 className="text-white font-semibold text-base">
+                  {order.title}
+                </h4>
+              </div>
               <p className="text-gray-200 text-sm mb-3">{order.description}</p>
 
               <div className="flex flex-col gap-2 text-sm text-gray-300 mb-3">

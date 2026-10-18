@@ -21,7 +21,8 @@ import { getToadHomeId } from "../utils/toad-location";
 
 /**
  * Состояние колонии для экрана карты: построенные секторы, энергосеть и жабы,
- * которые стоят на гексах (в секторах — по `Toad.roomId`, в биоподах — по `Toad.scene_id`).
+ * которые стоят на гексах (в секторах — по `Toad.scene_id` = id сектора, в биоподах — по
+ * числовому `Toad.scene_id` = id биопода).
  *
  * Жабы из секторов достаются из общего состояния, а сеть пересчитывается на каждый чих —
  * формулы дешёвые и чистые (colony-power).
@@ -55,11 +56,14 @@ export const useColony = (): ColonyController => {
   const toads = state.toads;
   const scenes = state.scenes;
 
-  const rooms = useMemo(() => resolveColonyRooms(colony, scenes), [colony, scenes]);
+  const rooms = useMemo(
+    () => resolveColonyRooms(colony, scenes),
+    [colony, scenes],
+  );
 
   /**
    * Жабы по гексам: у каждого сектора свой список — сектора берут посаженных вручную
-   * (`roomId`), биоподы — жильцов своего биопода (`sceneId` гекса).
+   * (`scene_id` — id сектора), биоподы — жильцов своего биопода (`sceneId` гекса).
    */
   const toadsByRoom = useMemo(
     () => getRoomToadLists(rooms, toads),

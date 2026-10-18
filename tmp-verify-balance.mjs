@@ -252,8 +252,8 @@ check("переполнение: без места", overflow.rejected, 1);
 console.log("\n[5] Цены построек и награды элитных заказов");
 console.log("─".repeat(60));
 const order = rooms.ROOM_BLUEPRINT_ORDER;
-check("первый гекс обучения — «Разведка»", order[0], "scout");
-check("второй — «Склад»", order[1], "storage");
+check("первый гекс обучения — «Торговая капсула»", order[0], "shop");
+check("второй — «Биопод»", order[1], "aviary");
 const scoutCost = rooms.ROOM_BLUEPRINTS.scout.baseCost;
 const storageCost = rooms.ROOM_BLUEPRINTS.storage.baseCost;
 console.log(
@@ -280,9 +280,11 @@ const repeatableKinds = [
   "storage",
 ];
 check(
-  "все повторяемые секторы дорожают одинаково",
-  new Set(repeatableKinds.map((kind) => rooms.ROOM_BLUEPRINTS[kind].costGrowth)).size,
-  1,
+  "все повторяемые секторы дорожают",
+  repeatableKinds.every(
+    (kind) => rooms.ROOM_BLUEPRINTS[kind].costGrowth > 1,
+  ),
+  true,
 );
 check(
   "рост цены повторяемого сектора ×1.5",

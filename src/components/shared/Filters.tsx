@@ -53,7 +53,7 @@ export const Filters = ({
       | "speed"
       | "fertility"
       | "appetite"
-      | "hunger"
+      | "hunger",
   ) => {
     if (sortBy === type) {
       setSortDirection(sortDirection === "asc" ? "desc" : "asc");
@@ -100,7 +100,7 @@ export const Filters = ({
             </span>
             <HorizontalScroll className="flex bg-color-main rounded-lg p-1 border border-cyan-500/10">
               {[
-                { key: "rarity", label: "Редкость" },
+                { key: "rarity", label: "качество" },
                 addPrice ? { key: "price", label: "Цена" } : {},
                 { key: "name", label: "Имя" },
                 { key: "type", label: "Вид" },

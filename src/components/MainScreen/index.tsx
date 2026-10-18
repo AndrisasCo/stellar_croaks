@@ -2,9 +2,8 @@ import { useEffect, useLayoutEffect, useState } from "react";
 import { useToads } from "../ToadContext";
 import MusicPlayer from "../shared/MusicPlayer";
 import LoadingScreen from "../shared/LoadingScreen";
-import TutorialModal from "../modals/TutorialModal";
 import HexMapScreen from "../HexMap";
-import { useModal } from "../ModalContext";
+import Narrator from "../Narrator";
 import { processBreeding, TimeManager } from "../../utils/breeding-manager";
 import { processDiseases } from "../../utils/disease-manager";
 import { processCyberEvents } from "../../utils/events-manager";
@@ -83,7 +82,6 @@ export default function ToadGame() {
   const { account, allToads } = useToads();
   const { isLoading: isLoadingTg } = useTelegram();
   const { addNotification } = useNotifications();
-  const { openModal } = useModal();
   const [isLoading, setIsLoading] = useState(true);
 
   const showLoadingScreen = isLoading || !account || !allToads || isLoadingTg;
@@ -147,31 +145,40 @@ export default function ToadGame() {
 
     // Игровой цикл
     // Ферма (Часть 3.3): выработка биомассы, апкипинг и восстановление сил жаб
-    const farmLoop = setInterval(() => {
-      processProduction(0.25);
-      processEnergyRegen(0.25);
-    }, 5 * 60 * 1000);
+    const farmLoop = setInterval(
+      () => {
+        processProduction(0.08);
+        processEnergyRegen(0.08);
+      },
+      5 * 60 * 1000,
+    );
 
     // Голод и автокормушки (см. `runHungerTick`): раз в 5 минут, как и ферма
-    const hungerLoop = setInterval(() => runHungerTick(0.1), 5 * 60 * 1000);
+    const hungerLoop = setInterval(() => runHungerTick(0.08), 5 * 60 * 1000);
 
     // Кибер-события и болезни (Часть 3.6): раз в час игрового времени
-    const cyberLoop = setInterval(() => {
-      processDiseases(1);
-      processCyberEvents(1, addNotification);
-    }, 60 * 60 * 1000);
+    const cyberLoop = setInterval(
+      () => {
+        processDiseases(1);
+        processCyberEvents(1, addNotification);
+      },
+      60 * 60 * 1000,
+    );
 
     // Роды и рост головастиков. Новые беременности запускаются вручную («Репродуктор»)
     const birthLoop = setInterval(
       () => processBreeding(0, addNotification),
-      60 * 1000
+      60 * 1000,
     );
 
     // Разведка (Часть 5): события походов и регенерация HP дома — раз в 5 минут
-    const expeditionLoop = setInterval(() => {
-      processExpeditions(addNotification);
-      processHpRegen(0.25);
-    }, 5 * 60 * 1000);
+    const expeditionLoop = setInterval(
+      () => {
+        processExpeditions(addNotification);
+        processHpRegen(0.25);
+      },
+      5 * 60 * 1000,
+    );
 
     const saveLoop = setInterval(() => updateGameStateDB(), 3 * 60 * 1000);
 
@@ -212,12 +219,6 @@ export default function ToadGame() {
           });
         }
       });
-
-      // Туториал для новичков
-      if (!localStorage.getItem("tutorial_read")) {
-        localStorage.setItem("tutorial_read", "true");
-        openModal(() => <TutorialModal />);
-      }
     }, 2000);
 
     return () => {
@@ -230,6 +231,7 @@ export default function ToadGame() {
     <div className="min-h-[100dvh] flex flex-col bg-[#070c14]">
       {showLoadingScreen && <LoadingScreen />}
       <HexMapScreen />
+      {!showLoadingScreen && <Narrator />}
       <MusicPlayer />
     </div>
   );

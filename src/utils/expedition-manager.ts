@@ -23,7 +23,11 @@ import { getIncubatingToadIds } from "./dissolve-manager";
 import { getToadDisease, infectToad } from "./disease-manager";
 import { generateRandomHexColor } from "./randomize-toad-characteristics";
 import { assignToadsToScenes } from "./housing";
-import { canFitInStorage, fitItemsInStorage, getStorageCapacityInfo } from "./storage";
+import {
+  canFitInStorage,
+  fitItemsInStorage,
+  getStorageCapacityInfo,
+} from "./storage";
 import { getToadHomeId } from "./toad-location";
 import {
   EXTRACTION_ASTRO_COST,
@@ -191,9 +195,10 @@ export const getSectorUnlockStatus = (
 /**
  * Отправить команду в сектор.
  * Списывает биомассу на снаряжение, помечает жаб `status: "out"` и заводит запись
- * похода. Уходя, жаба освобождает место в секторе (`roomId` сбрасывается): она в
- * походе, а не в ⚡-секторе или «Разведке» — двух мест сразу не бывает. После разбора
- * добычи жаба возвращается в «Разведку», откуда ушла команда (`originRoomId`).
+ * похода. Уходя, жаба освобождает место в секторе (`scene_id` снова становится
+ * биоподом): она в походе, а не в ⚡-секторе или «Разведке» — двух мест сразу не бывает.
+ * После разбора добычи жаба возвращается в «Разведку», откуда ушла команда
+ * (`originRoomId`).
  */
 export const startExpedition = (
   sectorId: number,
@@ -1167,12 +1172,12 @@ const completeArrival = (
   let summary = arrival.success
     ? `Удачный поход в «${sector.name}»: ${lootText || "пусто, зато живые"}`
     : forced
-    ? `Команда выбита в «${sector.name}» и вернулась на маяке: ${
-        lootText || "пусто, зато живые"
-      }`
-    : `Поход в «${sector.name}» сложился неудачно: ${
-        lootText || "пусто, зато живые"
-      }`;
+      ? `Команда выбита в «${sector.name}» и вернулась на маяке: ${
+          lootText || "пусто, зато живые"
+        }`
+      : `Поход в «${sector.name}» сложился неудачно: ${
+          lootText || "пусто, зато живые"
+        }`;
 
   if (arrival.success) {
     pushLog(expedition, {
@@ -1270,15 +1275,27 @@ const returnTeamToScout = (
     (room) => room.kind === "scout",
   );
   const target =
+    scoutRooms.find(
+      (room) => (room.slotId ?? room.id) === expedition.originRoomId,
+    ) ??
     scoutRooms.find((room) => room.id === expedition.originRoomId) ??
     scoutRooms[0] ??
     null;
+  /** Карта адресует «Разведку» по гексу: `Toad.scene_id` хранит именно этот id. */
+  const targetRoomId = target ? target.slotId ?? target.id : null;
+  /** Старый сейв мог помнить канонический id — при подсчёте мест принимаем оба. */
+  const targetRoomIds =
+    target === null ? null : new Set([target.id, target.slotId ?? target.id]);
 
-  let used = target
-    ? state.toads.filter(
-        (toad) => toad.roomId === target.id && !teamIds.has(toad.id),
-      ).length
-    : 0;
+  let used =
+    targetRoomIds === null
+      ? 0
+      : state.toads.filter(
+          (toad) =>
+            typeof toad.scene_id === "string" &&
+            targetRoomIds.has(toad.scene_id) &&
+            !teamIds.has(toad.id),
+        ).length;
   let rejoined = 0;
   let home = 0;
 
@@ -1290,9 +1307,9 @@ const returnTeamToScout = (
     const maxHp = getToadMaxHp(toad);
     const hp = Math.max(0, Math.round(getToadHp(toad) * 100) / 100);
     const status: ToadStatus = hp > 0 ? "ok" : "injured";
-    const canRejoin = Boolean(target) && used < EXPEDITION_TEAM_SIZE;
+    const canRejoin = targetRoomId !== null && used < EXPEDITION_TEAM_SIZE;
 
-    if (canRejoin && target) {
+    if (canRejoin) {
       used += 1;
       rejoined += 1;
 
@@ -1301,8 +1318,7 @@ const returnTeamToScout = (
         hp,
         maxHp,
         status,
-        roomId: target.id,
-        scene_id: null,
+        scene_id: targetRoomId,
       };
     }
 
@@ -1313,7 +1329,6 @@ const returnTeamToScout = (
       hp,
       maxHp,
       status,
-      roomId: null,
       scene_id: getToadHomeId(toad),
     };
   });

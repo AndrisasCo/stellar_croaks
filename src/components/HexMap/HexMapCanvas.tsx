@@ -55,8 +55,6 @@ export interface HexMapCanvasProps {
   poweredRooms: Record<string, boolean>;
   /** Жабы по секторам: id сектора → список жаб. */
   toadsByRoom: Record<string, Toad[]>;
-  /** Сектор, к которой идут жабы (кормление). null — блуждают сами. */
-  feedRoomId: string | null;
   onRoomTap: (room: RoomConfig) => void;
   onToadTap: (toad: Toad) => void;
   /**
@@ -1231,25 +1229,6 @@ export default function HexMapCanvas(props: HexMapCanvasProps) {
       flock.sync(props.toadsByRoom[roomId] ?? [], spawns);
     });
   }, [mapReady, texturesReady, props.toadsByRoom]);
-
-  // Во время кормления жабы идут к кормушке биопода
-  useEffect(() => {
-    if (!mapReady) {
-      return;
-    }
-
-    Object.entries(flocksRef.current).forEach(([roomId, flock]) => {
-      if (roomId !== props.feedRoomId) {
-        flock.setAttractor(null);
-        return;
-      }
-
-      const view = viewsRef.current.find((item) => item.room.id === roomId);
-
-      // Жабы идут к центру кормушки: отдельного хотспота в секторе больше нет
-      flock.setAttractor(view?.center ?? null);
-    });
-  }, [mapReady, props.feedRoomId, roomsKey]);
 
   return (
     <div className="relative h-full w-full">

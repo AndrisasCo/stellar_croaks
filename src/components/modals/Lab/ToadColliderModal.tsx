@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { ColliderIcons, PregnancyIcon } from "../../../assets/icons";
 import { deleteToadsByIds } from "../../../backend";
+import { useColony } from "../../../hooks/use-colony";
+import { useRoomPowerTab } from "../../../hooks/use-room-power-tab";
 import { useSoundEffects } from "../../../hooks/use-sound-effects";
 import {
   Toad,
@@ -78,27 +80,48 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
   const [showWarning, setShowWarning] = useState(false);
 
   const { startBreeding, updateBreeding, allToads } = useToads();
+  const { powerGrid } = useColony();
   /** Состояние сектора: смешивание жаб (по умолчанию), инкубатор или данные сектора */
-  const [tab, setTab] = useState<ColliderTab>("collider");
+  const {
+    tab,
+    setTab,
+    issue: powerIssue,
+  } = useRoomPowerTab<ColliderTab>({
+    room,
+    powerGrid,
+    defaultTab: "collider",
+  });
 
   /**
    * Табы коллайдера: смешивание, колбы инкубатора и — только у гекса на карте —
    * «Данные сектора» последним табом, как у остальных секторов.
    */
   const tabs: ModalTabItem<ColliderTab>[] = [
-    { id: "collider", label: "🧬 Коллайдер", color: "text-purple-400" },
-    { id: "incubator", label: "🧫 Инкубатор", color: "text-emerald-400" },
+    {
+      id: "collider",
+      label: "🧬 Коллайдер",
+      color: "text-purple-400",
+      disabled: Boolean(powerIssue),
+      disabledHint: powerIssue ?? undefined,
+    },
+    {
+      id: "incubator",
+      label: "🧫 Инкубатор",
+      color: "text-emerald-400",
+      disabled: Boolean(powerIssue),
+      disabledHint: powerIssue ?? undefined,
+    },
     ...(room ? [{ ...ROOM_DATA_TAB }] : []),
   ];
 
   // Часть 5: жабы в походе недоступны для коллайдера (они на Периметре).
   // Список — вся колония: коллайдер работает с генами, а не с биоподом.
   const availableToads = allToads.filter(
-    (t) => t.stage === "adult" && t.status !== "out"
+    (t) => t.stage === "adult" && t.status !== "out",
   );
   const { playBubble2 } = useSoundEffects();
   const [breedingResult, setBreedingResult] = useState<BreedingResult | null>(
-    null
+    null,
   );
   const [customName, setCustomName] = useState("");
 
@@ -108,7 +131,7 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
 
   const handleSelectToad = (toad: Toad) => {
     const currentToadIndex = selectedToads.findIndex(
-      (t) => t && t.id === toad.id
+      (t) => t && t.id === toad.id,
     );
 
     if (currentToadIndex !== -1) {
@@ -143,7 +166,7 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
     }
     setIsMixing(true);
 
-    // Мутация - шанс на повышенную редкость
+    // Мутация - шанс на повышенную качество
     const mutationChance = Math.random() < 0.1;
     const genesBreakChance = Math.random() < 0.1;
     const isMutant = Math.random() < 0.1;
@@ -155,7 +178,7 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
     }) as Toad;
 
     await new Promise<void>((resolve) =>
-      setTimeout(resolve, MIXING_DURATION + 500)
+      setTimeout(resolve, MIXING_DURATION + 500),
     );
 
     let message = `✨ Новый гибрид создан!`;
@@ -165,7 +188,7 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
     }
 
     if (mutationChance) {
-      message += " Идельное смешивание генов! Ее редкость повышена";
+      message += " Идельное смешивание генов! Ее качество повышена";
     }
 
     if (isMutant) {
@@ -375,7 +398,7 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
                       )}
                       {availableToads.map((toad) => {
                         const geneticFaultConfig = getGeneticFaultConfig(
-                          toad.state?.genetic_fault
+                          toad.state?.genetic_fault,
                         );
 
                         return (
@@ -386,7 +409,7 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
                               currentToads.find((t) => t.id === toad.id)
                                 ? "bg-purple-600/50 text-white cursor-not-allowed border-purple-500/50"
                                 : `text-gray-200 cursor-pointer ${getRarityBackground(
-                                    toad.genes.rarity
+                                    toad.genes.rarity,
                                   )} hover:bg-gray-600/30`
                             }`}
                           >
@@ -414,10 +437,10 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
                               </span>
                             </div>
 
-                            {/* Редкость */}
+                            {/* качество */}
                             <div
                               className={`text-xs font-bold ${getRarityColor(
-                                toad.genes.rarity
+                                toad.genes.rarity,
                               )} flex items-center gap-1 mb-1`}
                             >
                               <span className="text-2xs">
@@ -479,7 +502,7 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
               </div>
 
               <div className="bg-color-main rounded-xl p-2 border border-gray-600/50">
-                {/* Верхний блок: аватар + редкость + имя */}
+                {/* Верхний блок: аватар + качество + имя */}
                 <div className="flex items-center gap-4 mb-4">
                   {/* Поле ввода имени */}
                   <div className="flex-1">
@@ -511,20 +534,20 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
                       {breedingResult.child.sex === "neuter"
                         ? "Бесполый"
                         : breedingResult.child.sex === "male"
-                        ? "Самец"
-                        : "Самка"}
+                          ? "Самец"
+                          : "Самка"}
                     </span>
                   </div>
                   <div className="w-px h-4 bg-gray-500"></div>
                   <div>Поколение: {breedingResult.child!.generation}</div>
                 </div>
-                {/* Редкость */}
+                {/* качество */}
                 <div
                   className={`text-center my-3 ${getRarityColor(
-                    breedingResult.child!.genes.rarity
+                    breedingResult.child!.genes.rarity,
                   )}`}
                 >
-                  <span className="text-gray-500 text-sm">Редкость:</span>{" "}
+                  <span className="text-gray-500 text-sm">качество:</span>{" "}
                   {getRarityBadge(breedingResult.child!.genes.rarity)}{" "}
                   <span className="font-semibold">
                     {breedingResult.child!.genes.rarity.toFixed(1)}
@@ -552,7 +575,9 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
                     </div>
                   </div>
                   <div className="text-gray-300 bg-gray-600/30 rounded-lg p-2 text-center">
-                    <div className="text-gray-500 text-xs mb-1">Плодовитость</div>
+                    <div className="text-gray-500 text-xs mb-1">
+                      Плодовитость
+                    </div>
                     <div className="font-semibold">
                       {breedingResult.child!.genes.fertility.toFixed(1)}
                     </div>
@@ -565,11 +590,11 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
                     <div
                       className={`rounded-xl p-3 border-2 ${
                         getGeneticFaultConfig(
-                          breedingResult.child!.state?.genetic_fault
+                          breedingResult.child!.state?.genetic_fault,
                         ).bgColor
                       } ${
                         getGeneticFaultConfig(
-                          breedingResult.child!.state?.genetic_fault
+                          breedingResult.child!.state?.genetic_fault,
                         ).borderColor
                       }`}
                     >
@@ -577,7 +602,7 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
                         <span className="text-lg">
                           {
                             getGeneticFaultConfig(
-                              breedingResult.child!.state?.genetic_fault
+                              breedingResult.child!.state?.genetic_fault,
                             ).icon
                           }
                         </span>
@@ -588,13 +613,13 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
                       <div
                         className={`text-base font-bold ${
                           getGeneticFaultConfig(
-                            breedingResult.child!.state?.genetic_fault
+                            breedingResult.child!.state?.genetic_fault,
                           ).color
                         } mb-1`}
                       >
                         {
                           getGeneticFaultConfig(
-                            breedingResult.child!.state?.genetic_fault
+                            breedingResult.child!.state?.genetic_fault,
                           ).label
                         }{" "}
                         ({breedingResult.child!.state?.genetic_fault}%)
@@ -602,7 +627,7 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
                       <div className="text-gray-500 text-xs leading-relaxed">
                         {
                           getGeneticFaultConfig(
-                            breedingResult.child!.state?.genetic_fault
+                            breedingResult.child!.state?.genetic_fault,
                           ).description
                         }
                       </div>
@@ -647,9 +672,9 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
                     Жабы исчезнут навсегда
                   </h3>
                   <p className="text-gray-200 text-sm leading-snug">
-                    Генетический коллайдер разберёт выбранных жаб на гены и соберёт
-                    из них одного нового гибрида. Вернуть исходных жаб будет
-                    невозможно.
+                    Генетический коллайдер разберёт выбранных жаб на гены и
+                    соберёт из них одного нового гибрида. Вернуть исходных жаб
+                    будет невозможно.
                   </p>
                 </div>
 
@@ -664,7 +689,7 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
                         <ToadGender gender={toad.sex} />
                         <span
                           className={`truncate font-medium ${getRarityColor(
-                            toad.genes.rarity
+                            toad.genes.rarity,
                           )}`}
                         >
                           {toad.name}

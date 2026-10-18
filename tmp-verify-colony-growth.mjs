@@ -152,8 +152,8 @@ check(
 );
 checkTrue(
   "ядро и базовые комнаты на карте",
-  ["core", "aviary", "breeding"].every((id) =>
-    startRooms.some((room) => room.id === id),
+  ["core", "aviary", "breeding"].every((slotId) =>
+    startRooms.some((room) => room.slotId === slotId),
   ),
 );
 check(
@@ -658,7 +658,7 @@ check(
 );
 check(
   "ядро остаётся ядром",
-  clearedBase.find((room) => room.id === "core")?.kind,
+  clearedBase.find((room) => room.slotId === "core")?.kind,
   "core",
 );
 check(
@@ -672,7 +672,7 @@ check(
 
 console.log("\n── 9b. Правила сноса и цена ───────────────────────────────");
 const coreRoom = startRooms.find((room) => room.kind === "core");
-const nestRoom = startRooms.find((room) => room.id === "breeding");
+const nestRoom = startRooms.find((room) => room.slotId === "breeding");
 const emptyRoom = startRooms.find((room) => room.kind === "empty");
 const toadStub = { id: 1, name: "жаба" };
 

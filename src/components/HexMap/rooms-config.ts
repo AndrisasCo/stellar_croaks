@@ -1,7 +1,11 @@
 import { ColonyRoomKind, ColonyRoomState } from "../../models/colony";
 import { INITIAL_CAPACITY } from "../../models/scene";
 import { Toad } from "../../models/Toad";
-import { NEST_ROOM_ID } from "../../utils/constants";
+import {
+  AVIARY_ROOM_ID,
+  CORE_ROOM_ID,
+  NEST_ROOM_ID,
+} from "../../utils/constants";
 import {
   AxialCoord,
   hexCoordKey,
@@ -15,7 +19,7 @@ import {
  *
  * Сектора обозначены только цветом: иконок, подписей и кнопок внутри гексов нет — спрайты
  * добавим позже. Тап по гексу открывает существующую React-модалку сектора, а какую именно —
- * решает первое действие сектора (`RoomActionId`, разводка — в `HexMap/index.tsx`).
+ * решает первое действие сектора (`RoomActionId`, разводка — в `open-room-modal.tsx`).
  *
  * Каталог построек `ROOM_BLUEPRINTS` — единственный источник правды о секторах: из него
  * собираются и карточки меню застройки (`colony-build.ts`), и сами гексы (`createColonyRoom`).
@@ -26,7 +30,7 @@ export type RoomKind = "core" | "empty" | ColonyRoomKind;
 
 /** Что открывает действие сектора: каждому id соответствует модалка на экране карты. */
 export type RoomActionId =
-  | "room-upgrade" // ядро → улучшение сектора (автокормушка)
+  | "colony" // ядро → управление колонией: сводка, кормление, жабы и секторы
   | "toad-list" // биопод → список жаб
   | "scene-info" // биопод → статистика биопода
   | "feed" // биопод → покормить всех (без модалки)
@@ -63,7 +67,19 @@ export interface RoomPalette {
 }
 
 export interface RoomConfig {
+  /**
+   * id, которым карта и модалки адресуют сектор. У построек и пустых слотов это id гекса
+   * (`slot-*`, `outpost-*`); у базовых секторов — их постоянный id (`CORE_ROOM_ID`,
+   * `NEST_ROOM_ID`, `AVIARY_ROOM_ID`), чтобы жабы в репродукторе и `HEX_ROOM_BY_ID`
+   * находили гекс после каждой перезагрузки. Канонический id постройки в сейве —
+   * `ColonyRoomState.id` (`вид_число`).
+   */
   id: string;
+  /**
+   * id гекса карты. Не меняется при сносе и повторной застройке: по нему карта находит
+   * место постройки, а `ColonyRoomState.slotId` помнит, что здесь стоит.
+   */
+  slotId: string;
   kind: RoomKind;
   title: string;
   /**
@@ -81,12 +97,8 @@ export interface RoomConfig {
   palette: RoomPalette;
   /** Действия сектора: их наличие отличает построенный сектор от пустого слота (см. isRoomOpen). */
   actions: RoomAction[];
-  /**
-   * Биопод гекса-биопода (`Scene`), который он показывает: у каждого гекса «Биопод» свой.
-   * Гекс рисует жильцов именно этого биопода (`Toad.scene_id`), а не общий список жаб.
-   * У остальных секторов биопода нет — поля не будет.
-   */
-  sceneId?: number;
+  /** Биопод гекса-биопода (`Scene.id`); null у остальных секторов и пустых слотов. */
+  sceneId: number | null;
 }
 
 const PALETTES: Record<RoomKind, RoomPalette> = {
@@ -245,10 +257,9 @@ export const ROOM_BLUEPRINTS: Record<ColonyRoomKind, RoomBlueprint> = {
   breeding: {
     kind: "breeding",
     title: "Репродуктор",
-    subtitle: "Размножение, беременность",
+    subtitle: "Размножение",
     icon: "🥚",
-    description:
-      "Беременность идёт под присмотром: жабы зреют в репродукторе, потомство уходит в инкубатор коллайдера.",
+    description: "Здесь выбираются лучшие представители для селекции",
     palette: PALETTES.breeding,
     unique: false,
     baseCost: 150,
@@ -261,7 +272,7 @@ export const ROOM_BLUEPRINTS: Record<ColonyRoomKind, RoomBlueprint> = {
     subtitle: "Смешивание генов",
     icon: "🧬",
     description:
-      "Смешивает гены двух жаб: гибрид дозревает во вкладке «Инкубатор». Сектор — в единственном экземпляре.",
+      "Смешивает гены организмов: гибрид как правило получается лучше чем родители, но могут быть и неудачи.",
     palette: PALETTES.collider,
     unique: true,
     baseCost: 600,
@@ -270,16 +281,16 @@ export const ROOM_BLUEPRINTS: Record<ColonyRoomKind, RoomBlueprint> = {
   },
   scout: {
     kind: "scout",
-    title: "Разведка",
-    subtitle: "Команды жаб в походы",
+    title: "КОНТУР",
+    subtitle: "КОНтроль Территории УРовня",
     icon: "🧭",
     description:
-      "Диспетчерская колонии: команды уходят в походы по секторам Периметра. Поход всегда выгоднее фермы, а каждая роль в команде добавляет 20% к шансу удачного возврата.",
+      "Диспетчерская колонии: команды уходят в походы по секторам Периметра в поисках добычи и ответов на вопросы.",
     palette: PALETTES.scout,
     unique: false,
     baseCost: 25,
     costGrowth: 2,
-    actions: [{ id: "scout", icon: "🧭", title: "Разведка" }],
+    actions: [{ id: "scout", icon: "🧭", title: "КОНТУР" }],
   },
   storage: {
     kind: "storage",
@@ -287,7 +298,7 @@ export const ROOM_BLUEPRINTS: Record<ColonyRoomKind, RoomBlueprint> = {
     subtitle: "+300 к вместимости",
     icon: "📦",
     description:
-      "Каждый склад добавляет 300 единиц к полкам: корм, батарейки, пигменты, пыль и лутбоксы. Тап по складу открывает его содержимое.",
+      "Каждый склад добавляет 300 единиц к полкам: корм, батарейки, пигменты, пыль и лутбоксы.",
     palette: PALETTES.storage,
     unique: false,
     baseCost: 25,
@@ -312,7 +323,7 @@ export const ROOM_BLUEPRINTS: Record<ColonyRoomKind, RoomBlueprint> = {
     subtitle: "6 коек, быстрое лечение",
     icon: "🩹",
     description:
-      "Койки для шести жаб: здесь HP идёт +24 в час вместо 1, болезнь проходит втрое быстрее и не передаётся соседям. Мгновенное лечение за Кваксы — самый дорогой способ.",
+      "Место для шести жаб: здесь здоровье восстанавливается намного эффективнее, болезнь проходит втрое быстрее и не передаётся соседям.",
     palette: PALETTES.hospital,
     unique: false,
     baseCost: 95,
@@ -324,8 +335,7 @@ export const ROOM_BLUEPRINTS: Record<ColonyRoomKind, RoomBlueprint> = {
     title: "Диссоциатор",
     subtitle: "Расщепление генов",
     icon: "🧪",
-    description:
-      "Жаба расщепляется на биомассу: необратимо, зато полезно. Сектор в колонии одна.",
+    description: "Здесь можно расщепить организмы на биомассу",
     palette: PALETTES.dissociator,
     unique: true,
     baseCost: 400,
@@ -335,9 +345,9 @@ export const ROOM_BLUEPRINTS: Record<ColonyRoomKind, RoomBlueprint> = {
 };
 
 /**
- * Порядок секторов в меню застройки: сначала то, что нужно на обучении (разведка и склад
- * ставятся со стартовых Кваксов), дальше жильё и энергия, потом лаборатория и торговля.
- * Список и есть порядок карточек — каталог `ROOM_BLUEPRINTS` остаётся без порядка.
+ * Порядок секторов в меню застройки: сначала Торговая капсула из задания «Первый сектор»,
+ * дальше жильё и энергия, потом лаборатория и торговля. Список и есть порядок карточек —
+ * каталог `ROOM_BLUEPRINTS` остаётся без порядка.
  */
 export const ROOM_BLUEPRINT_ORDER: ColonyRoomKind[] = [
   "shop",
@@ -386,7 +396,8 @@ const ORIGIN: AxialCoord = { q: 0, r: 0 };
  * а ставится он жилом секторе, поэтому модалка сначала спрашивает, какой именно гекс улучшаем.
  */
 const CORE_ROOM: RoomConfig = {
-  id: "core",
+  id: CORE_ROOM_ID,
+  slotId: "core",
   kind: "core",
   title: "Ядро",
   // Ядро одно с начала игры — номер в имени ему не нужен (второго ядра не построить)
@@ -395,12 +406,15 @@ const CORE_ROOM: RoomConfig = {
   icon: "🏛",
   coord: ORIGIN,
   palette: PALETTES.core,
-  actions: [{ id: "room-upgrade", icon: "🔧", title: "Улучшение сектора" }],
+  actions: [{ id: "colony", icon: "🏛", title: "Управление колонией" }],
+  sceneId: null,
 };
 
 /** Гекс под застройку: цвет «пустой», действий нет — игрок решает, что здесь построить. */
 const emptySlot = (id: string, coord: AxialCoord): RoomConfig => ({
   id,
+  // У свободного гекса id сектора и id гекса совпадают: сектора ещё нет
+  slotId: id,
   kind: "empty",
   title: "",
   // Пустой слот ничего не построил — имени у него нет (подпись рисовать нечего)
@@ -410,6 +424,7 @@ const emptySlot = (id: string, coord: AxialCoord): RoomConfig => ({
   coord,
   palette: PALETTES.empty,
   actions: [],
+  sceneId: null,
 });
 
 /**
@@ -419,14 +434,18 @@ const emptySlot = (id: string, coord: AxialCoord): RoomConfig => ({
  * выглядел бы как «ничего не произошло».
  */
 const toEmptySlot = (room: RoomConfig): RoomConfig =>
-  emptySlot(room.id, room.coord);
+  emptySlot(room.slotId, room.coord);
 
 /** Базовые секторы колонии (ядро рисуется отдельно): биопод и репродуктор стоят с начала игры. */
 const baseRoom = (
-  id: string,
+  slotId: string,
   kind: ColonyRoomKind,
   coord: AxialCoord,
-): RoomConfig => createColonyRoom(emptySlot(id, coord), kind);
+  id: string,
+): RoomConfig => ({
+  ...createColonyRoom(emptySlot(slotId, coord), kind),
+  id,
+});
 
 /**
  * Свободные слоты первого кольца: два оставшихся гекса кольца заняты биоподом и репродуктором.
@@ -476,9 +495,9 @@ export const MAX_COLONY_RADIUS = 6;
  */
 const BASE_ROOMS: RoomConfig[] = [
   CORE_ROOM,
-  baseRoom("aviary", "aviary", { q: -1, r: 0 }),
+  baseRoom("aviary", "aviary", { q: -1, r: 0 }, AVIARY_ROOM_ID),
   // id репродуктора — общая константа: в него уходит пара на ухаживание (utils/constants.ts)
-  baseRoom(NEST_ROOM_ID, "breeding", { q: 1, r: 0 }),
+  baseRoom("breeding", "breeding", { q: 1, r: 0 }, NEST_ROOM_ID),
 ];
 
 /**
@@ -487,7 +506,10 @@ const BASE_ROOMS: RoomConfig[] = [
  * гекс показывается свободным слотом (`getUnlockedRooms`).
  */
 const DEMOLISHABLE_BASE_IDS = new Set(
-  BASE_ROOMS.filter((room) => room.kind !== "core").map((room) => room.id),
+  BASE_ROOMS.filter((room) => room.kind !== "core").flatMap((room) => [
+    room.id,
+    room.slotId,
+  ]),
 );
 
 /**
@@ -539,6 +561,9 @@ export const HEX_ROOM_BY_ID: Record<string, RoomConfig> = ALL_HEX_ROOMS.reduce<
   Record<string, RoomConfig>
 >((acc, room) => {
   acc[room.id] = room;
+  // Старые сейвы помнят постройку по id гекса (`aviary`, `slot-north`): по этому же
+  // ключу карта находит гекс, пока `ColonyRoomState.slotId` не переехал в новый формат.
+  acc[room.slotId] = acc[room.slotId] ?? room;
   return acc;
 }, {});
 
@@ -592,8 +617,9 @@ export const isToadRoom = (room: RoomConfig) =>
 /**
  * Видна ли жаба в секторе прямо сейчас: ушедшую в поход (`status: "out"`) карта не рисует —
  * жаба в походе, а не в секторе, и двух местах сразу не бывает. Место в секторе она при
- * уходе освобождает (`roomId` сбрасывается при отправке, `utils/expedition-config.ts`),
- * поэтому спрайт не вернётся «сам на старое место»: домой жаба приходит в биопод.
+ * уходе освобождает (`scene_id` снова становится биоподом при отправке,
+ * `utils/expedition-config.ts`), поэтому спрайт не вернётся «сам на старое место»:
+ * домой жаба приходит в биопод.
  * Страховка на случай сейва, где жаба уже в походе, но место ещё старое.
  */
 export const isToadVisibleInRoom = (toad: Toad) => toad.status !== "out";
@@ -646,8 +672,12 @@ export const getUnlockedRooms = (
   const isClearedBase = (id: string) =>
     cleared.has(id) && DEMOLISHABLE_BASE_IDS.has(id);
 
+  /** Снос базового сектора могли записать и по id гекса (`aviary`, `breeding`) */
+  const isClearedRoom = (room: RoomConfig) =>
+    isClearedBase(room.id) || isClearedBase(room.slotId);
+
   BASE_ROOMS.forEach((room) =>
-    unlocked.set(room.id, isClearedBase(room.id) ? toEmptySlot(room) : room),
+    unlocked.set(room.slotId, isClearedRoom(room) ? toEmptySlot(room) : room),
   );
 
   /** Сектора, вокруг которых расходится фронт: базовые и постройки игрока (чужие id — мимо). */
@@ -658,15 +688,15 @@ export const getUnlockedRooms = (
       .map((id) => HEX_ROOM_BY_ID[id])
       .filter((room): room is RoomConfig => room !== undefined),
     ...builtRooms
-      .map((built) => HEX_ROOM_BY_ID[built.id])
+      .map((built) => HEX_ROOM_BY_ID[built.slotId ?? built.id])
       .filter((room): room is RoomConfig => room !== undefined),
   ];
 
   frontier.forEach((room) => {
     // Свой гекс на карте есть всегда: постройку игрока карта не забывает. Кроме снесённой
     // базового сектора — её гекс уже поставлен слотом выше, и сектором его не вернуть.
-    if (!isClearedBase(room.id)) {
-      unlocked.set(room.id, room);
+    if (!isClearedRoom(room)) {
+      unlocked.set(room.slotId, room);
     }
 
     // Фронт застройки: у сектора открываются все соседи — и наружу, и вбок по своему кольцу.
@@ -674,8 +704,8 @@ export const getUnlockedRooms = (
     hexNeighbors(room.coord).forEach((coord) => {
       const slot = HEX_ROOM_BY_COORD[hexCoordKey(coord)];
 
-      if (slot && !isClearedBase(slot.id)) {
-        unlocked.set(slot.id, slot);
+      if (slot && !isClearedRoom(slot)) {
+        unlocked.set(slot.slotId, slot);
       }
     });
   });

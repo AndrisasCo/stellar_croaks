@@ -9,13 +9,9 @@ import { getTextureByType } from "../ToadCanvas/utils";
 import { updateToadAppearance } from "../ToadCanvas/update-toad";
 import { isToadVisibleInRoom } from "./rooms-config";
 import {
-  ATTRACTOR_SPREAD_X,
-  ATTRACTOR_SPREAD_Y,
   DRAG_LIFT,
   FLY_SPEED,
   getToadArea,
-  getToadAreaHalfHeight,
-  getToadAreaHalfWidth,
   getToadHitRadius,
   getToadScale,
 } from "./room-toads-layout";
@@ -56,8 +52,6 @@ export interface RoomToadFlock {
   toads: RoomToad[];
   /** Полная синхронизация со списком жаб биопода/репродуктора/сектора ⚡/«Разведки». */
   sync: (toads: Toad[], spawns?: Record<number, Point>) => void;
-  /** Точка притяжения (кормушка во время кормления). null — блуждают сами. */
-  setAttractor: (point: Point | null) => void;
   /** Реакция на тап: жаба подпрыгивает. */
   react: (toadId: number) => void;
   /** Жаба в этом секторе (нужна карте, чтобы взять её в руку). */
@@ -176,7 +170,6 @@ export const createRoomToads = (
   const layer = new Container();
   const states = new Map<number, ToadState>();
   let toads: RoomToad[] = [];
-  let attractor: Point | null = null;
 
   /**
    * Порядок перекрытия жаб: кто ниже на карте (ближе к зрителю) — тот рисуется поверх.
@@ -258,37 +251,6 @@ export const createRoomToads = (
     });
 
     sortByDepth();
-  };
-
-  /** Случайное место рядом с кормушкой: жабы собираются вокруг неё широким пятном. */
-  const pointNearAttractor = (point: Point) =>
-    clampPointInPolygon(
-      {
-        x:
-          point.x +
-          (Math.random() - 0.5) *
-            getToadAreaHalfWidth(bounds.hexSize) *
-            ATTRACTOR_SPREAD_X,
-        y:
-          point.y +
-          (Math.random() - 0.5) *
-            getToadAreaHalfHeight(bounds.hexSize) *
-            ATTRACTOR_SPREAD_Y,
-      },
-      bounds.area,
-    );
-
-  const setAttractor = (point: Point | null) => {
-    attractor = point;
-
-    if (!point) {
-      return;
-    }
-
-    states.forEach((state) => {
-      state.target = pointNearAttractor(point);
-      state.state = "walking";
-    });
   };
 
   const react = (toadId: number) => {
@@ -477,14 +439,12 @@ export const createRoomToads = (
         state.stateTimer -= deltaTime;
 
         if (state.stateTimer <= 0) {
-          if (!attractor && Math.random() < 0.25) {
+          if (Math.random() < 0.25) {
             // Ленивая жаба просто ещё посидит
             state.stateTimer = 60 + Math.random() * 160;
           } else {
             state.state = "walking";
-            state.target = attractor
-              ? pointNearAttractor(attractor)
-              : randomPointInPolygon(bounds.area);
+            state.target = randomPointInPolygon(bounds.area);
           }
         }
       }
@@ -534,7 +494,6 @@ export const createRoomToads = (
       return toads;
     },
     sync,
-    setAttractor,
     react,
     getToad,
     beginDrag,

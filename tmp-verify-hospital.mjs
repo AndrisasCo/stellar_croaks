@@ -180,7 +180,7 @@ check("на койке лазарета +24 HP в час", hospital.HOSPITAL_HP_
 check("коек в одном лазарете", hospital.HOSPITAL_ROOM_TOAD_SLOTS, 6);
 check("болезнь в лазарете идёт втрое быстрее", hospital.HOSPITAL_DISEASE_SPEED, 3);
 
-const onBed = toad({ id: 1, hp: 30, roomId: "hospital-1" });
+const onBed = toad({ id: 1, hp: 30, scene_id: "hospital-1" });
 const atHome = toad({ id: 2, hp: 30 });
 
 check(
@@ -195,7 +195,7 @@ check(
 );
 checkTrue(
   "жаба в другой комнате пациентом лазарета не считается",
-  !hospital.isToadInHospital(toad({ id: 3, roomId: "slot-south" }), ["hospital-1"]),
+  !hospital.isToadInHospital(toad({ id: 3, scene_id: "slot-south" }), ["hospital-1"]),
 );
 check("70 потерянных HP дома — 70 ч", hospital.getHoursToFullHp(70, false), 70);
 check("те же 70 HP на койке — 2.9 ч", hospital.getHoursToFullHp(70, true), 2.9);
@@ -208,7 +208,7 @@ setState(
   stubState({
     toads: [
       toad({ id: 1, name: "дома", hp: 20 }),
-      toad({ id: 2, name: "на койке", hp: 20, roomId: "hospital-1" }),
+      toad({ id: 2, name: "на койке", hp: 20, scene_id: "hospital-1" }),
     ],
     colony: { rooms: [HOSPITAL] },
   }),
@@ -218,14 +218,14 @@ const afterHp = gameState();
 
 check("тик лечил двух жаб", touched, 2);
 check("дома за 10 ч прибавилось 10 HP", afterHp.toads[0].hp, 30);
-check("на койке за 10 ч жаба поднялась до максимума", afterHp.toads[1].hp, 100);
+check("на койке за 10 ч жаба поднялась до максимума", afterHp.toads[1].hp, cfg.getToadMaxHp(toad({ id: 2 })));
 
 console.log("\n[3] Болезни: лазарет ускоряет срок, вольер заражает");
 console.log("─".repeat(60));
 setState(
   stubState({
     toads: [
-      toad({ id: 1, name: "на койке", roomId: "hospital-1", state: sickState(0, 4) }),
+      toad({ id: 1, name: "на койке", scene_id: "hospital-1", state: sickState(0, 4) }),
       toad({ id: 2, name: "дома", state: sickState(0, 4) }),
     ],
     colony: { rooms: [HOSPITAL] },
@@ -251,10 +251,22 @@ const spread = diseases.processDiseases(100);
 check("больная в вольере заразила соседа", spread.infected, 1);
 checkTrue("сосед действительно болен", diseases.isToadSick(gameState().toads[1]));
 
+// Жабы в одном рабочем секторе — не соседи по биоподу: зараза там не ходит
 setState(
   stubState({
     toads: [
-      toad({ id: 1, name: "больная", roomId: "hospital-1", state: sickState(1, 24) }),
+      toad({ id: 1, name: "больная", scene_id: "slot-north", state: sickState(1, 24) }),
+      toad({ id: 2, name: "напарница", scene_id: "slot-north" }),
+    ],
+  }),
+);
+const roomSpread = diseases.processDiseases(100);
+check("в секторе колонии болезнь не заражает напарников", roomSpread.infected, 0);
+
+setState(
+  stubState({
+    toads: [
+      toad({ id: 1, name: "больная", scene_id: "hospital-1", state: sickState(1, 24) }),
       toad({ id: 2, name: "сосед" }),
     ],
     colony: { rooms: [HOSPITAL] },
@@ -331,7 +343,7 @@ check(
 );
 
 const sixBeds = Array.from({ length: 6 }, (_item, index) =>
-  toad({ id: 100 + index, roomId: "slot-north" }),
+  toad({ id: 100 + index, scene_id: "slot-north" }),
 );
 checkTrue(
   "пять жаб на койках — место есть",
@@ -388,8 +400,8 @@ const roster = [
   toad({ id: 1, name: "здоровая дома" }),
   toad({ id: 2, name: "раненая дома", hp: 50 }),
   toad({ id: 3, name: "больная дома", state: sickState(0, 5) }),
-  toad({ id: 4, name: "раненая на койке", hp: 50, roomId: "hospital-1" }),
-  toad({ id: 5, name: "здоровая на койке", roomId: "hospital-1" }),
+  toad({ id: 4, name: "раненая на койке", hp: 50, scene_id: "hospital-1" }),
+  toad({ id: 5, name: "здоровая на койке", scene_id: "hospital-1" }),
 ];
 
 check("на койках лежат двое", hospital.getHospitalPatients(roster, ["hospital-1"]).length, 2);
@@ -426,15 +438,26 @@ check(
 console.log("\n[7] Цены: мгновенное лечение и курсы болезней");
 console.log("─".repeat(60));
 const wounded60 = toad({ id: 1, hp: 40 });
+const woundedMaxHp = cfg.getToadMaxHp(wounded60);
+const woundedMissingHp = woundedMaxHp - cfg.getToadHp(wounded60);
+const woundedHealCost = cfg.getHealCost(wounded60);
 
-check("мгновенное лечение: 60 HP → 120 🔷", cfg.getHealCost(wounded60), 120);
-check("минимум за лечение: 8 🔷", cfg.getHealCost(toad({ id: 2, hp: 99 })), 8);
+check(
+  `мгновенное лечение: ${woundedMissingHp} HP → ${woundedHealCost} 🔷`,
+  woundedHealCost,
+  woundedMissingHp * cfg.HEAL_TOKENS_PER_HP,
+);
+check(
+  "минимум за лечение: 8 🔷",
+  cfg.getHealCost(toad({ id: 2, hp: woundedMaxHp - 1 })),
+  cfg.HEAL_MIN_COST,
+);
 check("здоровой жабе лечение не нужно", cfg.getHealCost(toad({ id: 3 })), 0);
 check("тариф мгновенного лечения", cfg.HEAL_TOKENS_PER_HP, 2);
 check("минимальная цена лечения", cfg.HEAL_MIN_COST, 8);
 checkTrue(
-  "мгновенное лечение дороже ожидания на койке: 120 🔷 против 2.5 ч",
-  cfg.getHealCost(wounded60) > hospital.getHoursToFullHp(60, true),
+  `мгновенное лечение дороже ожидания на койке: ${woundedHealCost} 🔷 против ${hospital.getHoursToFullHp(woundedMissingHp, true)} ч`,
+  woundedHealCost > hospital.getHoursToFullHp(woundedMissingHp, true),
 );
 checkTrue(
   "болезни тем дороже, чем злее (нанозаражение > сбой прошивки)",

@@ -24,37 +24,32 @@ export interface Toad {
   id: number;
   stage: string; // 'toadpole' | 'adult'
   created_at: string;
+  /**
+   * Когда начался рост головастика (мс). Головастик рождается с `hunger: 0`,
+   * и таймер роста запускает только первое кормление: без метки он не взрослеет.
+   * У старых сейвов поля нет — рост начнётся с первого тика, когда головастик сыт.
+   */
+  growthStartedAt?: number | null;
   generation: number;
   name: string | null;
   parents: number[] | null; // ?
   /**
-   * Биопод (`Scene`), в котором жаба находится **сейчас**. У жабы всегда одно место:
-   * либо биопод, либо сектор колонии (`roomId`), поэтому `scene_id` пуст, пока жаба
-   * сидит в секторе — место в биоподе при этом свободно (жаба пришла не в свой биопод,
-   * а в сектор, см. `utils/toad-location.ts`).
-   *
-   * Жильцов биопода по нему и находят: гекс биопода рисует свою сцену (`getRoomToadLists`),
-   * а список жаб и статистика биопода показывают только тех, кто в нём сейчас.
+   * Место жабы прямо сейчас — единственное:
+   *  - `number` — id биопода (`Scene.id`);
+   *  - `string` — id сектора колонии на карте (`RoomConfig.id`; у постройки это id гекса,
+   *    а её канонический id в сейве лежит в `ColonyRoomState.id`);
+   *  - `null` — места нет (жаба в походе или потеряла дом).
    */
-  scene_id: number | null;
-  /**
-   * id сектора колонии, в котором жаба сидит физически: репродуктор, ⚡-энергосектор,
-   * «Разведка», лазарет. Пусто — жаба живёт в своём биоподе (`scene_id`).
-   */
-  roomId?: string | null;
+  scene_id: number | string | null;
+
   /**
    * Дом жабы — **последний** биопод, в котором она жила. Жаба помнит его и пока работает
-   * в секторе (`roomId`), поэтому «Домой» возвращает её ровно туда, откуда она вышла
-   * (`backend/colony.ts` → `sendToadHome`).
-   *
-   * В полный биопод жаба не влезет: место проверяется, и игрок получает ошибку — на этом
-   * и держится правило «дом запоминается, но не бронируется». Старые сейвы поля не знают:
-   * домом для них считается `scene_id` (`utils/toad-location.ts` → `getToadHomeId`).
+   * в секторе (`scene_id` — id сектора), поэтому «Домой» возвращает её ровно туда, откуда
+   * она вышла (`backend/colony.ts` → `sendToadHome`).
    */
   homeId?: number | null;
   sex: string; // 'male' 'female' 'neuter'
   type: ToadTypes | null; // пока не используется, мб тут будут варианты окраса
-  // Ручное размножение (Репродуктор): сила жабы тратится на скрещивание
   energy?: number; // 0 to 100
   breedCooldownUntil?: number; // timestamp, до которого жаба отдыхает после скрещивания
   // Разведка (экспедиции): HP жабы
@@ -691,7 +686,7 @@ export const getPersonalityLabel = (personality: string | null): string => {
 
 // Функция для получения описания
 export const getPersonalityDescription = (
-  personality: string | null
+  personality: string | null,
 ): string => {
   if (!personality) return "Характер ещё не проявился... или его просто нет.";
   return (
@@ -766,7 +761,7 @@ export const getPregnancyDuration = () => Math.floor(Math.random() * 5); // 0 - 
 
 export const HOURS_TO_GROW_UP = 2;
 
-// Функции для работы с редкостью
+// Функции для работы с качеством
 export const getRarityGroup = (rarity: number): keyof typeof RARITY_CONFIG => {
   if (rarity >= RARITY_CONFIG.legendary.treshold) return "legendary";
   if (rarity >= RARITY_CONFIG.epic.treshold) return "epic";

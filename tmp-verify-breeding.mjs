@@ -69,9 +69,9 @@ const toad = (over = {}) => ({
   sex: "male",
   type: "hybrid",
   scene_id: 1,
+  homeId: 1,
   created_at: new Date().toISOString(),
   parents: null,
-  roomId: null,
   energy: 100,
   breedCooldownUntil: 0,
   hp: 10,
@@ -253,7 +253,7 @@ check(
 );
 
 /** Посадить жабу в гнездо — так же, как это делает игрок на карте колонии */
-const intoNest = (id) => patchToad(id, { roomId: constants.NEST_ROOM_ID });
+const intoNest = (id) => patchToad(id, { scene_id: constants.NEST_ROOM_ID });
 
 /** Собрать пару в гнезде и нажать кнопку «Начать ухаживание» — так же, как это делает игрок */
 const pairInNest = () => {
@@ -288,8 +288,8 @@ const matingFemale = findToad(2);
 const matingMale = findToad(1);
 check("самка ухаживает", Boolean(matingFemale.mating), true);
 check("самец ухаживает", Boolean(matingMale.mating), true);
-check("самка в гнезде", matingFemale.roomId, constants.NEST_ROOM_ID);
-check("самец в гнезде", matingMale.roomId, constants.NEST_ROOM_ID);
+check("самка в гнезде", matingFemale.scene_id, constants.NEST_ROOM_ID);
+check("самец в гнезде", matingMale.scene_id, constants.NEST_ROOM_ID);
 check("партнёр самца — самка", matingMale.mating.partnerId, 2);
 check("партнёр самки — самец", matingFemale.mating.partnerId, 1);
 check("одни и те же сроки у пары", matingFemale.mating.startAt, matingMale.mating.startAt);
@@ -297,9 +297,11 @@ check("энергия самки списана", matingFemale.energy < 100, tru
 check("биомасса списана", gameState().user.biomass < 500, true);
 check("беременность ещё не началась", Boolean(matingFemale.pregnancy), false);
 
-const occupancy = breeding.getNestOccupancy(1);
-check("пара занимает 2 слота гнезда", occupancy.used, 2);
-check("лимит гнезда — 2", occupancy.limit, 2);
+const nestAdults = () =>
+  gameState().toads.filter(
+    (item) => item.scene_id === constants.NEST_ROOM_ID && item.stage === "adult"
+  );
+check("пара занимает оба слота репродуктора", nestAdults().length, 2);
 
 // Третья жаба в гнезде новую пару не заводит: кнопка видит идущее ухаживание
 notes.length = 0;
@@ -327,9 +329,9 @@ breeding.processBreeding(0, collect);
 const born = findToad(2);
 check("самка беременна", born.pregnancy?.isPregnant, true);
 check("беременность без ухаживания", born.mating, null);
-check("самка осталась в гнезде", born.roomId, constants.NEST_ROOM_ID);
+check("самка осталась в гнезде", born.scene_id, constants.NEST_ROOM_ID);
 check("самец перестал ухаживать", findToad(1).mating, null);
-check("самец остался в гнезде", findToad(1).roomId, constants.NEST_ROOM_ID);
+check("самец остался в гнезде", findToad(1).scene_id, constants.NEST_ROOM_ID);
 check(
   "уведомление о беременности",
   notes.some((item) => /беременность началась/.test(item.content)),
@@ -340,7 +342,7 @@ check(
   notes.some((item) => /Роды примерно через/.test(item.content)),
   true
 );
-check("слот занят беременностью", breeding.getNestOccupancy(1).used, 1);
+check("беременность заняла репродуктор", breeding.checkNestCourtship(constants.NEST_ROOM_ID).ready, false);
 
 console.log("\n[4] Срыв и отмена ухаживания");
 console.log("─".repeat(60));
@@ -351,7 +353,7 @@ notes.length = 0;
 breeding.processBreeding(0, collect);
 check("самка перестала ухаживать", findToad(2).mating, null);
 check("самец перестал ухаживать", findToad(1).mating, null);
-check("самка осталась в гнезде", findToad(2).roomId, constants.NEST_ROOM_ID);
+check("самка осталась в гнезде", findToad(2).scene_id, constants.NEST_ROOM_ID);
 check(
   "предупреждение о срыве",
   notes.some((item) => item.type === "warn" && /прервано/.test(item.content)),
@@ -363,8 +365,8 @@ pairInNest();
 const abort = breeding.abortMating(2);
 check("«Прервать» работает", abort.success, true);
 checkText("сообщение про репродуктор", abort.message, /остались в репродукторе/);
-check("самка осталась в репродукторе", findToad(2).roomId, constants.NEST_ROOM_ID);
-check("самец остался в репродукторе", findToad(1).roomId, constants.NEST_ROOM_ID);
+check("самка осталась в репродукторе", findToad(2).scene_id, constants.NEST_ROOM_ID);
+check("самец остался в репродукторе", findToad(1).scene_id, constants.NEST_ROOM_ID);
 
 
 console.log("\n[5] Гнездо как комната на карте");
@@ -389,12 +391,12 @@ check(
 );
 check(
   "базовый гекс вольера показывает вольер колонии",
-  colonyRooms.find((room) => room.id === "aviary").sceneId,
+  colonyRooms.find((room) => room.kind === "aviary").sceneId,
   baseScene.id
 );
 check(
   "построенный гекс вольера показывает свой вольер",
-  colonyRooms.find((room) => room.id === "outpost-0").sceneId,
+  colonyRooms.find((room) => room.slotId === "outpost-0").sceneId,
   secondScene.id
 );
 
@@ -433,12 +435,12 @@ checkText(
 );
 
 // Гексы рисуют каждый своих жаб: вольер — жильцов своего вольера (`scene_id`),
-// комнаты — тех, кто физически в них сидит (`roomId`)
+// комнаты — тех, кто физически в них сидит (`scene_id` = id комнаты)
 const mapLists = toadLists.getRoomToadLists(colonyRooms, [
   toad({ id: 1, scene_id: baseScene.id }),
   toad({ id: 20, scene_id: secondScene.id }),
-  toad({ id: 2, scene_id: baseScene.id, roomId: constants.NEST_ROOM_ID }),
-  toad({ id: 7, scene_id: baseScene.id, roomId: constants.NEST_ROOM_ID }),
+  toad({ id: 2, scene_id: constants.NEST_ROOM_ID }),
+  toad({ id: 7, scene_id: constants.NEST_ROOM_ID }),
 ]);
 check(
   "гнездо рисует только тех, кого туда посадили",
@@ -462,7 +464,7 @@ checkText(
   mapLists[constants.NEST_ROOM_ID].some((item) => item.id === 7) ? "да" : "нет",
   /да/
 );
-check("вольер показывает жильцов своего вольера", mapLists.aviary.length, 1);
+check("вольер показывает жильцов своего вольера", mapLists[constants.AVIARY_ROOM_ID].length, 1);
 check("второй вольер показывает своих жильцов", mapLists["outpost-0"].length, 1);
 checkText(
   "жаба из вольера не висит ещё и в гнезде",
@@ -471,7 +473,9 @@ checkText(
 );
 check(
   "в вольере не видно жаб из комнаты",
-  mapLists.aviary.some((item) => item.roomId) ? "да" : "нет",
+  mapLists[constants.AVIARY_ROOM_ID].some((item) => typeof item.scene_id === "string")
+    ? "да"
+    : "нет",
   "нет"
 );
 check("у пустых гексов жаб нет", Boolean(mapLists["slot-north"]), false);
@@ -481,7 +485,7 @@ check("у пустых гексов жаб нет", Boolean(mapLists["slot-north
 const orphanLists = toadLists.getRoomToadLists(colonyRooms, [
   toad({ id: 300, scene_id: 12345 }),
 ]);
-check("жаба из вольера без гекса видна на базовом вольере", orphanLists.aviary.length, 1);
+check("жаба из вольера без гекса видна на базовом вольере", orphanLists[constants.AVIARY_ROOM_ID].length, 1);
 
 const darkColony = colonyBuild.resolveColonyRooms({
   rooms: [{ id: "outpost-0", kind: "storage", builtAt: "" }],
@@ -536,7 +540,7 @@ const byButton = breeding.startNestCourtship(constants.NEST_ROOM_ID, collect);
 check("отдохнувшую пару заводит кнопка", byButton.started, true);
 
 reset();
-patchToad(1, { roomId: "outpost-3" });
+patchToad(1, { scene_id: "outpost-3" });
 intoNest(2);
 const worker = breeding.startNestCourtship(constants.NEST_ROOM_ID, collect);
 check("жаба с работы в пару не встаёт", worker.started, false);
@@ -580,7 +584,7 @@ notes.length = 0;
 breeding.processBreeding(0, collect);
 await new Promise((resolve) => setTimeout(resolve, 30));
 const bornInNest = gameState().toads.filter(
-  (item) => item.stage === "toadpole" && item.roomId === constants.NEST_ROOM_ID
+  (item) => item.stage === "toadpole" && item.scene_id === constants.NEST_ROOM_ID
 );
 check("головастики родились в репродукторе", bornInNest.length > 0, true);
 checkText(
@@ -588,7 +592,7 @@ checkText(
   notes.map((item) => item.content).join(" "),
   /родила головастиков в репродукторе/
 );
-check("мать осталась в репродукторе", findToad(2).roomId, constants.NEST_ROOM_ID);
+check("мать осталась в репродукторе", findToad(2).scene_id, constants.NEST_ROOM_ID);
 check("мать больше не беременна", Boolean(findToad(2).pregnancy), false);
 
 // Старая беременность вне гнезда (до обновления): потомство расходится по вольерам
@@ -603,20 +607,20 @@ patchToad(2, {
     offspringCount: 2,
   },
 });
-patchToad(1, { roomId: "outpost-3" });
+patchToad(1, { scene_id: "outpost-3" });
 notes.length = 0;
 breeding.processBreeding(0, collect);
 await new Promise((resolve) => setTimeout(resolve, 30));
-check("мать из вольера осталась без комнаты", findToad(2).roomId, null);
+check("мать из вольера осталась в своём биоподе", findToad(2).scene_id, 1);
 checkText(
   "уведомление о родах в вольере",
   notes.map((item) => item.content).join(" "),
   /родила головастиков/
 );
 check(
-  "головастики вольера остались в вольерах",
+  "головастики вольера остались в биоподах",
   gameState().toads.filter(
-    (item) => item.stage === "toadpole" && item.roomId
+    (item) => item.stage === "toadpole" && typeof item.scene_id === "string"
   ).length,
   0
 );

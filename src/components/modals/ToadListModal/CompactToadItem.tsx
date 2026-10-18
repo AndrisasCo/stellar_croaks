@@ -84,7 +84,7 @@ export const CompactToadItem = ({
         <div className="flex-1 h-2 bg-gray-600 rounded-full overflow-hidden">
           <div
             className={`h-full rounded-full ${getHungerColor(
-              toad.state.hunger
+              toad.state.hunger,
             )}`}
             style={{ width: `${toad.state.hunger}%` }}
           />
@@ -94,7 +94,7 @@ export const CompactToadItem = ({
         </span>
       </div>
 
-      {/* Нижняя строка: редкость + поломка + кнопка профиля */}
+      {/* Нижняя строка: качество + поломка + кнопка профиля */}
       <div className="flex items-center justify-between text-xs">
         <div className={`flex items-center gap-1 ${rarityConfig.color}`}>
           <span>{rarityConfig.icon}</span>

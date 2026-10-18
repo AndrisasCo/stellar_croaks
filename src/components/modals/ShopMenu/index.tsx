@@ -1,5 +1,6 @@
-import { useState } from "react";
 import { CURRENCY_CONFIG } from "../../../utils/constants";
+import { useColony } from "../../../hooks/use-colony";
+import { useRoomPowerTab } from "../../../hooks/use-room-power-tab";
 import Modal from "../../shared/Header";
 import ModalTabs, { ModalTabItem } from "../../shared/ModalTabs";
 import RoomDataTab, { ROOM_DATA_TAB, RoomDataTabId } from "../RoomDataTab";
@@ -20,16 +21,39 @@ type TabType = "buy" | "sell" | "elite" | RoomDataTabId;
  * гекса нет, а данным нужен свой сектор — его описание, апгрейды и снос.
  */
 export default function ShopMenu({ room }: { room?: RoomConfig }) {
-  const [activeTab, setActiveTab] = useState<TabType>("buy");
   const { account } = useToads();
+  const { powerGrid } = useColony();
+  const {
+    tab: activeTab,
+    setTab: setActiveTab,
+    issue: powerIssue,
+  } = useRoomPowerTab<TabType>({ room, powerGrid, defaultTab: "buy" });
 
   const { tokens = 0, astro_quax = 0 } = account || {};
 
   /** Табы рынка: три торговых и, если модалку открыл гекс, «Данные сектора» */
   const tabs: ModalTabItem<TabType>[] = [
-    { id: "buy", label: "Купить", color: "text-green-400" },
-    { id: "sell", label: "Продать", color: "text-yellow-400" },
-    { id: "elite", label: "Элитные", color: "text-purple-400" },
+    {
+      id: "buy",
+      label: "Купить",
+      color: "text-green-400",
+      disabled: Boolean(powerIssue),
+      disabledHint: powerIssue ?? undefined,
+    },
+    {
+      id: "sell",
+      label: "Продать",
+      color: "text-yellow-400",
+      disabled: Boolean(powerIssue),
+      disabledHint: powerIssue ?? undefined,
+    },
+    {
+      id: "elite",
+      label: "Элитные",
+      color: "text-purple-400",
+      disabled: Boolean(powerIssue),
+      disabledHint: powerIssue ?? undefined,
+    },
     ...(room ? [{ ...ROOM_DATA_TAB }] : []),
   ];
 

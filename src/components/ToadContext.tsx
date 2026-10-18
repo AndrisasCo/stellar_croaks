@@ -23,6 +23,7 @@ import {
   loadColliderState,
   saveColliderState,
 } from "../backend/collider-manager";
+import { TOADS_FED_EVENT } from "../utils/narrator";
 import { getFeedCost } from "../utils/feeding";
 import { pickSceneForNewToad } from "../utils/housing";
 import { getToadHomeId } from "../utils/toad-location";
@@ -30,7 +31,6 @@ import { getToadHomeId } from "../utils/toad-location";
 interface ToadContextType {
   /**
    * Все жабы колонии. «Своих» жаб экран берёт сам: гекс биопода — по `scene_id`,
-   * сектор — по `roomId` (см. `getRoomToadLists`). Общего «текущего биопода» больше нет.
    */
   allToads: Toad[];
   selectedToad: Toad | null;
@@ -208,9 +208,29 @@ export const ToadProvider: React.FC<ToadProviderProps> = ({ children }) => {
       return;
     }
     updateToadStateByIds(toadsId, { hunger: 100 });
+    // Головастик рождается с hunger: 0, и именно первое кормление запускает
+    // его таймер роста (см. `utils/toad-growth.ts`). Уже начатый рост не сбрасываем.
+    const growthStartIds = fedToads
+      .filter(
+        (toad) => toad.stage === "toadpole" && toad.growthStartedAt == null,
+      )
+      .map((toad) => toad.id);
+
+    if (growthStartIds.length > 0) {
+      updateToadsByIds(growthStartIds, { growthStartedAt: Date.now() });
+    }
+
     updateUser({
       storage: { ...account.storage, food: newFood },
     });
+
+    // Рассказчик первого запуска ждёт именно ручное кормление всей колонии:
+    // состояние жабы обновляется здесь, поэтому событие отправляем после записи.
+    window.dispatchEvent(
+      new CustomEvent(TOADS_FED_EVENT, {
+        detail: { toadIds: fedToads.map((toad) => toad.id) },
+      }),
+    );
   };
 
   const value: ToadContextType = {

@@ -238,7 +238,7 @@ export const achievementGroups: AchievementGroup[] = [
               pattern: "imperial_stripes", // императорские полосы
               weight: 22.5,
               speed: 0.8,
-              rarity: 5, // Легендарная редкость
+              rarity: 5, // Легендарная качество
               hungerRate: 0.3, // Ест мало
               fertility: 0.5,
               personality: "imperial",
@@ -258,7 +258,7 @@ export const achievementGroups: AchievementGroup[] = [
         id: "rarity-3",
         icon: "⭐",
         name: "Редкий экземпляр",
-        description: "Вывести жабу редкостью 12+",
+        description: "Вывести жабу качеством 12+",
         completed: false,
         task: { rarity: { min: 12 } },
       },
@@ -266,7 +266,7 @@ export const achievementGroups: AchievementGroup[] = [
         id: "rarity-10",
         icon: "🌟🌟",
         name: "Легенда галактики",
-        description: "Вывести жабу редкостью 25+",
+        description: "Вывести жабу качеством 25+",
         completed: false,
         task: { rarity: { min: 25 } },
       },
@@ -521,16 +521,15 @@ export const achievementGroups: AchievementGroup[] = [
   },
   {
     id: "perimeter-scouts",
-    title: "🧭 Разведчики Периметра",
-    description:
-      "Собирайте команды жаб, ходите в походы и тащите домой чужое добро",
+    title: "🧭 Разведчики Космической станции",
+    description: "Собирайте команды и отправляйте их исследовать станцию",
     color: "blue",
     achievements: [
       {
         id: "first-expedition",
         icon: "🎒",
         name: "Первый рейд",
-        description: "Отправить команду жаб в поход за Периметр",
+        description: "Отправить команду жаб на первую миссию",
         completed: false,
       },
       {
