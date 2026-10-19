@@ -9,14 +9,15 @@
  * Что делает:
  *   1. Пересобирает в webp ТОЛЬКО те PNG фонов комнат, которые реально грузятся
  *      игрой (список совпадает с src/components/HexMap/room-backgrounds.ts).
- *      Оригиналы не удаляются: переезжают в design-src/bg/ — они больше не лежат
- *      в public/, а значит не попадают в dist и не утяжеляют загрузку.
+ *      Исходники ищутся сначала в public/bg/rooms (куда кладут новый арт), затем
+ *      в public/bg (старое место). Готовый webp перезаписывает прежний, а PNG
+ *      переезжает в design-src/bg/ — вне public/, чтобы не попадать в dist.
  *   2. Готовит иконки PWA (192/512 + maskable) из public/apple-touch-icon.png.
  *
  * Почему новые файлы кладутся в /bg/rooms: в public/bg уже есть incubator.webp и
  * vivarium.webp другого назначения (фоны модалок) — перезапись сломала бы их.
  */
-import { mkdir, rename, stat } from "node:fs/promises";
+import { mkdir, rename, rm, stat } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import sharp from "sharp";
@@ -44,12 +45,25 @@ const ROOM_BACKGROUNDS = [
 
 const kb = (bytes) => `${(bytes / 1024).toFixed(0)} KB`;
 
+/** Новый арт кладут в public/bg/rooms, старый — в public/bg. */
+const findSource = (name) => {
+  const inRooms = join(ROOMS_DIR, `${name}.png`);
+
+  if (existsSync(inRooms)) {
+    return inRooms;
+  }
+
+  const inBg = join(BG_DIR, `${name}.png`);
+
+  return existsSync(inBg) ? inBg : null;
+};
+
 /** Собрать один webp и перевезти оригинал из public в design-src. */
 const convertRoomBackground = async (name) => {
-  const source = join(BG_DIR, `${name}.png`);
+  const source = findSource(name);
 
-  if (!existsSync(source)) {
-    console.log(`⚠️  ${name}.png не найден — пропускаю`);
+  if (!source) {
+    console.log(`⚠️  ${name}.png не найден — оставляю прежний webp`);
     return null;
   }
 
@@ -63,7 +77,10 @@ const convertRoomBackground = async (name) => {
 
   const after = (await stat(target)).size;
 
-  await rename(source, join(SOURCE_DIR, `${name}.png`));
+  // rename поверх существующего файла работает на POSIX, но не везде — чистим явно.
+  const original = join(SOURCE_DIR, `${name}.png`);
+  await rm(original, { force: true });
+  await rename(source, original);
 
   console.log(
     `🖼  bg/rooms/${name}.webp: ${kb(before)} → ${kb(after)} ` +

@@ -15,6 +15,7 @@ import {
   ShopState,
 } from "../../../../backend/shop-state";
 import { useNotifications } from "../../../../hooks/use-notification";
+import { CurrencyIcon } from "../../../shared/CurrencyIcon";
 import { AcceptButton } from "./AcceptButton";
 
 /** Новые заказы на витрину: платное обновление даёт короткий кулдаун вместо суток */
@@ -175,7 +176,8 @@ export const EliteTab: React.FC = () => {
                   : "bg-gray-600 text-gray-300 cursor-not-allowed"
               }`}
             >
-              {INSTANT_REFRESH_ELITE_COST} {CURRENCY_CONFIG.tokens.icon}
+              {INSTANT_REFRESH_ELITE_COST}{" "}
+              <CurrencyIcon currency="tokens" className="h-4 w-4" />
             </button>
           </div>
         </div>
@@ -217,7 +219,8 @@ export const EliteTab: React.FC = () => {
                 <div className="flex justify-between">
                   <span>Награда:</span>
                   <span className="text-green-400">
-                    {order.reward} {CURRENCY_CONFIG.astro_quax.icon}
+                    {order.reward}{" "}
+                    <CurrencyIcon currency="astro_quax" className="h-4 w-4" />
                   </span>
                 </div>
               </div>

@@ -25,14 +25,14 @@ const SUPPLY_PER_TOAD = 4;
 const rand = Math.random;
 
 const SECTORS = [
-  { id: 1, name: "Ржавый шлюз", depth: 1, durationHours: 1.5, lootMultiplier: 1, dangerMultiplier: 1, unlockExpeditions: 0, starter: true },
-  { id: 2, name: "Затопленный бункер", depth: 2, durationHours: 3, lootMultiplier: 1.4, dangerMultiplier: 1.15, unlockExpeditions: 1 },
-  { id: 3, name: "Периметр-3", depth: 3, durationHours: 5, lootMultiplier: 1.8, dangerMultiplier: 1.3, unlockExpeditions: 3 },
-  { id: 4, name: "Орбитальный обломок", depth: 4, durationHours: 7, lootMultiplier: 2.3, dangerMultiplier: 1.5, unlockExpeditions: 6 },
-  { id: 5, name: "Гнездо дронов", depth: 5, durationHours: 9, lootMultiplier: 2.8, dangerMultiplier: 1.7, unlockExpeditions: 10 },
-  { id: 6, name: "Реактор Квак-7", depth: 6, durationHours: 12, lootMultiplier: 3.4, dangerMultiplier: 2, unlockExpeditions: 15 },
-  { id: 7, name: "Архив мёртвых генов", depth: 7, durationHours: 15, lootMultiplier: 4, dangerMultiplier: 2.3, unlockExpeditions: 21 },
-  { id: 8, name: "Дальний Периметр", depth: 8, durationHours: 20, lootMultiplier: 5, dangerMultiplier: 2.7, unlockExpeditions: 28 },
+  { id: 1, name: "Ржавый шлюз", depth: 1, durationHours: 1.5, lootMultiplier: 1, dangerMultiplier: 1, unlockCost: 0, starter: true },
+  { id: 2, name: "Затопленный бункер", depth: 2, durationHours: 3, lootMultiplier: 1.4, dangerMultiplier: 1.15, unlockCost: 1 },
+  { id: 3, name: "Периметр-3", depth: 3, durationHours: 5, lootMultiplier: 1.8, dangerMultiplier: 1.3, unlockCost: 3 },
+  { id: 4, name: "Орбитальный обломок", depth: 4, durationHours: 7, lootMultiplier: 2.3, dangerMultiplier: 1.5, unlockCost: 6 },
+  { id: 5, name: "Гнездо дронов", depth: 5, durationHours: 9, lootMultiplier: 2.8, dangerMultiplier: 1.7, unlockCost: 10 },
+  { id: 6, name: "Реактор Квак-7", depth: 6, durationHours: 12, lootMultiplier: 3.4, dangerMultiplier: 2, unlockCost: 15 },
+  { id: 7, name: "Архив мёртвых генов", depth: 7, durationHours: 15, lootMultiplier: 4, dangerMultiplier: 2.3, unlockCost: 21 },
+  { id: 8, name: "Дальний Периметр", depth: 8, durationHours: 20, lootMultiplier: 5, dangerMultiplier: 2.7, unlockCost: 28 },
 ];
 
 const ROLE_CAP = { scout: 1.5, tank: 40, medic: 3, hacker: 12, negotiator: 1.4 };
@@ -163,12 +163,14 @@ for (const s of SECTORS) {
 }
 
 // === Путь до сектора 8 ===
-console.log("\n=== Путь до «Дальнего Периметра» (нужно 28 завершённых походов) ===");
+const contourReward = (s) => 1 + Math.floor(Math.max(1, s.depth) / 2);
+const contourTotalCost = SECTORS.reduce((sum, s) => sum + s.unlockCost, 0);
+console.log(`\n=== Путь до «Дальнего Периметра» (${contourTotalCost} 🎫 на открытие s2–s8) ===`);
 let completed = 0, hours = 0, spent = 0, gained = 0, tokGain = 0, astroGain = 0, sampleGain = 0, heals = 0;
+let passes = 0, passesEarned = 0, passesSpent = 0, unlockedCount = 1;
 const tally = {};
-while (completed < 28) {
-  const unlocked = SECTORS.filter((s) => s.starter || s.unlockExpeditions <= completed);
-  const best = unlocked[unlocked.length - 1];
+while (unlockedCount < SECTORS.length) {
+  const best = SECTORS[unlockedCount - 1];
   const e = rows.find((r) => r.s.id === best.id).e;
   tally[`s${best.id}`] = (tally[`s${best.id}`] || 0) + 1;
   completed += 1;
@@ -176,8 +178,20 @@ while (completed < 28) {
   spent += SUPPLY_PER_TOAD * best.depth * DEFAULT_TOADS.length;
   gained += e.bio; tokGain += e.tok; astroGain += e.astro; sampleGain += e.sample;
   heals += e.hp * 0.4;
+
+  const reward = contourReward(best);
+  passes += reward;
+  passesEarned += reward;
+
+  const next = SECTORS[unlockedCount];
+  if (next && passes >= next.unlockCost) {
+    passes -= next.unlockCost;
+    passesSpent += next.unlockCost;
+    unlockedCount += 1;
+  }
 }
 console.log("  маршрут (по лучшему открытому сектору):", Object.entries(tally).map(([k, v]) => `${k}×${v}`).join(", "));
+console.log(`  пропуска: +${passesEarned} 🎫, −${passesSpent} 🎫 на открытия, остаток ${passes} 🎫`);
 console.log(`  чистое время 1 командой: ${hours.toFixed(1)} ч = ${(hours / 24).toFixed(1)} сут`);
 console.log(`  снаряжение −${spent} 🧪, добыча +${gained.toFixed(0)} 🧪 (баланс ${(gained - spent).toFixed(0)}), лечение выбитых ~${heals.toFixed(0)} 🔷`);
 console.log(`  токенов из походов +${tokGain.toFixed(0)} 🔷, астро +${astroGain.toFixed(1)} 💎, образцов ~${sampleGain.toFixed(1)}`);
@@ -249,7 +263,7 @@ console.log(`  ⚠ ВАЖНО: во ВСЕХ шаблонах lootbox.ts rarity 
 console.log(`  топ-легендарка: вес 30, скорость 0.75, фертильность 2.2, голод 0.5 → HP ${70 + 60 + 15} = 145, танк-сила ${(30 / 40).toFixed(2)}`);
 console.log(`  сравнение: дикая HP ${DEFAULT_TOADS.map((t) => maxHp(t)).join("/")}, танк-сила ${DEFAULT_TOADS.map((t) => (t.weight / 40).toFixed(2)).join("/")}`);
 console.log(`  астро на 1 бокс: в s1 нужно ${(50 / rows[0].e.astro).toFixed(0)} походов (${(50 / rows[0].e.astro * 2.25).toFixed(0)} ч), в s8 — ${(50 / rows[7].e.astro).toFixed(0)} походов (${(50 / rows[7].e.astro * 30).toFixed(0)} ч) на одну команду`);
-console.log(`  астро на весь путь до s8 (~28 походов): +${rows.slice(0, 7).reduce((s, r) => s + r.e.astro * (r.s.id === 1 ? 1 : r.s.id), 0).toFixed(0)} 💎 ≈ ${(rows.slice(0, 7).reduce((s, r) => s + r.e.astro * (r.s.id === 1 ? 1 : r.s.id), 0) / 50).toFixed(1)} лутбокса`);
+console.log(`  астро на весь путь до s8 (~27 походов): +${rows.slice(0, 7).reduce((s, r) => s + r.e.astro * (r.s.id === 1 ? 1 : r.s.id), 0).toFixed(0)} 💎 ≈ ${(rows.slice(0, 7).reduce((s, r) => s + r.e.astro * (r.s.id === 1 ? 1 : r.s.id), 0) / 50).toFixed(1)} лутбокса`);
 
 // === Генетика ===
 console.log("\n=== Рост редкости по поколениям (старт 1.2) ===");
@@ -311,7 +325,7 @@ console.log(`  ⚠ жаба при этом УДАЛЯЕТСЯ (deleteToadsByIds
 console.log("  ⚠ баги: (1) награда пишется в astro_quax, а мгновенное обновление списывает tokens, при этом текст говорит «Недостаточно астрокваксов»; (2) в shop-state.ts награды подписаны «токенов»; (3) initializeShop ставит nextRefreshElite = now, то есть при первом входе бесплатное обновление доступно сразу");
 
 // === Ачивки: главный источник лутбоксов (а значит и стартовых легендарок) ===
-console.log("\n=== Ачивки как источник астро/жаб (сравнить с 13 💎 из 28 походов!) ===");
+console.log("\n=== Ачивки как источник астро/жаб (сравнить с 13 💎 из 27 походов!) ===");
 const LOOTBOX_PRICE = 50;
 const GROUPS = [
   { id: "first-steps2", boxes: 0, toads: 1, note: "туториал: жаб+а → 1 именная жаба (turtle)" },
@@ -324,14 +338,14 @@ const GROUPS = [
 let totBox = 0;
 for (const g of GROUPS) { totBox += g.boxes; console.log(`  ${g.id.padEnd(20)} ${String(g.boxes).padStart(2)} лутбоксов, ${g.toads} жаба — ${g.note}`); }
 console.log(`  ИТОГО: ${totBox} лутбоксов = ${totBox * LOOTBOX_PRICE} 💎 + ${GROUPS.reduce((s, g) => s + g.toads, 0)} именных жаб («Проводник Периметра»: r6, вес 26, скорость 1.45 — сильнее любой дикой!)`);
-console.log(`  сравнение: ${totBox} ачивочных боксов = ${totBox * LOOTBOX_PRICE} 💎 vs ~13 💎 из всех 28 походов до s8 → астро в игре дают АЧИВКИ и элитники, а не походы`);
+console.log(`  сравнение: ${totBox} ачивочных боксов = ${totBox * LOOTBOX_PRICE} 💎 vs ~13 💎 из всех ${completed} походов до s8 → астро в игре дают АЧИВКИ и элитники, а не походы`);
 console.log("  следствие: «Разведчики Периметра» (3 бокса + вес-26 жаба) за 50 походов — лучший приз в игре, а 50 походов по цене выше = это ~50 × 25–90 🔷 абстрактных потерь = 1.2–4.5 суток фермы");
 
 // === Итог: рекомендации ===
 console.log("\n=== ИТОГОВЫЙ ТАЙМЛАЙН ДО «ДАЛЬНЕГО ПЕРИМЕТРА» (s8) ===");
-console.log("  требуемый прогресс: s2:1, s3:3, s4:6, s5:10, s6:15, s7:21, s8:28 завершённых походов (треугольник T7)");
-console.log("  минимум походов = 28 (по 1 на каждый «ключевой» сектор + добивка s1 на старте)");
-console.log("  время: 28 проходов × (проход+возврат+лечение). Если ходить только s1 и s2 — ~2.1 ч на рейд → ~60 ч только «в поле», плюс 17–45 ч на фарм биомассы на снаряжение каждого дальнего рейда");
+console.log("  требуемый прогресс: s2:1, s3:3, s4:6, s5:10, s6:15, s7:21, s8:28 пропусков КОНТУРа (всего 84 🎫)");
+console.log(`  минимум походов ≈ ${completed}: пропуска приносит каждый завершённый поход, дальние секторы дают их больше`);
+console.log(`  время: ${completed} проходов × (проход+возврат+лечение). Если ходить только s1 и s2 — ~2.1 ч на рейд → ~42 ч только «в поле», плюс 17–45 ч на фарм биомассы на снаряжение каждого дальнего рейда`);
 console.log("  оценка календарём: 3–5 дней активной игры для подготовленного игрока (астро/логистика), 1.5–2 недели для «всё по 2 раза» без оптимизации");
 console.log("\n=== ГДЕ БАЛАНС ЛОМАЕТСЯ (приоритеты правок) ===");
 console.log("  P0 походы убыточны: −1.4…−3.1 🔷/ч против фермы +4.6 🔷/ч → нет мотивации ходить, кроме прогресс-гейта. Фикс: (а) не забирать жабу с фермы (или −50% выработки), (б) loot ×2–3, (в) простой фермы НЕ должен считаться как потеря.");

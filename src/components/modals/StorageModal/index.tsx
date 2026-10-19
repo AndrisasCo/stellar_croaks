@@ -270,6 +270,17 @@ const StorageModal: React.FC<{ room?: RoomConfig }> = ({ room }) => {
       rarity: "uncommon",
       key: "worms",
     },
+    contourPass: {
+      id: "6",
+      name: "Пропуск КОНТУРа",
+      icon: "/assets/contour-pass.svg",
+      quantity: account?.storage?.[Items.contourPass] || 0,
+      description:
+        "Открывает следующий сектор Периметра. Цифровой пропуск: полки не занимает",
+      type: "tool",
+      rarity: "rare",
+      key: "contourPass",
+    },
   };
 
   const storageItems = Object.values(itemsFull)

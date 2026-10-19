@@ -95,7 +95,7 @@ export interface Expedition {
    * Сектор «Разведка», из которого ушла команда. После разбора добычи жабы
    * возвращаются именно сюда, а не в биопод: их снова видно на гексе разведки.
    */
-  originRoomId?: string;
+  originRoomId?: number;
   /**
    * Добыча похода. Для `phase: "completed"` здесь лежит уже итоговая добыча:
    * с множителем удачи, потерями при эвакуации и добором до нормы фермы.
@@ -112,12 +112,20 @@ export interface ExpeditionStats {
   bestDepth: number;
   /** Сколько жаб выбили из строя события походов */
   downed: number;
+  /**
+   * Явно открытые секторы КОНТУРа. Раньше сектор открывался сам по числу
+   * завершённых походов; теперь игрок тратит на него пропуска со склада.
+   * В старых сейвах поля нет — `normalizeExpeditionStats` выводит открытые
+   * секторы из `completed` по прежним порогам, чтобы прогресс не потерялся.
+   */
+  unlockedSectors?: number[];
 }
 
 export const DEFAULT_EXPEDITION_STATS: ExpeditionStats = {
   completed: 0,
   bestDepth: 0,
   downed: 0,
+  unlockedSectors: [],
 };
 
 /** Сектор Периметра (Часть 5.7) */
@@ -134,8 +142,8 @@ export interface SectorDef {
   lootMultiplier: number;
   /** Множитель урона событий */
   dangerMultiplier: number;
-  /** Сколько походов надо завершить, чтобы открыть сектор */
-  unlockExpeditions: number;
+  /** Сколько пропусков КОНТУРа стоит открыть сектор */
+  unlockCost: number;
   /** Стартовый сектор — открыт всегда */
   starter?: boolean;
 }
@@ -150,7 +158,7 @@ export const SECTORS: SectorDef[] = [
     durationHours: 1.5,
     lootMultiplier: 1,
     dangerMultiplier: 1,
-    unlockExpeditions: 0,
+    unlockCost: 0,
     starter: true,
   },
   {
@@ -162,7 +170,7 @@ export const SECTORS: SectorDef[] = [
     durationHours: 3,
     lootMultiplier: 1.4,
     dangerMultiplier: 1.15,
-    unlockExpeditions: 1,
+    unlockCost: 1,
   },
   {
     id: 3,
@@ -173,7 +181,7 @@ export const SECTORS: SectorDef[] = [
     durationHours: 5,
     lootMultiplier: 1.8,
     dangerMultiplier: 1.3,
-    unlockExpeditions: 3,
+    unlockCost: 3,
   },
   {
     id: 4,
@@ -185,7 +193,7 @@ export const SECTORS: SectorDef[] = [
     durationHours: 7,
     lootMultiplier: 2.3,
     dangerMultiplier: 1.5,
-    unlockExpeditions: 6,
+    unlockCost: 6,
   },
   {
     id: 5,
@@ -196,7 +204,7 @@ export const SECTORS: SectorDef[] = [
     durationHours: 9,
     lootMultiplier: 2.8,
     dangerMultiplier: 1.7,
-    unlockExpeditions: 10,
+    unlockCost: 10,
   },
   {
     id: 6,
@@ -208,7 +216,7 @@ export const SECTORS: SectorDef[] = [
     durationHours: 12,
     lootMultiplier: 3.4,
     dangerMultiplier: 2,
-    unlockExpeditions: 15,
+    unlockCost: 15,
   },
   {
     id: 7,
@@ -219,7 +227,7 @@ export const SECTORS: SectorDef[] = [
     durationHours: 15,
     lootMultiplier: 4,
     dangerMultiplier: 2.3,
-    unlockExpeditions: 21,
+    unlockCost: 21,
   },
   {
     id: 8,
@@ -230,7 +238,7 @@ export const SECTORS: SectorDef[] = [
     durationHours: 20,
     lootMultiplier: 5,
     dangerMultiplier: 2.7,
-    unlockExpeditions: 28,
+    unlockCost: 28,
   },
 ];
 
@@ -250,9 +258,66 @@ export const EXPEDITION_ROLE_ORDER: ExpeditionRole[] = [
 export const getSectorById = (sectorId: number): SectorDef =>
   SECTORS.find((sector) => sector.id === sectorId) ?? SECTORS[0];
 
-/** Открыт ли сектор по статистике игрока */
+/**
+ * Прежние пороги открытия: сколько завершённых походов требовалось сектору
+ * до перехода на пропуска КОНТУРа. Нужны только для старых сейвов.
+ */
+const LEGACY_UNLOCK_EXPEDITIONS: Record<number, number> = {
+  2: 1,
+  3: 3,
+  4: 6,
+  5: 10,
+  6: 15,
+  7: 21,
+  8: 28,
+};
+
+/** Секторы, которые старый сейв открывал по числу завершённых походов */
+export const getLegacyUnlockedSectors = (completed: number): number[] =>
+  SECTORS.filter((sector) => {
+    if (sector.starter) {
+      return false;
+    }
+
+    const required = LEGACY_UNLOCK_EXPEDITIONS[sector.id];
+
+    return required !== undefined && completed >= required;
+  }).map((sector) => sector.id);
+
+/**
+ * Приводит статистику из сейва к полному виду.
+ *
+ * Если `unlockedSectors` в сейве нет (старая версия игры), открытые секторы
+ * восстанавливаются по прежним порогам `completed`. Пустой массив — это уже
+ * новый сейв: игрок просто ещё ничего не открывал, и подставлять ему секторы
+ * за завершённые походы нельзя.
+ */
+export const normalizeExpeditionStats = (
+  stats?: Partial<ExpeditionStats>,
+): ExpeditionStats => {
+  const merged = { ...DEFAULT_EXPEDITION_STATS, ...(stats ?? {}) };
+
+  if (Array.isArray(stats?.unlockedSectors)) {
+    return {
+      ...merged,
+      unlockedSectors: Array.from(
+        new Set(stats.unlockedSectors.filter(Number.isInteger)),
+      ),
+    };
+  }
+
+  return {
+    ...merged,
+    unlockedSectors: getLegacyUnlockedSectors(merged.completed),
+  };
+};
+
+/** Открыт ли сектор: стартовый — всегда, остальные — если игрок их открыл */
 export const isSectorUnlocked = (
   sector: SectorDef,
   stats: ExpeditionStats = DEFAULT_EXPEDITION_STATS,
 ): boolean =>
-  Boolean(sector.starter) || stats.completed >= sector.unlockExpeditions;
+  Boolean(sector.starter) ||
+  (stats.unlockedSectors ?? getLegacyUnlockedSectors(stats.completed)).includes(
+    sector.id,
+  );

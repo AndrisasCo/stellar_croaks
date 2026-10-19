@@ -40,7 +40,7 @@ export const SceneStatsTab: React.FC<{
   const { addNotification } = useNotifications();
   const { playOk, playExited } = useSoundEffects();
 
-  /** Заражённые жильцы этого биопода: карантин лечит только их (лазарет — отдельно) */
+  /** Заражённые жильцы этого биопода: карантин лечит только их (Медотсек — отдельно) */
   const sickToads = toads.filter((toad) => isToadSick(toad));
   const astro = getAstroBalance();
   const quarantineCost = ASTRO_PRICES.quarantine;

@@ -118,7 +118,7 @@ export const EXPEDITION_HP_PER_WEIGHT = 2;
 /** Прибавка HP за единицу редкости */
 export const EXPEDITION_HP_PER_RARITY = 3;
 /**
- * Пассивное восстановление HP в час ВНЕ лазарета. Намеренно низкое: без лазарета
+ * Пассивное восстановление HP в час ВНЕ Медотсека. Намеренно низкое: без Медотсека
  * раны затягиваются очень медленно, койка лечит в разы быстрее
  * (`HOSPITAL_HP_REGEN_PER_HOUR` в `utils/hospital.ts`).
  */
@@ -162,20 +162,20 @@ export const getToadHp = (toad: Toad): number => {
 export const isToadDown = (toad: Toad): boolean => getToadHp(toad) <= 0;
 
 /**
- * Жаба в походе не стоит ни в ⚡-секторе, ни в «Разведке» — двух мест сразу не бывает:
- * уйдя, она освобождает место в секторе и возвращается домой в свой биопод (`scene_id`
- * по `homeId`, см. `toad-location.ts`) — карта её больше не рисует (`isToadVisibleInRoom`),
- * но дом её снова считает, как и до новой модели места.
- * HP на старте похода полный — раны лечат уже после возвращения.
+ * Жаба в походе стоит  в ⚡-секторе, ни в «Разведке»
  */
-export const getAwayToadUpdate = (toad: Toad): Partial<Toad> => {
+export const getAwayToadUpdate = (
+  toad: Toad,
+  scene_id: number | undefined,
+): Partial<Toad> => {
   const maxHp = getToadMaxHp(toad);
 
   return {
     status: "out",
     hp: maxHp,
     maxHp,
-    scene_id: getToadHomeId(toad),
+    scene_id,
+    homeId: getToadHomeId(toad),
   };
 };
 
@@ -188,7 +188,7 @@ export const getToadHpRatio = (toad: Toad): number => {
 /**
  * Стоимость мгновенного лечения (Кваксы): за каждую потерянную единицу HP.
  * Цена намеренно высокая — мгновенное лечение это «пропустить ожидание»,
- * альтернатива койке в лазарете, где HP идёт +24 в час.
+ * альтернатива койке в Медотсеке, где HP идёт +24 в час.
  */
 export const HEAL_TOKENS_PER_HP = 2;
 /** Минимальная цена мгновенного лечения */
@@ -229,6 +229,17 @@ export const TANK_DAMAGE_REDIRECT = 0.6;
 /** Общий множитель добычи сектора */
 export const getSectorLootFactor = (sector: SectorDef): number =>
   sector.lootMultiplier * (1 + (sector.depth - 1) * 0.08);
+
+/**
+ * Сколько пропусков КОНТУРа приносит завершённый поход в сектор.
+ *
+ * Пропуск — расходуемый ресурс склада и единственный способ открыть следующий
+ * сектор. Награда растёт с глубиной: 1 🎫 на старте и 5 🎫 на «Дальнем Периметре»,
+ * поэтому старые пороги (1/3/6/10/15/21/28 походов) превращаются в понятную
+ * лестницу накоплений, а не в обязательный гринд одной и той же локации.
+ */
+export const getContourPassReward = (sector: SectorDef): number =>
+  1 + Math.floor(Math.max(1, sector.depth) / 2);
 
 // === Итог похода: удачное завершение (Часть 5.4) ===
 

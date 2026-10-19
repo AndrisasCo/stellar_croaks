@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Астро-квакс">
+  <defs>
+    <linearGradient id="astro-bg" x1="12" y1="6" x2="52" y2="58" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1a1036"/>
+      <stop offset="1" stop-color="#080514"/>
+    </linearGradient>
+    <linearGradient id="astro-accent" x1="20" y1="20" x2="46" y2="42" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#f0abfc"/>
+      <stop offset="1" stop-color="#818cf8"/>
+    </linearGradient>
+    <linearGradient id="astro-core" x1="29" y1="29" x2="35" y2="35" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#f5d0fe"/>
+      <stop offset="1" stop-color="#a78bfa"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Корпус токена: тот же контур, что у пропуска КОНТУРа -->
+  <path d="M32 3.5 56.5 17.5v29L32 60.5 7.5 46.5v-29Z" fill="url(#astro-bg)" stroke="#c084fc" stroke-width="2.5" stroke-linejoin="round"/>
+  <path d="M32 9 51.5 20v24L32 55 12.5 44V20Z" fill="none" stroke="#4c1d95" stroke-width="1.5" stroke-linejoin="round"/>
+
+  <!-- Верхняя градиентная полоса -->
+  <path d="M24 11.5h16" stroke="url(#astro-accent)" stroke-width="2.5" stroke-linecap="round"/>
+
+  <!-- Орбита и планета -->
+  <ellipse cx="32" cy="32" rx="16.5" ry="6.5" transform="rotate(-18 32 32)" fill="none" stroke="#a855f7" stroke-width="1.5" opacity=".9"/>
+  <circle cx="47.7" cy="26.9" r="2.1" fill="#f0abfc" stroke="#fdf4ff" stroke-width=".7"/>
+
+  <!-- Центральная звезда: нейтральный знак валюты -->
+  <path d="M32 16 36.2 27.8 48 32 36.2 36.2 32 48 27.8 36.2 16 32 27.8 27.8Z" fill="#2e1065" stroke="url(#astro-accent)" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M32 18.5v9M45.5 32h-9M32 45.5v-9M18.5 32h9" stroke="#c4b5fd" stroke-width="1" stroke-linecap="round" opacity=".5"/>
+  <circle cx="32" cy="32" r="3" fill="url(#astro-core)" stroke="#f5d0fe" stroke-width=".7"/>
+
+  <!-- Контурные дорожки и узлы -->
+  <path d="M16 32h-3.5M48 32h3.5" stroke="#c084fc" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="14" cy="32" r="1.3" fill="#f5d0fe"/>
+  <circle cx="50" cy="32" r="1.3" fill="#f5d0fe"/>
+
+  <!-- Звёзды -->
+  <path d="m17.5 18.5.8 2.3 2.3.8-2.3.8-.8 2.3-.8-2.3-2.3-.8 2.3-.8Z" fill="#f0abfc"/>
+  <path d="m47.5 44.5.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7Z" fill="#c4b5fd"/>
+
+  <!-- Технические насечки -->
+  <path d="M27 49h10M29.5 52h5" stroke="#4c1d95" stroke-width="1.5" stroke-linecap="round"/>
+</svg>

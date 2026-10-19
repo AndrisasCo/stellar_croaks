@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Toad } from "../../../../models/Toad";
-import { CURRENCY_CONFIG } from "../../../../utils/constants";
+import { CurrencyIcon } from "../../../shared/CurrencyIcon";
 import { getToadHomeId } from "../../../../utils/toad-location";
 import { ToadGender } from "../../../shared/ToadGender";
 import { ToadAvatar } from "../../../shared/ToadAvatar";
@@ -64,7 +64,8 @@ export const EliteOrderTooltip: React.FC<EliteOrderTooltipProps> = ({
             {order.description}
           </p>
           <div className="text-green-400 text-sm font-semibold">
-            Награда: {order.reward} {CURRENCY_CONFIG.astro_quax.icon}
+            Награда: {order.reward}{" "}
+            <CurrencyIcon currency="astro_quax" className="h-4 w-4" />
           </div>
         </div>
 

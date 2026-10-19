@@ -5,10 +5,11 @@ import {
   ExpeditionRole,
   ExpeditionStats,
   SectorDef,
+  SECTORS,
   createEmptyLoot,
-  DEFAULT_EXPEDITION_STATS,
   getSectorById,
   isSectorUnlocked,
+  normalizeExpeditionStats,
 } from "../models/expedition";
 import { Toad, ToadStatus } from "../models/Toad";
 import { ToadTypes } from "../models/Toad/toad-species";
@@ -45,6 +46,7 @@ import {
   TANK_DAMAGE_REDIRECT,
   getDispatchOfficeCost,
   getAwayToadUpdate,
+  getContourPassReward,
   getExpeditionProfitFloor,
   getExpeditionSendCost,
   getExpeditionSuccessChance,
@@ -126,10 +128,8 @@ export const isExpeditionActive = (expedition: Expedition): boolean =>
 export const getActiveExpeditions = (): Expedition[] =>
   getExpeditions().filter(isExpeditionActive);
 
-export const getExpeditionStats = (): ExpeditionStats => ({
-  ...DEFAULT_EXPEDITION_STATS,
-  ...(getGameState().expeditionStats ?? {}),
-});
+export const getExpeditionStats = (): ExpeditionStats =>
+  normalizeExpeditionStats(getGameState().expeditionStats);
 
 export const getExpeditionById = (id: string): Expedition | undefined =>
   getExpeditions().find((expedition) => expedition.id === id);
@@ -184,11 +184,75 @@ export const canSendToad = (
 export const getSectorUnlockStatus = (
   sector: SectorDef,
   stats: ExpeditionStats = getExpeditionStats(),
-): { unlocked: boolean; completed: number; required: number } => ({
+): { unlocked: boolean; available: number; required: number } => ({
   unlocked: isSectorUnlocked(sector, stats),
-  completed: stats.completed,
-  required: sector.unlockExpeditions,
+  available: Math.max(
+    0,
+    Math.floor(getGameState().user.storage?.[Items.contourPass] ?? 0),
+  ),
+  required: sector.unlockCost,
 });
+
+/**
+ * Открыть следующий сектор КОНТУРа за пропуска со склада.
+ * Пропуска — расходуемый ресурс: списываются один раз, сектор остаётся открытым
+ * навсегда (в `expeditionStats.unlockedSectors`).
+ */
+export const unlockSector = (sectorId: number): ExpeditionActionResult => {
+  const sector = getSectorById(sectorId);
+
+  if (sector.starter) {
+    return { success: false, message: "Стартовый сектор уже открыт" };
+  }
+
+  const stats = getExpeditionStats();
+  if (isSectorUnlocked(sector, stats)) {
+    return { success: false, message: `Сектор «${sector.name}» уже открыт` };
+  }
+
+  // КОНТУР открывается по порядку: нельзя перепрыгнуть закрытый сектор,
+  // даже если пропусков хватает на несколько уровней вперёд.
+  const sectorIndex = SECTORS.findIndex((item) => item.id === sector.id);
+  const previous = sectorIndex > 0 ? SECTORS[sectorIndex - 1] : undefined;
+
+  if (previous && !isSectorUnlocked(previous, stats)) {
+    return {
+      success: false,
+      message: `Сначала откройте «${previous.name}»`,
+    };
+  }
+
+  const state = getGameState();
+  const available = Math.max(
+    0,
+    Math.floor(state.user.storage?.[Items.contourPass] ?? 0),
+  );
+
+  if (available < sector.unlockCost) {
+    return {
+      success: false,
+      message: `Для открытия нужно ${sector.unlockCost} 🎫 пропуск(ов) КОНТУРа (сейчас ${available})`,
+    };
+  }
+
+  const unlockedSectors = [...(stats.unlockedSectors ?? []), sector.id];
+
+  updateGameState({
+    expeditionStats: { ...stats, unlockedSectors },
+    user: {
+      ...state.user,
+      storage: {
+        ...state.user.storage,
+        [Items.contourPass]: available - sector.unlockCost,
+      },
+    },
+  });
+
+  return {
+    success: true,
+    message: `Сектор «${sector.name}» открыт за ${sector.unlockCost} 🎫`,
+  };
+};
 
 // === Отправка команды ===
 
@@ -204,7 +268,7 @@ export const startExpedition = (
   sectorId: number,
   members: ExpeditionMember[],
   /** Гекс «Разведки», из которого ушла команда: сюда жабы вернутся после похода */
-  originRoomId?: string,
+  originRoomId?: number,
 ): ExpeditionActionResult => {
   const state = getGameState();
   const sector = getSectorById(sectorId);
@@ -213,7 +277,7 @@ export const startExpedition = (
   if (!isSectorUnlocked(sector, stats)) {
     return {
       success: false,
-      message: `Сектор закрыт: завершите ${sector.unlockExpeditions} походов`,
+      message: `Сектор закрыт: откройте его за ${sector.unlockCost} 🎫 пропуск(ов) КОНТУРа`,
     };
   }
 
@@ -306,7 +370,7 @@ export const startExpedition = (
     updateToadById(
       toad.id,
       {
-        ...getAwayToadUpdate(toad),
+        ...getAwayToadUpdate(toad, originRoomId),
         energy: Math.max(0, getToadEnergy(toad) - energyCost),
       },
       true,
@@ -1108,6 +1172,8 @@ const completeArrival = (
   const rawTokens = expedition.loot.tokens;
   const arrival = buildArrivalLoot(expedition, state, options);
   const samplesCount = arrival.loot.samples;
+  /** Пропуска КОНТУРа начисляем сразу при возврате команды, а не при разборе добычи */
+  const contourPasses = getContourPassReward(sector);
 
   expedition.loot = arrival.loot;
   expedition.success = arrival.success;
@@ -1212,6 +1278,7 @@ const completeArrival = (
   if (samplesCount > 0) {
     summary += `. В рюкзаке ${samplesCount} образц(ов) — при разборе добычи они поселятся в биоподах`;
   }
+  summary += `. Пропуск(ов) КОНТУРа на складе: +${contourPasses} 🎫`;
   summary += `. Добыча ждёт разбора на вкладке «Походы»`;
 
   pushLog(expedition, {
@@ -1220,15 +1287,28 @@ const completeArrival = (
     text: summary,
   });
 
+  const storedPasses = Math.max(
+    0,
+    Math.floor(fresh.user.storage?.[Items.contourPass] ?? 0),
+  );
+
   updateGameState(
     {
       toads,
       expeditionStats: {
+        ...stats,
         completed: stats.completed + 1,
         bestDepth: Math.max(stats.bestDepth, sector.depth),
         downed: stats.downed + downedNow,
       },
       expeditions,
+      user: {
+        ...fresh.user,
+        storage: {
+          ...fresh.user.storage,
+          [Items.contourPass]: storedPasses + contourPasses,
+        },
+      },
     },
     true,
   );
@@ -1276,13 +1356,13 @@ const returnTeamToScout = (
   );
   const target =
     scoutRooms.find(
-      (room) => (room.slotId ?? room.id) === expedition.originRoomId,
+      (room) => (room.sceneId ?? room.sceneId) === expedition.originRoomId,
     ) ??
-    scoutRooms.find((room) => room.id === expedition.originRoomId) ??
+    scoutRooms.find((room) => room.sceneId === expedition.originRoomId) ??
     scoutRooms[0] ??
     null;
   /** Карта адресует «Разведку» по гексу: `Toad.scene_id` хранит именно этот id. */
-  const targetRoomId = target ? target.slotId ?? target.id : null;
+  const targetRoomId = target ? (target.slotId ?? target.id) : null;
   /** Старый сейв мог помнить канонический id — при подсчёте мест принимаем оба. */
   const targetRoomIds =
     target === null ? null : new Set([target.id, target.slotId ?? target.id]);
@@ -1464,8 +1544,8 @@ export const finishExpedition = (
  * Пассивное восстановление HP у жаб, которые не в походе, и снятие «залипших»
  * статусов после рейда. Возвращает число жаб, которых подлечили.
  *
- * Скорость зависит от места: на койке лазарета HP идёт в разы быстрее, чем дома
- * (`getHpRegenPerHour` из `utils/hospital.ts`) — без лазарета раны затягиваются
+ * Скорость зависит от места: на койке Медотсека HP идёт в разы быстрее, чем дома
+ * (`getHpRegenPerHour` из `utils/hospital.ts`) — без Медотсека раны затягиваются
  * очень медленно.
  */
 export const processHpRegen = (hoursPassed: number): number => {

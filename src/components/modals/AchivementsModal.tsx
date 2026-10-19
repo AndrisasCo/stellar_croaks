@@ -12,7 +12,7 @@ import {
 import { createToad, updateUser } from "../../backend";
 import { useNotifications } from "../../hooks/use-notification";
 import { getGameState } from "../../backend/localStorage";
-import { CURRENCY_CONFIG } from "../../utils/constants";
+import { CurrencyIcon } from "../shared/CurrencyIcon";
 import { pickSceneForNewToad } from "../../utils/housing";
 
 const AchievementModal: React.FC = () => {
@@ -193,13 +193,21 @@ const AchievementModal: React.FC = () => {
                 className="flex items-center justify-between p-2 bg-color-second/30 rounded"
               >
                 <span className="text-gray-200 text-xs capitalize">
-                  {key === "earn"
-                    ? `Заработано ${CURRENCY_CONFIG.tokens.icon}`
-                    : key === "buyToad"
-                      ? "Куплено жаб"
-                      : key === "sellToad"
-                        ? "Продано жаб"
-                        : key}
+                  {key === "earn" ? (
+                    <>
+                      Заработано{" "}
+                      <CurrencyIcon
+                        currency="tokens"
+                        className="h-3.5 w-3.5"
+                      />
+                    </>
+                  ) : key === "buyToad" ? (
+                    "Куплено жаб"
+                  ) : key === "sellToad" ? (
+                    "Продано жаб"
+                  ) : (
+                    key
+                  )}
                 </span>
                 <span className="text-yellow-400 font-bold text-sm">
                   {value}

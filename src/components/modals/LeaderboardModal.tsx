@@ -15,6 +15,7 @@ import { getGameState, updateGameState } from "../../backend/localStorage";
 import { ToadAvatar } from "../shared/ToadAvatar";
 import { ToadTypes } from "../../models/Toad/toad-species";
 import { HorizontalScroll } from "../shared/HorizontalScroll";
+import { CurrencyIcon, CurrencyText } from "../shared/CurrencyIcon";
 
 interface LeaderboardModalProps {
   isOpen: boolean;
@@ -577,7 +578,9 @@ const LeaderboardModal: React.FC = () => {
           <h3 className="text-white px-2 font-semibold text-sm mb-1">
             {getTabTitle()}
           </h3>
-          <p className="text-gray-300 text-xs">{getTabDescription()}</p>
+          <p className="text-gray-300 text-xs">
+            <CurrencyText text={getTabDescription()} />
+          </p>
         </div>
 
         {/* Список лидеров */}
@@ -675,13 +678,10 @@ const LeaderboardModal: React.FC = () => {
                           >
                             {player.tokens?.toLocaleString()}
                           </span>
-                          <span
-                            className={
-                              isUser ? "text-yellow-300" : "text-yellow-400"
-                            }
-                          >
-                            {CURRENCY_CONFIG.tokens.icon}
-                          </span>
+                          <CurrencyIcon
+                            currency="tokens"
+                            className="h-3.5 w-3.5"
+                          />
                           <span className="text-gray-300 text-sm ml-2">
                             {player.total_toads} жаб
                           </span>

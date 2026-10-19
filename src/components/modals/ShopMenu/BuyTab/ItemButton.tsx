@@ -1,5 +1,5 @@
-import { CURRENCY_CONFIG } from "../../../utils/constants";
-import { ClickButton } from "../../shared/ClickButton";
+import { ClickButton } from "../../../shared/ClickButton";
+import { CurrencyIcon } from "../../../shared/CurrencyIcon";
 import { ShopItem } from "./use-shop";
 
 export const ItemButton = (props: { item: ShopItem }) => {
@@ -40,7 +40,8 @@ export const ItemButton = (props: { item: ShopItem }) => {
         <span className="h-4">{item.name}</span>
         <span className="h-4">
           <span>
-            {item.price} {CURRENCY_CONFIG[item.currency].icon}
+            {item.price}{" "}
+            <CurrencyIcon currency={item.currency} className="h-3.5 w-3.5" />
           </span>
 
           <p

@@ -22,7 +22,8 @@
     "verify:toad-picker": "node tmp-verify-toad-picker.mjs",
     "verify:biomass": "node tmp-verify-biomass-sell.mjs",
     "verify:auth": "node tmp-verify-auth.mjs",
-    "verify": "npm run verify:init-data && npm run verify:stars && npm run verify:platform && npm run verify:colony && npm run verify:crew && npm run verify:assets && npm run verify:place && npm run verify:names && npm run verify:toad-picker && npm run verify:biomass && npm run verify:auth"
+    "verify:contour": "node tmp-verify-contour-pass.mjs",
+    "verify": "npm run verify:init-data && npm run verify:stars && npm run verify:platform && npm run verify:colony && npm run verify:crew && npm run verify:assets && npm run verify:place && npm run verify:names && npm run verify:toad-picker && npm run verify:biomass && npm run verify:auth && npm run verify:contour"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.81.0",

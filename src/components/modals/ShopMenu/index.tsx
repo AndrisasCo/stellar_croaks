@@ -3,6 +3,7 @@ import { useColony } from "../../../hooks/use-colony";
 import { useRoomPowerTab } from "../../../hooks/use-room-power-tab";
 import Modal from "../../shared/Header";
 import ModalTabs, { ModalTabItem } from "../../shared/ModalTabs";
+import { CurrencyIcon } from "../../shared/CurrencyIcon";
 import RoomDataTab, { ROOM_DATA_TAB, RoomDataTabId } from "../RoomDataTab";
 import { RoomConfig } from "../../HexMap/rooms-config";
 import { useToads } from "../../ToadContext";
@@ -78,17 +79,13 @@ export default function ShopMenu({ room }: { room?: RoomConfig }) {
         {/* Валюта */}
         <div className="flex gap-4 mt-3 text-sm">
           <div className="flex items-center gap-1">
-            <span className="text-yellow-400">
-              {CURRENCY_CONFIG.tokens.icon}
-            </span>
+            <CurrencyIcon currency="tokens" className="h-4 w-4" />
             <span className="text-white">
               {CURRENCY_CONFIG.tokens.name}: {tokens}
             </span>
           </div>
           <div className="flex items-center gap-1">
-            <span className="text-purple-400">
-              {CURRENCY_CONFIG.astro_quax.icon}
-            </span>
+            <CurrencyIcon currency="astro_quax" className="h-4 w-4" />
             <span className="text-white">
               {CURRENCY_CONFIG.astro_quax.name}: {astro_quax}
             </span>

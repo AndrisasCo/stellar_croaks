@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Modal from "../shared/Header";
 import { ClickButton } from "../shared/ClickButton";
+import { CurrencyIcon, CurrencyText } from "../shared/CurrencyIcon";
 import { HpBar } from "../shared/HpBar";
 import ModalTabs, { ModalTabItem } from "../shared/ModalTabs";
 import RoomDataTab, { ROOM_DATA_TAB } from "./RoomDataTab";
@@ -11,21 +12,23 @@ import { useColony } from "../../hooks/use-colony";
 import { useRoomPowerTab } from "../../hooks/use-room-power-tab";
 import { Toad } from "../../models/Toad";
 import {
-  DEFAULT_EXPEDITION_STATS,
   Expedition,
   ExpeditionMember,
   EXPEDITION_ROLE_ORDER,
   ExpeditionRole,
   getSectorById,
   isSectorUnlocked,
+  normalizeExpeditionStats,
   SECTORS,
 } from "../../models/expedition";
+import { Items } from "../../models/user";
 import {
   EXPEDITION_RETURN_RATIO,
   EXPEDITION_TEAM_SIZE,
   EXTRACTION_ASTRO_COST,
   ExpeditionTeamMember,
   canToadAffordExpedition,
+  getContourPassReward,
   getDispatchOfficeCost,
   getExpeditionProfitFloor,
   getExpeditionSendCost,
@@ -53,10 +56,12 @@ import {
   getExpeditionStorageCheck,
   getExpeditionTeamStatus,
   getReturnProgress,
+  getSectorUnlockStatus,
   isToadOnExpedition,
   processExpeditions,
   speedUpReturn,
   startExpedition,
+  unlockSector,
   withdrawExpedition,
 } from "../../utils/expedition-manager";
 import { getMaxExpeditions } from "../../utils/expedition-config";
@@ -189,7 +194,7 @@ const LogList: React.FC<{ expedition: Expedition }> = ({ expedition }) => {
                 : "📡 Связь"}
               :{" "}
             </span>
-            {entry.text}
+            <CurrencyText text={entry.text} iconClassName="h-3 w-3" />
             {typeof entry.hpDelta === "number" && entry.hpDelta !== 0 && (
               <span
                 className={
@@ -282,10 +287,7 @@ const ExpeditionModal: React.FC<{
   const activeExpeditions = expeditions.filter(
     (expedition) => expedition.phase !== "completed",
   );
-  const stats = {
-    ...DEFAULT_EXPEDITION_STATS,
-    ...(state.expeditionStats ?? {}),
-  };
+  const stats = normalizeExpeditionStats(state.expeditionStats);
   const dispatchLevel = state.user.dispatchLevel ?? 0;
   const teamLimit = getMaxExpeditions(dispatchLevel);
   const dispatchCost = getDispatchOfficeCost(dispatchLevel);
@@ -302,6 +304,19 @@ const ExpeditionModal: React.FC<{
    * без этой проверки свайп на закрытую страницу отправлял бы команду в закрытый сектор.
    */
   const sectorUnlocked = isSectorUnlocked(selectedSector, stats);
+  /** Пропуска КОНТУРа на складе: игрок тратит их на открытие следующих секторов */
+  const contourPasses = Math.max(
+    0,
+    Math.floor(state.user.storage?.[Items.contourPass] ?? 0),
+  );
+  const unlockStatus = getSectorUnlockStatus(selectedSector, stats);
+  /** КОНТУР открывается по порядку: следующий сектор — только после предыдущего */
+  const previousSectorUnlocked =
+    sectorIndex === 0 || isSectorUnlocked(SECTORS[sectorIndex - 1], stats);
+  const canUnlockSector =
+    !sectorUnlocked &&
+    previousSectorUnlocked &&
+    contourPasses >= unlockStatus.required;
   const unlockedSectors = SECTORS.filter((item) =>
     isSectorUnlocked(item, stats),
   ).length;
@@ -479,13 +494,20 @@ const ExpeditionModal: React.FC<{
     });
 
   const handleSend = () => {
-    const result = startExpedition(sectorId, members, crewRoom?.id);
+    const result = startExpedition(
+      sectorId,
+      members,
+      crewRoom?.sceneId || undefined,
+    );
     notify(result);
     if (result.success) {
       setSlots(emptyExpeditionSlots());
       setTab("runs");
     }
   };
+
+  /** Открыть выбранный сектор за пропуска КОНТУРа со склада */
+  const handleUnlockSector = () => notify(unlockSector(selectedSector.id));
 
   /**
    * Разбор добычи завершённого похода. После успеха жабы уже стоят в «Разведке»,
@@ -709,7 +731,7 @@ const ExpeditionModal: React.FC<{
         <p className="text-2xs text-gray-400">
           Глубина {item.depth} · обратно ~{backHours} ч · снаряжение{" "}
           {sectorCost} 🧪 на команду из {Math.max(1, members.length)} жаб · силы{" "}
-          {sectorEnergy} ⚡ на жабу
+          {sectorEnergy} ⚡ на жабу · награда {getContourPassReward(item)} 🎫
         </p>
 
         <p
@@ -722,7 +744,7 @@ const ExpeditionModal: React.FC<{
           }`}
         >
           {!unlocked
-            ? `🔒 Откроется после ${item.unlockExpeditions} завершённых походов (сейчас ${stats.completed}). Разглядывать можно — отправить нет.`
+            ? `🔒 Открытие: ${item.unlockCost} 🎫 КОНТУРа (на складе ${contourPasses}). Разглядывать можно — отправить нет.`
             : selected
               ? "Команда полетит отсюда: соберём её в слотах ролей ниже."
               : "Листайте вправо-влево — на странице один поход."}
@@ -738,7 +760,11 @@ const ExpeditionModal: React.FC<{
     >
       <div className="flex flex-col gap-3 px-1">
         {/* Сводка по разведке */}
-        <div className="grid grid-cols-3 gap-2 text-center">
+        <div className="grid grid-cols-2 gap-2 text-center sm:grid-cols-4">
+          <div className="bg-color-main rounded-xl py-2 px-1 border border-gray-600/30">
+            <p className="text-2xs text-gray-400">🎫 Пропуска КОНТУРа</p>
+            <p className="text-base font-bold text-white">{contourPasses}</p>
+          </div>
           <div className="bg-color-main rounded-xl py-2 px-1 border border-gray-600/30">
             <p className="text-2xs text-gray-400">Походов завершено</p>
             <p className="text-base font-bold text-white">{stats.completed}</p>
@@ -806,7 +832,11 @@ const ExpeditionModal: React.FC<{
                   <TeamStatusList expedition={expedition} />
 
                   <p className="text-2xs text-gray-300">
-                    🎒 Добыча: {getExpeditionLootSummary(expedition)}
+                    🎒 Добыча:{" "}
+                    <CurrencyText
+                      text={getExpeditionLootSummary(expedition)}
+                      iconClassName="h-3 w-3"
+                    />
                   </p>
                   {expedition.loot.samples > 0 && (
                     <p className="text-2xs text-cyan-200">
@@ -926,7 +956,11 @@ const ExpeditionModal: React.FC<{
                   <TeamStatusList expedition={expedition} />
 
                   <p className="text-2xs text-gray-300">
-                    🎒 В рюкзаке: {getExpeditionLootSummary(expedition)}
+                    🎒 В рюкзаке:{" "}
+                    <CurrencyText
+                      text={getExpeditionLootSummary(expedition)}
+                      iconClassName="h-3 w-3"
+                    />
                   </p>
 
                   <LogList expedition={expedition} />
@@ -952,7 +986,12 @@ const ExpeditionModal: React.FC<{
                       onClick={() => handleExtract(expedition.id)}
                       className="flex-1 py-2 rounded-xl bg-cyan-900/50 hover:bg-cyan-800/60 text-cyan-100 text-2xs font-bold border border-cyan-500/40"
                     >
-                      🚁 Маяк ({EXTRACTION_ASTRO_COST} 💎 / есть {astro})
+                      🚁 Маяк ({EXTRACTION_ASTRO_COST}{" "}
+                      <CurrencyIcon
+                        currency="astro_quax"
+                        className="h-3 w-3"
+                      />{" "}
+                      / есть {astro})
                     </ClickButton>
                   </div>
                 </div>
@@ -984,6 +1023,37 @@ const ExpeditionModal: React.FC<{
               }
               slides={sectorSlides}
             />
+
+            {!sectorUnlocked && (
+              <div className="rounded-xl border border-amber-500/40 bg-amber-950/30 px-3 py-2 flex flex-col gap-2">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-bold text-amber-100">
+                    🔒 «{selectedSector.name}» закрыт
+                  </span>
+                  <span className="shrink-0 text-2xs font-bold text-amber-200">
+                    {contourPasses} / {unlockStatus.required} 🎫
+                  </span>
+                </div>
+                <p className="text-2xs leading-snug text-gray-300">
+                  {!previousSectorUnlocked
+                    ? `Сначала откройте «${
+                        SECTORS[sectorIndex - 1]?.name ?? "предыдущий сектор"
+                      }»: КОНТУР проходят по порядку.`
+                    : `Пропуск КОНТУРа — расходуемый ресурс склада. Его приносят завершённые походы, а тратится он на открытие следующего сектора.`}
+                </p>
+                <ClickButton
+                  onClick={handleUnlockSector}
+                  disabled={!canUnlockSector}
+                  className={`w-full py-2 rounded-xl text-2xs font-bold border transition-colors duration-300 ${
+                    canUnlockSector
+                      ? "bg-amber-800/60 border-amber-400/70 text-amber-50 hover:bg-amber-700/70"
+                      : "bg-slate-800/40 border-gray-700/40 text-gray-500"
+                  }`}
+                >
+                  🎫 Открыть за {unlockStatus.required} 🎫
+                </ClickButton>
+              </div>
+            )}
 
             {/* Слоты ролей команды: как места репродуктора — панель с заголовком и карточка на роль */}
             <div className="bg-color-main rounded-xl px-3 py-2 border border-amber-500/40 flex flex-col gap-2">
@@ -1019,7 +1089,7 @@ const ExpeditionModal: React.FC<{
                       caption={config.label}
                       label={config.label}
                       picked={picked}
-                      placeholder="＋ посадить жабу"
+                      placeholder="＋ назначить"
                       pickedSummary={
                         picked ? (
                           <span className="flex shrink-0 items-center gap-2">
@@ -1191,8 +1261,9 @@ const ExpeditionModal: React.FC<{
               </p>
               {team.length > 0 && (
                 <p className="text-2xs leading-snug text-lime-300">
-                  Поход принесёт не меньше {Math.round(profitNorm)} в
-                  🔷-эквиваленте: это выгоднее фермы за {awayHours.toFixed(1)} ч
+                  Поход принесёт не меньше {Math.round(profitNorm)} в{" "}
+                  <CurrencyIcon currency="tokens" className="h-3 w-3" />
+                  -эквиваленте: это выгоднее фермы за {awayHours.toFixed(1)} ч
                   и окупает снаряжение.
                 </p>
               )}
@@ -1223,9 +1294,9 @@ const ExpeditionModal: React.FC<{
               )}
               {!sectorUnlocked && (
                 <p className="text-2xs text-amber-300">
-                  🔒 «{selectedSector.name}» закрыт: завершите{" "}
-                  {selectedSector.unlockExpeditions} походов (сейчас{" "}
-                  {stats.completed}). Отправить можно с открытой страницы.
+                  🔒 «{selectedSector.name}» закрыт: нужно{" "}
+                  {selectedSector.unlockCost} 🎫 КОНТУРа (на складе{" "}
+                  {contourPasses}). Отправить можно с открытой страницы.
                 </p>
               )}
 

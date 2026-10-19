@@ -36,7 +36,7 @@ export interface ToadMoveCheck {
 export const getToadMoveIssue = (
   toad: Toad,
   options?: {
-    /** Лазарет принимает и выбитых: туда жабу как раз и несут. */
+    /** Медотсек принимает и выбитых: туда жабу как раз и несут. */
     allowDown?: boolean;
   },
 ): string | null => {
@@ -68,8 +68,8 @@ export const getToadMoveIssue = (
  *    становится биоподом) и прячутся с карты (см. `isToadVisibleInRoom`);
  *  - репродуктор — до двух взрослых жаб: пара живёт там с ухаживания до родов, пока
  *    игрок не перенесёт её (плюс головастики, рождённые в репродукторе, — они мест не занимают);
- *  - лазарет — до шести жаб на койках (HOSPITAL_ROOM_TOAD_SLOTS): туда кладут раненых
- *    и больных, и там они выздоравливают в разы быстрее. Выбитую жабу в лазарет несут
+ *  - Медотсек — до шести жаб на койках (HOSPITAL_ROOM_TOAD_SLOTS): туда кладут раненых
+ *    и больных, и там они выздоравливают в разы быстрее. Выбитую жабу в Медотсек несут
  *    как раз для лечения, поэтому правило «сначала подлечите» на него не действует
  *    (`allowDown`), а вот ток в секторе нужен — как и всем постройкам;
  *  - прочие рабочие секторы (коллайдер, диссоциатор, склад, магазин) —
@@ -132,12 +132,13 @@ export const canMoveToadToRoom = (
       if (toad.stage !== "adult") {
         return {
           ok: false,
-          reason: "В репродукторе сидят только взрослые жабы: головастику там нечего делать.",
+          reason:
+            "В репродукторе сидят только взрослые жабы: головастику там нечего делать.",
         };
       }
 
       const adultsInside = context.roomToads.filter(
-        (item) => item.stage === "adult"
+        (item) => item.stage === "adult",
       ).length;
 
       if (adultsInside >= NEST_ROOM_TOAD_SLOTS) {
@@ -168,12 +169,12 @@ export const canMoveToadToRoom = (
       return { ok: true };
     }
 
-    // Лазарет — койки для раненых и больных: до шести жаб, туда кладут и выбитых
+    // Медотсек — койки для раненых и больных: до шести жаб, туда кладут и выбитых
     case "hospital": {
       if (context.roomToads.length >= HOSPITAL_ROOM_TOAD_SLOTS) {
         return {
           ok: false,
-          reason: `В лазарете заняты все ${HOSPITAL_ROOM_TOAD_SLOTS} коек.`,
+          reason: `В Медотсеке заняты все ${HOSPITAL_ROOM_TOAD_SLOTS} коек.`,
         };
       }
 

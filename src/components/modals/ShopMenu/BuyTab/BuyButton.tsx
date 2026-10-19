@@ -1,4 +1,4 @@
-import { CURRENCY_CONFIG } from "../../../../utils/constants";
+import { CurrencyIcon } from "../../../shared/CurrencyIcon";
 import { ShopItem } from "./use-shop";
 import { LootboxDetails } from "./LootboxDetails";
 import { useModal } from "../../../ModalContext";
@@ -81,7 +81,8 @@ export const BuyButton = (props: { item: ShopItem }) => {
               onClick={item.onClick}
               disabled={item.disabled}
             >
-              {item.price} {CURRENCY_CONFIG[item.currency].icon}
+              {item.price}{" "}
+              <CurrencyIcon currency={item.currency} className="h-4 w-4" />
             </button>
             {item.key === "lootbox" && (
               <button

@@ -68,7 +68,7 @@ const resolveToadPlacement = (
   const homeId = resolveSceneId(
     typeof toadData.scene_id === "number"
       ? toadData.scene_id
-      : toadData.homeId ?? null,
+      : (toadData.homeId ?? null),
   );
 
   // Жаба, созданная сразу в секторе колонии, остаётся в нём (`scene_id` — id комнаты),
@@ -214,7 +214,7 @@ export const updateToadsBulkHunger = (
   syntetic?: boolean,
 ) => {
   const state = getGameState();
-  // Голод идёт у всех жаб колонии — и дома, и в секторе (репродуктор, ⚡, лазарет):
+  // Голод идёт у всех жаб колонии — и дома, и в секторе (репродуктор, ⚡, Медотсек):
   // место (`scene_id`)
   const updatedToads = state.toads.map((toad) =>
     toad.state?.hunger

@@ -8,16 +8,16 @@ import {
 } from "./expedition-config";
 
 /**
- * ЛАЗАРЕТ: койки, скорость выздоровления и выборки жаб для интерфейса.
+ * Медотсек: койки, скорость выздоровления и выборки жаб для интерфейса.
  *
- * Правила (сектор «Лазарет» на карте колонии, до `HOSPITAL_ROOM_TOAD_SLOTS` жаб):
+ * Правила (сектор «Медотсек» на карте колонии, до `HOSPITAL_ROOM_TOAD_SLOTS` жаб):
  *  - на койке HP идёт на порядок быстрее домашнего регена, а срок кибер-болезни
  *    «сгорает» в `HOSPITAL_DISEASE_SPEED` раз быстрее: ×3 к реальному времени;
- *  - без лазарета всё очень медленно: дома капает `HP_REGEN_PER_HOUR` = 1 HP в час,
+ *  - без Медотсека всё очень медленно: дома капает `HP_REGEN_PER_HOUR` = 1 HP в час,
  *    а болезнь идёт ровно своим таймером (см. `models/disease.ts`);
  *  - пациент изолирован: он сидит в секторе, а не в биоподе, поэтому не заражает
  *    соседей и сам ничего не подхватывает (`processDiseases`);
- *  - попасть в лазарет можно только в сектор с током — это общее правило переноса
+ *  - попасть в Медотсек можно только в сектор с током — это общее правило переноса
  *    (`HexMap/toad-move-rules.ts`). Само выздоровление уже лежащих жаб от тока не
  *    зависит: если свет в секторе позже пропадёт, лечение продолжится.
  *
@@ -25,15 +25,15 @@ import {
  * и React — поэтому правила проверяются без запуска игры.
  */
 
-/** Коек в одном лазарете колонии */
+/** Коек в одном Медотсеке колонии */
 export const HOSPITAL_ROOM_TOAD_SLOTS = 6;
 /** Восстановление HP в час на койке: ×24 к домашнему регену */
 export const HOSPITAL_HP_REGEN_PER_HOUR = 24;
-/** Во сколько раз быстрее идёт срок болезни под присмотром лазарета */
+/** Во сколько раз быстрее идёт срок болезни под присмотром Медотсека */
 export const HOSPITAL_DISEASE_SPEED = 3;
 
 /**
- * id построенных лазаретов колонии (по карте: их может быть несколько).
+ * id построенных Медотсеков колонии (по карте: их может быть несколько).
  *
  * Жаба помнит место по id гекса (`RoomConfig.id`), а постройка в сейве — по своему id
  * (`вид_число`), поэтому отдаём id гекса: по нему `Toad.scene_id` и находит койку.
@@ -43,7 +43,7 @@ export const getHospitalRoomIds = (colony?: ColonyState | null): string[] =>
     .filter((room) => room.kind === "hospital")
     .map((room) => room.slotId ?? room.id);
 
-/** Лежит ли жаба в лазарете прямо сейчас */
+/** Лежит ли жаба в Медотсеке прямо сейчас */
 export const isToadInHospital = (
   toad: Toad,
   hospitalIds: readonly string[],
@@ -54,27 +54,27 @@ export const isToadInHospital = (
 export const isToadWounded = (toad: Toad): boolean =>
   getToadHp(toad) < getToadMaxHp(toad);
 
-/** Нужен ли жабе лазарет: рана или активная кибер-болезнь */
+/** Нужен ли жабе Медотсек: рана или активная кибер-болезнь */
 export const needsHospitalCare = (toad: Toad, now = Date.now()): boolean =>
   isToadWounded(toad) || isToadSick(toad, now);
 
-/** Жабы, которым нужна помощь: раненые и больные (для второго списка лазарета) */
+/** Жабы, которым нужна помощь: раненые и больные (для второго списка Медотсека) */
 export const getToadsNeedingCare = (toads: Toad[], now = Date.now()): Toad[] =>
   toads.filter((toad) => needsHospitalCare(toad, now));
 
-/** Жабы, лежащие на койках лазарета (первый список) */
+/** Жабы, лежащие на койках Медотсека (первый список) */
 export const getHospitalPatients = (
   toads: Toad[],
   hospitalIds: readonly string[],
 ): Toad[] => toads.filter((toad) => isToadInHospital(toad, hospitalIds));
 
-/** Сколько коек занято в лазарете */
+/** Сколько коек занято в Медотсеке */
 export const getHospitalOccupancy = (
   roomId: string,
   toadsByRoom: Record<string, Toad[]>,
 ): number => (toadsByRoom[roomId] ?? []).length;
 
-/** Лазареты, где есть свободная койка (по порядку карты) */
+/** Медотсекы, где есть свободная койка (по порядку карты) */
 export const getHospitalsWithSpace = (
   hospitalIds: readonly string[],
   toadsByRoom: Record<string, Toad[]>,
@@ -84,11 +84,11 @@ export const getHospitalsWithSpace = (
       getHospitalOccupancy(roomId, toadsByRoom) < HOSPITAL_ROOM_TOAD_SLOTS,
   );
 
-/** Восстановление HP в час: койка лазарета или обычная жизнь дома */
+/** Восстановление HP в час: койка Медотсека или обычная жизнь дома */
 export const getHpRegenRate = (inHospital: boolean): number =>
   inHospital ? HOSPITAL_HP_REGEN_PER_HOUR : HP_REGEN_PER_HOUR;
 
-/** Восстановление HP в час для конкретной жабы: койка лазарета или дом */
+/** Восстановление HP в час для конкретной жабы: койка Медотсека или дом */
 export const getHpRegenPerHour = (
   toad: Toad,
   hospitalIds: readonly string[],
@@ -96,7 +96,7 @@ export const getHpRegenPerHour = (
 
 /**
  * Сколько часов займёт восстановление `missingHp` HP — на койке (`inHospital`) или дома.
- * Интерфейсу нужны оба прогноза сразу: «дома ~N ч · в лазарете ~M ч».
+ * Интерфейсу нужны оба прогноза сразу: «дома ~N ч · в Медотсеке ~M ч».
  */
 export const getHoursToFullHp = (
   missingHp: number,
@@ -112,7 +112,7 @@ export const getHoursToFullHp = (
 };
 
 /**
- * Сколько ДОПОЛНИТЕЛЬНЫХ часов болезни «съедает» койка лазарета за прошедшее время:
+ * Сколько ДОПОЛНИТЕЛЬНЫХ часов болезни «съедает» койка Медотсека за прошедшее время:
  * дома таймер болезни идёт сам по себе (0), на койке срок сгорает быстрее
  * во столько же раз, во сколько врач ускоряет выздоровление.
  */

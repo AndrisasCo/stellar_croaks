@@ -15,6 +15,14 @@ export const BASE_STORAGE_CAPACITY = 100;
 /** Прибавка к вместимости за каждую построенный сектор «Склад» */
 export const STORAGE_CAPACITY_PER_ROOM = 300;
 
+/**
+ * Цифровые ресурсы: лежат на складе, но полки не занимают.
+ *
+ * Пропуск КОНТУРа выдаётся автоматически за каждый завершённый поход, поэтому
+ * он не должен упираться в переполненный склад и отнимать место у обычной добычи.
+ */
+const STORAGE_CAPACITY_EXEMPT: ReadonlySet<Items> = new Set([Items.contourPass]);
+
 /** Шкала вместимости склада для интерфейса */
 export interface StorageCapacity {
   /** Сколько единиц предметов уже лежит на складе */
@@ -37,12 +45,15 @@ export const getStorageCapacity = (): number =>
   BASE_STORAGE_CAPACITY +
   getStorageRoomCount() * STORAGE_CAPACITY_PER_ROOM;
 
-/** Сколько единиц предметов лежит на складе (считаем по всем видам предметов) */
+/** Сколько единиц предметов лежит на складе (цифровые пропуска полки не занимают) */
 export const getStorageUsed = (
   storage: Partial<Record<Items, number>> = {},
 ): number =>
   Object.values(Items).reduce(
-    (sum, key) => sum + Math.max(0, Math.floor(storage[key] ?? 0)),
+    (sum, key) =>
+      STORAGE_CAPACITY_EXEMPT.has(key)
+        ? sum
+        : sum + Math.max(0, Math.floor(storage[key] ?? 0)),
     0,
   );
 
@@ -76,7 +87,17 @@ export const fitItemsInStorage = (
   Object.entries(delta).forEach(([key, amount]) => {
     const wanted = Math.max(0, Math.floor(amount || 0));
 
-    if (wanted === 0 || free <= 0) {
+    if (wanted === 0) {
+      return;
+    }
+
+    // Цифровой ресурс не занимает полку: он всегда помещается целиком.
+    if (STORAGE_CAPACITY_EXEMPT.has(key as Items)) {
+      accepted[key as Items] = wanted;
+      return;
+    }
+
+    if (free <= 0) {
       return;
     }
 
@@ -93,8 +114,11 @@ export const canFitInStorage = (
   storage: Partial<Record<Items, number>>,
   delta: Partial<Record<Items, number>>,
 ): boolean => {
-  const wanted = Object.values(delta).reduce(
-    (sum, amount) => sum + Math.max(0, Math.floor(amount || 0)),
+  const wanted = Object.entries(delta).reduce(
+    (sum, [key, amount]) =>
+      STORAGE_CAPACITY_EXEMPT.has(key as Items)
+        ? sum
+        : sum + Math.max(0, Math.floor(amount || 0)),
     0,
   );
 

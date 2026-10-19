@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Пропуск КОНТУРа">
+  <defs>
+    <linearGradient id="pass-bg" x1="8" y1="10" x2="56" y2="54" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0f2136"/>
+      <stop offset="1" stop-color="#07111f"/>
+    </linearGradient>
+    <linearGradient id="pass-stripe" x1="13" y1="22" x2="46" y2="22" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#5eead4"/>
+      <stop offset="1" stop-color="#38bdf8"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Корпус ключ-карты -->
+  <rect x="5" y="13" width="54" height="38" rx="8" fill="url(#pass-bg)" stroke="#22d3ee" stroke-width="2.5"/>
+  <rect x="10" y="19" width="44" height="26" rx="4" fill="none" stroke="#164e63" stroke-width="1.5"/>
+
+  <!-- Магнитная полоса и «чип» КОНТУРа -->
+  <rect x="13" y="23" width="24" height="5" rx="2.5" fill="url(#pass-stripe)"/>
+  <rect x="13" y="33" width="15" height="4" rx="2" fill="#155e75"/>
+  <rect x="13" y="39" width="10" height="3" rx="1.5" fill="#0e7490"/>
+
+  <!-- Метка сектора -->
+  <circle cx="47" cy="35" r="6" fill="#0b3b4a" stroke="#67e8f9" stroke-width="2"/>
+  <path d="M47 31v8M43 35h8" stroke="#a5f3fc" stroke-width="1.5" stroke-linecap="round"/>
+
+  <!-- Прорезь для подвеса -->
+  <circle cx="52" cy="18.5" r="2.2" fill="#020617" stroke="#67e8f9" stroke-width="1"/>
+</svg>

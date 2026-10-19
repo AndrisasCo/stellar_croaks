@@ -5,7 +5,6 @@ import { useGameState } from "../../hooks/use-game-state";
 import { useNotifications } from "../../hooks/use-notification";
 import { useSoundEffects } from "../../hooks/use-sound-effects";
 import { Toad } from "../../models/Toad";
-import { CURRENCY_CONFIG } from "../../utils/constants";
 import { checkNestCourtship } from "../../utils/breeding-manager";
 import { getSceneProductionRate } from "../../utils/production-manager";
 import { getHousingInfo } from "../../utils/housing";
@@ -19,6 +18,7 @@ import BuildRoomModal from "../modals/BuildRoomModal";
 import ColonyModal from "../modals/ColonyModal";
 import { ToadInfo } from "../modals/ToadInfoModal";
 import { ClickButton } from "../shared/ClickButton";
+import { CurrencyIcon } from "../shared/CurrencyIcon";
 import { canBuildOnSlot, getUnpoweredAviarySceneIds } from "./colony-build";
 import HexMapCanvas from "./HexMapCanvas";
 import { openRoomModal } from "./open-room-modal";
@@ -60,7 +60,7 @@ const pluralizeHexes = (count: number): string => {
  *  - биопод      → список жаб и кормление;
  *  - репродуктор      → размножение;
  *  - коллайдер (с вкладкой инкубатора) / диссоциатор → лаборатория;
- *  - магазин, склад, лазарет → их собственные модалки;
+ *  - магазин, склад, Медотсек → их собственные модалки;
  *  - разведка    → походы: модалке передаётся гекс, а команду собирают из жаб этого сектора;
  *  - ⚡-сектор   → жабы-энергетики внутри;
  *  - свободный гекс → меню застройки (любой сектор — на любой гекс);
@@ -84,7 +84,7 @@ export default function HexMapScreen() {
 
   /**
    * Жабы биоподов: те, кто не работает в секторах колонии (⚡, «Разведка», репродуктор,
-   * лазарет) — жаба в секторе места в биоподе не занимает и в производстве не считается
+   * Медотсек) — жаба в секторе места в биоподе не занимает и в производстве не считается
    * (`utils/toad-location.ts`).
    * Свой список у каждого гекса-биопода — его собирает `useColony` (`getRoomToadLists`),
    * потому что у каждого гекса «Биопод» свой биопод (`RoomConfig.sceneId`).
@@ -183,13 +183,13 @@ export default function HexMapScreen() {
     () => [
       {
         key: "tokens",
-        icon: CURRENCY_CONFIG.tokens.icon,
+        icon: <CurrencyIcon currency="tokens" className="h-3.5 w-3.5" />,
         value: account?.tokens || 0,
         tone: "text-amber-200",
       },
       {
         key: "astro_quax",
-        icon: CURRENCY_CONFIG.astro_quax.icon,
+        icon: <CurrencyIcon currency="astro_quax" className="h-3.5 w-3.5" />,
         value: account?.astro_quax || 0,
         tone: "text-purple-200",
       },
@@ -296,7 +296,7 @@ export default function HexMapScreen() {
         return;
       }
 
-      // Остальные секторы открывают свои модалки; ⚡, биопод, репродуктор и лазарет
+      // Остальные секторы открывают свои модалки; ⚡, биопод, репродуктор и Медотсек
       // получают из `openRoomModal` именно тот гекс, по которому тапнули.
       openRoomModal(room, openModal);
     },
@@ -510,7 +510,9 @@ export default function HexMapScreen() {
               key={item.key}
               className={`flex items-center gap-1 rounded-lg border border-white/5 bg-slate-950/55 px-2 py-1 text-[11px] font-semibold backdrop-blur-md ${item.tone}`}
             >
-              <span className="text-[12px] leading-none">{item.icon}</span>
+              <span className="flex h-3.5 w-3.5 items-center justify-center text-[12px] leading-none">
+                {item.icon}
+              </span>
               <span className="tabular-nums">{item.value}</span>
             </div>
           ))}

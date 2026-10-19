@@ -1,6 +1,7 @@
 import Modal from "../shared/Header";
 import ModalTabs, { ModalTabItem } from "../shared/ModalTabs";
 import { ClickButton } from "../shared/ClickButton";
+import { CurrencyIcon } from "../shared/CurrencyIcon";
 import { HpBar } from "../shared/HpBar";
 import { ToadPicker } from "../shared/ToadPicker";
 import { useGameState } from "../../hooks/use-game-state";
@@ -38,15 +39,15 @@ import { RoomConfig } from "../HexMap/rooms-config";
 import RoomDataTab, { ROOM_DATA_TAB } from "./RoomDataTab";
 
 /**
- * Лазарет 🛏️ — сектор лечения, и модалка у него своя, а не вкладка «Разведки».
+ * Медотсек 🛏️ — сектор лечения, и модалка у него своя, а не вкладка «Разведки».
  *
- * Раньше лазарет жил табом в модалке походов: клик по гексу лазарета открывал «Разведку»
+ * Раньше Медотсек жил табом в модалке походов: клик по гексу Медотсека открывал «Разведку»
  * с выбранной вкладкой. Теперь у сектора свои табы (`shared/ModalTabs`):
  *
- *  - «Койки» — основной: кто лежит в этом лазарете и подсадка жаб на лечение из общего
+ *  - «Койки» — основной: кто лежит в этом Медотсеке и подсадка жаб на лечение из общего
  *    списка (`shared/ToadPicker` знает те же правила переноса, что и карта);
  *  - «Пациенты» — все раненые и больные колонии: отсюда жабу быстро отправляют на койку
- *    (в любой лазарет, где есть место) или лечат мгновенно за деньги;
+ *    (в любой Медотсек, где есть место) или лечат мгновенно за деньги;
  *  - «Данные сектора» — описание, статистика и улучшения сектора (`RoomDataTab`).
  *
  * Койка лечит +`HOSPITAL_HP_REGEN_PER_HOUR` HP в час и ускоряет срок болезни в
@@ -55,7 +56,7 @@ import RoomDataTab, { ROOM_DATA_TAB } from "./RoomDataTab";
  */
 type HospitalTab = "beds" | "patients" | "room-data";
 
-/** Табы лазарета: лечение — первым, «Данные сектора» — последним (как у всех секторов) */
+/** Табы Медотсека: лечение — первым, «Данные сектора» — последним (как у всех секторов) */
 const HOSPITAL_TABS: ModalTabItem<HospitalTab>[] = [
   { id: "beds", label: "🛏️ Койки", color: "text-amber-400" },
   { id: "patients", label: "📋 Пациенты", color: "text-emerald-400" },
@@ -63,7 +64,7 @@ const HOSPITAL_TABS: ModalTabItem<HospitalTab>[] = [
 ];
 
 interface HospitalModalProps {
-  /** Гекс лазарета, чью модалку открыли */
+  /** Гекс Медотсека, чью модалку открыли */
   room: RoomConfig;
 }
 
@@ -77,7 +78,7 @@ export default function HospitalModal({ room }: HospitalModalProps) {
     issue: powerIssue,
   } = useRoomPowerTab<HospitalTab>({ room, powerGrid, defaultTab: "beds" });
 
-  /** Обесточенный лазарет: койки и пациенты закрыты, открыты только данные сектора */
+  /** Обесточенный Медотсек: койки и пациенты закрыты, открыты только данные сектора */
   const hospitalTabs: ModalTabItem<HospitalTab>[] = HOSPITAL_TABS.map((tab) =>
     tab.id === "room-data"
       ? tab
@@ -93,7 +94,7 @@ export default function HospitalModal({ room }: HospitalModalProps) {
   const scenes = state.scenes ?? [];
   const roomToads = toadsByRoom[room.id] ?? [];
 
-  /** Все лазареты колонии: койки есть в каждом, а «быстро в лазарет» ищет свободную */
+  /** Все Медотсекы колонии: койки есть в каждом, а «быстро в Медотсек» ищет свободную */
   const hospitalRooms = rooms.filter((item) => item.kind === "hospital");
   const hospitalIds = hospitalRooms.map((item) => item.id);
 
@@ -111,7 +112,7 @@ export default function HospitalModal({ room }: HospitalModalProps) {
   /** Все раненые и больные дома: и на койке, и без неё */
   const needingCare = getToadsNeedingCare(homeToads);
 
-  /** Сколько коек в колонии: в каждом лазарете по шесть */
+  /** Сколько коек в колонии: в каждом Медотсеке по шесть */
   const hospitalCapacity = hospitalIds.length * HOSPITAL_ROOM_TOAD_SLOTS;
   const freeSlots = Math.max(0, HOSPITAL_ROOM_TOAD_SLOTS - roomToads.length);
 
@@ -123,7 +124,7 @@ export default function HospitalModal({ room }: HospitalModalProps) {
   /** Правила переноса для этого гекса — те же, что у карты (`toad-move-rules`) */
   const moveContext = (toad: Toad) => ({
     roomToads: roomToads.filter((item) => item.id !== toad.id),
-    // Переносим в лазарет, а не в биопод: жильё тут не считается
+    // Переносим в Медотсек, а не в биопод: жильё тут не считается
     aviaryCount: 0,
     aviaryCapacity: 0,
     rooms,
@@ -131,7 +132,7 @@ export default function HospitalModal({ room }: HospitalModalProps) {
   });
 
   /**
-   * Куда положить жабу: первый лазарет, который её принимает.
+   * Куда положить жабу: первый Медотсек, который её принимает.
    * Проверяем теми же правилами, что и перенос по карте (`canMoveToadToRoom`): место
    * на койке, ток в секторе, возраст, поход — чтобы кнопка не обещала лишнего.
    */
@@ -139,7 +140,7 @@ export default function HospitalModal({ room }: HospitalModalProps) {
     toad: Toad,
   ): { room: RoomConfig | null; issue: string | null } => {
     if (hospitalRooms.length === 0) {
-      return { room: null, issue: "в колонии нет лазарета" };
+      return { room: null, issue: "в колонии нет Медотсека" };
     }
 
     let firstIssue: string | null = null;
@@ -189,7 +190,7 @@ export default function HospitalModal({ room }: HospitalModalProps) {
    */
   const candidates = splitToadPickerCandidates(
     homeToads
-      // Пациенты этого лазарета и так стоят списком выше
+      // Пациенты этого Медотсека и так стоят списком выше
       .filter((toad) => toad.scene_id !== room.id)
       .map((toad) => {
         const check = canMoveToadToRoom(toad, room, moveContext(toad));
@@ -199,7 +200,7 @@ export default function HospitalModal({ room }: HospitalModalProps) {
           rank: needsHospitalCare(toad) ? 1 : 0,
           reason: check.ok
             ? null
-            : (check.reason ?? "жабу нельзя поместить в лазарет"),
+            : (check.reason ?? "жабу нельзя поместить в Медотсек"),
         };
       }),
   );
@@ -222,7 +223,7 @@ export default function HospitalModal({ room }: HospitalModalProps) {
     if (!check.ok) {
       addNotification({
         type: "warn",
-        content: check.reason ?? `${toad.name} не помещается в лазарет`,
+        content: check.reason ?? `${toad.name} не помещается в Медотсек`,
       });
       return;
     }
@@ -235,7 +236,7 @@ export default function HospitalModal({ room }: HospitalModalProps) {
   };
 
   /**
-   * Выписать жабу из лазарета домой — в её биопод (`homeId`).
+   * Выписать жабу из Медотсека домой — в её биопод (`homeId`).
    *
    * Жильё жаба не меняла (пока лежала на койке, места в биоподе она не занимала), но
    * свободного места там может уже не быть — тогда она остаётся на койке, а игроку надо
@@ -258,11 +259,11 @@ export default function HospitalModal({ room }: HospitalModalProps) {
 
     addNotification({
       type: "success",
-      content: `${toad.name} выписана из лазарета в биопод`,
+      content: `${toad.name} выписана из Медотсека в биопод`,
     });
   };
 
-  /** Карточка жабы в списках лазарета: HP, болезнь, прогноз лечения и кнопки помощи */
+  /** Карточка жабы в списках Медотсека: HP, болезнь, прогноз лечения и кнопки помощи */
   const renderCareCard = (toad: Toad) => {
     const maxHp = getToadMaxHp(toad);
     const hp = getToadHp(toad);
@@ -274,18 +275,18 @@ export default function HospitalModal({ room }: HospitalModalProps) {
     const inBed = isToadInHospital(toad, hospitalIds);
     const admission = inBed ? null : getAdmission(toad);
     // Выписывают в биопод по любым причинам, поэтому выбитого пациента тоже отпускаем:
-    // правило «сначала подлечите» здесь не мешает (allowDown) — это же лазарет
+    // правило «сначала подлечите» здесь не мешает (allowDown) — это же Медотсек
     const dischargeIssue = inBed
       ? getToadMoveIssue(toad, { allowDown: true })
       : null;
     const affordable = tokens >= healCost;
     const cureAffordable = tokens >= cureCost;
-    /** Что обещает кнопка «быстро в лазарет»: койку здесь, в другом секторе или отказ */
+    /** Что обещает кнопка «быстро в Медотсек»: койку здесь, в другом секторе или отказ */
     const admitLabel = admission?.room
       ? admission.room.id === room.id
-        ? "🛏️ Быстро в лазарет (сюда)"
-        : `🛏️ Быстро в лазарет: «${admission.room.name}»`
-      : `🛏️ В лазарет нельзя: ${admission?.issue ?? "некуда"}`;
+        ? "🛏️ Быстро в Медотсек (сюда)"
+        : `🛏️ Быстро в Медотсек: «${admission.room.name}»`
+      : `🛏️ В Медотсек нельзя: ${admission?.issue ?? "некуда"}`;
 
     return (
       <div
@@ -316,7 +317,7 @@ export default function HospitalModal({ room }: HospitalModalProps) {
               : `дома ~${getHoursToFullHp(
                   missingHp,
                   false,
-                )} ч · в лазарете ~${getHoursToFullHp(missingHp, true)} ч`}
+                )} ч · в Медотсеке ~${getHoursToFullHp(missingHp, true)} ч`}
           </p>
         )}
 
@@ -337,7 +338,8 @@ export default function HospitalModal({ room }: HospitalModalProps) {
                 : "bg-slate-800/40 border-gray-700/40 text-gray-500"
             }`}
           >
-            🩹 Мгновенно вылечить за {healCost} 🔷
+            🩹 Мгновенно вылечить за {healCost}{" "}
+            <CurrencyIcon currency="tokens" className="h-3 w-3" />
           </ClickButton>
         )}
 
@@ -351,7 +353,8 @@ export default function HospitalModal({ room }: HospitalModalProps) {
                 : "bg-slate-800/40 border-gray-700/40 text-gray-500"
             }`}
           >
-            💊 Мгновенный курс от болезни за {cureCost} 🔷
+            💊 Мгновенный курс от болезни за {cureCost}{" "}
+            <CurrencyIcon currency="tokens" className="h-3 w-3" />
           </ClickButton>
         )}
 
@@ -389,7 +392,7 @@ export default function HospitalModal({ room }: HospitalModalProps) {
   };
 
   return (
-    <Modal icon={<span className="text-xl">🛏️</span>} title="Лазарет">
+    <Modal icon={<span className="text-xl">🛏️</span>} title="Медотсек">
       {/* Сводка нужна на всех табах — как кошелёк над табами «Космического рынка» */}
       <div className="grid grid-cols-3 gap-2 px-1 pb-3 text-center">
         <div className="bg-color-main rounded-xl py-2 px-1 border border-gray-600/30">
@@ -404,19 +407,21 @@ export default function HospitalModal({ room }: HospitalModalProps) {
         </div>
         <div className="bg-color-main rounded-xl py-2 px-1 border border-gray-600/30">
           <p className="text-2xs text-gray-400">В запасе</p>
-          <p className="text-base font-bold text-amber-300">🔷 {tokens}</p>
+          <p className="text-base font-bold text-amber-300">
+            <CurrencyIcon currency="tokens" className="h-4 w-4" /> {tokens}
+          </p>
         </div>
       </div>
 
       <ModalTabs tabs={hospitalTabs} active={tab} onChange={setTab} />
 
       <div className="flex flex-col gap-2 px-1 pt-3">
-        {/* ВКЛАДКА «Койки»: кто лежит в этом лазарете и подсадка жаб на лечение */}
+        {/* ВКЛАДКА «Койки»: кто лежит в этом Медотсеке и подсадка жаб на лечение */}
         {tab === "beds" && (
           <>
             <p className="text-2xs leading-snug text-gray-400">
               Дома жаба восстанавливает всего {HP_REGEN_PER_HOUR} HP в час.
-              Койка в лазарете лечит +{HOSPITAL_HP_REGEN_PER_HOUR} HP в час (в{" "}
+              Койка в Медотсеке лечит +{HOSPITAL_HP_REGEN_PER_HOUR} HP в час (в{" "}
               {HOSPITAL_HP_REGEN_PER_HOUR / HP_REGEN_PER_HOUR} раз быстрее), а
               срок болезни там идёт в {HOSPITAL_DISEASE_SPEED} раза быстрее — и
               пациент никого не заражает.
@@ -441,7 +446,7 @@ export default function HospitalModal({ room }: HospitalModalProps) {
 
             {roomToads.map((toad) => renderCareCard(toad))}
 
-            {/* Подсадка жаб: общий список колонии, а кладём на койку этого лазарета */}
+            {/* Подсадка жаб: общий список колонии, а кладём на койку этого Медотсека */}
             <div className="mt-1">
               <ToadPicker
                 icon="🛏️"
@@ -462,7 +467,7 @@ export default function HospitalModal({ room }: HospitalModalProps) {
                       note: needsHospitalCare(toad)
                         ? `нужна помощь${
                             isToadInHospital(toad, hospitalIds)
-                              ? " · лежит в другом лазарете"
+                              ? " · лежит в другом Медотсеке"
                               : ""
                           }`
                         : "здорова — койка ускорит дела лишь косвенно",
@@ -474,7 +479,7 @@ export default function HospitalModal({ room }: HospitalModalProps) {
                   items: candidates.rejected,
                 }}
                 hint="Сверху — жабы, которым нужна помощь. На койку берут взрослых жаб колонии, не в походе; за ток сектора отвечает энергосеть."
-                emptyText="Свободных жаб нет: остальные в походе или уже лежат в лазарете."
+                emptyText="Свободных жаб нет: остальные в походе или уже лежат в Медотсеке."
                 locationOf={locationOf}
                 onPick={(toad) => handleAdmit(toad, room)}
               />
@@ -487,14 +492,14 @@ export default function HospitalModal({ room }: HospitalModalProps) {
           <>
             <p className="text-2xs leading-snug text-gray-400">
               Все раненые и больные жабы колонии в одном списке: отсюда их
-              быстро отправляют на койку (в любой лазарет, где есть место) или
+              быстро отправляют на койку (в любой Медотсек, где есть место) или
               лечат мгновенно за Кваксы — это самый дорогой способ, зато без
               ожидания.
             </p>
 
             {hospitalRooms.length === 0 && (
               <p className="rounded-xl border border-amber-500/30 bg-amber-950/30 px-3 py-2 text-2xs leading-snug text-amber-200/90">
-                🏥 В колонии нет «Лазарета»: постройте этот сектор на свободном
+                🏥 В колонии нет «Медотсека»: постройте этот сектор на свободном
                 гексе — только на койке жабы выздоравливают быстро.
               </p>
             )}

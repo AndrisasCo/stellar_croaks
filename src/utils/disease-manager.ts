@@ -22,7 +22,7 @@ import { isToadInEnclosure } from "./toad-location";
  * КИБЕР-БОЛЕЗНИ (Часть 3.6).
  * Заражают соседей по биоподу, режут выработку биомассы, лечатся карантином
  * (астро-кваксы, Часть 3.7), мгновенным курсом за Кваксы или сами затухают по таймеру.
- * В лазарете болезнь проходит втрое быстрее, и пациент никого не заражает:
+ * В Медотсеке болезнь проходит втрое быстрее, и пациент никого не заражает:
  * он на койке, а не в биоподе.
  */
 
@@ -32,7 +32,7 @@ import { isToadInEnclosure } from "./toad-location";
  */
 export { getToadDisease, isToadSick };
 
-/** Час в миллисекундах — для сдвига срока болезни в лазарете */
+/** Час в миллисекундах — для сдвига срока болезни в Медотсеке */
 const HOUR_MS = 60 * 60 * 1000;
 
 /** Множитель выработки биомассы с учётом болезни (1 = здорова) */
@@ -59,7 +59,7 @@ export const infectToad = (toadId: number, diseaseId?: string): boolean => {
         diseaseUntil: Date.now() + disease.durationHours * 60 * 60 * 1000,
       },
     },
-    true
+    true,
   );
 
   return true;
@@ -75,7 +75,7 @@ export const cureToad = (toadId: number): boolean => {
   updateToadById(
     toadId,
     { state: { ...toad.state, diseaseId: -1, diseaseUntil: 0 } },
-    true
+    true,
   );
 
   return true;
@@ -91,7 +91,7 @@ export interface DiseaseCurePurchase {
 /**
  * Мгновенный курс лечения за Кваксы — самый дорогой способ снять болезнь
  * (цена в таблице болезней, `DiseaseDef.cureTokens`). Дешевле положить жабу
- * в «Лазарет»: там срок болезни сгорает втрое быстрее, а HP идёт +24 в час.
+ * в «Медотсек»: там срок болезни сгорает втрое быстрее, а HP идёт +24 в час.
  */
 export const cureToadForTokens = (toadId: number): DiseaseCurePurchase => {
   const state = getGameState();
@@ -103,10 +103,18 @@ export const cureToadForTokens = (toadId: number): DiseaseCurePurchase => {
 
   const cost = getDiseaseCureCost(toad);
   if (cost <= 0) {
-    return { success: false, message: `${toad.name} здорова: болезни нет`, cost: 0 };
+    return {
+      success: false,
+      message: `${toad.name} здорова: болезни нет`,
+      cost: 0,
+    };
   }
   if ((state.user.tokens || 0) < cost) {
-    return { success: false, message: `Нужно ${cost} 🔷 на курс лечения`, cost };
+    return {
+      success: false,
+      message: `Нужно ${cost} 🔷 на курс лечения`,
+      cost,
+    };
   }
 
   updateUser({ tokens: state.user.tokens - cost });
@@ -119,18 +127,18 @@ export const cureToadForTokens = (toadId: number): DiseaseCurePurchase => {
   };
 };
 
-/** Больные жабы, которые живут в биоподе прямо сейчас (пациенты лазарета не в счёте) */
+/** Больные жабы, которые живут в биоподе прямо сейчас (пациенты Медотсека не в счёте) */
 export const getSceneSickCount = (
   sceneId: number | null,
-  now = Date.now()
+  now = Date.now(),
 ): number =>
   getGameState().toads.filter(
-    (toad) => toad.scene_id === sceneId && isToadSick(toad, now)
+    (toad) => toad.scene_id === sceneId && isToadSick(toad, now),
   ).length;
 
 /**
  * Карантин биопода: лечит всех жаб, которые живут в нём сейчас (`scene_id`).
- * Пациенты лазарета — не в биоподе: они на койке, поэтому их карантин не трогает
+ * Пациенты Медотсека — не в биоподе: они на койке, поэтому их карантин не трогает
  * (их лечит `cureToadForTokens` — см. `utils/hospital.ts`).
  *
  * Достижение «Санитарный день» закрывается только реальным лечением: пустой карантин
@@ -138,7 +146,7 @@ export const getSceneSickCount = (
  */
 export const quarantineScene = (sceneId: number | null): number => {
   const sick = getGameState().toads.filter(
-    (toad) => toad.scene_id === sceneId && isToadSick(toad)
+    (toad) => toad.scene_id === sceneId && isToadSick(toad),
   );
 
   sick.forEach((toad) => cureToad(toad.id));
@@ -157,8 +165,8 @@ export interface DiseaseTickResult {
 }
 
 /**
- * Тик болезней: затухание по таймеру (в лазарете — быстрее) + заражение соседей
- * по биоподу. Пациенты лазарета изолированы: они не в биоподе, а на койке, поэтому
+ * Тик болезней: затухание по таймеру (в Медотсеке — быстрее) + заражение соседей
+ * по биоподу. Пациенты Медотсека изолированы: они не в биоподе, а на койке, поэтому
  * никого не заражают и сами ничего не подхватывают.
  * Возвращает статистику для уведомлений.
  */
@@ -169,7 +177,7 @@ export const processDiseases = (hoursPassed: number): DiseaseTickResult => {
   let cured = 0;
   let infected = 0;
 
-  // 1. Затухание: дома срок болезни идёт сам по себе, на койке лазарета сгорает быстрее
+  // 1. Затухание: дома срок болезни идёт сам по себе, на койке Медотсека сгорает быстрее
   state.toads.forEach((toad) => {
     if (!getToadDisease(toad)) {
       return;
@@ -178,17 +186,17 @@ export const processDiseases = (hoursPassed: number): DiseaseTickResult => {
     const until = toad.state?.diseaseUntil ?? 0;
     const extraHours = getHospitalDiseaseHours(
       hoursPassed,
-      isToadInHospital(toad, hospitalIds)
+      isToadInHospital(toad, hospitalIds),
     );
     // Болезнь идёт по реальному времени (`diseaseUntil` — метка в будущем):
-    // лазарет лишь сдвигает эту метку ближе к «сейчас».
+    // Медотсек лишь сдвигает эту метку ближе к «сейчас».
     const nextUntil = Math.max(now, until - extraHours * HOUR_MS);
 
     if (nextUntil !== until) {
       updateToadById(
         toad.id,
         { state: { ...toad.state, diseaseUntil: nextUntil } },
-        true
+        true,
       );
     }
 
@@ -221,15 +229,14 @@ export const processDiseases = (hoursPassed: number): DiseaseTickResult => {
         neighbour.scene_id === toad.scene_id &&
         neighbour.id !== toad.id &&
         !getToadDisease(neighbour) &&
-        !isToadInHospital(neighbour, hospitalIds)
+        !isToadInHospital(neighbour, hospitalIds),
     );
 
     if (neighbours.length === 0) {
       return;
     }
 
-    const victim =
-      neighbours[Math.floor(Math.random() * neighbours.length)];
+    const victim = neighbours[Math.floor(Math.random() * neighbours.length)];
     if (infectToad(victim.id, disease.id)) {
       infected += 1;
     }

@@ -5,6 +5,7 @@ import { INITIAL_CAPACITY } from "../../models/scene";
 import { CURRENCY_CONFIG, TYPE_ICONS } from "../../utils/constants";
 import { completeAchivement } from "../../backend/achivements-manager";
 import { useModal } from "../ModalContext";
+import { CurrencyText } from "../shared/CurrencyIcon";
 
 const TutorialModal: React.FC = () => {
   const { playClick } = useSoundEffects();
@@ -157,8 +158,8 @@ const TutorialModal: React.FC = () => {
         "📈 Поход всегда выгоднее фермы: добыча добирается до нормы «ферма за время пути × 1.5 + снаряжение», а удачное завершение умножает улов",
         "🧪 Снаряжение команды стоит биомассы: 4 × глубина сектора за каждую жабу",
         "❤️ У жаб появился запас HP: провалы в событиях бьют по здоровью, щитоносец прикрывает остальных",
-        "🏠 Дома HP капает очень медленно (+1 в час), а койка «Лазарета» лечит +24 в час и ускоряет срок болезни",
-        "🩹 В лазарете 6 коек: вкладка «Лазарет» показывает, кто лежит и кому ещё нужна помощь; мгновенное лечение за Кваксы — самое дорогое",
+        "🏠 Дома HP капает очень медленно (+1 в час), а койка «Медотсека» лечит +24 в час и ускоряет срок болезни",
+        "🩹 В Медотсеке 6 коек: вкладка «Медотсек» показывает, кто лежит и кому ещё нужна помощь; мгновенное лечение за Кваксы — самое дорогое",
         "🚁 Команду можно отозвать, ускорить возврат за биомассу или вытащить «Экстренным маяком» за Астро-кваксы",
         "🏢 «Диспетчерская» за Кваксы добавляет вторую и третью команду: походы идут параллельно",
       ],
@@ -290,7 +291,7 @@ const TutorialModal: React.FC = () => {
 
               {/* Описание */}
               <p className="text-gray-200 mb-4 leading-relaxed">
-                {section.description}
+                <CurrencyText text={section.description} />
               </p>
 
               {/* Советы */}
@@ -311,7 +312,9 @@ const TutorialModal: React.FC = () => {
                     `}
                   >
                     <span className="flex-shrink-0 mt-0.5">•</span>
-                    <span>{tip}</span>
+                    <span>
+                      <CurrencyText text={tip} />
+                    </span>
                   </div>
                 ))}
               </div>

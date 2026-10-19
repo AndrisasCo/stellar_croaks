@@ -25,7 +25,9 @@ const round2 = (value: number): number => Math.round(value * 100) / 100;
 
 /** Сколько биомассы даёт одна жаба при разборе */
 export const getDissolveYield = (toad: Toad): number => {
-  const { weightMultiplier } = getPersonalityMultipliers(toad.genes?.personality);
+  const { weightMultiplier } = getPersonalityMultipliers(
+    toad.genes?.personality,
+  );
 
   const stageFactor = toad.stage === "adult" ? 1 : DISSOLVE_TADPOLE_FACTOR;
   const sexFactor = toad.sex === "neuter" ? DISSOLVE_NEUTER_FACTOR : 1;
@@ -62,14 +64,14 @@ export const getIncubatingToadIds = (): number[] => {
  */
 export const getExpeditionToadIds = (): number[] =>
   (getGameState().expeditions ?? []).flatMap((expedition) =>
-    expedition.team.map((member) => member.toadId)
+    expedition.team.map((member) => member.toadId),
   );
 
 /** Можно ли разобрать жабу в Диссоциаторе (жабы в инкубаторе — нет) */
 export const canDissolveToad = (
   toad: Toad,
   incubatingIds?: number[],
-  expeditionIds: number[] = getExpeditionToadIds()
+  expeditionIds: number[] = getExpeditionToadIds(),
 ): boolean =>
   !(incubatingIds ?? getIncubatingToadIds()).includes(toad.id) &&
   !expeditionIds.includes(toad.id);
@@ -86,7 +88,9 @@ export const getDissolveWarnings = (toads: Toad[]): DissolveWarning[] => {
   }
 
   const warnings: DissolveWarning[] = [];
-  const pregnantCount = toads.filter((toad) => toad.pregnancy?.isPregnant).length;
+  const pregnantCount = toads.filter(
+    (toad) => toad.pregnancy?.isPregnant,
+  ).length;
 
   if (pregnantCount > 0) {
     warnings.push({
@@ -110,7 +114,7 @@ export const getDissolveWarnings = (toads: Toad[]): DissolveWarning[] => {
   if (woundedCount > 0) {
     warnings.push({
       icon: "🩹",
-      text: `Раненых жаб: ${woundedCount} — HP восстанавливается само, а в «Лазарете» жаб можно вылечить за Кваксы`,
+      text: `Раненых жаб: ${woundedCount} — HP восстанавливается само, а в «Медотсеке» жаб можно вылечить за Кваксы`,
     });
   }
 
@@ -149,15 +153,15 @@ export const dissolveToads = (toadIds: number[]): DissolveResult => {
     (toad) =>
       toadIds.includes(toad.id) &&
       !incubatingIds.includes(toad.id) &&
-      !expeditionIds.includes(toad.id)
+      !expeditionIds.includes(toad.id),
   );
 
   if (toads.length === 0) {
     const requestedExists = state.toads.some((toad) =>
-      toadIds.includes(toad.id)
+      toadIds.includes(toad.id),
     );
     const onExpedition = state.toads.some(
-      (toad) => toadIds.includes(toad.id) && expeditionIds.includes(toad.id)
+      (toad) => toadIds.includes(toad.id) && expeditionIds.includes(toad.id),
     );
 
     return {

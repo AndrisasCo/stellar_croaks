@@ -47,7 +47,7 @@ export const getSceneFreeSlots = (scene: Scene): number =>
 export const getHousingInfo = (): HousingInfo => {
   const state = getGameState();
   const capacity = state.scenes.reduce((sum, scene) => sum + scene.capacity, 0);
-  // Жабы в секторах колонии (репродуктор, ⚡, «Разведка», лазарет) биопод не занимают:
+  // Жабы в секторах колонии (репродуктор, ⚡, «Разведка», Медотсек) биопод не занимают:
   // их `scene_id` — строка с id сектора, а не число с id биопода
   const used = state.toads.filter(isToadInEnclosure).length;
 

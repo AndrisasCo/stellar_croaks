@@ -1,7 +1,7 @@
 import { DEFAULT_SCENE, Scene } from "../models/scene";
 import { DEFAULT_TOADS, Toad } from "../models/Toad";
 import { Items, User } from "../models/user";
-import { Expedition, ExpeditionStats } from "../models/expedition";
+import { Expedition, ExpeditionStats, DEFAULT_EXPEDITION_STATS } from "../models/expedition";
 import { ColonyState, EMPTY_COLONY } from "../models/colony";
 import { platform } from "../platform";
 import { NEST_ROOM_ID } from "../utils/constants";
@@ -54,7 +54,10 @@ export const getDefaultGameState = (): GameState => {
     toads: DEFAULT_TOADS,
     colony: EMPTY_COLONY,
     expeditions: [],
-    expeditionStats: { completed: 0, bestDepth: 0, downed: 0 },
+    expeditionStats: {
+      ...DEFAULT_EXPEDITION_STATS,
+      unlockedSectors: [],
+    },
     lastSaved: new Date().toISOString(),
     createdAt: new Date().toISOString(),
   };

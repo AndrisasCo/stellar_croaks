@@ -2,7 +2,6 @@ import { useState } from "react";
 import { updateUser, deleteToadsByIds } from "../../../backend";
 import { useSoundEffects } from "../../../hooks/use-sound-effects";
 import { Toad, calculateSellPrice } from "../../../models/Toad";
-import { CURRENCY_CONFIG } from "../../../utils/constants";
 import { useToads } from "../../ToadContext";
 import {
   getShopState,
@@ -10,6 +9,7 @@ import {
   ShopState,
 } from "../../../backend/shop-state";
 import { ToadItem } from "../../shared/ToadItem";
+import { CurrencyIcon } from "../../shared/CurrencyIcon";
 import {
   completeAchivement,
   completeAchivementCounter,
@@ -180,7 +180,8 @@ const SellTab: React.FC = () => {
               🧪 Биомасса: {formatBiomass(biomass)}
             </div>
             <div className="text-gray-400 text-xs">
-              Курс обмена: 2 биомассы = 1 {CURRENCY_CONFIG.tokens.icon}
+              Курс обмена: 2 биомассы = 1{" "}
+              <CurrencyIcon currency="tokens" className="h-3 w-3" />
             </div>
           </div>
           <button
@@ -188,9 +189,7 @@ const SellTab: React.FC = () => {
             disabled={sellTokens <= 0}
             title={
               sellTokens > 0
-                ? `Обменять ${formatBiomass(spentBiomass)} 🧪 на ${sellTokens} ${
-                    CURRENCY_CONFIG.tokens.icon
-                  }`
+                ? `Обменять ${formatBiomass(spentBiomass)} 🧪 на ${sellTokens} Кваксов`
                 : "Нет биомассы для обмена"
             }
             className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all shrink-0 ${
@@ -199,7 +198,8 @@ const SellTab: React.FC = () => {
                 : "bg-gray-600/30 text-gray-400 border-gray-500/30 cursor-not-allowed"
             }`}
           >
-            Обменять ({sellTokens} {CURRENCY_CONFIG.tokens.icon})
+            Обменять ({sellTokens}{" "}
+            <CurrencyIcon currency="tokens" className="h-3 w-3" />)
           </button>
         </div>
 
@@ -230,7 +230,8 @@ const SellTab: React.FC = () => {
           <span className="text-gray-400">
             Обмен:{" "}
             <span className="text-emerald-300 font-semibold">
-              {sellTokens} {CURRENCY_CONFIG.tokens.icon}
+              {sellTokens}{" "}
+              <CurrencyIcon currency="tokens" className="h-3 w-3" />
             </span>{" "}
             · останется {formatBiomass(leftBiomass)} 🧪
           </span>
@@ -265,7 +266,8 @@ const SellTab: React.FC = () => {
             <div className="flex items-center gap-2">
               <span className="text-gray-200 text-sm">Сумма:</span>
               <span className="text-yellow-200 font-bold text-sm">
-                {totalSellPrice} {CURRENCY_CONFIG.tokens.icon}
+                {totalSellPrice}{" "}
+                <CurrencyIcon currency="tokens" className="h-3.5 w-3.5" />
               </span>
             </div>
           </div>
@@ -335,7 +337,8 @@ const SellTab: React.FC = () => {
                     }}
                     className="px-3 min-w-[64px] py-1.5 bg-gradient-to-r from-yellow-600 to-amber-600  text-white rounded-lg text-sm font-medium transition-all shadow-sm border border-yellow-500/30 ml-2"
                   >
-                    {price} {CURRENCY_CONFIG.tokens.icon}
+                    {price}{" "}
+                    <CurrencyIcon currency="tokens" className="h-3.5 w-3.5" />
                   </button>
                 }
               />

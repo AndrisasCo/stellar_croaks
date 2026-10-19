@@ -16,7 +16,7 @@ import { RoomActionId, RoomConfig } from "./rooms-config";
  *
  * Таблица намеренно полная (`Record<RoomActionId, …>`): добавил новое действие в каталог —
  * компилятор напомнит про модалку. Действия без собственной модалки помечены `null`: их
- * открывает обработчик по виду сектора (⚡, биопод, лазарет) или они живут внутри другой
+ * открывает обработчик по виду сектора (⚡, биопод, Медотсек) или они живут внутри другой
  * модалки (тултип «о биоподе», кормление в списке жаб).
  */
 export type RoomModalEntry = {
@@ -32,7 +32,7 @@ export const ROOM_MODAL_BY_ACTION: Record<RoomActionId, RoomModalEntry> = {
   "toad-list": null,
   "scene-info": null,
   feed: null,
-  // Репродуктор, ⚡-сектор и лазарет открываются по гексу: модалкам нужен сам сектор.
+  // Репродуктор, ⚡-сектор и Медотсек открываются по гексу: модалкам нужен сам сектор.
   nest: { render: (room) => <NestModal roomId={room.id} room={room} /> },
   // Коллайдер открывает и смешивание, и инкубатор: это две вкладки одной модалки
   collider: { render: (room) => <ToadCollider room={room} /> },
@@ -48,7 +48,7 @@ export const ROOM_MODAL_BY_ACTION: Record<RoomActionId, RoomModalEntry> = {
 /**
  * Модалка конкретного сектора или `null`, если у него нет отдельного окна.
  *
- * Вид сектора важнее его действия: у ⚡, биопода и лазарета модалке нужен сам гекс
+ * Вид сектора важнее его действия: у ⚡, биопода и Медотсека модалке нужен сам гекс
  * (его жабы, койки, биопод), поэтому они открываются здесь, а не через общую таблицу.
  */
 export const getRoomModal = (room: RoomConfig): RoomModalEntry => {
@@ -70,9 +70,7 @@ export const getRoomModal = (room: RoomConfig): RoomModalEntry => {
     }
 
     return {
-      render: (target) => (
-        <ToadListModal sceneId={sceneId} room={target} />
-      ),
+      render: (target) => <ToadListModal sceneId={sceneId} room={target} />,
     };
   }
 
@@ -105,10 +103,7 @@ export const openRoomModal = (
     return false;
   }
 
-  openModal(
-    () => modal.render(room),
-    modal.bg ? { bg: modal.bg } : undefined,
-  );
+  openModal(() => modal.render(room), modal.bg ? { bg: modal.bg } : undefined);
 
   return true;
 };

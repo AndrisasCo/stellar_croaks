@@ -11,13 +11,22 @@ export type CurrencyType = "tokens" | "astro_quax";
 export const CURRENCY_CONFIG = {
   tokens: {
     name: "Кваксы",
+    /**
+     * Эмодзи-маркер для строк, собранных в утилитах. `CurrencyText`
+     * (`components/shared/CurrencyIcon.tsx`) заменяет его на SVG при рендере.
+     */
     icon: "🔷",
+    /** SVG-иконка в стиле пропуска КОНТУРа — для карточек и HUD */
+    asset: "/assets/quax.svg",
     color: "text-yellow-400",
     description: "Основная валюта",
   },
   astro_quax: {
     name: "Астро-кваксы",
+    /** Эмодзи-маркер для текстовых строк — см. `CurrencyText` */
     icon: "💎",
+    /** SVG-иконка в стиле пропуска КОНТУРа — для карточек и HUD */
+    asset: "/assets/astro-quax.svg",
     color: "text-purple-400",
     description: "Космическая валюта для элитных сделок",
   },

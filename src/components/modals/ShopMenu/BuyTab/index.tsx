@@ -2,8 +2,8 @@ import { useState } from "react";
 import { INSTANT_REFRESH_COST } from "../../../../backend/shop-state";
 import { usePagination } from "../../../../hooks/use-pagination";
 import { Toad } from "../../../../models/Toad";
-import { CURRENCY_CONFIG } from "../../../../utils/constants";
 import { ClickButton } from "../../../shared/ClickButton";
+import { CurrencyIcon } from "../../../shared/CurrencyIcon";
 import { ToadItem } from "../../../shared/ToadItem";
 import { useToads } from "../../../ToadContext";
 import { BuyButton } from "./BuyButton";
@@ -64,7 +64,8 @@ const BuyTab: React.FC = () => {
                   : "bg-gray-600 text-gray-300 cursor-not-allowed"
               }`}
             >
-              {INSTANT_REFRESH_COST} {CURRENCY_CONFIG.tokens.icon}
+              {INSTANT_REFRESH_COST}{" "}
+              <CurrencyIcon currency="tokens" className="h-4 w-4" />
             </button>
           </div>
         </div>
@@ -126,7 +127,7 @@ const BuyTab: React.FC = () => {
                         }`}
                       >
                         {calculateBuyPrice(toad as Toad)}{" "}
-                        {CURRENCY_CONFIG.tokens.icon}
+                        <CurrencyIcon currency="tokens" className="h-4 w-4" />
                       </button>
                     }
                   />

@@ -26,6 +26,7 @@ import {
   RoomConfig,
 } from "../HexMap/rooms-config";
 import { ClickButton } from "../shared/ClickButton";
+import { CurrencyIcon } from "../shared/CurrencyIcon";
 import RoomDemolishModal from "./RoomDemolishModal";
 
 /**
@@ -34,7 +35,7 @@ import RoomDemolishModal from "./RoomDemolishModal";
  * Здесь лежит всё «паспортное» сектора: что это за комната (описание из каталога
  * `HexMap/rooms-config.ts`), сводка по гексу (жабы, ток, улучшения), дополнительная
  * статистика места (`stats` — её передаёт модалка, у которой она есть: биопод показывает
- * статистику биопода, лазарет — койки, «Разведка» — походы), а также то, что раньше жило
+ * статистику биопода, Медотсек — койки, «Разведка» — походы), а также то, что раньше жило
  * в отдельной модалке улучшения: покупка апгрейдов и снос сектора.
  *
  * Модалка улучшения (`RoomUpgradeModal`) удалена: клик по ядру карты больше ничего не
@@ -185,7 +186,7 @@ export default function RoomDataTab({ room, stats }: RoomDataTabProps) {
         <p className="text-2xs leading-snug text-sky-100">{description}</p>
       </div>
 
-      {/* Статистика самого места: у биопода, лазарета и «Разведки» она своя */}
+      {/* Статистика самого места: у биопода, Медотсека и «Разведки» она своя */}
       {stats}
 
       {/* Улучшения сектора — то, что раньше стояло в модалке улучшения */}
@@ -237,11 +238,15 @@ export default function RoomDataTab({ room, stats }: RoomDataTabProps) {
                         : "border-gray-600/40 text-gray-500"
                   }`}
                 >
-                  {bought
-                    ? "✓ Установлено"
-                    : `Установить · ${option.cost} ${CURRENCY_CONFIG.tokens.icon}${
-                        enough ? "" : " — не хватает Кваксов"
-                      }`}
+                  {bought ? (
+                    "✓ Установлено"
+                  ) : (
+                    <>
+                      Установить · {option.cost}{" "}
+                      <CurrencyIcon currency="tokens" className="h-3 w-3" />
+                      {enough ? "" : " — не хватает Кваксов"}
+                    </>
+                  )}
                 </ClickButton>
               </div>
             );
@@ -249,7 +254,8 @@ export default function RoomDataTab({ room, stats }: RoomDataTabProps) {
 
         {canUpgrade && (
           <p className="text-2xs text-gray-500">
-            {CURRENCY_CONFIG.tokens.icon} в запасе: {tokens}
+            <CurrencyIcon currency="tokens" className="h-3 w-3" /> в запасе:{" "}
+            {tokens}
           </p>
         )}
       </div>
@@ -261,7 +267,8 @@ export default function RoomDataTab({ room, stats }: RoomDataTabProps) {
         </p>
 
         <p className="text-2xs leading-snug text-gray-400">
-          Снос стоит {DEMOLISH_ROOM_COST} {CURRENCY_CONFIG.tokens.icon} и
+          Снос стоит {DEMOLISH_ROOM_COST}{" "}
+          <CurrencyIcon currency="tokens" className="h-3 w-3" /> и
           подтверждается отдельным окном. Кваксы за постройку не возвращаются,
           зато гекс становится свободным — на нём можно построить заново, и
           следующий сектор того же вида подешевеет.
@@ -273,7 +280,7 @@ export default function RoomDataTab({ room, stats }: RoomDataTabProps) {
           className="w-full rounded-lg border border-rose-500/40 px-3 py-2 text-2xs font-bold text-rose-200 transition-colors duration-300 hover:bg-rose-900/40"
         >
           🗑️ Снести «{room.name}» · {DEMOLISH_ROOM_COST}{" "}
-          {CURRENCY_CONFIG.tokens.icon}
+          <CurrencyIcon currency="tokens" className="h-3 w-3" />
         </ClickButton>
       </div>
     </div>

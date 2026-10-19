@@ -8,6 +8,7 @@ import { CURRENCY_CONFIG, DEMOLISH_ROOM_COST } from "../../utils/constants";
 import { useModal } from "../ModalContext";
 import { useToads } from "../ToadContext";
 import { ClickButton } from "../shared/ClickButton";
+import { CurrencyIcon } from "../shared/CurrencyIcon";
 import Modal from "../shared/Header";
 import {
   getRoomCost,
@@ -114,7 +115,8 @@ export default function RoomDemolishModal({ room }: { room: RoomConfig }) {
           <div className="mb-1 flex items-center justify-between text-xs">
             <span className="font-bold text-rose-200">Шаг необратимый</span>
             <span className="text-amber-200">
-              {CURRENCY_CONFIG.tokens.icon} {tokens}
+              <CurrencyIcon currency="tokens" className="h-3.5 w-3.5" />{" "}
+              {tokens}
             </span>
           </div>
           <p className="text-2xs leading-snug text-rose-100">
@@ -161,7 +163,8 @@ export default function RoomDemolishModal({ room }: { room: RoomConfig }) {
           {price.saving > 0 ? (
             <div className="text-emerald-300">
               💰 Следующий сектор того же вида («{room.title}») будет стоить{" "}
-              {price.after} вместо {price.now} {CURRENCY_CONFIG.tokens.icon} — снос
+              {price.after} вместо {price.now}{" "}
+              <CurrencyIcon currency="tokens" className="h-3 w-3" /> — снос
               делает шаг назад по цене.
             </div>
           ) : (
@@ -182,7 +185,8 @@ export default function RoomDemolishModal({ room }: { room: RoomConfig }) {
           <span
             className={`text-sm ${affordable ? "text-amber-200" : "text-rose-300"}`}
           >
-            {DEMOLISH_ROOM_COST} {CURRENCY_CONFIG.tokens.icon}
+            {DEMOLISH_ROOM_COST}{" "}
+            <CurrencyIcon currency="tokens" className="h-3.5 w-3.5" />
           </span>
           <div className="flex items-center gap-2">
             <ClickButton

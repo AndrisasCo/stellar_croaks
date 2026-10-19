@@ -490,7 +490,7 @@ export default function NestModal({
                       caption={getNestSlotLabel(index)}
                       label={getNestSlotLabel(index)}
                       picked={toad}
-                      placeholder="＋ посадить жабу"
+                      placeholder="＋ назначить"
                       pickedSummary={
                         toad ? (
                           <span className="shrink-0 text-2xs text-lime-300">

@@ -8,6 +8,7 @@ import { CURRENCY_CONFIG } from "../../utils/constants";
 import { getActiveNarratorTask } from "../../utils/narrator";
 import { useToads } from "../ToadContext";
 import { ClickButton } from "../shared/ClickButton";
+import { CurrencyIcon } from "../shared/CurrencyIcon";
 import Modal from "../shared/Header";
 import {
   BUILD_OPTIONS,
@@ -181,7 +182,8 @@ export default function BuildRoomModal({ slot }: { slot: RoomConfig }) {
           <div className="mb-1 flex items-center justify-between text-xs">
             <span className="font-bold text-amber-200">📐 Свободный гекс</span>
             <span className="text-amber-200">
-              {CURRENCY_CONFIG.tokens.icon} {tokens}
+              <CurrencyIcon currency="tokens" className="h-3.5 w-3.5" />{" "}
+              {tokens}
             </span>
           </div>
           <p className="text-2xs leading-snug text-amber-100">
@@ -237,7 +239,8 @@ export default function BuildRoomModal({ slot }: { slot: RoomConfig }) {
                       affordable ? "text-amber-200" : "text-rose-300"
                     }`}
                   >
-                    {cost} {CURRENCY_CONFIG.tokens.icon}
+                    {cost}{" "}
+                    <CurrencyIcon currency="tokens" className="h-3.5 w-3.5" />
                   </span>
                 </div>
 

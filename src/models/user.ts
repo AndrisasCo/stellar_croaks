@@ -37,6 +37,11 @@ export enum Items {
   pigmentUnstable = "pigmentUnstable",
   /** Крафтовая пыль — получается при разборе дубликатов (Часть 3.7) */
   craftDust = "craftDust",
+  /**
+   * Пропуск КОНТУРа: расходуемый ресурс разведки. Походы приносят его со склада,
+   * а тратится он на открытие следующих секторов Периметра.
+   */
+  contourPass = "contourPass",
 }
 
 export type InventoryItem = {
@@ -117,5 +122,13 @@ export const itemsFull: Record<Items, InventoryItem> = {
     icon: "/assets/dust.webp",
     description: "Материал крафта: получается при разборе дубликатов жаб",
     rarity: "uncommon",
+  },
+  [Items.contourPass]: {
+    key: Items.contourPass,
+    name: "Пропуск КОНТУРа",
+    icon: "/assets/contour-pass.svg",
+    description:
+      "Открывает новые секторы Периметра. Цифровой пропуск: полки не занимает",
+    rarity: "rare",
   },
 };

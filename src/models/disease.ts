@@ -6,7 +6,7 @@ import { Toad } from "./Toad";
  * и цена мгновенного курса лечения.
  * Состояние жаб хранится в `Toad.state.diseaseId` / `Toad.state.diseaseUntil`, поэтому
  * селекторы «больна ли жаба» живут здесь же (без обращения к сохранению): их читают и
- * `utils/disease-manager.ts`, и `utils/hospital.ts` — лазарет ускоряет срок болезни
+ * `utils/disease-manager.ts`, и `utils/hospital.ts` — Медотсек ускоряет срок болезни
  * и изолирует пациента от биопода.
  */
 
@@ -30,7 +30,8 @@ export const DISEASES: DiseaseDef[] = [
     id: "firmware_glitch",
     name: "Сбой прошивки",
     icon: "🧬",
-    description: "Жаба зависает в циклах самоочистки и почти не производит биомассу.",
+    description:
+      "Жаба зависает в циклах самоочистки и почти не производит биомассу.",
     contagionPerHour: 0.03,
     productionPenalty: 0.3,
     durationHours: 6,
@@ -83,7 +84,9 @@ export const isToadSick = (toad: Toad, now = Date.now()): boolean => {
   if (!disease) {
     return false;
   }
-  return (toad.state?.diseaseUntil ?? 0) > 0 && (toad.state?.diseaseUntil ?? 0) > now;
+  return (
+    (toad.state?.diseaseUntil ?? 0) > 0 && (toad.state?.diseaseUntil ?? 0) > now
+  );
 };
 
 /**
@@ -91,14 +94,14 @@ export const isToadSick = (toad: Toad, now = Date.now()): boolean => {
  * Цена живёт в таблице болезней (`cureTokens`): долгие и злые болезни дороже.
  */
 export const getDiseaseCureCost = (toad: Toad, now = Date.now()): number =>
-  isToadSick(toad, now) ? getToadDisease(toad)?.cureTokens ?? 0 : 0;
+  isToadSick(toad, now) ? (getToadDisease(toad)?.cureTokens ?? 0) : 0;
 
 /**
  * Множитель выработки биомассы по индексу болезни (1 = здоров,
  * значение хранится в `Toad.state.diseaseId`).
  */
 export const getDiseasePenaltyMultiplier = (
-  diseaseId?: number | null
+  diseaseId?: number | null,
 ): number => {
   if (diseaseId === undefined || diseaseId === null || diseaseId < 0) {
     return 1;

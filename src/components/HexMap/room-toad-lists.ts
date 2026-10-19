@@ -6,7 +6,7 @@ import { RoomConfig } from "./rooms-config";
  * Жабы, которых рисует каждый гекс карты: свой список у каждого гекса.
  *
  * Сектор показывает только тех, кто физически в ней сидит (`Toad.scene_id` = id сектора):
- * ⚡-сектор, «Разведка», репродуктор, лазарет. Жабы из репродуктора сами не уходят — ни после
+ * ⚡-сектор, «Разведка», репродуктор, Медотсек. Жабы из репродуктора сами не уходят — ни после
  * ухаживания, ни после родов, — поэтому пара и головастики остаются на гексе репродуктора,
  * пока игрок не перенесёт их.
  *
@@ -20,11 +20,11 @@ import { RoomConfig } from "./rooms-config";
  */
 export const getRoomToadLists = (
   rooms: RoomConfig[],
-  toads: Toad[]
+  toads: Toad[],
 ): Record<string, Toad[]> => {
   const map: Record<string, Toad[]> = {};
   const aviaryRooms = rooms.filter(
-    (room) => room.kind === "aviary" && room.sceneId != null
+    (room) => room.kind === "aviary" && room.sceneId != null,
   );
   const claimedScenes = new Set(aviaryRooms.map((room) => room.sceneId));
 
@@ -32,9 +32,7 @@ export const getRoomToadLists = (
     if (room.kind === "aviary" && room.sceneId != null) {
       // Жильцы биопода: кто живёт в нём сейчас — жаб в секторах колонии здесь нет,
       // их `scene_id` — id сектора, а место в биоподе не занято (`utils/toad-location.ts`)
-      map[room.id] = toads.filter(
-        (toad) => toad.scene_id === room.sceneId
-      );
+      map[room.id] = toads.filter((toad) => toad.scene_id === room.sceneId);
       return;
     }
 
@@ -43,7 +41,7 @@ export const getRoomToadLists = (
     const inside = toads.filter(
       (toad) =>
         isToadInRoom(toad) &&
-        (toad.scene_id === room.id || toad.scene_id === room.slotId)
+        (toad.scene_id === room.id || toad.scene_id === room.slotId),
     );
 
     if (inside.length > 0) {
@@ -64,8 +62,7 @@ export const getRoomToadLists = (
     const homeless = toads.filter(
       (toad) =>
         !isToadInRoom(toad) &&
-        (toad.scene_id == null ||
-          !claimedScenes.has(toad.scene_id as number))
+        (toad.scene_id == null || !claimedScenes.has(toad.scene_id as number)),
     );
 
     if (homeless.length > 0) {

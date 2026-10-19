@@ -1,4 +1,5 @@
 import React, { useState, createContext, useContext } from "react";
+import { CurrencyText } from "../components/shared/CurrencyIcon";
 
 export type NotificationType = "warn" | "success" | "danger" | "info";
 
@@ -262,7 +263,10 @@ const NotificationStack: React.FC = () => {
                 transitionDelay: notification.isExiting ? "50ms" : "150ms",
               }}
             >
-              {notification.content}
+              <CurrencyText
+                text={notification.content}
+                iconClassName="h-4 w-4"
+              />
             </span>
 
             <button
