@@ -5,7 +5,7 @@ import { updateToadsByIds } from "../../../backend";
 import { useSoundEffects } from "../../../hooks/use-sound-effects";
 import { useToads } from "../../ToadContext";
 import { completeAchivement } from "../../../backend/achivements-manager";
-import { ToadItem } from "../../shared/ToadItem";
+import { ToadListCard } from "../../shared/ToadListCard";
 import { Filters } from "../../shared/Filters";
 import { useFilters } from "../../../hooks/use-filters";
 import { Tooltip } from "../../shared/Tooltip";
@@ -650,45 +650,47 @@ const ToadListModal: React.FC<{
                       : undefined;
 
                   return (
-                    <div key={toad.id} className="rounded-2xl relative">
-                      <ToadItem
-                        id={(toad.id || 0).toString()}
-                        showHunger
-                        isSelected={false}
-                        onClick={() => handleToadClick(toad)}
-                        toad={toad}
-                        button={
-                          <div className="flex gap-1">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                playClick();
-                                if (dissociatorReady) {
-                                  setDissolveTargets([toad]);
-                                } else {
-                                  setShowBlockedDissolve(true);
-                                }
-                              }}
-                              className="px-3 py-2 bg-amber-500/20 text-amber-200 rounded-lg text-xs font-medium transition-all border border-amber-500/30 hover:bg-amber-500/30"
-                              title="Разобрать на биомассу (освободит место)"
-                            >
-                              ♻️
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                playCrunchShort();
-                                handleFeedToads([toad.id]);
-                                completeAchivement("feed-one");
-                              }}
-                              className="px-3 py-2 bg-green-500/20 text-green-300 rounded-lg text-xs font-medium transition-all border border-green-500/30 hover:bg-green-500/30"
-                            >
-                              🍎
-                            </button>
-                          </div>
-                        }
-                      />
-                    </div>
+                    <ToadListCard
+                      key={toad.id}
+                      id={(toad.id || 0).toString()}
+                      toad={toad}
+                      familyColor={familyColor}
+                      onOpen={() => handleToadClick(toad)}
+                      variant="full"
+                      showHunger
+                      showHp
+                      showEnergy
+                      actions={
+                        <div className="flex gap-1">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              playClick();
+                              if (dissociatorReady) {
+                                setDissolveTargets([toad]);
+                              } else {
+                                setShowBlockedDissolve(true);
+                              }
+                            }}
+                            className="rounded-lg border border-amber-500/30 bg-amber-500/20 px-3 py-2 text-xs font-medium text-amber-200 transition-all hover:bg-amber-500/30"
+                            title="Разобрать на биомассу (освободит место)"
+                          >
+                            ♻️
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              playCrunchShort();
+                              handleFeedToads([toad.id]);
+                              completeAchivement("feed-one");
+                            }}
+                            className="rounded-lg border border-green-500/30 bg-green-500/20 px-3 py-2 text-xs font-medium text-green-300 transition-all hover:bg-green-500/30"
+                          >
+                            🍎
+                          </button>
+                        </div>
+                      }
+                    />
                   );
                 })}
               </div>

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { getRarityConfig, Toad } from "../../models/Toad";
+import { Toad } from "../../models/Toad";
 import { useColony } from "../../hooks/use-colony";
 import { useGameState } from "../../hooks/use-game-state";
 import { useNotifications } from "../../hooks/use-notification";
@@ -15,10 +15,13 @@ import {
   splitToadPickerCandidates,
 } from "../../utils/toad-picker";
 import { useToads } from "../ToadContext";
+import { useModal } from "../ModalContext";
 import { ClickButton } from "../shared/ClickButton";
 import Modal from "../shared/Header";
 import ModalTabs, { ModalTabItem } from "../shared/ModalTabs";
+import { ToadListCard } from "../shared/ToadListCard";
 import { ToadPicker } from "../shared/ToadPicker";
+import { ToadInfo } from "./ToadInfoModal";
 import { isRoomPowered } from "../HexMap/colony-build";
 import {
   getToadPowerCapacity,
@@ -43,19 +46,6 @@ import RoomDataTab, { ROOM_DATA_TAB, RoomDataTabId } from "./RoomDataTab";
  * что раньше жило в отдельной модалке улучшения. Энергосектор открывают только с гекса,
  * поэтому табов у неё всегда два.
  */
-const HungerBar = ({ value }: { value: number }) => (
-  <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-700/60">
-    <div
-      className={`h-full ${
-        value > POWER_MIN_HUNGER
-          ? "bg-gradient-to-r from-lime-400 to-emerald-500"
-          : "bg-gradient-to-r from-rose-500 to-orange-500"
-      }`}
-      style={{ width: `${Math.max(0, Math.min(100, value))}%` }}
-    />
-  </div>
-);
-
 /** Табы энергосектора: работающие жабы первым, «Данные сектора» — последним */
 type PowerTab = "power" | RoomDataTabId;
 
@@ -65,9 +55,10 @@ const POWER_TABS: ModalTabItem<PowerTab>[] = [
 ];
 
 export default function PowerRoomModal({ room }: { room: RoomConfig }) {
-  const { allToads, account, handleFeedToads } = useToads();
+  const { allToads, account, handleFeedToads, selectToad } = useToads();
   const { powerGrid, toadsByRoom, placeToad, releaseToad, rooms } = useColony();
   const { addNotification } = useNotifications();
+  const { openModal } = useModal();
   const { playSuccess, playError, playCrunchShort, playCroakSmall } =
     useSoundEffects();
   const gameState = useGameState();
@@ -140,6 +131,15 @@ export default function PowerRoomModal({ room }: { room: RoomConfig }) {
     );
 
     return scene?.name ?? "Биопод";
+  };
+
+  /**
+   * Открыть карточку жабы поверх энергосектора: модалки складываются в стек,
+   * поэтому «Закрыть» вернёт к тому же списку работающих жаб.
+   */
+  const openToadCard = (toad: Toad) => {
+    selectToad(toad.id);
+    openModal(() => <ToadInfo />);
   };
 
   const handleFeed = () => {
@@ -294,50 +294,50 @@ export default function PowerRoomModal({ room }: { room: RoomConfig }) {
                 const onExpedition = isToadBusyOnExpedition(toad, expeditions);
                 const powering =
                   !onExpedition && isToadPowering(toad, expeditions);
-                const rarity = getRarityConfig(toad.genes.rarity);
 
                 return (
-                  <div
+                  <ToadListCard
                     key={toad.id}
-                    className={`flex items-center gap-2 rounded-xl border px-2 py-1.5 ${
-                      onExpedition
-                        ? "border-amber-500/40 bg-amber-900/10"
+                    toad={toad}
+                    onOpen={() => openToadCard(toad)}
+                    variant="brief"
+                    showHunger
+                    showHp={false}
+                    tone={
+                      onExpedition ? "warn" : powering ? "success" : "warn"
+                    }
+                    status={{
+                      icon: onExpedition ? "🧭" : powering ? "⚡" : "🔌",
+                      label: onExpedition
+                        ? "в походе"
                         : powering
-                          ? "border-emerald-500/40 bg-emerald-900/10"
-                          : "border-amber-500/40 bg-amber-900/10"
-                    }`}
-                  >
-                    <span className="text-lg leading-none">
-                      {onExpedition ? "🧭" : powering ? "⚡" : "🔌"}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between gap-2">
-                        <span
-                          className={`truncate text-xs font-semibold ${rarity.color}`}
-                        >
-                          {toad.name}
-                        </span>
-                        <span className="shrink-0 text-2xs text-slate-400">
-                          {onExpedition
-                            ? "в походе"
-                            : `🍽 ${Math.round(toad.state.hunger)}`}
-                        </span>
-                      </div>
-                      <HungerBar value={toad.state.hunger} />
-                    </div>
-                    <ClickButton
-                      onClick={() => handleRelease(toad)}
-                      disabled={onExpedition}
-                      title={onExpedition ? EXPEDITION_TOAD_BUSY_REASON : undefined}
-                      className={`shrink-0 rounded-lg border px-2 py-1 text-2xs transition-colors ${
-                        onExpedition
-                          ? "cursor-not-allowed border-slate-700/60 text-slate-500"
-                          : "border-slate-600/60 text-slate-300 hover:border-rose-400 hover:text-rose-200"
-                      }`}
-                    >
-                      В биопод
-                    </ClickButton>
-                  </div>
+                          ? "даёт ток"
+                          : `не даёт ток: сытость ≤ ${POWER_MIN_HUNGER}`,
+                      className: onExpedition
+                        ? "text-amber-300"
+                        : powering
+                          ? "text-emerald-300"
+                          : "text-amber-300",
+                    }}
+                    actions={
+                      <ClickButton
+                        onClick={() => handleRelease(toad)}
+                        disabled={onExpedition}
+                        title={
+                          onExpedition
+                            ? EXPEDITION_TOAD_BUSY_REASON
+                            : undefined
+                        }
+                        className={`shrink-0 rounded-lg border px-2 py-1 text-2xs transition-colors ${
+                          onExpedition
+                            ? "cursor-not-allowed border-slate-700/60 text-slate-500"
+                            : "border-slate-600/60 text-slate-300 hover:border-rose-400 hover:text-rose-200"
+                        }`}
+                      >
+                        В биопод
+                      </ClickButton>
+                    }
+                  />
                 );
               })}
             </div>

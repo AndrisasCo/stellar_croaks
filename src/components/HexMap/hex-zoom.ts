@@ -46,8 +46,32 @@ export const MIN_DETAIL_SCALE = 1.2;
 /** Край экрана, у которого начинается автопанорама при переносе жабы (пиксели). */
 export const EDGE_PAN_MARGIN = 64;
 
+/**
+ * Полоса у края, при входе в которую перенос отдаляет камеру (пиксели).
+ * Уже зоны автопанорамы: жаба должна действительно дойти до края, а не потерять
+ * приближенный вид сразу за границей родного гекса.
+ */
+export const EDGE_ZOOM_MARGIN = 32;
+
 /** Скорость автопанорамы у края экрана (экранных пикселей за миллисекунду). */
 export const EDGE_PAN_SPEED = 0.5;
+
+/**
+ * Дошла ли точка до края экрана: только здесь перенос жабы меняет зум.
+ *
+ * Пока жаба в середине экрана, камера не трогается — игрок может перетащить её
+ * по видимой части карты, не теряя приближенный вид. `margin` — узкая полоса
+ * у самого края экрана (см. `EDGE_ZOOM_MARGIN`).
+ */
+export const isAtScreenEdge = (
+  point: Point,
+  screen: { width: number; height: number },
+  margin: number = EDGE_ZOOM_MARGIN
+) =>
+  point.x < margin ||
+  point.x > screen.width - margin ||
+  point.y < margin ||
+  point.y > screen.height - margin;
 
 export interface ZoomLevels {
   /** Зум обзорного вида (вся колония). */

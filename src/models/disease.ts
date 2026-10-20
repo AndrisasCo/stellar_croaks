@@ -28,12 +28,12 @@ export interface DiseaseDef {
 export const DISEASES: DiseaseDef[] = [
   {
     id: "firmware_glitch",
-    name: "Сбой прошивки",
+    name: "Сбой молекул АТФ",
     icon: "🧬",
     description:
-      "Жаба зависает в циклах самоочистки и почти не производит биомассу.",
+      "Организм зависает в тепловых циклах и почти не производит биомассу.",
     contagionPerHour: 0.03,
-    productionPenalty: 0.3,
+    productionPenalty: 0.9,
     durationHours: 6,
     cureTokens: 150,
   },
@@ -52,10 +52,21 @@ export const DISEASES: DiseaseDef[] = [
     name: "Мутационный каскад",
     icon: "☣️",
     description: "Каскадный сбой генома: долгий, но не смертельный.",
-    contagionPerHour: 0.12,
-    productionPenalty: 0.75,
+    contagionPerHour: 0.52,
+    productionPenalty: 0.15,
     durationHours: 16,
     cureTokens: 400,
+  },
+  {
+    id: "energy_imp",
+    name: "Энергоимпульс",
+    icon: "⚡️",
+    description:
+      "Организм подвергся энергооблучению: биомасса вырабатывается быстрее.",
+    contagionPerHour: 0,
+    productionPenalty: 1.05,
+    durationHours: 16,
+    cureTokens: 10000,
   },
 ];
 

@@ -156,7 +156,8 @@ export default function HexMapScreen() {
       activeAviaryToads,
       unpoweredAviarySceneIds,
       expeditions,
-    ) - activeAviaryToads.length * UPKEEP_PER_TOAD_HOUR;
+    ) -
+    activeAviaryToads.length * UPKEEP_PER_TOAD_HOUR;
 
   // Энергия колонии для HUD: сколько построенных секторов реально под током
   const poweredRooms = useMemo(
@@ -354,14 +355,7 @@ export default function HexMapScreen() {
         expeditions,
       });
     },
-    [
-      allToads,
-      getRoomOccupants,
-      ownedScenes,
-      powerGrid,
-      rooms,
-      expeditions,
-    ],
+    [allToads, getRoomOccupants, ownedScenes, powerGrid, rooms, expeditions],
   );
 
   /** Жабу перенесли: биопод принимает жильца, ⚡-сектор — работника, «Разведка» — бойца. */
@@ -397,11 +391,11 @@ export default function HexMapScreen() {
         return;
       }
 
+      if (room.kind === "hospital") {
+        placeToad(toad.id, room.id);
+      }
+
       if (room.kind === "aviary") {
-        // Биопод гекса: свой дом жаба сохраняет, чужой биопод становится её новым домом.
-        // Место у жабы одно: из сектора она уходит, а биопод гекса принимает её жильцом.
-        // Мест может не хватить — тогда жаба остаётся там, где была (перенос ещё до
-        // броска проверяет `canMoveToadToRoom`, а здесь страховка от гонки).
         const movedToOtherAviary =
           room.sceneId != null && room.sceneId !== getToadHomeId(toad);
         const result = releaseToad(toad.id, room.sceneId ?? null);

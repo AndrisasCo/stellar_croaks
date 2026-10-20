@@ -10,6 +10,7 @@ import { useNotifications } from "../../hooks/use-notification";
 import { useGameState } from "../../hooks/use-game-state";
 import { useColony } from "../../hooks/use-colony";
 import { useRoomPowerTab } from "../../hooks/use-room-power-tab";
+import { useModal } from "../ModalContext";
 import { Toad, getToadTypeLabel } from "../../models/Toad";
 import {
   Expedition,
@@ -59,6 +60,7 @@ import {
   getExpeditionTeamStatus,
   getReturnProgress,
   getSectorUnlockStatus,
+  isExpeditionFromRoom,
   isToadOnExpedition,
   processExpeditions,
   speedUpReturn,
@@ -162,50 +164,68 @@ const ToadVitals: React.FC<{
 };
 
 const LogList: React.FC<{ expedition: Expedition }> = ({ expedition }) => {
-  const entries = [...expedition.log].reverse().slice(0, 12);
-
-  if (entries.length === 0) {
-    return (
-      <p className="text-2xs text-slate-400 italic">
-        Тишина в эфире: команда ещё не вышла на связь.
-      </p>
-    );
-  }
+  const entries = [...expedition.log].reverse().slice(0, 40);
 
   return (
-    <div className="flex flex-col gap-1 max-h-40 overflow-y-auto pr-1">
-      {entries.map((entry) => {
-        const role = entry.role === "system" ? null : ROLE_CONFIG[entry.role];
-        const color =
-          entry.kind === "good"
-            ? "text-green-300"
-            : entry.kind === "bad"
-              ? "text-red-300"
-              : "text-slate-300";
+    <div className="flex flex-col gap-2 rounded-xl border border-cyan-400/40 bg-slate-950/80 p-3 shadow-[0_0_30px_-16px_rgba(34,211,238,0.9)]">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs font-bold uppercase tracking-wide text-cyan-300">
+          📡 Бортовой журнал
+        </span>
+        <span className="text-3xs font-semibold text-slate-500">
+          {expedition.log.length} записей
+        </span>
+      </div>
 
-        return (
-          <p key={entry.id} className={`text-2xs leading-snug ${color}`}>
-            <span className="text-slate-500">{formatClock(entry.at)} </span>
-            <span className="font-semibold">
-              {role
-                ? `${role.icon} ${entry.toadName ?? role.label}`
-                : "📡 Связь"}
-              :{" "}
-            </span>
-            <CurrencyText text={entry.text} iconClassName="h-3 w-3" />
-            {typeof entry.hpDelta === "number" && entry.hpDelta !== 0 && (
-              <span
-                className={
-                  entry.hpDelta < 0 ? "text-red-400" : "text-green-400"
-                }
+      {entries.length === 0 ? (
+        <p className="text-2xs italic text-slate-400">
+          Тишина в эфире: команда ещё не вышла на связь.
+        </p>
+      ) : (
+        <div className="flex max-h-72 flex-col gap-1.5 overflow-y-auto pr-1">
+          {entries.map((entry) => {
+            const role = entry.role === "system" ? null : ROLE_CONFIG[entry.role];
+            const color =
+              entry.kind === "good"
+                ? "text-green-300"
+                : entry.kind === "bad"
+                  ? "text-red-300"
+                  : "text-slate-300";
+            const accent =
+              entry.kind === "good"
+                ? "border-emerald-400/60 bg-emerald-950/20"
+                : entry.kind === "bad"
+                  ? "border-red-400/60 bg-red-950/20"
+                  : "border-slate-600/60 bg-slate-900/40";
+
+            return (
+              <p
+                key={entry.id}
+                className={`rounded-lg border-l-2 px-2 py-1.5 text-1xs leading-snug ${accent} ${color}`}
               >
-                {" "}
-                ({entry.hpDelta > 0 ? `+${entry.hpDelta}` : entry.hpDelta} HP)
-              </span>
-            )}
-          </p>
-        );
-      })}
+                <span className="text-slate-500">{formatClock(entry.at)} </span>
+                <span className="font-semibold">
+                  {role
+                    ? `${role.icon} ${entry.toadName ?? role.label}`
+                    : "📡 Связь"}
+                  :{" "}
+                </span>
+                <CurrencyText text={entry.text} iconClassName="h-3 w-3" />
+                {typeof entry.hpDelta === "number" && entry.hpDelta !== 0 && (
+                  <span
+                    className={
+                      entry.hpDelta < 0 ? "text-red-400" : "text-green-400"
+                    }
+                  >
+                    {" "}
+                    ({entry.hpDelta > 0 ? `+${entry.hpDelta}` : entry.hpDelta} HP)
+                  </span>
+                )}
+              </p>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 };
@@ -213,27 +233,53 @@ const LogList: React.FC<{ expedition: Expedition }> = ({ expedition }) => {
 const TeamStatusList: React.FC<{ expedition: Expedition }> = ({
   expedition,
 }) => (
-  <div className="flex flex-col gap-1.5">
+  <div className="grid grid-cols-5 gap-1.5">
     {getExpeditionTeamStatus(expedition).map(
-      ({ member, toad, hp, maxHp, down }) => (
-        <div key={member.toadId} className="flex items-center gap-2">
-          <span className="text-sm w-5 text-center">
-            {ROLE_CONFIG[member.role].icon}
-          </span>
-          <div className="flex-1">
-            <div className="flex items-center justify-between text-2xs">
-              <span className={down ? "text-red-400" : "text-slate-200"}>
-                {toad?.name ?? `Жаба #${member.toadId}`}
-                {down && " — выбита"}
-              </span>
-              <span className="text-slate-400">
-                {hp}/{maxHp} HP
-              </span>
-            </div>
-            <HpBar hp={hp} maxHp={maxHp} className="mt-0.5" />
+      ({ member, toad, hp, maxHp, ratio, down }) => {
+        const tone = down
+          ? "border-red-500/60 bg-red-950/40 text-red-200"
+          : ratio < 0.35
+            ? "border-orange-500/50 bg-orange-950/30 text-orange-100"
+            : ratio < 0.7
+              ? "border-amber-500/50 bg-amber-950/30 text-amber-100"
+              : "border-emerald-500/50 bg-emerald-950/30 text-emerald-100";
+        const bar = down
+          ? "bg-red-500"
+          : ratio < 0.35
+            ? "bg-orange-500"
+            : ratio < 0.7
+              ? "bg-amber-400"
+              : "bg-emerald-400";
+
+        return (
+          <div
+            key={member.toadId}
+            title={`${ROLE_CONFIG[member.role].icon} ${
+              ROLE_CONFIG[member.role].label
+            } · ${toad?.name ?? `Жаба #${member.toadId}`} · ${hp}/${maxHp} HP${
+              down ? " · выбита" : ""
+            }`}
+            className={`relative flex aspect-square min-w-0 flex-col items-center justify-center gap-0.5 overflow-hidden rounded-lg border p-1 pb-2 text-center ${tone}`}
+          >
+            <span className="text-2xs leading-none">
+              {ROLE_CONFIG[member.role].icon}
+            </span>
+            <span className="w-full truncate text-3xs font-semibold leading-tight">
+              {toad?.name ?? `#${member.toadId}`}
+            </span>
+            <span className="text-3xs font-bold leading-none">
+              {hp}/{maxHp}
+            </span>
+            {/* Мини-полоска HP: квадратик читается и без наведения */}
+            <span className="absolute inset-x-1 bottom-1 h-0.5 overflow-hidden rounded-full bg-slate-800/80">
+              <span
+                className={`block h-full rounded-full ${bar}`}
+                style={{ width: `${Math.round(Math.min(1, Math.max(0, ratio)) * 100)}%` }}
+              />
+            </span>
           </div>
-        </div>
-      ),
+        );
+      },
     )}
   </div>
 );
@@ -247,7 +293,7 @@ interface RoleToadGroup {
   toads: Toad[];
 }
 
-type ExpeditionTab = "runs" | "send" | "room-data";
+type ExpeditionTab = "main" | "all" | "room-data";
 
 const ExpeditionModal: React.FC<{
   onClose?: () => void;
@@ -255,6 +301,7 @@ const ExpeditionModal: React.FC<{
   roomId?: string;
 }> = ({ roomId }) => {
   const { addNotification } = useNotifications();
+  const { openModal, closeModal } = useModal();
   const state = useGameState();
   const [, setTick] = useState(0);
 
@@ -379,6 +426,27 @@ const ExpeditionModal: React.FC<{
     );
   }, [rooms, roomId, toadsByRoom]);
 
+  /**
+   * Походы именно этого контура: у каждого гекса своя «Разведка», и на первой
+   * вкладке видно только то, что ушло отсюда. Старые сейвы не помнили гекс — если
+   * «Разведка» в колонии одна, все такие записи считаем её походами.
+   */
+  const scoutRoomCount = rooms.filter((room) => room.kind === "scout").length;
+  const isOwnExpedition = (expedition: Expedition): boolean => {
+    if (!crewRoom) {
+      return false;
+    }
+    if (isExpeditionFromRoom(expedition, crewRoom)) {
+      return true;
+    }
+
+    return expedition.originRoomId == null && scoutRoomCount === 1;
+  };
+  const ownActiveExpeditions = activeExpeditions.filter(isOwnExpedition);
+  const ownCompletedExpeditions = crewRoom
+    ? completedExpeditions.filter(isOwnExpedition)
+    : completedExpeditions;
+
   /** Обесточенная «Разведка»: отправлять и принимать походы нельзя, данные — можно */
   const {
     tab,
@@ -387,24 +455,26 @@ const ExpeditionModal: React.FC<{
   } = useRoomPowerTab<ExpeditionTab>({
     room: crewRoom ?? undefined,
     powerGrid,
-    defaultTab: "runs",
+    defaultTab: "main",
   });
 
   /**
-   * Табы модалки: походы, отправка и «Данные сектора». Таб данных — только когда
-   * модалку открыли по гексу «Разведки»: данным нужен свой сектор (его жильцы,
-   * апгрейды и снос), а из бургер-меню гекса нет.
+   * Табы модалки: свой поход/сборы, сводка всех походов колонии и «Данные сектора».
+   * Таб данных — только когда модалку открыли по гексу «Разведки»: данным нужен свой
+   * сектор (его жильцы, апгрейды и снос), а из бургер-меню гекса нет.
    */
   const expeditionTabs: ModalTabItem<ExpeditionTab>[] = [
     {
-      id: "runs",
-      label: `🚁 Походы${expeditions.length ? ` (${expeditions.length})` : ""}`,
+      id: "main",
+      label: `🚁 Поход${
+        ownActiveExpeditions.length ? ` (${ownActiveExpeditions.length})` : ""
+      }`,
       disabled: Boolean(powerIssue),
       disabledHint: powerIssue ?? undefined,
     },
     {
-      id: "send",
-      label: "🎯 Новый поход",
+      id: "all",
+      label: `🗺 Все походы${expeditions.length ? ` (${expeditions.length})` : ""}`,
       disabled: Boolean(powerIssue),
       disabledHint: powerIssue ?? undefined,
     },
@@ -490,15 +560,11 @@ const ExpeditionModal: React.FC<{
     });
 
   const handleSend = () => {
-    const result = startExpedition(
-      sectorId,
-      members,
-      crewRoom?.sceneId || undefined,
-    );
+    const result = startExpedition(sectorId, members, crewRoom?.id);
     notify(result);
     if (result.success) {
       setSlots(emptyExpeditionSlots());
-      setTab("runs");
+      setTab("main");
     }
   };
 
@@ -523,7 +589,7 @@ const ExpeditionModal: React.FC<{
    * Свободная жаба показывает свою сильную роль, жаба в команде — занятую ею роль;
    * тап по кнопке ставит жабу в команду или выводит её оттуда.
    */
-  const renderCrewCard = (toad: Toad) => {
+  const renderCrewCard = (toad: Toad, readOnly = false) => {
     const assigned = getAssignedRole(slots, toad.id);
     const check = canSendToad(toad, expeditions);
     // Подсказка — та же роль, куда жабу поставит тап, чтобы кнопка не обещала другого
@@ -577,26 +643,28 @@ const ExpeditionModal: React.FC<{
           />
         </div>
 
-        <ClickButton
-          onClick={() => handleCrewTap(toad)}
-          disabled={!assigned && !check.ok}
-          title={
-            assigned
-              ? `Убрать из команды (${config.label})`
-              : check.ok
-                ? `В команду: ${config.label}`
-                : check.reason
-          }
-          className={`shrink-0 py-1.5 px-2 rounded-lg text-xs font-bold border transition-colors duration-300 ${
-            assigned
-              ? "bg-cyan-900/50 border-cyan-400/60 text-cyan-100 hover:bg-cyan-800/60"
-              : check.ok
-                ? "bg-slate-800/60 border-slate-500/50 text-slate-200 hover:bg-slate-700/70"
-                : "bg-slate-800/40 border-slate-700/40 text-slate-500"
-          }`}
-        >
-          {assigned ? "✓ В команде" : "→ В команду"}
-        </ClickButton>
+        {!readOnly && (
+          <ClickButton
+            onClick={() => handleCrewTap(toad)}
+            disabled={!assigned && !check.ok}
+            title={
+              assigned
+                ? `Убрать из команды (${config.label})`
+                : check.ok
+                  ? `В команду: ${config.label}`
+                  : check.reason
+            }
+            className={`shrink-0 py-1.5 px-2 rounded-lg text-xs font-bold border transition-colors duration-300 ${
+              assigned
+                ? "bg-cyan-900/50 border-cyan-400/60 text-cyan-100 hover:bg-cyan-800/60"
+                : check.ok
+                  ? "bg-slate-800/60 border-slate-500/50 text-slate-200 hover:bg-slate-700/70"
+                  : "bg-slate-800/40 border-slate-700/40 text-slate-500"
+            }`}
+          >
+            {assigned ? "✓ В команде" : "→ В команду"}
+          </ClickButton>
+        )}
       </div>
     );
   };
@@ -659,6 +727,60 @@ const ExpeditionModal: React.FC<{
 
       return assignToadToRole(prev, Number(value), role);
     });
+  };
+
+  /** Контур, из которого ушёл поход: id гекса, id постройки или старый `Scene.id` */
+  const findExpeditionRoom = (expedition: Expedition) => {
+    const scoutRooms = rooms.filter((item) => item.kind === "scout");
+
+    // Старый сейв не помнил контур: если «Разведка» одна, поход точно её
+    if (expedition.originRoomId == null) {
+      return scoutRooms.length === 1 ? scoutRooms[0] : null;
+    }
+
+    return (
+      scoutRooms.find((item) => isExpeditionFromRoom(expedition, item)) ?? null
+    );
+  };
+
+  /**
+   * Сводка «Все походы»: клик открывает модалку контура, из которого ушла команда.
+   * Если старый сейв не запомнил контур, ведём в текущую (или первую) «Разведку».
+   */
+  const openExpeditionRoom = (expedition: Expedition) => {
+    const originRoom = findExpeditionRoom(expedition);
+
+    // Контур записан, но его уже снесли: открывать чужую «Разведку» нельзя
+    if (!originRoom && expedition.originRoomId != null) {
+      addNotification({
+        type: "warn",
+        content: "Контур, из которого ушёл поход, больше не существует.",
+      });
+      return;
+    }
+
+    const target =
+      originRoom ??
+      crewRoom ??
+      rooms.find((item) => item.kind === "scout") ??
+      null;
+
+    if (!target) {
+      addNotification({
+        type: "warn",
+        content: "«Разведка», из которой ушёл поход, не найдена.",
+      });
+      return;
+    }
+
+    // Поход этого же контура — просто переключаем вкладку, без пересоздания модалки
+    if (crewRoom && target.id === crewRoom.id) {
+      setTab("main");
+      return;
+    }
+
+    closeModal();
+    openModal(() => <ExpeditionModal roomId={target.id} />);
   };
 
   /**
@@ -783,10 +905,10 @@ const ExpeditionModal: React.FC<{
           </div>
         </div>
 
-        {/* ВКЛАДКА: активные походы */}
-        {tab === "runs" && (
+        {/* ВКЛАДКА: поход этого контура или сборы новой команды */}
+        {tab === "main" && (
           <div className="flex flex-col gap-3">
-            {completedExpeditions.map((expedition) => {
+            {ownCompletedExpeditions.map((expedition) => {
               const sectorDef = getSectorById(expedition.sectorId);
               const storage = getExpeditionStorageCheck(expedition);
               const biomassValue = getExpeditionBiomassValue(expedition);
@@ -884,15 +1006,7 @@ const ExpeditionModal: React.FC<{
               );
             })}
 
-            {activeExpeditions.length === 0 && (
-              <p className="text-xs text-slate-400 text-center py-3">
-                {completedExpeditions.length > 0
-                  ? "Активных походов нет: разберите добычу завершённых и отправляйте команду снова."
-                  : "Никто не в походе. Соберите команду из жаб и отправьте её за Периметр — добыча и образцы того стоят."}
-              </p>
-            )}
-
-            {activeExpeditions.map((expedition) => {
+            {ownActiveExpeditions.map((expedition) => {
               const sectorDef = getSectorById(expedition.sectorId);
               const returning = expedition.phase === "returning";
               const progress = returning
@@ -952,8 +1066,6 @@ const ExpeditionModal: React.FC<{
                     </div>
                   </div>
 
-                  <TeamStatusList expedition={expedition} />
-
                   {expedition.companions && expedition.companions.length > 0 && (
                     <p className="text-2xs text-emerald-200">
                       🐸 С командой идёт:{" "}
@@ -978,6 +1090,9 @@ const ExpeditionModal: React.FC<{
                   </p>
 
                   <LogList expedition={expedition} />
+
+                  {/* Статы жаб — компактными квадратиками под журналом */}
+                  <TeamStatusList expedition={expedition} />
 
                   <div className="flex flex-wrap gap-1.5">
                     {!returning && (
@@ -1016,8 +1131,8 @@ const ExpeditionModal: React.FC<{
           </div>
         )}
 
-        {/* ВКЛАДКА: отправка новой команды */}
-        {tab === "send" && (
+        {/* ВКЛАДКА: сборы новой команды — только если из контура ещё никто не ушёл */}
+        {tab === "main" && ownActiveExpeditions.length === 0 && (
           <div className="flex flex-col gap-3">
             {/* Секторы: горизонтальный слайдер — одна страница на один поход.
                 Страница выбирает сектор, поэтому свайп вправо-влево = выбор похода. */}
@@ -1194,38 +1309,6 @@ const ExpeditionModal: React.FC<{
               })}
             </div>
 
-            {/* Жабы сектора «Разведка»: экипаж, из которого команда собирается в один тап */}
-            {crewRoom && (
-              <div className="bg-color-main rounded-xl px-3 py-2 border border-slate-600/30 flex flex-col gap-2">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-xs font-bold text-white">
-                    🧭 В «Разведке»: {crew.length}/{EXPEDITION_TEAM_SIZE}
-                  </p>
-                  {crewSendable.length > 0 &&
-                    members.length < EXPEDITION_TEAM_SIZE && (
-                      <ClickButton
-                        onClick={handleFillFromRoom}
-                        title="Занять свободные роли сильнейшими жабами сектора"
-                        className="ui-chip border-cyan-400/30 bg-cyan-500/10 text-cyan-200 hover:bg-cyan-500/20 transition-colors"
-                      >
-                        Собрать команду
-                      </ClickButton>
-                    )}
-                </div>
-
-                {crew.length === 0 && (
-                  <p className="text-2xs leading-snug text-slate-400">
-                    Сектор пуст: перенесите сюда на карте до{" "}
-                    {EXPEDITION_TEAM_SIZE} взрослых жаб — команда соберётся из
-                    них, а из похода жаба возвращается в биопод (место в
-                    «Разведке» она освобождает).
-                  </p>
-                )}
-
-                {crew.map((toad) => renderCrewCard(toad))}
-              </div>
-            )}
-
             {/* Итог отправки */}
             <div className="bg-color-main rounded-xl px-3 py-2 border border-slate-600/30 flex flex-col gap-2">
               <div className="flex items-center justify-between text-2xs text-slate-300">
@@ -1334,6 +1417,184 @@ const ExpeditionModal: React.FC<{
                 🚀 Отправить в «{selectedSector.name}»
               </ClickButton>
             </div>
+          </div>
+        )}
+
+        {/* Экипаж «Разведки» — внизу вкладки: и при сборах, и когда команда уже в походе */}
+        {tab === "main" && crewRoom && (
+          <div className="bg-color-main flex flex-col gap-2 rounded-xl border border-slate-600/30 px-3 py-2">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs font-bold text-white">
+                🧭 В «Разведке»: {crew.length}/{EXPEDITION_TEAM_SIZE}
+              </p>
+              {ownActiveExpeditions.length === 0 &&
+                crewSendable.length > 0 &&
+                members.length < EXPEDITION_TEAM_SIZE && (
+                  <ClickButton
+                    onClick={handleFillFromRoom}
+                    title="Занять свободные роли сильнейшими жабами сектора"
+                    className="ui-chip border-cyan-400/30 bg-cyan-500/10 text-cyan-200 transition-colors hover:bg-cyan-500/20"
+                  >
+                    Собрать команду
+                  </ClickButton>
+                )}
+            </div>
+
+            {crew.length === 0 && (
+              <p className="text-2xs leading-snug text-slate-400">
+                {ownActiveExpeditions.length > 0
+                  ? "Экипаж в походе: после возврата и разбора добычи жабы снова появятся в «Разведке»."
+                  : `Сектор пуст: перенесите сюда на карте до ${EXPEDITION_TEAM_SIZE} взрослых жаб — команда соберётся из них, а из похода жаба возвращается в биопод (место в «Разведке» она освобождает).`}
+              </p>
+            )}
+
+            {crew.map((toad) =>
+              renderCrewCard(toad, ownActiveExpeditions.length > 0),
+            )}
+          </div>
+        )}
+
+        {/* ВКЛАДКА: все походы колонии — сводка и переход в контур-источник */}
+        {tab === "all" && (
+          <div className="flex flex-col gap-3">
+            <p className="text-2xs leading-snug text-slate-400">
+              Все походы колонии: активные команды и добыча, ждущая разбора.
+              Нажмите на карточку — откроется контур, из которого ушёл поход.
+            </p>
+
+            {expeditions.length === 0 && (
+              <p className="py-3 text-center text-xs text-slate-400">
+                Походов пока нет: соберите команду на вкладке «Поход».
+              </p>
+            )}
+
+            {activeExpeditions.length > 0 && (
+              <div className="flex flex-col gap-2">
+                <p className="ui-kicker">
+                  Активные · {activeExpeditions.length}
+                </p>
+                {activeExpeditions.map((expedition) => {
+                  const sectorDef = getSectorById(expedition.sectorId);
+                  const returning = expedition.phase === "returning";
+                  const progress = returning
+                    ? getReturnProgress(expedition)
+                    : getExpeditionProgress(expedition);
+                  const eta = getExpeditionEtaMs(expedition);
+                  const originRoom = findExpeditionRoom(expedition);
+
+                  return (
+                    <div
+                      key={expedition.id}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => openExpeditionRoom(expedition)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          openExpeditionRoom(expedition);
+                        }
+                      }}
+                      title={`Открыть контур: ${
+                        originRoom?.name ?? "«Разведка»"
+                      }`}
+                      className="w-full cursor-pointer rounded-2xl border border-slate-600/40 bg-slate-900/50 p-3 text-left transition-colors hover:border-cyan-400/50 hover:bg-slate-800/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="min-w-0 truncate text-sm font-bold text-white">
+                          {sectorDef.icon} {sectorDef.name}
+                        </p>
+                        <span
+                          className={`shrink-0 rounded-lg px-2 py-1 text-2xs font-bold ${
+                            returning
+                              ? "bg-blue-900/50 text-blue-200"
+                              : "bg-amber-900/50 text-amber-200"
+                          }`}
+                        >
+                          {returning ? "🏠 возврат" : "🧭 в пути"}
+                        </span>
+                      </div>
+                      <p className="mt-0.5 truncate text-2xs text-slate-400">
+                        🧭 {originRoom?.name ?? "«Разведка» не записана"} ·{" "}
+                        {expedition.team.length} жаб · глубина {sectorDef.depth}
+                      </p>
+                      <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-700">
+                        <div
+                          className={`h-full rounded-full transition-all duration-500 ${
+                            returning ? "bg-blue-400" : "bg-amber-400"
+                          }`}
+                          style={{ width: `${progress * 100}%` }}
+                        />
+                      </div>
+                      <div className="mt-1 flex justify-between text-2xs text-slate-400">
+                        <span>
+                          {returning
+                            ? "путь домой"
+                            : `прогресс ${Math.round(progress * 100)}%`}
+                        </span>
+                        <span>
+                          {returning ? "домой через " : "сектор через "}
+                          {formatDuration(eta)}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {completedExpeditions.length > 0 && (
+              <div className="flex flex-col gap-2">
+                <p className="ui-kicker">
+                  Ждут разбора · {completedExpeditions.length}
+                </p>
+                {completedExpeditions.map((expedition) => {
+                  const sectorDef = getSectorById(expedition.sectorId);
+                  const originRoom = findExpeditionRoom(expedition);
+
+                  return (
+                    <div
+                      key={expedition.id}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => openExpeditionRoom(expedition)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          openExpeditionRoom(expedition);
+                        }
+                      }}
+                      title={`Открыть контур: ${
+                        originRoom?.name ?? "«Разведка»"
+                      }`}
+                      className="w-full cursor-pointer rounded-2xl border border-emerald-500/40 bg-emerald-950/30 p-3 text-left transition-colors hover:border-emerald-400/60 hover:bg-emerald-900/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="min-w-0 truncate text-sm font-bold text-white">
+                          {sectorDef.icon} {sectorDef.name}
+                        </p>
+                        <span className="shrink-0 rounded-lg bg-emerald-900/60 px-2 py-1 text-2xs font-bold text-emerald-200">
+                          🎁 ждёт разбора
+                        </span>
+                      </div>
+                      <p className="mt-0.5 truncate text-2xs text-slate-400">
+                        🧭 {originRoom?.name ?? "«Разведка» не записана"} ·{" "}
+                        {expedition.team.length} жаб
+                      </p>
+                      <p className="mt-1 text-2xs text-slate-300">
+                        🎒{" "}
+                        <CurrencyText
+                          text={getExpeditionLootSummary(expedition)}
+                          iconClassName="h-3 w-3"
+                        />
+                      </p>
+                      <p className="mt-1 text-2xs font-semibold text-emerald-300">
+                        Открыть контур →
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 

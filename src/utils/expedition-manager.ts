@@ -137,6 +137,28 @@ export const getExpeditionStats = (): ExpeditionStats =>
 export const getExpeditionById = (id: string): Expedition | undefined =>
   getExpeditions().find((expedition) => expedition.id === id);
 
+/**
+ * Поход ушёл из этой «Разведки»?
+ *
+ * Сравниваем id гекса, канонический id постройки и старый числовой `Scene.id`:
+ * разные сейвы помнят контур по-разному. Сводка «Все походы» использует это, чтобы
+ * открыть модалку именно того контура, из которого ушла команда.
+ */
+export const isExpeditionFromRoom = (
+  expedition: Expedition,
+  room: { id: string; slotId?: string; sceneId?: number | null },
+): boolean => {
+  const origin = expedition.originRoomId;
+
+  if (origin == null) {
+    return false;
+  }
+
+  return (
+    origin === room.id || origin === room.slotId || origin === room.sceneId
+  );
+};
+
 /** Поход, в котором участвует жаба (или undefined) */
 export const getToadExpedition = (
   toadId: number,
@@ -289,8 +311,8 @@ export const unlockSector = (sectorId: number): ExpeditionActionResult => {
 export const startExpedition = (
   sectorId: number,
   members: ExpeditionMember[],
-  /** Гекс «Разведки», из которого ушла команда: сюда жабы вернутся после похода */
-  originRoomId?: number,
+  /** Контур («Разведка»), из которого ушла команда: сюда жабы вернутся после похода */
+  originRoomId?: number | string,
 ): ExpeditionActionResult => {
   const state = getGameState();
   const sector = getSectorById(sectorId);
@@ -392,7 +414,12 @@ export const startExpedition = (
     updateToadById(
       toad.id,
       {
-        ...getAwayToadUpdate(toad, originRoomId),
+        // Для контура карты (`room.id`) `scene_id` остаётся пустым: жаба в походе,
+        // а не в секторе. Старый числовой `Scene.id` сохраняем как раньше.
+        ...getAwayToadUpdate(
+          toad,
+          typeof originRoomId === "number" ? originRoomId : undefined,
+        ),
         energy: Math.max(0, getToadEnergy(toad) - energyCost),
       },
       true,
@@ -1491,10 +1518,7 @@ const returnTeamToScout = (
     (room) => room.kind === "scout",
   );
   const target =
-    scoutRooms.find(
-      (room) => (room.sceneId ?? room.sceneId) === expedition.originRoomId,
-    ) ??
-    scoutRooms.find((room) => room.sceneId === expedition.originRoomId) ??
+    scoutRooms.find((room) => isExpeditionFromRoom(expedition, room)) ??
     scoutRooms[0] ??
     null;
   /** Карта адресует «Разведку» по гексу: `Toad.scene_id` хранит именно этот id. */

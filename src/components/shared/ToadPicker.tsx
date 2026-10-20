@@ -155,6 +155,11 @@ export interface ToadPickerProps {
   label: string;
   /** Жаба, которая уже стоит в слоте: без неё строка показывает приглашение */
   picked?: Toad | null;
+  /**
+   * Не повторять в строке слота имя и Качество выбранной жабы: их показывает
+   * карточка рядом (`shared/ToadListCard`). Строка остаётся кнопкой «Заменить».
+   */
+  hidePickedDetails?: boolean;
   /** Текст строки, когда жабы в слоте нет */
   placeholder?: string;
   /** Краткая информация о выбранной жабе в строке слота (⚡, проценты роли) */
@@ -184,6 +189,7 @@ export const ToadPicker: React.FC<ToadPickerProps> = ({
   caption,
   label,
   picked,
+  hidePickedDetails = false,
   placeholder = "— выбрать жабу —",
   pickedSummary,
   groups,
@@ -305,9 +311,13 @@ export const ToadPicker: React.FC<ToadPickerProps> = ({
             picked ? "text-slate-100" : "text-slate-400"
           }`}
         >
-          {picked ? picked.name : placeholder}
+          {picked
+            ? hidePickedDetails
+              ? "Заменить"
+              : picked.name
+            : placeholder}
         </span>
-        {picked && (
+        {picked && !hidePickedDetails && (
           <span
             className={`shrink-0 text-2xs ${
               getRarityConfig(picked.genes.rarity).color
@@ -316,7 +326,7 @@ export const ToadPicker: React.FC<ToadPickerProps> = ({
             {getToadRarityLine(picked)}
           </span>
         )}
-        {picked && pickedSummary}
+        {picked && !hidePickedDetails && pickedSummary}
         <span
           className={`shrink-0 text-3xs text-slate-400 transition-transform duration-300 ${
             open ? "rotate-180" : ""

@@ -27,6 +27,7 @@ import {
   getMapBounds,
   getOverviewView,
   getZoomLevels,
+  isAtScreenEdge,
   isZoomedIn,
   ZoomLevels,
 } from "./hex-zoom";
@@ -98,7 +99,10 @@ interface DragState {
   camera: { scale: number; x: number; y: number };
   /** Сектор под пальцем (id) — её же и подсвечиваем. */
   targetRoomId: string | null;
-  /** Камера уже отдалилась, чтобы жабу можно было донести до любого сектора. */
+  /**
+   * Камера уже отдалилась: жабу донесли до края экрана, чтобы она могла уйти
+   * в сектор за кадром. До края зум при переносе не меняется.
+   */
   zoomedOut: boolean;
 }
 
@@ -724,16 +728,23 @@ export default function HexMapCanvas(props: HexMapCanvasProps) {
 
       drag.flock.dragTo(drag.toad.id, point);
 
-      // Жаба покинула родной гекс — отдаляем зум, чтобы её было куда донести
+      // Зум меняем, только когда жабу уже донесли до края экрана: пока она
+      // в середине, приближенный вид остаётся — карта не «прыгает» под рукой.
       if (!drag.zoomedOut) {
-        const source = propsRef.current.rooms.find(
-          (room) => room.id === drag.roomId,
-        );
-        const center = source ? axialToPixel(source.coord, HEX_SIZE) : null;
+        const { scale, x, y } = transformRef.current;
+        const toadScreen = {
+          x: point.x * scale + x,
+          y: point.y * scale + y,
+        };
 
-        if (!center || !pointInHex(point, center, HEX_SIZE * 1.02)) {
-          drag.zoomedOut = true;
-          tweenCamera(getOverviewCamera());
+        if (isAtScreenEdge(toadScreen, app.screen)) {
+          const overview = getOverviewCamera();
+
+          // Только отдаляем: если игрок уже ниже обзорного зума, не приближаем
+          if (scale > overview.scale + 0.001) {
+            drag.zoomedOut = true;
+            tweenCamera(overview);
+          }
         }
       }
 
@@ -760,8 +771,9 @@ export default function HexMapCanvas(props: HexMapCanvasProps) {
 
       const pan = getEdgePanSpeed(drag.local, app.screen);
 
-      if (pan.x !== 0 || pan.y !== 0) {
-        cameraTweenRef.current = null;
+      // Автопанорама не должна перебивать плавное отдаление у края: иначе она
+      // сбрасывает твин на первом же кадре и камера замирает между видами.
+      if ((pan.x !== 0 || pan.y !== 0) && !cameraTweenRef.current) {
         transformRef.current = {
           scale: transformRef.current.scale,
           x: transformRef.current.x + pan.x * deltaMS,

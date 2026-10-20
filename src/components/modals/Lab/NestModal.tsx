@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { EMPTY_COLONY } from "../../../models/colony";
-import { Toad, getRarityConfig } from "../../../models/Toad";
+import { Toad } from "../../../models/Toad";
 import { useColony } from "../../../hooks/use-colony";
 import { useGameState } from "../../../hooks/use-game-state";
 import { useNotifications } from "../../../hooks/use-notification";
@@ -9,7 +9,6 @@ import { useSoundEffects } from "../../../hooks/use-sound-effects";
 import {
   MATING_MAX_MINUTES,
   MATING_MIN_MINUTES,
-  MAX_ENERGY,
   NEST_ROOM_TOAD_SLOTS,
   getBreedPairBiomassCost,
   getEnergyCost,
@@ -36,26 +35,24 @@ import {
   EXPEDITION_TOAD_BUSY_REASON,
   isToadBusyOnExpedition,
 } from "../../../utils/expedition-manager";
-import {
-  CURRENCY_CONFIG,
-  NEST_ROOM_ID,
-  TYPE_ICONS,
-} from "../../../utils/constants";
+import { CURRENCY_CONFIG, NEST_ROOM_ID } from "../../../utils/constants";
 import {
   ASTRO_PRICES,
   acceleratePregnancy,
   getAstroBalance,
   resetBreedCooldown,
 } from "../../../utils/astro-shop";
-import { getToadDisease } from "../../../utils/disease-manager";
 import { completeAchivement } from "../../../backend/achivements-manager";
 import { resolveColonyRooms } from "../../HexMap/colony-build";
 import { ClickButton } from "../../shared/ClickButton";
 import Modal from "../../shared/Header";
 import ModalTabs, { ModalTabItem } from "../../shared/ModalTabs";
+import { ToadListCard } from "../../shared/ToadListCard";
 import { ToadPicker } from "../../shared/ToadPicker";
 import { RoomConfig } from "../../HexMap/rooms-config";
+import { useModal } from "../../ModalContext";
 import RoomDataTab, { ROOM_DATA_TAB, RoomDataTabId } from "../RoomDataTab";
+import { ToadInfo } from "../ToadInfoModal";
 import { useToads } from "../../ToadContext";
 import {
   TOAD_PICKER_REJECTED_GROUP,
@@ -155,8 +152,9 @@ export default function NestModal({
   roomId = NEST_ROOM_ID,
   room,
 }: NestModalProps) {
-  const { allToads, account } = useToads();
+  const { allToads, account, selectToad } = useToads();
   const { addNotification } = useNotifications();
+  const { openModal } = useModal();
   const { playOk, playSuccess, playError } = useSoundEffects();
   const gameState = useGameState();
   const { powerGrid } = useColony();
@@ -296,6 +294,15 @@ export default function NestModal({
         (room) => room.id === toad.scene_id || room.slotId === toad.scene_id,
       )?.name || "Сектор колонии"
     );
+  };
+
+  /**
+   * Открыть карточку жабы поверх репродуктора: модалки складываются в стек,
+   * поэтому «Закрыть» вернёт к тем же слотам и списку головастиков.
+   */
+  const openToadCard = (toad: Toad) => {
+    selectToad(toad.id);
+    openModal(() => <ToadInfo />);
   };
 
   /** Название репродуктора, из которого открыли модалку (базовое или построенное) */
@@ -494,14 +501,8 @@ export default function NestModal({
                       caption={getNestSlotLabel(index)}
                       label={getNestSlotLabel(index)}
                       picked={toad}
+                      hidePickedDetails={Boolean(toad)}
                       placeholder="＋ назначить"
-                      pickedSummary={
-                        toad ? (
-                          <span className="shrink-0 text-2xs text-lime-300">
-                            ⚡{Math.round(getToadEnergy(toad))}
-                          </span>
-                        ) : undefined
-                      }
                       groups={[
                         {
                           label: `Можно взять (${picker.available.length})`,
@@ -519,57 +520,43 @@ export default function NestModal({
                     />
 
                     {toad && (
-                      <>
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-2xs text-lime-300 shrink-0">
-                            ⚡{Math.round(getToadEnergy(toad))}
-                          </span>
-                          {/* Полоска сил: видно, дотянет ли жаба до пары (`getEnergyCost`) */}
-                          <div className="w-full h-1.5 bg-slate-700/60 rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-gradient-to-r from-lime-400 to-emerald-500"
-                              style={{
-                                width: `${Math.min(
-                                  100,
-                                  (getToadEnergy(toad) / MAX_ENERGY) * 100,
-                                )}%`,
-                              }}
-                            />
-                          </div>
-                        </div>
-
-                        <div className="text-2xs text-slate-300 truncate">
-                          {toadStatus(toad)}
-                        </div>
-
-                        {getToadDisease(toad) && (
-                          <div className="text-2xs text-red-300 truncate">
-                            {getToadDisease(toad)?.icon}{" "}
-                            {getToadDisease(toad)?.name}
-                          </div>
-                        )}
-                      </>
-                    )}
-
-                    {toad && (
-                      <div className="flex flex-wrap gap-1.5">
-                        {!toad.mating && (
-                          <ClickButton
-                            onClick={() => handleRelease(toad)}
-                            className="px-2 py-1 rounded-md text-2xs bg-color-main border border-slate-500/50 text-slate-200"
-                          >
-                            Вернуть в биопод
-                          </ClickButton>
-                        )}
-                        {toad.mating && (
-                          <ClickButton
-                            onClick={() => handleAbortMating(toad)}
-                            className="px-2 py-1 rounded-md text-2xs bg-color-main border border-amber-500/50 text-amber-200"
-                          >
-                            Прервать
-                          </ClickButton>
-                        )}
-                      </div>
+                      <ToadListCard
+                        toad={toad}
+                        onOpen={() => openToadCard(toad)}
+                        variant="full"
+                        showHunger={false}
+                        showHp={false}
+                        showEnergy
+                        status={{
+                          icon: toad.mating
+                            ? "🫧"
+                            : toad.pregnancy?.isPregnant
+                              ? "🤰"
+                              : "⏳",
+                          label: toadStatus(toad).trim(),
+                          className:
+                            toad.mating || toad.pregnancy?.isPregnant
+                              ? "text-pink-300"
+                              : "text-slate-300",
+                        }}
+                        actions={
+                          !toad.mating ? (
+                            <ClickButton
+                              onClick={() => handleRelease(toad)}
+                              className="rounded-md border border-slate-500/50 bg-color-main px-2 py-1 text-2xs text-slate-200"
+                            >
+                              Вернуть в биопод
+                            </ClickButton>
+                          ) : (
+                            <ClickButton
+                              onClick={() => handleAbortMating(toad)}
+                              className="rounded-md border border-amber-500/50 bg-color-main px-2 py-1 text-2xs text-amber-200"
+                            >
+                              Прервать
+                            </ClickButton>
+                          )
+                        }
+                      />
                     )}
                   </div>
                 );
@@ -584,25 +571,28 @@ export default function NestModal({
                   </div>
 
                   {extraNestAdults.map((toad) => (
-                    <div
+                    <ToadListCard
                       key={`nest-extra-${toad.id}`}
-                      className="flex items-center justify-between gap-2"
-                    >
-                      <span
-                        className={`text-2xs font-semibold truncate ${
-                          getRarityConfig(toad.genes.rarity).color
-                        }`}
-                      >
-                        {TYPE_ICONS[toad.sex as keyof typeof TYPE_ICONS] ?? "○"}{" "}
-                        {toad.name}
-                      </span>
-                      <ClickButton
-                        onClick={() => handleRelease(toad)}
-                        className="px-2 py-1 rounded-md text-2xs bg-color-main border border-slate-500/50 text-slate-200 shrink-0"
-                      >
-                        Вынести в биопод
-                      </ClickButton>
-                    </div>
+                      toad={toad}
+                      onOpen={() => openToadCard(toad)}
+                      variant="brief"
+                      showHunger={false}
+                      showHp={false}
+                      showEnergy
+                      status={{
+                        icon: "⚠️",
+                        label: "лишняя в репродукторе",
+                        className: "text-red-200",
+                      }}
+                      actions={
+                        <ClickButton
+                          onClick={() => handleRelease(toad)}
+                          className="shrink-0 rounded-lg border border-slate-500/50 bg-color-main px-2 py-1 text-2xs text-slate-200"
+                        >
+                          Вынести в биопод
+                        </ClickButton>
+                      }
+                    />
                   ))}
                 </div>
               )}
@@ -682,22 +672,31 @@ export default function NestModal({
                 <div className="text-2xs text-slate-400 leading-snug">
                   Перенесите их в биопод на карте колонии
                 </div>
-                <div className="flex flex-col gap-1">
+                <div className="space-y-1.5">
                   {nestChildren.map((child) => (
-                    <button
+                    <ToadListCard
                       key={child.id}
-                      type="button"
-                      disabled={(child.hp ?? 1) <= 0}
-                      onClick={() => handleRelease(child)}
-                      className="w-full text-left rounded-lg px-2 py-1 border border-slate-600/50 bg-black/20 text-2xs text-slate-200 hover:border-amber-400/60 transition-all"
-                    >
-                      <span
-                        className={getRarityConfig(child.genes.rarity).color}
-                      >
-                        {child.name}
-                      </span>{" "}
-                      · {toadStatus(child)} · вынести в биопод
-                    </button>
+                      toad={child}
+                      onOpen={() => openToadCard(child)}
+                      variant="full"
+                      showHunger={false}
+                      showHp={false}
+                      showEnergy
+                      status={{
+                        icon: "🐸",
+                        label: toadStatus(child).trim(),
+                        className: "text-amber-200",
+                      }}
+                      actions={
+                        <ClickButton
+                          onClick={() => handleRelease(child)}
+                          disabled={(child.hp ?? 1) <= 0}
+                          className="shrink-0 rounded-lg border border-slate-600/50 bg-color-main px-2 py-1 text-2xs text-slate-200 transition-colors hover:border-amber-400/60 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          Вынести в биопод
+                        </ClickButton>
+                      }
+                    />
                   ))}
                 </div>
               </div>

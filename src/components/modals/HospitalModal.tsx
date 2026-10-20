@@ -2,13 +2,14 @@ import Modal from "../shared/Header";
 import ModalTabs, { ModalTabItem } from "../shared/ModalTabs";
 import { ClickButton } from "../shared/ClickButton";
 import { CurrencyIcon } from "../shared/CurrencyIcon";
-import { HpBar } from "../shared/HpBar";
-import { DiseaseBar } from "../shared/DiseaseBar";
+import { ToadListCard } from "../shared/ToadListCard";
 import { ToadPicker } from "../shared/ToadPicker";
 import { useGameState } from "../../hooks/use-game-state";
 import { useColony } from "../../hooks/use-colony";
 import { useNotifications } from "../../hooks/use-notification";
 import { useRoomPowerTab } from "../../hooks/use-room-power-tab";
+import { useModal } from "../ModalContext";
+import { useToads } from "../ToadContext";
 import { Toad } from "../../models/Toad";
 import { getDiseaseCureCost, getToadDisease } from "../../models/disease";
 import { cureToadForTokens } from "../../utils/disease-manager";
@@ -16,7 +17,6 @@ import { healToad, isToadOnExpedition } from "../../utils/expedition-manager";
 import {
   getHealCost,
   getToadHp,
-  getToadHpStatusLabel,
   getToadMaxHp,
   HP_REGEN_PER_HOUR,
 } from "../../utils/expedition-config";
@@ -38,6 +38,7 @@ import {
 import { canMoveToadToRoom, getToadMoveIssue } from "../HexMap/toad-move-rules";
 import { RoomConfig } from "../HexMap/rooms-config";
 import RoomDataTab, { ROOM_DATA_TAB } from "./RoomDataTab";
+import { ToadInfo } from "./ToadInfoModal";
 
 /**
  * Медотсек 🛏️ — сектор лечения, и модалка у него своя, а не вкладка «Разведки».
@@ -59,8 +60,8 @@ type HospitalTab = "beds" | "patients" | "room-data";
 
 /** Табы Медотсека: лечение — первым, «Данные сектора» — последним (как у всех секторов) */
 const HOSPITAL_TABS: ModalTabItem<HospitalTab>[] = [
-  { id: "beds", label: "🛏️ Койки" },
-  { id: "patients", label: "📋 Пациенты" },
+  { id: "beds", label: "Медотсек" },
+  { id: "patients", label: "Требуется внимание" },
   { ...ROOM_DATA_TAB },
 ];
 
@@ -73,6 +74,8 @@ export default function HospitalModal({ room }: HospitalModalProps) {
   const state = useGameState();
   const { rooms, powerGrid, toadsByRoom, placeToad, releaseToad } = useColony();
   const { addNotification } = useNotifications();
+  const { openModal } = useModal();
+  const { selectToad } = useToads();
   const {
     tab,
     setTab,
@@ -214,6 +217,15 @@ export default function HospitalModal({ room }: HospitalModalProps) {
       content: result.message,
     });
 
+  /**
+   * Открыть карточку жабы поверх Медотсека: модалки складываются в стек, поэтому
+   * «Закрыть» в карточке вернёт игрока к тому же списку пациентов и вкладке.
+   */
+  const openToadCard = (toad: Toad) => {
+    selectToad(toad.id);
+    openModal(() => <ToadInfo />);
+  };
+
   const handleHeal = (toadId: number) => notify(healToad(toadId));
 
   /** Мгновенный курс от болезни за Кваксы — самый дорогой способ, зато сразу */
@@ -266,7 +278,7 @@ export default function HospitalModal({ room }: HospitalModalProps) {
     });
   };
 
-  /** Карточка жабы в списках Медотсека: HP, болезнь, прогноз лечения и кнопки помощи */
+  /** Карточка жабы в списках Медотсека: кратко — имя, редкость, HP и болезнь. */
   const renderCareCard = (toad: Toad) => {
     const maxHp = getToadMaxHp(toad);
     const hp = getToadHp(toad);
@@ -284,7 +296,7 @@ export default function HospitalModal({ room }: HospitalModalProps) {
       : null;
     const affordable = tokens >= healCost;
     const cureAffordable = tokens >= cureCost;
-    /** Что обещает кнопка «быстро в Медотсек»: койку здесь, в другом секторе или отказ */
+    /** Что обещает кнопка «быстро в Медотсек»: койка здесь, в другом секторе или отказ */
     const admitLabel = admission?.room
       ? admission.room.id === room.id
         ? "🛏️ Быстро в Медотсек (сюда)"
@@ -292,29 +304,20 @@ export default function HospitalModal({ room }: HospitalModalProps) {
       : `🛏️ В Медотсек нельзя: ${admission?.issue ?? "некуда"}`;
 
     return (
-      <div
+      <ToadListCard
         key={toad.id}
-        className="bg-color-main rounded-2xl p-3 border border-slate-600/30 flex flex-col gap-1.5"
+        toad={toad}
+        onOpen={() => openToadCard(toad)}
+        variant="brief"
+        showHp
+        diseaseStyle="bar"
+        diseaseInHospital={inBed}
+        status={
+          inBed
+            ? { icon: "🛏️", label: "на койке", className: "text-cyan-300" }
+            : undefined
+        }
       >
-        <div className="flex items-center justify-between">
-          <p className="text-xs font-bold text-white">
-            {toad.name}{" "}
-            <span className="text-2xs font-normal text-slate-400">
-              · {getToadHpStatusLabel(toad)}
-              {disease && ` · ${disease.icon} ${disease.name}`}
-              {inBed && " · на койке"}
-            </span>
-          </p>
-          <span className="text-2xs text-slate-300">
-            {Math.round(hp)}/{maxHp} HP
-          </span>
-        </div>
-
-        <HpBar hp={hp} maxHp={maxHp} />
-
-        {/* Прогресс болезни и остаток срока: на койке отсчёт ускорен */}
-        {disease && <DiseaseBar toad={toad} inHospital={inBed} />}
-
         {wounded && (
           <p className="text-2xs text-slate-400">
             До полного HP:{" "}
@@ -393,7 +396,7 @@ export default function HospitalModal({ room }: HospitalModalProps) {
               : "🚪 Выписать в биопод"}
           </ClickButton>
         )}
-      </div>
+      </ToadListCard>
     );
   };
 
@@ -402,38 +405,10 @@ export default function HospitalModal({ room }: HospitalModalProps) {
       {/* Табы сразу под названием — общий каркас модалок секторов */}
       <ModalTabs tabs={hospitalTabs} active={tab} onChange={setTab} />
 
-      {/* Сводка нужна на всех табах — как кошелёк «Космического рынка» */}
-      <div className="grid grid-cols-3 gap-2 px-1 pb-3 text-center">
-        <div className="bg-color-main rounded-xl py-2 px-1 border border-slate-600/30">
-          <p className="text-2xs text-slate-400">Койки в колонии</p>
-          <p className="text-base font-bold text-white">
-            {patients.length}/{hospitalCapacity}
-          </p>
-        </div>
-        <div className="bg-color-main rounded-xl py-2 px-1 border border-slate-600/30">
-          <p className="text-2xs text-slate-400">Нужна помощь</p>
-          <p className="text-base font-bold text-white">{needingCare.length}</p>
-        </div>
-        <div className="bg-color-main rounded-xl py-2 px-1 border border-slate-600/30">
-          <p className="text-2xs text-slate-400">В запасе</p>
-          <p className="text-base font-bold text-amber-300">
-            <CurrencyIcon currency="tokens" className="h-4 w-4" /> {tokens}
-          </p>
-        </div>
-      </div>
-
       <div className="flex flex-col gap-2 px-1">
         {/* ВКЛАДКА «Койки»: кто лежит в этом Медотсеке и подсадка жаб на лечение */}
         {tab === "beds" && (
           <>
-            <p className="text-2xs leading-snug text-slate-400">
-              Дома жаба восстанавливает всего {HP_REGEN_PER_HOUR} HP в час.
-              Койка в Медотсеке лечит +{HOSPITAL_HP_REGEN_PER_HOUR} HP в час (в{" "}
-              {HOSPITAL_HP_REGEN_PER_HOUR / HP_REGEN_PER_HOUR} раз быстрее), а
-              срок болезни там идёт в {HOSPITAL_DISEASE_SPEED} раза быстрее — и
-              пациент никого не заражает.
-            </p>
-
             <div className="flex items-center justify-between">
               <p className="text-2xs font-bold uppercase tracking-wide text-amber-200">
                 🛏️ В «{room.name}» ({roomToads.length}/
@@ -501,7 +476,7 @@ export default function HospitalModal({ room }: HospitalModalProps) {
               Все раненые и больные жабы колонии в одном списке: отсюда их
               быстро отправляют на койку (в любой Медотсек, где есть место) или
               лечат мгновенно за Кваксы — это самый дорогой способ, зато без
-              ожидания.
+              ожидания. Нажмите на имя жабы, чтобы открыть её карточку.
             </p>
 
             {hospitalRooms.length === 0 && (
