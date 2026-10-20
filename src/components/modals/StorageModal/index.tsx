@@ -139,29 +139,29 @@ const StorageModal: React.FC<{ room?: RoomConfig }> = ({ room }) => {
       storage: { ...current.storage, lootbox: current.storage.lootbox - 1 },
     });
 
-    // Часть 3.7: дубликат вида (кроме эпиков/легендарок) разбирается в крафтовую пыль
-    const isDuplicate =
-      !isHighRarity &&
-      Boolean(randomToad.type) &&
-      (getAchievementState().toads_collection || []).includes(
-        randomToad.type as ToadTypes,
-      );
+    // // Часть 3.7: дубликат вида (кроме эпиков/легендарок) разбирается в крафтовую пыль
+    // const isDuplicate =
+    //   !isHighRarity &&
+    //   Boolean(randomToad.type) &&
+    //   (getAchievementState().toads_collection || []).includes(
+    //     randomToad.type as ToadTypes,
+    //   );
 
-    if (isDuplicate) {
-      const dust = getDuplicateDust(rarity);
-      updateUser({
-        storage: {
-          ...getGameState().user.storage,
-          [Items.craftDust]: (current.storage[Items.craftDust] || 0) + dust,
-        },
-      });
-      playOk();
-      addNotification({
-        type: "success",
-        content: `Дубликат (${toadLabel.toLowerCase()}) разобран на крафтовую пыль: +${dust} ${itemsFull[Items.craftDust].name}`,
-      });
-      return;
-    }
+    // if (isDuplicate) {
+    //   const dust = getDuplicateDust(rarity);
+    //   updateUser({
+    //     storage: {
+    //       ...getGameState().user.storage,
+    //       [Items.craftDust]: (current.storage[Items.craftDust] || 0) + dust,
+    //     },
+    //   });
+    //   playOk();
+    //   addNotification({
+    //     type: "success",
+    //     content: `Дубликат (${toadLabel.toLowerCase()}) разобран на крафтовую пыль: +${dust} ${itemsFull[Items.craftDust].name}`,
+    //   });
+    //   return;
+    // }
 
     addNotification({
       type: "success",
@@ -387,7 +387,9 @@ const StorageModal: React.FC<{ room?: RoomConfig }> = ({ room }) => {
           <div className="flex flex-col gap-5">
             <div className="flex justify-between items-center">
               <h3 className="text-white px-2 font-semibold">Инвентарь</h3>
-              <div className="text-gray-300 text-sm">Свободно: {capacity.free}</div>
+              <div className="text-gray-300 text-sm">
+                Свободно: {capacity.free}
+              </div>
             </div>
 
             {storageItems.length === 0 ? (
@@ -395,7 +397,8 @@ const StorageModal: React.FC<{ room?: RoomConfig }> = ({ room }) => {
                 <div className="text-gray-300 text-4xl mb-3">📦</div>
                 <p className="text-gray-300 text-sm">Полки пусты</p>
                 <p className="text-gray-500 text-xs mt-1">
-                  Корм, батарейки и пигменты появятся здесь после покупок и походов
+                  Корм, батарейки и пигменты появятся здесь после покупок и
+                  походов
                 </p>
               </div>
             ) : (

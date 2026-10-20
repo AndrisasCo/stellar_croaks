@@ -961,7 +961,13 @@ export const processExpeditions = (
 
         if (arrived) {
           expedition.progress = 1;
-          startReturn(expedition, sector, now, false);
+          // Поход идёт по часам, а не по тикам: если игрок был оффлайн, команда
+          // развернулась в момент прибытия в сектор, а не в момент, когда игра
+          // «догнала» поход. Иначе обратный путь стартовал бы только после входа
+          // в игру и всё оффлайн-время сгорало бы.
+          const arrivedAt =
+            expedition.startedAt + sector.durationHours * HOUR_MS;
+          startReturn(expedition, sector, Math.min(now, arrivedAt), false);
           dirty = true;
         }
       }

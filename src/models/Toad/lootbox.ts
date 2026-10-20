@@ -255,37 +255,69 @@ const writePity = (value: number): void => {
   localStorage.setItem(PITY_KEY, String(value));
 };
 
+/**
+ * Базовые шансы редкостей в процентах (сумма — 100).
+ *
+ * Редкий тир поднят с 12% до 22%. Необычные специально оставлены выше редких
+ * (33% против 22%): гарантии по счётчику добавляют редким ~5–6 п.п., и при
+ * равных базовых шансах редкие выпадали бы чаще необычных — это ломало
+ * привычную иерархию редкости.
+ */
+export const LOOTBOX_RARITY_CHANCES: Record<LootboxRarity, number> = {
+  [LootboxRarity.legendary]: 0.5,
+  [LootboxRarity.epic]: 2.5,
+  [LootboxRarity.rare]: 22,
+  [LootboxRarity.uncommon]: 33,
+  [LootboxRarity.common]: 42,
+};
+
+/** Порядок розыгрыша: от самого редкого тира к обычному */
+const LOOTBOX_ROLL_ORDER: LootboxRarity[] = [
+  LootboxRarity.legendary,
+  LootboxRarity.epic,
+  LootboxRarity.rare,
+  LootboxRarity.uncommon,
+  LootboxRarity.common,
+];
+
+/** Редкость по базовым шансам, без учёта гарантий */
+const rollLootboxRarity = (): LootboxRarity => {
+  const percent = Math.random() * 100; // [0, 100)
+  let cumulative = 0;
+
+  for (const rarity of LOOTBOX_ROLL_ORDER) {
+    cumulative += LOOTBOX_RARITY_CHANCES[rarity];
+    if (percent < cumulative) {
+      return rarity;
+    }
+  }
+
+  // Страховка на случай, если шансы в таблице перестанут давать ровно 100%
+  return LootboxRarity.common;
+};
+
 const getToadRarity = (): LootboxRarity => {
   const pityCounter = readPity() + 1;
   writePity(pityCounter);
-
-  const percent = Math.random() * 100; // [0, 100)
 
   if (pityCounter >= 50) {
     writePity(0);
     return LootboxRarity.epic;
   }
 
-  // Гарантированная редкая каждые 10 попыток
+  // Гарантированная редкая не позже 10-й попытки без эпической/легендарной
   if (pityCounter % 10 === 0) {
     return LootboxRarity.rare;
   }
 
-  if (percent < 0.5) {
+  const rarity = rollLootboxRarity();
+
+  // Эпическая или легендарная — сбрасываем счётчик неудач
+  if (rarity === LootboxRarity.epic || rarity === LootboxRarity.legendary) {
     writePity(0);
-    return LootboxRarity.legendary;
   }
-  if (percent < 3) {
-    writePity(0);
-    return LootboxRarity.epic;
-  }
-  if (percent < 15) {
-    return LootboxRarity.rare;
-  }
-  if (percent < 39) {
-    return LootboxRarity.uncommon;
-  }
-  return LootboxRarity.common;
+
+  return rarity;
 };
 
 /**

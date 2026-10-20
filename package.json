@@ -16,6 +16,7 @@
     "verify:platform": "node tmp-verify-platform.mjs",
     "verify:colony": "node tmp-verify-colony-growth.mjs",
     "verify:crew": "node tmp-verify-expedition-crew.mjs",
+    "verify:expedition-offline": "node tmp-verify-expedition-offline.mjs",
     "verify:assets": "node tmp-verify-assets.mjs",
     "verify:place": "node tmp-verify-toad-place.mjs",
     "verify:names": "node tmp-verify-room-names.mjs",
@@ -23,7 +24,7 @@
     "verify:biomass": "node tmp-verify-biomass-sell.mjs",
     "verify:auth": "node tmp-verify-auth.mjs",
     "verify:contour": "node tmp-verify-contour-pass.mjs",
-    "verify": "npm run verify:init-data && npm run verify:stars && npm run verify:platform && npm run verify:colony && npm run verify:crew && npm run verify:assets && npm run verify:place && npm run verify:names && npm run verify:toad-picker && npm run verify:biomass && npm run verify:auth && npm run verify:contour"
+    "verify": "npm run verify:init-data && npm run verify:stars && npm run verify:platform && npm run verify:colony && npm run verify:crew && npm run verify:expedition-offline && npm run verify:assets && npm run verify:place && npm run verify:names && npm run verify:toad-picker && npm run verify:biomass && npm run verify:auth && npm run verify:contour"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.81.0",

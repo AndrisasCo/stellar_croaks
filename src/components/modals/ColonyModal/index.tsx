@@ -95,7 +95,7 @@ const ColonyModal = () => {
   };
 
   return (
-    <Modal title="🏛 Управление колонией">
+    <Modal title=" Управление колонией">
       <div className="flex flex-col gap-3">
         <div className="grid grid-cols-4 gap-1.5">
           <ColonyStat icon="🐸" value={allToads.length} label="жаб" />

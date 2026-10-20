@@ -3,6 +3,7 @@ import ModalTabs, { ModalTabItem } from "../shared/ModalTabs";
 import { ClickButton } from "../shared/ClickButton";
 import { CurrencyIcon } from "../shared/CurrencyIcon";
 import { HpBar } from "../shared/HpBar";
+import { DiseaseBar } from "../shared/DiseaseBar";
 import { ToadPicker } from "../shared/ToadPicker";
 import { useGameState } from "../../hooks/use-game-state";
 import { useColony } from "../../hooks/use-colony";
@@ -308,6 +309,9 @@ export default function HospitalModal({ room }: HospitalModalProps) {
         </div>
 
         <HpBar hp={hp} maxHp={maxHp} />
+
+        {/* Прогресс болезни и остаток срока: на койке отсчёт ускорен */}
+        {disease && <DiseaseBar toad={toad} inHospital={inBed} />}
 
         {wounded && (
           <p className="text-2xs text-gray-400">

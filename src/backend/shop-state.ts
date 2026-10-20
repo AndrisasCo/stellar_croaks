@@ -251,7 +251,7 @@ export const saveShopState = (state: ShopState) => {
   localStorage.setItem(SHOP_STATE_KEY, JSON.stringify(state));
 };
 export const initialItemsAmount = {
-  lootbox: 1,
+  lootbox: 10,
   battery: 2,
   food: 5,
   worms: 10,

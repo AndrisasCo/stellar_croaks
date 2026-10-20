@@ -1,5 +1,6 @@
 import { ColonyState, EMPTY_COLONY } from "../models/colony";
 import { getToadDisease, isToadSick } from "../models/disease";
+import type { DiseaseDef } from "../models/disease";
 import { Toad } from "../models/Toad";
 import {
   getToadHp,
@@ -31,6 +32,9 @@ export const HOSPITAL_ROOM_TOAD_SLOTS = 6;
 export const HOSPITAL_HP_REGEN_PER_HOUR = 24;
 /** Во сколько раз быстрее идёт срок болезни под присмотром Медотсека */
 export const HOSPITAL_DISEASE_SPEED = 3;
+
+/** Час в миллисекундах — для пересчёта срока болезни в прогноз выздоровления */
+const HOUR_MS = 60 * 60 * 1000;
 
 /**
  * id построенных Медотсеков колонии (по карте: их может быть несколько).
@@ -121,6 +125,73 @@ export const getHospitalDiseaseHours = (
   inHospital: boolean,
 ): number =>
   inHospital ? Math.max(0, hoursPassed) * (HOSPITAL_DISEASE_SPEED - 1) : 0;
+
+/** Прогноз выздоровления от кибер-болезни для интерфейса */
+export interface DiseaseRecoveryInfo {
+  /** Текущая болезнь жабы */
+  disease: DiseaseDef;
+  /** Жаба лечится на койке Медотсека: срок болезни ускорен */
+  inHospital: boolean;
+  /** Миллисекунд до выздоровления с учётом ускорения койки */
+  remainingMs: number;
+  /** Прогресс выздоровления, 0–100 */
+  progress: number;
+}
+
+/**
+ * Прогресс болезни и сколько осталось до выздоровления.
+ *
+ * Сохранение помнит только дедлайн (`diseaseUntil`), а койка Медотсека сдвигает его
+ * ближе на каждом часовом тике. Чтобы полоса и отсчёт не «прыгали» раз в час, оставшийся
+ * срок на койке делим на `HOSPITAL_DISEASE_SPEED`: так интерфейс показывает тот же
+ * ускоренный темп, с которым болезнь лечится на самом деле.
+ *
+ * `null` — жаба здорова (болезни нет или срок уже вышел).
+ */
+export const getDiseaseRecoveryInfo = (
+  toad: Toad,
+  inHospital: boolean,
+  now = Date.now(),
+): DiseaseRecoveryInfo | null => {
+  if (!isToadSick(toad, now)) {
+    return null;
+  }
+
+  const disease = getToadDisease(toad);
+  if (!disease) {
+    return null;
+  }
+
+  const until = toad.state?.diseaseUntil ?? 0;
+  const speed = inHospital ? HOSPITAL_DISEASE_SPEED : 1;
+  const remainingMs = Math.max(0, (until - now) / speed);
+  const totalMs = disease.durationHours * HOUR_MS;
+  // Прогресс — доля уже «сгоревшего» срока болезни: на койке она растёт быстрее.
+  const progress =
+    totalMs > 0
+      ? Math.min(100, Math.max(0, 100 - (remainingMs / totalMs) * 100))
+      : 100;
+
+  return { disease, inHospital, remainingMs, progress };
+};
+
+/** «5 ч 12 мин» / «48 мин» / «меньше минуты» — остаток болезни для интерфейса */
+export const formatDiseaseTimeLeft = (remainingMs: number): string => {
+  const totalMinutes = Math.max(0, Math.ceil(remainingMs / 60000));
+
+  if (totalMinutes <= 0) {
+    return "меньше минуты";
+  }
+
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  if (hours <= 0) {
+    return `${minutes} мин`;
+  }
+
+  return minutes > 0 ? `${hours} ч ${minutes} мин` : `${hours} ч`;
+};
 
 /** Название болезни жабы для интерфейса (null — жаба здорова) */
 export const getToadDiseaseLabel = (toad: Toad): string | null => {

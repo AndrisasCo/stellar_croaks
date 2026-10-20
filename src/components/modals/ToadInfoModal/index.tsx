@@ -48,8 +48,11 @@ import {
 import {
   HOSPITAL_DISEASE_SPEED,
   HOSPITAL_HP_REGEN_PER_HOUR,
+  getHospitalRoomIds,
+  isToadInHospital,
 } from "../../../utils/hospital";
 import { ToadAvatar } from "../../shared/ToadAvatar";
+import { DiseaseBar } from "../../shared/DiseaseBar";
 import { ProgressBar } from "./ProgressBar";
 import { StatCard } from "./StatCard";
 import { useToadRelatives } from "./useToadRelatives";
@@ -126,6 +129,13 @@ export const ToadInfo = () => {
   const personality = toad.genes?.personality
     ? personalities[toad.genes.personality]
     : null;
+
+  /**
+   * Кибер-болезнь: на койке Медотсека срок идёт в `HOSPITAL_DISEASE_SPEED` раза
+   * быстрее, поэтому прогресс и прогноз выздоровления считаем с учётом койки.
+   */
+  const hospitalIds = getHospitalRoomIds(getGameState().colony);
+  const inHospital = isToadInHospital(toad, hospitalIds);
 
   /**
    * Дом жабы — её биопод (`homeId`): карточку открывают и с карты, и из списка другого
@@ -740,6 +750,9 @@ export const ToadInfo = () => {
               color={hunger <= PRODUCTION_MIN_HUNGER ? "red" : "green"}
               valueLabel={`${Math.round(hunger)} %`}
             />
+
+            {/* Кибер-болезнь: полоса выздоровления и точный остаток срока */}
+            <DiseaseBar toad={toad} inHospital={inHospital} className="mb-3" />
 
             {growth && (
               <>

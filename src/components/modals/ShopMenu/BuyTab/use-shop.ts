@@ -135,7 +135,7 @@ export const useShop = () => {
 
       name: "Лутбокс",
       rarity: "rare",
-      price: 50,
+      price: 10,
       currency: "astro_quax",
       quantity: 1,
       left: shopState.items[Items.lootbox],

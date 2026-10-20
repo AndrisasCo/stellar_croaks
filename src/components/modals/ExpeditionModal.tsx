@@ -521,7 +521,6 @@ const ExpeditionModal: React.FC<{
   const handleSpeedUp = (id: string) => notify(speedUpReturn(id));
   const handleExtract = (id: string) =>
     notify(extractExpedition(id, addNotification));
-  const handleBuyDispatch = () => notify(buyDispatchOffice());
 
   /**
    * Строка экипажа сектора: кто живёт в «Разведке» и что с ним можно сделать.
@@ -969,7 +968,7 @@ const ExpeditionModal: React.FC<{
                     {!returning && (
                       <ClickButton
                         onClick={() => handleWithdraw(expedition.id)}
-                        className="flex-1 py-2 rounded-xl bg-slate-800/60 hover:bg-slate-700/70 text-gray-200 text-2xs font-bold border border-gray-600/40"
+                        className="flex-1 py-2 rounded-xl bg-red-800/60 hover:bg-red-700/70 text-gray-200 text-2xs font-bold border border-gray-600/40"
                       >
                         ⏪ Отозвать
                       </ClickButton>
@@ -986,12 +985,9 @@ const ExpeditionModal: React.FC<{
                       onClick={() => handleExtract(expedition.id)}
                       className="flex-1 py-2 rounded-xl bg-cyan-900/50 hover:bg-cyan-800/60 text-cyan-100 text-2xs font-bold border border-cyan-500/40"
                     >
-                      🚁 Маяк ({EXTRACTION_ASTRO_COST}{" "}
-                      <CurrencyIcon
-                        currency="astro_quax"
-                        className="h-3 w-3"
-                      />{" "}
-                      / есть {astro})
+                      Закончить немедленно ({EXTRACTION_ASTRO_COST}{" "}
+                      <CurrencyIcon currency="astro_quax" className="h-3 w-3" />
+                      )
                     </ClickButton>
                   </div>
                 </div>
@@ -1263,8 +1259,8 @@ const ExpeditionModal: React.FC<{
                 <p className="text-2xs leading-snug text-lime-300">
                   Поход принесёт не меньше {Math.round(profitNorm)} в{" "}
                   <CurrencyIcon currency="tokens" className="h-3 w-3" />
-                  -эквиваленте: это выгоднее фермы за {awayHours.toFixed(1)} ч
-                  и окупает снаряжение.
+                  -эквиваленте: это выгоднее фермы за {awayHours.toFixed(1)} ч и
+                  окупает снаряжение.
                 </p>
               )}
 

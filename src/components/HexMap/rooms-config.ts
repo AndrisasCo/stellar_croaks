@@ -406,7 +406,7 @@ const CORE_ROOM: RoomConfig = {
   icon: "🏛",
   coord: ORIGIN,
   palette: PALETTES.core,
-  actions: [{ id: "colony", icon: "🏛", title: "Управление колонией" }],
+  actions: [{ id: "colony", icon: "", title: "Управление колонией" }],
   sceneId: null,
 };
 

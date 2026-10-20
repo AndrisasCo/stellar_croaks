@@ -12,6 +12,7 @@
  *   5) правила переноса: лазарет берёт до 6 жаб, принимает выбитых, требует ток;
  *   6) списки лазарета: кто на койках, кому нужна помощь, сколько мест свободно;
  *   7) цены: мгновенное лечение дорогое (2 🔷 за HP, минимум 8), болезнь тем дороже, чем злее.
+ *   8) прогресс болезни: остаток срока дома и на койке, полоса выздоровления и формат отсчёта.
  *
  * Запуск: node tmp-verify-hospital.mjs
  */
@@ -360,7 +361,7 @@ check(
     hospitalRoom,
     atRoom({ roomToads: sixBeds }),
   ).reason,
-  "В лазарете заняты все 6 коек.",
+  "В Медотсеке заняты все 6 коек.",
 );
 
 // Лазарет на дальнем гексе: соседей с током рядом нет
@@ -466,6 +467,61 @@ checkTrue(
 checkTrue(
   "у каждой болезни есть своя цена курса",
   diseaseModel.DISEASES.every((disease) => disease.cureTokens > 0),
+);
+
+console.log("\n[8] Прогресс болезни: полоса и остаток срока");
+console.log("─".repeat(60));
+const sickToad = toad({ id: 1, name: "больная", state: sickState(0, 5) });
+const homeRecovery = hospital.getDiseaseRecoveryInfo(sickToad, false, NOW);
+const bedRecovery = hospital.getDiseaseRecoveryInfo(sickToad, true, NOW);
+
+check("дома до выздоровления 5 ч", homeRecovery.remainingMs, 5 * HOUR_MS);
+check(
+  "дома прогресс 16.7 % (1 ч из 6)",
+  homeRecovery.progress,
+  100 / 6,
+  0.001,
+);
+check(
+  "на койке до выздоровления 1.7 ч (втрое быстрее)",
+  bedRecovery.remainingMs,
+  (5 * HOUR_MS) / 3,
+);
+check(
+  "на койке прогресс 72.2 %",
+  bedRecovery.progress,
+  100 - (5 / 3 / 6) * 100,
+  0.001,
+);
+check(
+  "у здоровой жабы прогресса болезни нет",
+  hospital.getDiseaseRecoveryInfo(toad({ id: 2 }), false, NOW),
+  null,
+);
+check(
+  "просроченная болезнь прогресс не показывает",
+  hospital.getDiseaseRecoveryInfo(sickToad, false, NOW + 6 * HOUR_MS),
+  null,
+);
+check(
+  "формат остатка: часы и минуты",
+  hospital.formatDiseaseTimeLeft(5 * HOUR_MS + 12 * 60000),
+  "5 ч 12 мин",
+);
+check(
+  "формат остатка: ровные часы",
+  hospital.formatDiseaseTimeLeft(2 * HOUR_MS),
+  "2 ч",
+);
+check(
+  "формат остатка: только минуты",
+  hospital.formatDiseaseTimeLeft(48 * 60000),
+  "48 мин",
+);
+check(
+  "формат остатка: ноль",
+  hospital.formatDiseaseTimeLeft(0),
+  "меньше минуты",
 );
 
 console.log("\n" + "═".repeat(60));
