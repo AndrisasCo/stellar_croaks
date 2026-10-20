@@ -238,7 +238,7 @@ export const achievementGroups: AchievementGroup[] = [
               pattern: "imperial_stripes", // императорские полосы
               weight: 22.5,
               speed: 0.8,
-              rarity: 5, // Легендарная качество
+              rarity: 5, // Легендарная Качество
               hungerRate: 0.3, // Ест мало
               fertility: 0.5,
               personality: "imperial",
@@ -258,7 +258,7 @@ export const achievementGroups: AchievementGroup[] = [
         id: "rarity-3",
         icon: "⭐",
         name: "Редкий экземпляр",
-        description: "Вывести жабу качеством 12+",
+        description: "Вывести жабу Качеством 12+",
         completed: false,
         task: { rarity: { min: 12 } },
       },
@@ -266,7 +266,7 @@ export const achievementGroups: AchievementGroup[] = [
         id: "rarity-10",
         icon: "🌟🌟",
         name: "Легенда галактики",
-        description: "Вывести жабу качеством 25+",
+        description: "Вывести жабу Качеством 25+",
         completed: false,
         task: { rarity: { min: 25 } },
       },

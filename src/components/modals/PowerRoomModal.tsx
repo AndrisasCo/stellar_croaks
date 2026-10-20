@@ -40,7 +40,7 @@ import RoomDataTab, { ROOM_DATA_TAB, RoomDataTabId } from "./RoomDataTab";
  * поэтому табов у неё всегда два.
  */
 const HungerBar = ({ value }: { value: number }) => (
-  <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-700/60">
+  <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-700/60">
     <div
       className={`h-full ${
         value > POWER_MIN_HUNGER
@@ -56,7 +56,7 @@ const HungerBar = ({ value }: { value: number }) => (
 type PowerTab = "power" | RoomDataTabId;
 
 const POWER_TABS: ModalTabItem<PowerTab>[] = [
-  { id: "power", label: "⚡ Сектор", color: "text-amber-400" },
+  { id: "power", label: "⚡ Сектор" },
   { ...ROOM_DATA_TAB },
 ];
 
@@ -204,12 +204,12 @@ export default function PowerRoomModal({ room }: { room: RoomConfig }) {
               <span className="font-bold text-white">
                 {powered ? "⚡ Сектор под током" : "🔌 Сектор обесточен"}
               </span>
-              <span className="text-gray-300">
+              <span className="text-slate-300">
                 Ток соседям: {powerGrid.usage[room.id] ?? 0}/
                 {POWER_ROOM_TOAD_SLOTS}
               </span>
             </div>
-            <p className="mt-1 text-2xs leading-snug text-gray-200">
+            <p className="mt-1 text-2xs leading-snug text-slate-200">
               {powered
                 ? "Каждая кормлённая жаба внутри даёт одну единицу тока соседнем секторе."
                 : "Внешнее питание секторе не нужно: посадите взрослых жаб и накормите их — каждая даст одну единицу тока соседнему гексу."}
@@ -217,17 +217,17 @@ export default function PowerRoomModal({ room }: { room: RoomConfig }) {
           </div>
 
           {/* Ёмкость сектора и кормление жаб */}
-          <div className="mb-3 rounded-xl border border-gray-600/40 bg-color-main p-2">
+          <div className="mb-3 rounded-xl border border-slate-600/40 bg-color-main p-2">
             <div className="flex items-center justify-between text-xs">
               <span className="text-amber-200">
                 ⚡ Работающих жаб: {output} из {POWER_ROOM_TOAD_SLOTS}
               </span>
-              <span className="text-gray-300">
+              <span className="text-slate-300">
                 🐸 {roomToads.length}/{POWER_ROOM_TOAD_SLOTS}
               </span>
             </div>
             <div className="mt-2 flex items-center justify-between gap-2">
-              <span className="text-2xs leading-snug text-gray-400">
+              <span className="text-2xs leading-snug text-slate-400">
                 {hungryToads.length > 0
                   ? `Не вырабатывают ток: ${hungryToads.length} (нужна сытость выше ${POWER_MIN_HUNGER})`
                   : "Все жабы сыты и вырабатывают ток"}
@@ -237,7 +237,7 @@ export default function PowerRoomModal({ room }: { room: RoomConfig }) {
                 disabled={roomToads.length === 0 || food < feedCost}
                 className={`shrink-0 rounded-lg px-3 py-1 text-xs font-bold transition-all ${
                   roomToads.length === 0 || food < feedCost
-                    ? "cursor-not-allowed bg-gray-700/60 text-gray-400"
+                    ? "cursor-not-allowed bg-slate-700/60 text-slate-400"
                     : "bg-amber-600 text-white hover:bg-amber-500 active:scale-95"
                 }`}
               >
@@ -250,10 +250,10 @@ export default function PowerRoomModal({ room }: { room: RoomConfig }) {
           {roomToads.length === 0 ? (
             <div className="py-6 text-center">
               <div className="mb-2 text-4xl">⚡</div>
-              <p className="text-sm text-gray-300">
+              <p className="text-sm text-slate-300">
                 В секторе пока никто не работает
               </p>
-              <p className="mt-1 text-2xs text-gray-400">
+              <p className="mt-1 text-2xs text-slate-400">
                 Посадите жаб — по одной на каждого соседа — и кормите их.
               </p>
             </div>
@@ -282,7 +282,7 @@ export default function PowerRoomModal({ room }: { room: RoomConfig }) {
                         >
                           {toad.name}
                         </span>
-                        <span className="shrink-0 text-2xs text-gray-400">
+                        <span className="shrink-0 text-2xs text-slate-400">
                           🍽 {Math.round(toad.state.hunger)}
                         </span>
                       </div>
@@ -290,7 +290,7 @@ export default function PowerRoomModal({ room }: { room: RoomConfig }) {
                     </div>
                     <ClickButton
                       onClick={() => handleRelease(toad)}
-                      className="shrink-0 rounded-lg border border-gray-600/60 px-2 py-1 text-2xs text-gray-300 transition-colors hover:border-rose-400 hover:text-rose-200"
+                      className="shrink-0 rounded-lg border border-slate-600/60 px-2 py-1 text-2xs text-slate-300 transition-colors hover:border-rose-400 hover:text-rose-200"
                     >
                       В биопод
                     </ClickButton>

@@ -27,7 +27,7 @@ export const DissolveBlockedModal = ({
         <h3 className="text-white font-bold text-lg mb-2">
           Диссоциатор недоступен
         </h3>
-        <p className="text-gray-200 text-sm leading-snug">
+        <p className="text-slate-200 text-sm leading-snug">
           Чтобы разобрать жабу на биомассу необходимо построить диссоциатор.
         </p>
         {unpowered && (

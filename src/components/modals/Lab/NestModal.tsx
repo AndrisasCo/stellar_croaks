@@ -65,7 +65,7 @@ import { ProgressBar } from "../ToadInfoModal/ProgressBar";
  * второй — самец. Слот — выпадающий список жаб **своего пола** (`shared/ToadPicker`):
  * тап по строке слота открывает всех, кого можно позвать, — взрослых, не в походе,
  * не выбитых, не больных и без беременности (`breeding-manager.ts` → `getNestSlotCandidates`).
- * У жабы в списке видно её краткую сводку (пол, стадия, силы ⚡, сытость 🍽, качество)
+ * У жабы в списке видно её краткую сводку (пол, стадия, силы ⚡, сытость 🍽, Качество)
  * и где она живёт сейчас, а жаб, которых слот не берёт, можно посмотреть с причиной отказа
  * (переключатель «Не подходят») — чтобы не искать ответ, почему жабы нет в списке.
  *
@@ -169,7 +169,6 @@ export default function NestModal({
     {
       id: "nest",
       label: "🪺 Пары",
-      color: "text-purple-400",
       disabled: Boolean(powerIssue),
       disabledHint: powerIssue ?? undefined,
     },
@@ -427,9 +426,7 @@ export default function NestModal({
       {/* Заголовок */}
       <div className="flex w-full justify-center items-center relative">
         <div className="flex items-center gap-2 pb-4">
-          <h2 className="text-xl font-bold bg-gradient-to-r from-green-400 to-purple-500 bg-clip-text text-transparent">
-            Репродуктор
-          </h2>
+          <h2 className="brand-text text-xl font-bold">Репродуктор</h2>
         </div>
       </div>
 
@@ -442,15 +439,17 @@ export default function NestModal({
         <>
           <div className="flex flex-col gap-3">
             {/* Сводка */}
-            <div className="flex items-center justify-between text-xs bg-color-main rounded-xl px-3 py-2 border border-gray-500/30">
+            <div className="flex items-center justify-between text-xs bg-color-main rounded-xl px-3 py-2 border border-slate-500/30">
               <span className="text-cyan-300">
                 👥 В репродукторе: {nestAdults.length}/{NEST_ROOM_TOAD_SLOTS}
               </span>
               <span className="text-lime-300">🧪 {biomass}</span>
-              <span className="text-purple-300">★ {astro}</span>
+              <span className="text-purple-300">
+                {CURRENCY_CONFIG.astro_quax.icon} {astro}
+              </span>
             </div>
 
-            <p className="text-1xs text-gray-400 text-center leading-snug">
+            <p className="text-1xs text-slate-400 text-center leading-snug">
               Репродуктор — на пару: самка садится в первый слот, самец во
               второй. Посадите пару и нажмите «Начать ухаживание»: ухаживание
               занимает {MATING_MIN_MINUTES}–{MATING_MAX_MINUTES} мин, и только
@@ -466,7 +465,7 @@ export default function NestModal({
                 <span className="text-xs text-purple-200 font-semibold">
                   🪺 Места репродуктора
                 </span>
-                <span className="text-2xs text-gray-400">{nestRoomTitle}</span>
+                <span className="text-2xs text-slate-400">{nestRoomTitle}</span>
               </div>
 
               {slots.map((toad, index) => {
@@ -521,7 +520,7 @@ export default function NestModal({
                             ⚡{Math.round(getToadEnergy(toad))}
                           </span>
                           {/* Полоска сил: видно, дотянет ли жаба до пары (`getEnergyCost`) */}
-                          <div className="w-full h-1.5 bg-gray-700/60 rounded-full overflow-hidden">
+                          <div className="w-full h-1.5 bg-slate-700/60 rounded-full overflow-hidden">
                             <div
                               className="h-full bg-gradient-to-r from-lime-400 to-emerald-500"
                               style={{
@@ -534,7 +533,7 @@ export default function NestModal({
                           </div>
                         </div>
 
-                        <div className="text-2xs text-gray-300 truncate">
+                        <div className="text-2xs text-slate-300 truncate">
                           {toadStatus(toad)}
                         </div>
 
@@ -551,7 +550,7 @@ export default function NestModal({
                       <div className="flex flex-wrap gap-1.5">
                         <ClickButton
                           onClick={() => handleRelease(toad)}
-                          className="px-2 py-1 rounded-md text-2xs bg-color-main border border-gray-500/50 text-gray-200"
+                          className="px-2 py-1 rounded-md text-2xs bg-color-main border border-slate-500/50 text-slate-200"
                         >
                           {toad.mating
                             ? "Прервать и вынести"
@@ -594,7 +593,7 @@ export default function NestModal({
                       </span>
                       <ClickButton
                         onClick={() => handleRelease(toad)}
-                        className="px-2 py-1 rounded-md text-2xs bg-color-main border border-gray-500/50 text-gray-200 shrink-0"
+                        className="px-2 py-1 rounded-md text-2xs bg-color-main border border-slate-500/50 text-slate-200 shrink-0"
                       >
                         Вынести в биопод
                       </ClickButton>
@@ -616,7 +615,7 @@ export default function NestModal({
                 <span className="text-xs text-pink-200 font-semibold">
                   Ухаживание
                 </span>
-                <span className="text-2xs text-gray-400">
+                <span className="text-2xs text-slate-400">
                   {MATING_MIN_MINUTES}–{MATING_MAX_MINUTES} мин
                 </span>
               </div>
@@ -648,7 +647,7 @@ export default function NestModal({
                   className={`w-full rounded-lg px-3 py-2 text-xs border transition-all ${
                     courtship.ready
                       ? "border-pink-500/60 text-pink-100 hover:border-pink-400"
-                      : "opacity-50 cursor-not-allowed border-gray-600/50 text-gray-400"
+                      : "opacity-50 cursor-not-allowed border-slate-600/50 text-slate-400"
                   }`}
                 >
                   Начать ухаживание
@@ -671,11 +670,11 @@ export default function NestModal({
                   <span className="text-xs text-amber-200 font-semibold">
                     🐸 Головастики в репродукторе: {nestChildren.length}
                   </span>
-                  <span className="text-2xs text-gray-400">
+                  <span className="text-2xs text-slate-400">
                     мест: {NEST_ROOM_TOAD_SLOTS}
                   </span>
                 </div>
-                <div className="text-2xs text-gray-400 leading-snug">
+                <div className="text-2xs text-slate-400 leading-snug">
                   Перенесите их в биопод на карте колонии
                 </div>
                 <div className="flex flex-col gap-1">
@@ -685,7 +684,7 @@ export default function NestModal({
                       type="button"
                       disabled={(child.hp ?? 1) <= 0}
                       onClick={() => handleRelease(child)}
-                      className="w-full text-left rounded-lg px-2 py-1 border border-gray-600/50 bg-black/20 text-2xs text-gray-200 hover:border-amber-400/60 transition-all"
+                      className="w-full text-left rounded-lg px-2 py-1 border border-slate-600/50 bg-black/20 text-2xs text-slate-200 hover:border-amber-400/60 transition-all"
                     >
                       <span
                         className={getRarityConfig(child.genes.rarity).color}
@@ -700,15 +699,15 @@ export default function NestModal({
             )}
 
             {/* Цена ухаживания: её списывает кнопка «Начать ухаживание», когда пара готова */}
-            <div className="bg-color-main rounded-xl px-3 py-2 border border-gray-500/30 text-xs flex flex-col gap-1">
+            <div className="bg-color-main rounded-xl px-3 py-2 border border-slate-500/30 text-xs flex flex-col gap-1">
               <div className="flex items-center justify-between">
-                <span className="text-gray-400">
+                <span className="text-slate-400">
                   Энергия пары за ухаживание
                 </span>
                 <span className="text-lime-300">⚡ {pairEnergyCost}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-gray-400">Биомасса за пару</span>
+                <span className="text-slate-400">Биомасса за пару</span>
                 <span
                   className={
                     enoughBiomass ? "text-emerald-300" : "text-red-400"
@@ -717,7 +716,7 @@ export default function NestModal({
                   🧪 {pairBiomassCost}
                 </span>
               </div>
-              <div className="text-2xs text-gray-500 leading-snug">
+              <div className="text-2xs text-slate-500 leading-snug">
                 Списывается один раз — когда репродуктор начинает ухаживание.
                 Отдых после пары считается у каждой жабы отдельно.
               </div>

@@ -15,8 +15,8 @@ import RoomsTab from "./RoomsTab";
 type ColonyTab = "toads" | "rooms";
 
 const COLONY_TABS: ModalTabItem<ColonyTab>[] = [
-  { id: "toads", label: "🐸 Жабы", color: "text-emerald-400" },
-  { id: "rooms", label: "🏗 Секторы", color: "text-cyan-400" },
+  { id: "toads", label: "🐸 Жабы" },
+  { id: "rooms", label: "🏗 Секторы" },
 ];
 
 /** Маленькая цифра сводки: ядро — это в первую очередь пульт колонии, а не список. */
@@ -36,7 +36,7 @@ const ColonyStat = ({
       <span className="mr-1 text-2xs">{icon}</span>
       {value}
     </p>
-    <p className="text-3xs leading-tight text-slate-400">{label}</p>
+    <p className="text-2xs leading-tight text-slate-400">{label}</p>
   </div>
 );
 
@@ -125,7 +125,7 @@ const ColonyModal = () => {
               <p className="text-xs font-semibold text-amber-100">
                 Кормление колонии
               </p>
-              <p className="mt-0.5 text-3xs text-slate-400">
+              <p className="mt-0.5 text-2xs text-slate-400">
                 {feedableToads.length === 0
                   ? "В колонии нет жаб для кормления"
                   : unfedCount > 0
@@ -163,7 +163,7 @@ const ColonyModal = () => {
                 : "Все жабы сыты"}
           </ClickButton>
 
-          <p className="mt-1.5 text-center text-3xs text-slate-400">
+          <p className="mt-1.5 text-center text-2xs text-slate-400">
             {feedableToads.length === 0
               ? "Кормить пока некого."
               : needsFeed && missingFood > 0

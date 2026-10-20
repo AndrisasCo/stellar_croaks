@@ -56,7 +56,7 @@ const SettingsModal: React.FC = () => {
 
   const icon = (
     <svg
-      className="w-6 h-6 text-green-400"
+      className="w-6 h-6 text-cyan-300"
       fill="none"
       stroke="currentColor"
       viewBox="0 0 24 24"
@@ -81,11 +81,11 @@ const SettingsModal: React.FC = () => {
       <Modal icon={icon} title="Настройки">
         <div className="flex flex-col gap-3">
           {/* Настройки музыки */}
-          <div className="bg-color-main rounded-xl py-4 px-2 border border-gray-600/50">
+          <div className="ui-panel p-4">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <svg
-                  className="w-5 h-5 text-green-400"
+                  className="w-5 h-5 text-cyan-300"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -97,16 +97,20 @@ const SettingsModal: React.FC = () => {
                     d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"
                   />
                 </svg>
-                <span className="text-white font-semibold text-sm">
+                <span className="text-sm font-semibold text-slate-100">
                   Фоновая музыка
                 </span>
               </div>
               <button
+                type="button"
+                role="switch"
+                aria-checked={settings.musicEnabled}
+                aria-label="Фоновая музыка"
                 onClick={toggleMusic}
-                className={`w-12 h-6 rounded-full transition-all duration-300 relative ${
+                className={`relative h-6 w-12 rounded-full border border-white/10 transition-all duration-300 ${
                   settings.musicEnabled
-                    ? "bg-green-500 shadow-lg shadow-green-500/30"
-                    : "bg-gray-600"
+                    ? "bg-cyan-500 shadow-lg shadow-cyan-500/30"
+                    : "bg-slate-600"
                 }`}
               >
                 <div
@@ -129,12 +133,12 @@ const SettingsModal: React.FC = () => {
                 onChange={(e) =>
                   handleMusicVolumeChange(parseFloat(e.target.value))
                 }
-                className="flex-1 accent-green-500 h-2 rounded-lg bg-gray-600"
+                className="h-2 flex-1 cursor-pointer rounded-lg bg-slate-700 accent-cyan-400 disabled:cursor-not-allowed disabled:opacity-50"
                 disabled={!settings.musicEnabled}
               />
               <span
-                className={`text-sm w-8 font-medium ${
-                  settings.musicEnabled ? "text-green-400" : "text-gray-500"
+                className={`w-10 text-right text-xs font-semibold tabular-nums ${
+                  settings.musicEnabled ? "text-cyan-200" : "text-slate-500"
                 }`}
               >
                 {Math.round(localMusicVolume * 100)}%
@@ -143,11 +147,11 @@ const SettingsModal: React.FC = () => {
           </div>
 
           {/* Настройки звуковых эффектов */}
-          <div className="bg-color-main rounded-xl py-4 px-2 border border-gray-600/50">
+          <div className="ui-panel p-4">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <svg
-                  className="w-5 h-5 text-blue-400"
+                  className="w-5 h-5 text-cyan-300"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -159,16 +163,20 @@ const SettingsModal: React.FC = () => {
                     d="M15.536 8.464a5 5 0 010 7.072M12 6v12m-3.536-9.536a5 5 0 000 7.072"
                   />
                 </svg>
-                <span className="text-white font-semibold text-sm">
+                <span className="text-sm font-semibold text-slate-100">
                   Звуковые эффекты
                 </span>
               </div>
               <button
+                type="button"
+                role="switch"
+                aria-checked={settings.soundEffectsEnabled}
+                aria-label="Звуковые эффекты"
                 onClick={toggleSoundEffects}
-                className={`w-12 h-6 rounded-full transition-all duration-300 relative ${
+                className={`relative h-6 w-12 rounded-full border border-white/10 transition-all duration-300 ${
                   settings.soundEffectsEnabled
-                    ? "bg-blue-500 shadow-lg shadow-blue-500/30"
-                    : "bg-gray-600"
+                    ? "bg-cyan-500 shadow-lg shadow-cyan-500/30"
+                    : "bg-slate-600"
                 }`}
               >
                 <div
@@ -191,14 +199,14 @@ const SettingsModal: React.FC = () => {
                 onChange={(e) =>
                   handleSFXVolumeChange(parseFloat(e.target.value))
                 }
-                className="flex-1 accent-blue-500 h-2 rounded-lg bg-gray-600"
+                className="h-2 flex-1 cursor-pointer rounded-lg bg-slate-700 accent-cyan-400 disabled:cursor-not-allowed disabled:opacity-50"
                 disabled={!settings.soundEffectsEnabled}
               />
               <span
-                className={`text-sm w-8 font-medium ${
+                className={`w-10 text-right text-xs font-semibold tabular-nums ${
                   settings.soundEffectsEnabled
-                    ? "text-blue-400"
-                    : "text-gray-500"
+                    ? "text-cyan-200"
+                    : "text-slate-500"
                 }`}
               >
                 {Math.round(localSFXVolume * 100)}%
@@ -207,10 +215,10 @@ const SettingsModal: React.FC = () => {
           </div>
 
           {/* Информация о игре */}
-          <div className="bg-color-main rounded-xl py-4 px-2 border border-gray-600/50">
+          <div className="ui-panel p-4">
             <div className="flex items-center gap-2 mb-3">
               <svg
-                className="w-5 h-5 text-purple-400"
+                className="w-5 h-5 text-cyan-300"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -222,28 +230,31 @@ const SettingsModal: React.FC = () => {
                   d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                 />
               </svg>
-              <h3 className="text-white font-semibold px-2 text-sm">Об игре</h3>
+              <h3 className="text-sm font-semibold text-slate-100">Об игре</h3>
             </div>
-            <div className="text-gray-200 text-sm space-y-2">
-              <div className="flex justify-between">
+            <div className="space-y-2 text-sm text-slate-300">
+              <div className="flex justify-between gap-3">
                 <span>Версия:</span>
-                <span className="text-green-400 font-medium">pre-alpha</span>
+                <span className="font-semibold text-cyan-200">pre-alpha</span>
               </div>
 
-              <div className="pt-2 border-t border-gray-600/50 text-center">
-                <span className="text-green-400 font-bold flex items-center justify-between">
-                  Stellar Croak{" "}
-                  <img width={30} height={30} src="/assets/logo.webp" />
-                </span>
+              <div className="flex items-center justify-between border-t border-white/10 pt-2">
+                <span className="brand-text font-bold">Stellar Croak</span>
+                <img
+                  width={30}
+                  height={30}
+                  src="/assets/logo.webp"
+                  alt="Логотип Stellar Croak"
+                />
               </div>
             </div>
           </div>
 
           {/* Кнопка сброса прогресса */}
-          <div className="bg-red-500/10 rounded-xl py-4 px-2 border border-red-500/30">
-            <div className="flex items-center gap-2 mb-3">
+          <div className="ui-panel border-rose-400/30 bg-rose-950/20 p-4">
+            <div className="mb-3 flex items-center gap-2">
               <svg
-                className="w-5 h-5 text-red-400"
+                className="w-5 h-5 text-rose-300"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -255,17 +266,18 @@ const SettingsModal: React.FC = () => {
                   d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
                 />
               </svg>
-              <h3 className="text-white font-semibold px-2 text-sm">
+              <h3 className="text-sm font-semibold text-rose-100">
                 Опасная зона
               </h3>
             </div>
-            <p className="text-gray-200 text-sm mb-3">
+            <p className="mb-3 text-sm text-slate-300">
               Это действие нельзя отменить. Все ваши жабы, биоподы и прогресс
               будут удалены.
             </p>
             <button
+              type="button"
               onClick={handleResetClick}
-              className="w-full bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-500 hover:to-orange-500 text-white font-bold py-3 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 border-2 border-red-400/30 shadow-lg hover:shadow-red-500/25"
+              className="ui-button-danger w-full py-3"
             >
               Начать заново
             </button>
@@ -275,12 +287,17 @@ const SettingsModal: React.FC = () => {
 
       {/* Модальное окно подтверждения сброса */}
       {showResetConfirmation && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className="bg-color-main rounded-2xl border-2 border-red-500/50 p-6 max-w-sm w-full mx-auto">
-            <div className="text-center mb-4">
-              <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 p-4 backdrop-blur-sm">
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="settings-reset-title"
+            className="ui-panel-raised mx-auto w-full max-w-sm border-rose-400/30 p-5"
+          >
+            <div className="mb-4 text-center">
+              <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-rose-500/15">
                 <svg
-                  className="w-8 h-8 text-red-400"
+                  className="w-8 h-8 text-rose-300"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -293,10 +310,13 @@ const SettingsModal: React.FC = () => {
                   />
                 </svg>
               </div>
-              <h3 className="text-white font-bold text-lg mb-2">
+              <h3
+                id="settings-reset-title"
+                className="mb-2 text-lg font-bold text-white"
+              >
                 Сброс прогресса
               </h3>
-              <p className="text-gray-200 text-sm">
+              <p className="text-sm text-slate-300">
                 Вы уверены, что хотите удалить все данные? Это действие нельзя
                 отменить.
               </p>
@@ -304,14 +324,16 @@ const SettingsModal: React.FC = () => {
 
             <div className="flex gap-3">
               <button
+                type="button"
                 onClick={handleCancelReset}
-                className="flex-1 bg-gray-600 hover:bg-gray-500 text-white font-medium py-3 rounded-xl transition-all duration-300"
+                className="ui-button-secondary flex-1 py-3"
               >
                 Отмена
               </button>
               <button
+                type="button"
                 onClick={handleConfirmReset}
-                className="flex-1 bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-500 hover:to-orange-500 text-white font-bold py-3 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95"
+                className="ui-button-danger flex-1 py-3"
               >
                 Удалить всё
               </button>

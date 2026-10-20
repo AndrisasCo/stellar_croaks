@@ -21,7 +21,7 @@ export const HpBar: React.FC<{
 
   return (
     <div
-      className={`h-1.5 w-full bg-gray-700 rounded-full overflow-hidden ${
+      className={`h-1.5 w-full bg-slate-700 rounded-full overflow-hidden ${
         className || ""
       }`}
     >

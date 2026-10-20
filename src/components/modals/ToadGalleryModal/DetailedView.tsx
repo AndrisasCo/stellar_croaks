@@ -54,15 +54,15 @@ const getObtainedByIcon = (obtainedBy?: ToadObtainedBy) => {
 const getRarityStyles = (rarity: string, isUnlocked: boolean) => {
   if (!isUnlocked) {
     return {
-      border: "border-gray-700",
+      border: "border-slate-700",
       bg: "bg-color-main",
       bgLight: "bg-color-main",
-      text: "text-gray-500",
+      text: "text-slate-500",
       glow: "",
-      icon: "text-gray-600",
-      titleColor: "text-gray-500",
-      progressBar: "bg-gray-600",
-      badge: "bg-color-second text-gray-300",
+      icon: "text-slate-600",
+      titleColor: "text-slate-500",
+      progressBar: "bg-slate-600",
+      badge: "bg-color-second text-slate-300",
     };
   }
 
@@ -189,18 +189,18 @@ export const DetailedView: React.FC = ({ selectedItem }) => {
 
           {/* Детали получения */}
           {!selectedItem.isUnlocked && (
-            <div className="bg-black/40 rounded-xl p-4 border border-dashed border-gray-600">
+            <div className="bg-black/40 rounded-xl p-4 border border-dashed border-slate-600">
               <h4 className={`text-sm font-medium mb-2 ${detailStyles.text}`}>
                 Как получить:
               </h4>
 
               {selectedItem.lootboxChanceLevel ? (
-                <div className="mt-2 text-xs text-gray-300">
+                <div className="mt-2 text-xs text-slate-300">
                   Шанс выпадения в лутбоксе:{" "}
                   {getLootboxHint(selectedItem.lootboxChanceLevel)}
                 </div>
               ) : (
-                <p className="text-xs text-gray-200">
+                <p className="text-xs text-slate-200">
                   {getHintText(selectedItem)}
                 </p>
               )}
@@ -215,7 +215,7 @@ export const DetailedView: React.FC = ({ selectedItem }) => {
           {/* Статистика редкости */}
           <div className="grid grid-cols-2 gap-3 text-xs">
             <div className="bg-black/30 rounded p-3">
-              <div className="text-gray-300 mb-1">качество</div>
+              <div className="text-slate-300 mb-1">Качество</div>
               <div className={detailStyles.titleColor}>
                 {selectedItem.rarity === "legendary"
                   ? "Легендарная"
@@ -227,10 +227,10 @@ export const DetailedView: React.FC = ({ selectedItem }) => {
               </div>
             </div>
             <div className="bg-black/30 rounded p-3">
-              <div className="text-gray-300 mb-1">Статус</div>
+              <div className="text-slate-300 mb-1">Статус</div>
               <div
                 className={
-                  selectedItem.isUnlocked ? "text-green-400" : "text-gray-300"
+                  selectedItem.isUnlocked ? "text-green-400" : "text-slate-300"
                 }
               >
                 {selectedItem.isUnlocked ? "✓ В коллекции" : "✗ Не найдена"}

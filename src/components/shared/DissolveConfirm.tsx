@@ -40,7 +40,7 @@ export const DissolveConfirm = ({
             ♻️
           </div>
           <h3 className="text-white font-bold text-lg mb-2">{title}</h3>
-          <p className="text-gray-200 text-sm leading-snug">
+          <p className="text-slate-200 text-sm leading-snug">
             Диссоциатор мгновенно переработает выбранных жаб в биомассу. Жабы
             исчезнут навсегда — вернуть их будет невозможно.
           </p>
@@ -61,7 +61,7 @@ export const DissolveConfirm = ({
                 >
                   {toad.name}
                 </span>
-                <span className="text-gray-400 text-2xs shrink-0">
+                <span className="text-slate-400 text-2xs shrink-0">
                   {toad.stage === "adult" ? "" : "🐛 "}
                   {toad.sex === "neuter" ? "⚪ " : ""}
                 </span>
@@ -91,15 +91,15 @@ export const DissolveConfirm = ({
           </div>
         )}
 
-        <div className="mb-4 flex items-center justify-between rounded-xl bg-gray-600/30 px-3 py-2">
-          <span className="text-gray-200 text-sm">Лаборатория получит</span>
+        <div className="mb-4 flex items-center justify-between rounded-xl bg-slate-600/30 px-3 py-2">
+          <span className="text-slate-200 text-sm">Лаборатория получит</span>
           <span className="text-amber-300 font-bold">+{total} 🧪</span>
         </div>
 
         <div className="flex gap-3">
           <button
             onClick={onCancel}
-            className="flex-1 bg-gray-600 hover:bg-gray-500 text-white font-medium py-3 rounded-xl transition-all duration-300"
+            className="flex-1 bg-slate-600 hover:bg-slate-500 text-white font-medium py-3 rounded-xl transition-all duration-300"
           >
             Отмена
           </button>

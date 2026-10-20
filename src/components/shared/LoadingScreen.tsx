@@ -31,12 +31,12 @@ const LoadingScreen = () => {
   }, []);
 
   return (
-    <div className="fixed inset-0 bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center z-50">
+    <div className="fixed inset-0 flex items-center justify-center bg-[#070c14] z-50">
       {/* Анимированный фон */}
       <div className="absolute inset-0 overflow-hidden">
         {/* Плавающие элементы */}
         <div
-          className="absolute w-4 h-4 bg-green-400/20 rounded-full animate-float-1"
+          className="absolute h-4 w-4 animate-float-1 rounded-full bg-cyan-400/20"
           style={{ top: "20%", left: "10%" }}
         />
         <div
@@ -48,12 +48,12 @@ const LoadingScreen = () => {
           style={{ top: "80%", left: "20%" }}
         />
         <div
-          className="absolute w-5 h-5 bg-blue-400/20 rounded-full animate-float-4"
+          className="absolute h-5 w-5 animate-float-4 rounded-full bg-emerald-400/20"
           style={{ top: "30%", left: "70%" }}
         />
 
         {/* Волны */}
-        <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-green-500/10 to-transparent animate-wave" />
+        <div className="absolute bottom-0 left-0 right-0 h-32 animate-wave bg-gradient-to-t from-cyan-500/10 to-transparent" />
       </div>
 
       {/* Основной контент */}
@@ -77,38 +77,38 @@ const LoadingScreen = () => {
               </div>
 
               {/* Свечение */}
-              <div className="absolute inset-0 w-24 h-24 bg-green-400 rounded-full animate-ping opacity-20" />
+              <div className="absolute inset-0 h-24 w-24 animate-ping rounded-full bg-cyan-400 opacity-20" />
             </div>
 
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-green-400 via-emerald-400 to-purple-500 bg-clip-text text-transparent">
+            <h1 className="brand-text text-4xl font-bold">
               Stellar Croak
             </h1>
           </div>
 
-          <p className="text-gray-300 text-lg">Генетическая лаборатория жаб</p>
+          <p className="text-lg text-slate-300">Генетическая лаборатория жаб</p>
         </div>
 
         {/* Прогресс бар */}
         <div className="max-w-2xl mx-auto mb-6">
-          <div className="bg-color-main rounded-full h-3 overflow-hidden border border-gray-600/50 mb-2">
+          <div className="mb-2 h-3 overflow-hidden rounded-full border border-slate-600/50 bg-slate-950/60">
             <div
-              className="h-full bg-gradient-to-r from-green-400 to-purple-500 rounded-full transition-all duration-300 ease-out shadow-lg shadow-green-500/30"
+              className="brand-bar h-full rounded-full shadow-lg shadow-cyan-500/20 transition-all duration-300 ease-out"
               style={{ width: `${progress}%` }}
             />
           </div>
-          <div className="flex justify-between text-sm text-gray-300">
+          <div className="flex justify-between text-sm text-slate-300">
             <span>Загрузка...</span>
             <span>{Math.min(100, Math.round(progress))}%</span>
           </div>
         </div>
 
         {/* Сообщение о загрузке */}
-        <div className="text-gray-200 text-sm">
+        <div className="text-sm text-slate-200">
           <p>Инициализация генетического коллайдера{dots}</p>
         </div>
 
         {/* Дополнительная информация */}
-        <div className="mt-8 text-xs text-gray-500 space-y-1">
+        <div className="mt-8 space-y-1 text-xs text-slate-500">
           <p>🐸 Создаем идеальную среду для ваших жаб</p>
           <p>⚡ Подготавливаем системы смешивания ДНК</p>
         </div>

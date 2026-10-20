@@ -93,7 +93,7 @@ export default function IncubatorTab() {
   };
 
   return (
-    <div className="relative flex min-h-[260px] flex-1 flex-col overflow-hidden rounded-xl border border-emerald-500/20">
+    <div className="relative flex min-h-[260px] flex-1 flex-col overflow-hidden rounded-xl border border-cyan-400/20">
       {/* Фон инкубатора и силуэт гибрида в колбе — как в прежней отдельной модалке */}
       <div className="pointer-events-none absolute inset-0 bg-[url('/bg/incubator.webp')] bg-center bg-cover bg-no-repeat" />
       <div
@@ -122,9 +122,9 @@ export default function IncubatorTab() {
             )}
 
             {/* Прогресс бар */}
-            <div className="relative bg-color-second mt-6 rounded-xl h-10 mb-4 overflow-hidden border border-gray-600">
+            <div className="relative bg-color-second mt-6 rounded-xl h-10 mb-4 overflow-hidden border border-slate-600">
               <div
-                className="bg-gradient-to-r from-green-400 via-purple-500 to-green-400 h-full rounded-xl transition-all duration-1000 shadow-lg"
+                className="brand-bar h-full rounded-xl shadow-lg transition-all duration-1000"
                 style={{ width: `${activeSlot.isReady ? 100 : slotProgress}%` }}
               />
               <div className="absolute inset-0 flex items-center justify-center">
@@ -139,7 +139,7 @@ export default function IncubatorTab() {
             {activeSlot.isReady && (
               <button
                 onClick={handleCollectChild}
-                className="w-full bg-gradient-to-r mt-auto from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-bold py-3 rounded-xl transition-all duration-300 transform hover:scale-105 border-2 border-white/20 "
+                className="ui-button-primary mt-auto w-full py-3 text-base"
               >
                 <div className="flex items-center justify-center gap-2">
                   {ColliderIcons.arrow}

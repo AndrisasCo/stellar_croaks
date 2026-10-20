@@ -25,16 +25,16 @@ import {
 type AuthMode = "login" | "register";
 
 const TABS = [
-  { id: "login" as AuthMode, label: "Вход", color: "text-green-400" },
-  { id: "register" as AuthMode, label: "Регистрация", color: "text-purple-400" },
+  { id: "login" as AuthMode, label: "Вход" },
+  { id: "register" as AuthMode, label: "Регистрация" },
 ];
 
 const INPUT_CLASS =
-  "w-full rounded-xl border border-gray-600/50 bg-color-second px-4 py-3 text-white placeholder-gray-500 outline-none transition-colors focus:border-green-400";
+  "w-full rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-white placeholder-slate-500 outline-none transition-colors focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20";
 
 const AuthIcon = (
   <svg
-    className="h-6 w-6 text-green-400"
+    className="h-6 w-6 text-cyan-300"
     fill="none"
     stroke="currentColor"
     viewBox="0 0 24 24"
@@ -124,19 +124,19 @@ export const AuthModal: React.FC = () => {
     <Modal icon={AuthIcon} title="Аккаунт">
       {signedIn ? (
         <div className="flex flex-col gap-3">
-          <div className="rounded-xl border border-gray-600/50 bg-color-main px-4 py-3">
-            <div className="text-2xs text-gray-300">Вы вошли как</div>
+          <div className="ui-panel p-4">
+            <div className="text-xs text-slate-300">Вы вошли как</div>
             <div className="truncate text-sm font-semibold text-white">
               {account?.email ?? account?.username ?? "игрок"}
             </div>
             {account?.tgId && (
-              <div className="mt-1 text-2xs text-gray-400">
+              <div className="mt-1 text-xs text-slate-400">
                 Telegram ID: {account.tgId}
               </div>
             )}
           </div>
 
-          <p className="text-2xs leading-tight text-gray-300">
+          <p className="text-xs leading-relaxed text-slate-300">
             Прогресс хранится в облаке: войдите с этой почтой на другом устройстве —
             и колония вернётся к вам.
           </p>
@@ -144,7 +144,7 @@ export const AuthModal: React.FC = () => {
           <ClickButton
             onClick={handleSignOut}
             disabled={busy}
-            className="w-full rounded-xl border-2 border-red-400/30 bg-gradient-to-r from-red-600 to-orange-600 py-3 font-bold text-white shadow-lg transition-all duration-300 hover:from-red-500 hover:to-orange-500 disabled:opacity-60"
+            className="ui-button-danger w-full py-3"
           >
             {busy ? "Выходим..." : "Выйти"}
           </ClickButton>
@@ -162,14 +162,14 @@ export const AuthModal: React.FC = () => {
           />
 
           <form onSubmit={handleSubmit} className="mt-3 flex flex-col gap-3">
-            <p className="text-2xs leading-tight text-gray-300">
+            <p className="text-xs leading-relaxed text-slate-300">
               {mode === "register"
                 ? "Почта и пароль — и колония больше не потеряется вместе с браузером."
                 : "Войдите, чтобы вернуться к своей колонии на любом устройстве."}
             </p>
 
             <label className="flex flex-col gap-1">
-              <span className="text-xs font-semibold text-gray-200">Почта</span>
+              <span className="text-xs font-semibold text-slate-200">Почта</span>
               <input
                 type="email"
                 value={email}
@@ -183,7 +183,7 @@ export const AuthModal: React.FC = () => {
             </label>
 
             <label className="flex flex-col gap-1">
-              <span className="text-xs font-semibold text-gray-200">Пароль</span>
+              <span className="text-xs font-semibold text-slate-200">Пароль</span>
               <input
                 type="password"
                 value={password}
@@ -197,13 +197,13 @@ export const AuthModal: React.FC = () => {
             </label>
 
             {error && (
-              <p className="rounded-lg border border-rose-400/40 bg-rose-500/15 px-3 py-2 text-2xs text-rose-100">
+              <p className="rounded-lg border border-rose-400/40 bg-rose-500/15 px-3 py-2 text-xs text-rose-100">
                 {error}
               </p>
             )}
 
             {message && (
-              <p className="rounded-lg border border-emerald-400/40 bg-emerald-500/15 px-3 py-2 text-2xs text-emerald-100">
+              <p className="rounded-lg border border-emerald-400/40 bg-emerald-500/15 px-3 py-2 text-xs text-emerald-100">
                 {message}
               </p>
             )}
@@ -211,7 +211,7 @@ export const AuthModal: React.FC = () => {
             <ClickButton
               type="submit"
               disabled={busy}
-              className="w-full rounded-xl border-2 border-emerald-400/30 bg-gradient-to-r from-green-600 to-teal-600 py-3 font-bold text-white shadow-lg transition-all duration-300 hover:from-green-500 hover:to-teal-500 disabled:opacity-60"
+              className="ui-button-primary w-full py-3"
             >
               {busy
                 ? "Подождите..."
@@ -223,7 +223,7 @@ export const AuthModal: React.FC = () => {
             <ClickButton
               type="button"
               onClick={closeModal}
-              className="w-full rounded-xl bg-color-second py-3 text-gray-200 transition-colors duration-300 hover:bg-slate-800/70"
+              className="ui-button-secondary w-full py-3"
             >
               Продолжить без аккаунта
             </ClickButton>

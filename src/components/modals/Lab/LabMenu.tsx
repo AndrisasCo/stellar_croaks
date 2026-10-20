@@ -40,7 +40,7 @@ export const ColliderMenu = () => {
     <>
       {/* Заголовок */}
       <div className="flex items-center justify-center gap-3">
-        <h2 className="text-2xl font-bold bg-gradient-to-r from-green-400 to-purple-500 bg-clip-text text-transparent">
+        <h2 className="brand-text text-2xl font-bold">
           Лаборатория
         </h2>
       </div>

@@ -1,6 +1,7 @@
 import { updateToadById, updateUser } from "../backend";
 import { getGameState } from "../backend/localStorage";
 import { Toad } from "../models/Toad";
+import { CURRENCY_CONFIG } from "./constants";
 import { getSceneSickCount, quarantineScene } from "./disease-manager";
 
 /**
@@ -25,7 +26,8 @@ export interface AstroPurchaseResult {
   cured?: number;
 }
 
-export const getAstroBalance = (): number => getGameState().user.astro_quax || 0;
+export const getAstroBalance = (): number =>
+  getGameState().user.astro_quax || 0;
 
 const spendAstro = (amount: number): boolean => {
   const state = getGameState();
@@ -39,7 +41,9 @@ const spendAstro = (amount: number): boolean => {
 
 /** Сброс отдыха жабы за астро-кваксы */
 export const resetBreedCooldown = (toadId: number): AstroPurchaseResult => {
-  const toad: Toad | undefined = getGameState().toads.find((t) => t.id === toadId);
+  const toad: Toad | undefined = getGameState().toads.find(
+    (t) => t.id === toadId,
+  );
 
   if (!toad) {
     return { success: false, message: "Жаба не найдена" };
@@ -51,14 +55,14 @@ export const resetBreedCooldown = (toadId: number): AstroPurchaseResult => {
     const balance = getAstroBalance();
     return {
       success: false,
-      message: `Нужно ${ASTRO_PRICES.resetCooldown} ★, у вас ${balance}`,
+      message: `Нужно ${ASTRO_PRICES.resetCooldown} ${CURRENCY_CONFIG.astro_quax.icon}, у вас ${balance}`,
     };
   }
 
   updateToadById(toadId, { breedCooldownUntil: 0 }, true);
   return {
     success: true,
-    message: `${toad.name} снова полна сил (−${ASTRO_PRICES.resetCooldown} ★)`,
+    message: `${toad.name} снова полна сил`,
   };
 };
 
@@ -81,18 +85,22 @@ export const acceleratePregnancy = (toadId: number): AstroPurchaseResult => {
   if (!spendAstro(ASTRO_PRICES.acceleratePregnancy)) {
     return {
       success: false,
-      message: `Нужно ${ASTRO_PRICES.acceleratePregnancy} ★, у вас ${getAstroBalance()}`,
+      message: `Нужно ${ASTRO_PRICES.acceleratePregnancy} ${CURRENCY_CONFIG.astro_quax.icon}, у вас ${getAstroBalance()}`,
     };
   }
 
   // Ухаживание: за астро-кваксы оно заканчивается сразу — беременность стартует
   // в ближайший тик `processBreeding` (раз в минуту), с обычным уведомлением
   if (mating) {
-    updateToadById(toadId, { mating: { ...mating, startAt: Date.now() } }, true);
+    updateToadById(
+      toadId,
+      { mating: { ...mating, startAt: Date.now() } },
+      true,
+    );
 
     return {
       success: true,
-      message: `Ухаживание ${toad.name} ускорено: беременность вот-вот начнётся (−${ASTRO_PRICES.acceleratePregnancy} ★)`,
+      message: `Ухаживание ${toad.name} ускорено: беременность вот-вот начнётся`,
     };
   }
 
@@ -114,12 +122,12 @@ export const acceleratePregnancy = (toadId: number): AstroPurchaseResult => {
         pregnancyStart: Date.now() - (durationMs - remaining / 2),
       },
     },
-    true
+    true,
   );
 
   return {
     success: true,
-    message: `Инкубация ${toad.name} ускорена вдвое (−${ASTRO_PRICES.acceleratePregnancy} ★)`,
+    message: `Инкубация ${toad.name} ускорена вдвое`,
   };
 };
 
@@ -140,7 +148,7 @@ export const buyQuarantine = (sceneId: number | null): AstroPurchaseResult => {
   if (!spendAstro(ASTRO_PRICES.quarantine)) {
     return {
       success: false,
-      message: `Нужно ${ASTRO_PRICES.quarantine} ★, у вас ${getAstroBalance()}`,
+      message: `Нужно ${ASTRO_PRICES.quarantine} ${CURRENCY_CONFIG.astro_quax.icon}, у вас ${getAstroBalance()}`,
     };
   }
 

@@ -51,7 +51,7 @@ export const DiseaseBar: React.FC<{
         </span>
       </div>
 
-      <div className="h-2 w-full overflow-hidden rounded-full bg-gray-600/50">
+      <div className="h-2 w-full overflow-hidden rounded-full bg-slate-600/50">
         <div
           className="h-2 rounded-full bg-orange-500 transition-all duration-500"
           style={{ width: `${recovery.progress}%` }}

@@ -326,7 +326,7 @@ const LeaderboardModal: React.FC = () => {
 
   const icon = (
     <svg
-      className="w-6 h-6 text-yellow-400"
+      className="w-6 h-6 text-cyan-300"
       fill="none"
       stroke="currentColor"
       viewBox="0 0 24 24"
@@ -363,7 +363,7 @@ const LeaderboardModal: React.FC = () => {
       case "rarity":
         toad = player.rarest_toad;
         value = toad?.genes.rarity || 0;
-        label = "качество";
+        label = "Качество";
         color = isUser ? "text-purple-300" : "text-purple-400";
         break;
       case "weight_max":
@@ -376,7 +376,7 @@ const LeaderboardModal: React.FC = () => {
         toad = player.weight_min_toad;
         value = toad?.genes.weight || 0;
         label = "Размер";
-        color = isUser ? "text-gray-200" : "text-gray-300";
+        color = isUser ? "text-slate-200" : "text-slate-300";
         break;
       case "fertility_max":
         toad = player.fertility_max_toad;
@@ -388,7 +388,7 @@ const LeaderboardModal: React.FC = () => {
         toad = player.fertility_min_toad;
         value = toad?.genes.fertility || 0;
         label = "Фертильность";
-        color = isUser ? "text-gray-200" : "text-gray-300";
+        color = isUser ? "text-slate-200" : "text-slate-300";
         break;
       case "speed_max":
         toad = player.speed_max_toad;
@@ -400,7 +400,7 @@ const LeaderboardModal: React.FC = () => {
         toad = player.speed_min_toad;
         value = toad?.genes.speed || 0;
         label = "Скорость";
-        color = isUser ? "text-gray-200" : "text-gray-300";
+        color = isUser ? "text-slate-200" : "text-slate-300";
         break;
       case "hunger_max":
         toad = player.hunger_max_toad;
@@ -435,7 +435,7 @@ const LeaderboardModal: React.FC = () => {
                 <span className={`font-bold ${color}`}>{value.toFixed(1)}</span>
               </div>
 
-              <span className="text-gray-300 text-sm">{label}</span>
+              <span className="text-slate-300 text-sm">{label}</span>
             </div>
           </div>
         </div>
@@ -461,8 +461,8 @@ const LeaderboardModal: React.FC = () => {
         }}
         className={`flex flex-col items-center py-2 text-xs font-medium transition-all ${
           isActive
-            ? "text-white border-t-2 border-white"
-            : "text-gray-300 hover:text-gray-200"
+            ? "text-cyan-300 border-t-2 border-cyan-400"
+            : "text-slate-300 hover:text-slate-100"
         }`}
         style={{ minWidth: "70px" }}
       >
@@ -475,9 +475,9 @@ const LeaderboardModal: React.FC = () => {
   return (
     <Modal icon={icon} title="Лидерборд">
       {/* Заголовок с редактируемым никнеймом */}
-      <div className=" py-3 px-2 border-b border-gray-700">
+      <div className=" py-3 px-2 border-b border-slate-700">
         <div className="flex items-center justify-between mb-2">
-          <div className="text-yellow-400 text-sm font-bold">
+          <div className="text-cyan-300 text-sm font-bold">
             Рейтинг: {getRank()}
           </div>
 
@@ -497,14 +497,14 @@ const LeaderboardModal: React.FC = () => {
                       handleCancelEdit();
                     }
                   }}
-                  className="bg-color-second outline-none border border-blue-400 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 w-28"
+                  className="bg-color-second outline-none border border-cyan-400 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-cyan-400 w-28"
                   placeholder="Введите ник"
                   autoFocus
                   maxLength={15}
                 />
                 <button
                   onClick={handleSaveUsername}
-                  className="bg-green-600 hover:bg-green-500 text-white p-1 rounded transition-colors"
+                  className="rounded-lg border border-cyan-400/40 bg-cyan-500/20 p-1 text-cyan-200 transition-colors hover:bg-cyan-500/30"
                   title="Сохранить"
                 >
                   <svg
@@ -524,7 +524,7 @@ const LeaderboardModal: React.FC = () => {
               </div>
             ) : (
               <div className="flex items-center gap-1">
-                <span className="text-blue-300 font-semibold text-sm">
+                <span className="text-cyan-300 font-semibold text-sm">
                   {account?.username || "Без имени"}
                 </span>
                 <button
@@ -532,7 +532,7 @@ const LeaderboardModal: React.FC = () => {
                     playClick();
                     setEditingUsername(true);
                   }}
-                  className="text-gray-300 hover:text-blue-400 transition-colors p-0.5 rounded hover:bg-blue-900/20"
+                  className="text-slate-300 hover:text-cyan-300 transition-colors p-0.5 rounded hover:bg-cyan-900/20"
                   title="Изменить никнейм"
                 >
                   <svg
@@ -556,7 +556,7 @@ const LeaderboardModal: React.FC = () => {
       </div>
 
       {/* Горизонтальные табы с прокруткой */}
-      <div className="border-b border-gray-700  ">
+      <div className="border-b border-slate-700  ">
         <HorizontalScroll className="gap-2">
           <TabButton tab="tokens" label="Богатство" />
           <TabButton tab="species" label="Виды" />
@@ -578,7 +578,7 @@ const LeaderboardModal: React.FC = () => {
           <h3 className="text-white px-2 font-semibold text-sm mb-1">
             {getTabTitle()}
           </h3>
-          <p className="text-gray-300 text-xs">
+          <p className="text-slate-300 text-xs">
             <CurrencyText text={getTabDescription()} />
           </p>
         </div>
@@ -596,19 +596,19 @@ const LeaderboardModal: React.FC = () => {
                   ${
                     isUser
                       ? `
-                        bg-gradient-to-r from-blue-900/30 to-purple-900/30 
-                        border-blue-400/50 shadow-md shadow-blue-500/20
+                        bg-gradient-to-r from-cyan-950/40 to-emerald-950/30
+                        border-cyan-300/40 shadow-md shadow-cyan-950/30
                       `
                       : index <= 2
-                        ? "border-yellow-500/30 bg-gradient-to-r from-gray-800 to-yellow-900/10"
-                        : "border-gray-600 bg-color-main"
+                        ? "border-yellow-500/30 bg-gradient-to-r from-slate-800 to-yellow-900/10"
+                        : "border-slate-600 bg-color-main"
                   }
                 `}
               >
                 {isUser && (
                   <>
-                    <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-purple-500/10" />
-                    <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-blue-400 to-purple-400" />
+                    <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 to-emerald-500/10" />
+                    <div className="absolute left-0 top-0 h-0.5 w-full brand-bar" />
                   </>
                 )}
 
@@ -619,14 +619,14 @@ const LeaderboardModal: React.FC = () => {
                         text-md font-bold flex-shrink-0
                         ${
                           isUser
-                            ? "text-blue-400"
+                            ? "text-cyan-300"
                             : index === 0
                               ? "text-yellow-400"
                               : index === 1
-                                ? "text-gray-200"
+                                ? "text-slate-200"
                                 : index === 2
                                   ? "text-orange-400"
-                                  : "text-gray-300"
+                                  : "text-slate-300"
                         }
                       `}
                     >
@@ -638,13 +638,13 @@ const LeaderboardModal: React.FC = () => {
                         <p
                           className={`
                             font-semibold text-sm truncate max-w-[150px]
-                            ${isUser ? "text-blue-300" : "text-white"}
+                            ${isUser ? "text-cyan-200" : "text-white"}
                           `}
                         >
                           {player.username}
                         </p>
                         {isUser && (
-                          <span className="bg-blue-500/20 text-blue-300 px-1.5 py-0.5 rounded-full text-xs font-medium">
+                          <span className="bg-cyan-500/20 text-cyan-200 px-1.5 py-0.5 rounded-full text-xs font-medium">
                             ВЫ
                           </span>
                         )}
@@ -682,7 +682,7 @@ const LeaderboardModal: React.FC = () => {
                             currency="tokens"
                             className="h-3.5 w-3.5"
                           />
-                          <span className="text-gray-300 text-sm ml-2">
+                          <span className="text-slate-300 text-sm ml-2">
                             {player.total_toads} жаб
                           </span>
                         </div>
@@ -700,7 +700,7 @@ const LeaderboardModal: React.FC = () => {
                           </span>
                           <span
                             className={`text-sm ${
-                              isUser ? "text-green-200" : "text-gray-300"
+                              isUser ? "text-green-200" : "text-slate-300"
                             }`}
                           >
                             / {Object.values(ToadTypes).length}
@@ -712,7 +712,7 @@ const LeaderboardModal: React.FC = () => {
 
                   <div
                     className={`text-right text-sm space-y-0.5 flex-shrink-0 ${
-                      isUser ? "text-blue-200" : "text-gray-300"
+                      isUser ? "text-cyan-200" : "text-slate-300"
                     }`}
                   >
                     {activeTab !== "tokens" && activeTab !== "species" && (

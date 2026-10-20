@@ -473,13 +473,13 @@ export default function HexMapScreen() {
           {/* Панель колонии — только сводка: у биоподов больше нет общего «текущего»,
               поэтому про сам биопод рассказывает его гекс (тап по биоподу → список жаб) */}
           <div className="pointer-events-auto min-w-0 rounded-2xl border border-cyan-400/25 bg-slate-950/65 px-3 py-2 text-left shadow-lg backdrop-blur-md">
-            <span className="backgroundDark block text-xl leading-none">
+            <span className="brand-text block text-xl leading-none">
               Stellar Croak
             </span>
-            <span className="mt-1 block text-[10px] leading-tight text-cyan-200/80">
+            <span className="mt-1 block text-2xs leading-tight text-cyan-200/80">
               День {colonyDay} · {clock} · Колония
             </span>
-            <span className="block text-[10px] leading-tight text-cyan-200/60">
+            <span className="block text-2xs leading-tight text-cyan-200/60">
               {allToads.length} жаб ·{" "}
               <span
                 className={
@@ -495,7 +495,7 @@ export default function HexMapScreen() {
           <ClickButton
             title="Меню колонии"
             onClick={() =>
-              openModal(() => <BurgerMenu />, { className: "md:max-w-lg" })
+              openModal(() => <BurgerMenu />, { className: "md:max-w-3xl" })
             }
             className="pointer-events-auto rounded-xl border-2 border-purple-300/70 bg-slate-950/65 p-2 text-purple-200 backdrop-blur-md duration-300 active:scale-95"
           >
@@ -504,13 +504,13 @@ export default function HexMapScreen() {
         </div>
 
         {/* Ресурсы колонии — плавающие чипы поверх карты; кормление живёт в ядре */}
-        <div className="pointer-events-none flex w-16 flex-col gap-1.5">
+        <div className="pointer-events-none flex w-[4.5rem] flex-col gap-1.5">
           {resources.map((item) => (
             <div
               key={item.key}
-              className={`flex items-center gap-1 rounded-lg border border-white/5 bg-slate-950/55 px-2 py-1 text-[11px] font-semibold backdrop-blur-md ${item.tone}`}
+              className={`flex items-center gap-1 rounded-lg border border-white/5 bg-slate-950/55 px-2 py-1 text-2xs font-semibold backdrop-blur-md ${item.tone}`}
             >
-              <span className="flex h-3.5 w-3.5 items-center justify-center text-[12px] leading-none">
+              <span className="flex h-4 w-4 items-center justify-center text-xs leading-none">
                 {item.icon}
               </span>
               <span className="tabular-nums">{item.value}</span>
@@ -520,7 +520,7 @@ export default function HexMapScreen() {
       </header>
 
       {/* Подсказка по управлению картой — зависит от текущего вида */}
-      <div className="pointer-events-none absolute bottom-3 left-3 z-20 max-w-[55%] text-[10px] leading-tight text-cyan-100/40">
+      <div className="pointer-events-none absolute bottom-3 left-3 z-20 max-w-[55%] text-2xs leading-snug text-cyan-100/50">
         {zoomedIn
           ? "Приближенный вид: тап по жабе — её карточка, тап по гексу — сектор. Удержите жабу, чтобы перенести её в другой сектор."
           : "Обзорный вид: тап по секторе — её интерфейс, двойной тап — приблизиться к гексу, удержание жабы — перенос. Свободный гекс — застройка: любой сектор на любом гексе."}

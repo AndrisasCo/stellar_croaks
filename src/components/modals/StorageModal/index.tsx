@@ -91,7 +91,6 @@ const StorageModal: React.FC<{ room?: RoomConfig }> = ({ room }) => {
     {
       id: "items",
       label: "📦 Полки",
-      color: "text-blue-400",
       disabled: Boolean(powerIssue),
       disabledHint: powerIssue ?? undefined,
     },
@@ -303,7 +302,7 @@ const StorageModal: React.FC<{ room?: RoomConfig }> = ({ room }) => {
   // Функция для получения цвета редкости предмета
   const getItemRarityColor = (rarity: StorageItem["rarity"]): string => {
     const colors = {
-      common: "text-gray-300",
+      common: "text-slate-300",
       uncommon: "text-green-400",
       rare: "text-blue-400",
       epic: "text-purple-400",
@@ -331,7 +330,7 @@ const StorageModal: React.FC<{ room?: RoomConfig }> = ({ room }) => {
 
   const icon = (
     <svg
-      className="w-6 h-6 text-blue-400"
+      className="w-6 h-6 text-cyan-300"
       fill="none"
       stroke="currentColor"
       viewBox="0 0 24 24"
@@ -358,10 +357,10 @@ const StorageModal: React.FC<{ room?: RoomConfig }> = ({ room }) => {
       {tab === "items" && (
         <>
           {/* Полки: сколько места занято и откуда берётся вместимость */}
-          <div className="mb-3 rounded-xl border border-blue-500/30 bg-blue-950/20 p-3">
+          <div className="mb-3 rounded-xl border border-cyan-400/25 bg-cyan-950/15 p-3">
             <div className="mb-2 flex items-center justify-between text-sm">
-              <span className="font-semibold text-blue-200">📦 Полки</span>
-              <span className="tabular-nums text-gray-200">
+              <span className="font-semibold text-cyan-200">📦 Полки</span>
+              <span className="tabular-nums text-slate-200">
                 {capacity.used} / {capacity.capacity}
               </span>
             </div>
@@ -372,12 +371,12 @@ const StorageModal: React.FC<{ room?: RoomConfig }> = ({ room }) => {
                     ? "bg-rose-500"
                     : filledPercent > 75
                       ? "bg-amber-500"
-                      : "bg-blue-500"
+                      : "brand-bar"
                 }`}
                 style={{ width: `${filledPercent}%` }}
               />
             </div>
-            <p className="mt-2 text-2xs leading-snug text-gray-300">
+            <p className="mt-2 text-2xs leading-snug text-slate-300">
               Складов в колонии: {capacity.rooms} — каждый даёт +
               {STORAGE_CAPACITY_PER_ROOM} к вместимости. Новый склад — гекс «📦
               Склад» на карте.
@@ -387,32 +386,32 @@ const StorageModal: React.FC<{ room?: RoomConfig }> = ({ room }) => {
           <div className="flex flex-col gap-5">
             <div className="flex justify-between items-center">
               <h3 className="text-white px-2 font-semibold">Инвентарь</h3>
-              <div className="text-gray-300 text-sm">
+              <div className="text-slate-300 text-sm">
                 Свободно: {capacity.free}
               </div>
             </div>
 
             {storageItems.length === 0 ? (
               <div className="text-center py-8">
-                <div className="text-gray-300 text-4xl mb-3">📦</div>
-                <p className="text-gray-300 text-sm">Полки пусты</p>
-                <p className="text-gray-500 text-xs mt-1">
+                <div className="text-slate-300 text-4xl mb-3">📦</div>
+                <p className="text-slate-200 text-sm">Полки пусты</p>
+                <p className="text-slate-400 text-xs mt-1">
                   Корм, батарейки и пигменты появятся здесь после покупок и
                   походов
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
                 {storageItems.map((item) => (
                   <div
                     key={item.id}
                     className={`relative rounded-xl p-3 border transition-all cursor-pointer group ${getItemRarityBg(
                       item.rarity,
-                    )} border-gray-600/50 hover:border-blue-500/50`}
+                    )} border-slate-600/50 hover:border-cyan-400/50`}
                     onClick={item.onClick}
                   >
                     {/* Количество */}
-                    <div className="absolute top-0 right-0 bg-blue-600 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">
+                    <div className="absolute top-0 right-0 bg-cyan-600 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">
                       {item.quantity}
                     </div>
 
@@ -431,7 +430,7 @@ const StorageModal: React.FC<{ room?: RoomConfig }> = ({ room }) => {
                       >
                         {item.name}
                       </div>
-                      <div className="text-gray-300 text-xs leading-tight">
+                      <div className="text-slate-300 text-xs leading-tight">
                         {item.description}
                       </div>
                     </div>

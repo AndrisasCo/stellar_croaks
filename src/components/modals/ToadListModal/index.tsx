@@ -54,8 +54,8 @@ const TOAD_LIST_TABS_ALWAYS_ALLOWED: readonly ToadListTab[] = ["toads"];
 
 /** Табы биопода без «Данных сектора»: список жаб и статистика биопода */
 const TOAD_LIST_TABS: ModalTabItem<ToadListTab>[] = [
-  { id: "toads", label: "🐸 Жабы", color: "text-emerald-400" },
-  { id: "stats", label: "📊 Статистика", color: "text-amber-400" },
+  { id: "toads", label: "🐸 Жабы" },
+  { id: "stats", label: "📊 Статистика" },
 ];
 
 const ToadListModal: React.FC<{
@@ -323,7 +323,7 @@ const ToadListModal: React.FC<{
 
   const icon = (
     <svg
-      className="w-6 h-6 text-green-400"
+      className="w-6 h-6 text-cyan-400"
       fill="none"
       stroke="currentColor"
       viewBox="0 0 24 24"
@@ -382,7 +382,7 @@ const ToadListModal: React.FC<{
           остаётся над телом и не зависит от выбранного таба. */}
       <div className="px-1 pb-3 pt-3 flex items-center gap-2">
         <div className="flex items-center gap-1">
-          <span className="text-xs font-medium text-gray-300 [-webkit-text-fill-color:currentColor]">
+          <span className="text-xs font-medium text-slate-300 [-webkit-text-fill-color:currentColor]">
             {toads.length} / {scene?.capacity ?? 0} жаб
           </span>
         </div>
@@ -435,8 +435,8 @@ const ToadListModal: React.FC<{
               onClick={() => setViewMode("detailed")}
               className={`px-3 py-1 rounded-md h-min text-xs font-medium transition-all ${
                 viewMode === "detailed"
-                  ? "bg-green-500 text-white"
-                  : "bg-color-second text-gray-200 hover:text-white"
+                  ? "bg-cyan-500/20 text-cyan-200"
+                  : "bg-color-second text-slate-200 hover:text-white"
               }`}
               title="Подробный вид"
             >
@@ -446,8 +446,8 @@ const ToadListModal: React.FC<{
               onClick={() => setViewMode("compact")}
               className={`px-3 py-1 rounded-md h-min text-xs font-medium transition-all ${
                 viewMode === "compact"
-                  ? "bg-blue-500 text-white"
-                  : "bg-color-second text-gray-200 hover:text-white"
+                  ? "bg-cyan-500/20 text-cyan-200"
+                  : "bg-color-second text-slate-200 hover:text-white"
               }`}
               title="Компактный вид"
             >
@@ -456,7 +456,7 @@ const ToadListModal: React.FC<{
           </div>
           {/* Панель управления выделением (только для компактного режима) */}
           {viewMode === "compact" && (
-            <div className="bg-color-main rounded-lg p-3 mb-4 border border-gray-600/50">
+            <div className="bg-color-main rounded-lg p-3 mb-4 border border-slate-600/50">
               <div className="flex items-center justify-between relative">
                 <div className="text-sm text-white">
                   Выбрано:{" "}
@@ -467,7 +467,7 @@ const ToadListModal: React.FC<{
                   {/* Выделить все */}
                   <button
                     onClick={selectAll}
-                    className="px-2 py-1 bg-blue-500/20 text-blue-300 rounded-lg text-xs font-medium transition-all border border-blue-500/30 hover:bg-blue-500/30"
+                    className="rounded-lg border border-cyan-400/30 bg-cyan-500/15 px-2 py-1 text-xs font-medium text-cyan-200 transition-colors hover:bg-cyan-500/25"
                     title="Выделить все"
                   >
                     ▼
@@ -476,7 +476,7 @@ const ToadListModal: React.FC<{
                   {/* Отменить выделение */}
                   <button
                     onClick={clearSelection}
-                    className="px-2 py-1 bg-gray-500/20 text-gray-200 rounded-lg text-xs font-medium transition-all border border-gray-500/30 hover:bg-gray-500/30"
+                    className="px-2 py-1 bg-slate-500/20 text-slate-200 rounded-lg text-xs font-medium transition-all border border-slate-500/30 hover:bg-slate-500/30"
                     title="Отменить выделение"
                   >
                     ✕
@@ -495,7 +495,7 @@ const ToadListModal: React.FC<{
                   <div className="">
                     <button
                       onClick={() => setShowMoveTooltip(!showMoveTooltip)}
-                      className="px-3 py-1 bg-purple-500/20 text-purple-300 rounded-lg text-xs font-medium transition-all border border-purple-500/30 hover:bg-purple-500/30"
+                      className="rounded-lg border border-cyan-400/30 bg-cyan-500/15 px-3 py-1 text-xs font-medium text-cyan-200 transition-colors hover:bg-cyan-500/25"
                       title="Переместить выделенных"
                     >
                       🏠
@@ -515,7 +515,7 @@ const ToadListModal: React.FC<{
                               <button
                                 key={s.id}
                                 onClick={() => moveSelected(s.id)}
-                                className="w-full text-left p-2  text-xs truncate border-b-[1px] border-gray-500/10"
+                                className="w-full text-left p-2  text-xs truncate border-b-[1px] border-slate-500/10"
                               >
                                 🏠 {s.name}
                               </button>
@@ -533,13 +533,13 @@ const ToadListModal: React.FC<{
           <div className="px-1">
             {filteredAndSortedToads.length === 0 ? (
               <div className="text-center py-8">
-                <div className="text-gray-300 text-4xl mb-3">🐸</div>
-                <p className="text-gray-300 text-sm">
+                <div className="text-slate-300 text-4xl mb-3">🐸</div>
+                <p className="text-slate-300 text-sm">
                   {toads.length === 0
                     ? "Пока нет жаб в коллекции"
                     : "Жабы не найдены"}
                 </p>
-                <p className="text-gray-500 text-xs mt-1">
+                <p className="text-slate-500 text-xs mt-1">
                   {toads.length === 0
                     ? "Приобретите жаб на рынке"
                     : "Измените фильтры для отображения"}
@@ -625,37 +625,37 @@ const ToadListModal: React.FC<{
           </div>
 
           {/* Подвал с статистикой */}
-          <div className="border-t border-gray-700/50 py-3 px-2 bg-gray-900/50 mt-3">
+          <div className="border-t border-slate-700/50 py-3 px-2 bg-slate-900/50 mt-3">
             <div className="grid grid-cols-5 gap-1 text-center text-xs mb-2">
               <div>
                 <div className="text-green-400 font-bold">
                   {groupedToads.common.length}
                 </div>
-                <div className="text-gray-300 text-2xs">Обычные</div>
+                <div className="text-slate-300 text-2xs">Обычные</div>
               </div>
               <div>
                 <div className="text-blue-400 font-bold">
                   {groupedToads.uncommon.length}
                 </div>
-                <div className="text-gray-300 text-2xs">Необычные</div>
+                <div className="text-slate-300 text-2xs">Необычные</div>
               </div>
               <div>
                 <div className="text-purple-400 font-bold">
                   {groupedToads.rare.length}
                 </div>
-                <div className="text-gray-300 text-2xs">Редкие</div>
+                <div className="text-slate-300 text-2xs">Редкие</div>
               </div>
               <div>
                 <div className="text-orange-400 font-bold">
                   {groupedToads.epic.length}
                 </div>
-                <div className="text-gray-300 text-2xs">Эпические</div>
+                <div className="text-slate-300 text-2xs">Эпические</div>
               </div>
               <div>
                 <div className="text-yellow-400 font-bold">
                   {groupedToads.legendary.length}
                 </div>
-                <div className="text-gray-300 text-2xs">Легендарные</div>
+                <div className="text-slate-300 text-2xs">Легендарные</div>
               </div>
             </div>
 
@@ -665,24 +665,24 @@ const ToadListModal: React.FC<{
                 <div className="text-green-400 font-bold">
                   {hungerStats.wellFed}
                 </div>
-                <div className="text-gray-300 text-2xs">Сытые</div>
+                <div className="text-slate-300 text-2xs">Сытые</div>
               </div>
               <div>
                 <div className="text-yellow-400 font-bold">
                   {hungerStats.normal}
                 </div>
-                <div className="text-gray-300 text-2xs">Норма</div>
+                <div className="text-slate-300 text-2xs">Норма</div>
               </div>
               <div>
                 <div className="text-red-400 font-bold">
                   {hungerStats.starving}
                 </div>
-                <div className="text-gray-300 text-2xs">Голодные</div>
+                <div className="text-slate-300 text-2xs">Голодные</div>
               </div>
             </div>
 
             {/* Места в биоподах: склада жаб нет, поэтому «дом» — только биоподы */}
-            <div className="mt-2 flex items-center justify-between text-2xs text-gray-300 px-2">
+            <div className="mt-2 flex items-center justify-between text-2xs text-slate-300 px-2">
               <span>
                 🏠 Мест в биоподах: {housing.used} / {housing.capacity}{" "}
                 (биоподов: {housing.enclosures})
@@ -715,19 +715,19 @@ const ToadListModal: React.FC<{
           stats={
             <div className="grid grid-cols-3 gap-1.5 text-center text-2xs">
               <div className="rounded-lg bg-slate-900/40 px-1 py-1">
-                <p className="text-gray-400">🐸 В биоподе</p>
+                <p className="text-slate-400">🐸 В биоподе</p>
                 <p className="font-bold text-white">
                   {toads.length}/{scene?.capacity ?? 0}
                 </p>
               </div>
               <div className="rounded-lg bg-slate-900/40 px-1 py-1">
-                <p className="text-gray-400">🏠 Мест в колонии</p>
+                <p className="text-slate-400">🏠 Мест в колонии</p>
                 <p className="font-bold text-white">
                   {housing.used}/{housing.capacity}
                 </p>
               </div>
               <div className="rounded-lg bg-slate-900/40 px-1 py-1">
-                <p className="text-gray-400">🍽 Автокормушка</p>
+                <p className="text-slate-400">🍽 Автокормушка</p>
                 <p className="font-bold text-white">
                   {hasAutoFeeder ? "есть" : "нет"}
                 </p>

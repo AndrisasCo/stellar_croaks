@@ -16,9 +16,9 @@ import { ClickButton } from "./ClickButton";
  * **свои правила** (кого вообще можно взять и почему нет), а вид строки, сортировка, краткая
  * информация и поведение списка — здесь, одни на всех.
  *
- * Строка слота — кнопка: жаба в слоте (имя, качество, `pickedSummary`) или приглашение; тап
+ * Строка слота — кнопка: жаба в слоте (имя, Качество, `pickedSummary`) или приглашение; тап
  * раскрывает панель. В строке списка у каждой жабы одна и та же краткая информация
- * (`utils/toad-picker.ts` → `getToadPickerBrief`: пол, стадия, силы ⚡ и сытость 🍽), качество
+ * (`utils/toad-picker.ts` → `getToadPickerBrief`: пол, стадия, силы ⚡ и сытость 🍽), Качество
  * строкой и место в колонии (📍, если место передало `locationOf`), а ниже — своя заметка
  * слота (сила роли, готовность к паре) и, если нужно, полоска-показатель.
  *
@@ -35,7 +35,7 @@ import { ClickButton } from "./ClickButton";
 export interface ToadPickerItem {
   toad: Toad;
   /**
-   * Место в списке: больше — выше (качество, сила роли, сытость).
+   * Место в списке: больше — выше (Качество, сила роли, сытость).
    * Без места строка остаётся там, куда её поставил слот (порядок не переставляется).
    */
   rank?: number;
@@ -70,7 +70,7 @@ const getMeterColor = (percent: number): string =>
       ? "bg-amber-400"
       : "bg-red-400";
 
-/** Строка жабы в раскрытом списке: имя, качество, краткая сводка и место в колонии */
+/** Строка жабы в раскрытом списке: имя, Качество, краткая сводка и место в колонии */
 const ToadPickerRow: React.FC<{
   item: ToadPickerItem;
   /** Название слота — идёт в подсказку строки */
@@ -101,7 +101,7 @@ const ToadPickerRow: React.FC<{
           ? `${toad.name}: ${item.reason}`
           : `Взять ${toad.name} в «${label}»`
       }
-      className={`flex w-full items-center gap-2 border-b border-gray-700/30 px-2 py-1.5 text-left transition-colors duration-300 last:border-0 ${
+      className={`flex w-full items-center gap-2 border-b border-slate-700/30 px-2 py-1.5 text-left transition-colors duration-300 last:border-0 ${
         blocked ? "cursor-not-allowed opacity-60" : tone
       }`}
     >
@@ -109,7 +109,7 @@ const ToadPickerRow: React.FC<{
         <div className="flex items-center justify-between gap-2">
           <span
             className={`truncate text-2xs font-semibold ${
-              blocked ? "text-gray-400" : "text-gray-100"
+              blocked ? "text-slate-400" : "text-slate-100"
             }`}
           >
             {getToadSexIcon(toad.sex)} {toad.name}
@@ -119,7 +119,7 @@ const ToadPickerRow: React.FC<{
           </span>
         </div>
 
-        <div className="flex items-center gap-1 text-3xs text-gray-400">
+        <div className="flex items-center gap-1 text-2xs text-slate-400">
           <div className="truncate">
             {blocked ? item.reason : getToadPickerBrief(toad)}
           </div>
@@ -134,7 +134,7 @@ const ToadPickerRow: React.FC<{
           <p className="text-2xs font-bold text-amber-200">
             {item.meter.label}
           </p>
-          <div className="mt-0.5 h-1 w-full overflow-hidden rounded-full bg-gray-700">
+          <div className="mt-0.5 h-1 w-full overflow-hidden rounded-full bg-slate-700">
             <div
               className={`h-full rounded-full ${getMeterColor(percent)}`}
               style={{ width: `${percent}%` }}
@@ -290,19 +290,19 @@ export const ToadPicker: React.FC<ToadPickerProps> = ({
         }
         className={`flex w-full items-center gap-2 rounded-lg border px-2 py-1.5 transition-colors duration-300 ${
           disabled
-            ? "cursor-not-allowed border-gray-600/30 opacity-60"
+            ? "cursor-not-allowed border-slate-600/30 opacity-60"
             : open
               ? "border-amber-400/60 bg-slate-800/90"
-              : "border-gray-600/40 bg-slate-800/70 hover:bg-slate-700/70"
+              : "border-slate-600/40 bg-slate-800/70 hover:bg-slate-700/70"
         }`}
       >
         {icon && <span className="shrink-0 text-2xs">{icon}</span>}
         {caption && (
-          <span className="shrink-0 text-2xs text-gray-400">{caption}</span>
+          <span className="shrink-0 text-2xs text-slate-400">{caption}</span>
         )}
         <span
           className={`min-w-0 flex-1 truncate text-left text-2xs ${
-            picked ? "text-gray-100" : "text-gray-400"
+            picked ? "text-slate-100" : "text-slate-400"
           }`}
         >
           {picked ? picked.name : placeholder}
@@ -318,7 +318,7 @@ export const ToadPicker: React.FC<ToadPickerProps> = ({
         )}
         {picked && pickedSummary}
         <span
-          className={`shrink-0 text-3xs text-gray-400 transition-transform duration-300 ${
+          className={`shrink-0 text-3xs text-slate-400 transition-transform duration-300 ${
             open ? "rotate-180" : ""
           }`}
         >
@@ -328,12 +328,12 @@ export const ToadPicker: React.FC<ToadPickerProps> = ({
 
       {open && (
         <div
-          className={`no-overscroll absolute left-0 right-0 z-30 max-h-60 overflow-y-auto rounded-xl border border-gray-600/50 bg-slate-900/95 shadow-xl backdrop-blur-md ${
+          className={`no-overscroll absolute left-0 right-0 z-30 max-h-60 overflow-y-auto rounded-xl border border-slate-600/50 bg-slate-900/95 shadow-xl backdrop-blur-md ${
             dropUp ? "bottom-full mb-1" : "top-full mt-1"
           }`}
         >
           {hint && (
-            <p className="sticky top-0 z-10 bg-slate-900/95 px-2 py-1.5 text-3xs leading-snug text-gray-400">
+            <p className="sticky top-0 z-10 bg-slate-900/95 px-2 py-1.5 text-2xs leading-snug text-slate-400">
               {hint}
             </p>
           )}
@@ -345,21 +345,21 @@ export const ToadPicker: React.FC<ToadPickerProps> = ({
                 clear.onClear();
                 setOpen(false);
               }}
-              className="w-full border-b border-gray-700/40 px-2 py-1.5 text-left text-2xs text-gray-400 transition-colors duration-300 hover:bg-slate-700/60"
+              className="w-full border-b border-slate-700/40 px-2 py-1.5 text-left text-2xs text-slate-400 transition-colors duration-300 hover:bg-slate-700/60"
             >
               ✕ {clear.label}
             </ClickButton>
           )}
 
           {availableCount === 0 && (
-            <p className="px-2 py-3 text-2xs leading-snug text-gray-400">
+            <p className="px-2 py-3 text-2xs leading-snug text-slate-400">
               {emptyText}
             </p>
           )}
 
           {sortedGroups.map((group) => (
             <div key={group.label}>
-              <p className="bg-slate-800/80 px-2 py-1 text-3xs uppercase tracking-wide text-amber-200/80">
+              <p className="bg-slate-800/80 px-2 py-1 text-2xs uppercase tracking-wide text-amber-200/80">
                 {group.label}
               </p>
               {group.items.map((item) => (
@@ -375,12 +375,12 @@ export const ToadPicker: React.FC<ToadPickerProps> = ({
           ))}
 
           {rejectedItems.length > 0 && (
-            <div className="border-t border-gray-700/40">
+            <div className="border-t border-slate-700/40">
               <ClickButton
                 type="button"
                 onClick={() => setShowRejected((prev) => !prev)}
                 className={`w-full px-2 py-1.5 text-left text-2xs transition-colors duration-300 hover:bg-slate-700/60 ${
-                  showRejected ? "text-gray-300" : "text-gray-400"
+                  showRejected ? "text-slate-300" : "text-slate-400"
                 }`}
               >
                 {showRejected ? "▾" : "▸"} {rejected?.label ?? "Не подходят"}:{" "}

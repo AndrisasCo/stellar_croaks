@@ -38,23 +38,23 @@ export const MixingInProgress = () => {
   }, []);
 
   return (
-    <div className="w-full my-auto bg-color-main rounded-2xl shadow-2xl border-2 border-green-500/50 overflow-hidden backdrop-blur-sm">
+    <div className="ui-panel-raised my-auto w-full overflow-hidden border-cyan-400/30">
       {/* Основной контейнер анимации */}
-      <div className="relative h-40 rounded-xl bg-gradient-to-r from-green-900/40 to-emerald-900/40 overflow-hidden">
+      <div className="relative h-40 overflow-hidden rounded-xl bg-gradient-to-r from-cyan-900/40 to-emerald-900/40">
         {/* Фон с узором */}
         <div
           className="absolute inset-0 opacity-20"
           style={{
             backgroundImage: `
-              radial-gradient(circle at 25% 25%, rgba(34, 197, 94, 0.3) 0%, transparent 50%),
-              radial-gradient(circle at 75% 75%, rgba(34, 197, 94, 0.3) 0%, transparent 50%)
+              radial-gradient(circle at 25% 25%, rgba(34, 211, 238, 0.3) 0%, transparent 50%),
+              radial-gradient(circle at 75% 75%, rgba(52, 211, 153, 0.3) 0%, transparent 50%)
             `,
           }}
         />
 
         {/* Прогресс заполнения */}
         <div
-          className="absolute bottom-0 left-0 right-0 transition-all duration-200 bg-gradient-to-t from-green-500/80 to-emerald-400/90 rounded-t-xl"
+          className="absolute bottom-0 left-0 right-0 rounded-t-xl bg-gradient-to-t from-cyan-500/80 to-emerald-400/90 transition-all duration-200"
           style={{ height: `${mixingProgress * 100}%` }}
         >
           {/* Эффект пузырьков на прогресс-баре */}

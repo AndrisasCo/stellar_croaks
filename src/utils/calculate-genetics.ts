@@ -50,10 +50,10 @@ export const inheritTrait = (parents: number[], multiplier: number): number => {
   return average * (1 + mutation) * (0.7 + multiplier * 0.3);
 };
 
-// макс качество 1 + 0.9 + 0.5 = 2.4
-// макс качество если есть мутация 12.4
-// мин качество 1 +  -0.5 = 0.5
-// мин качество если есть мутация  10.5
+// макс Качество 1 + 0.9 + 0.5 = 2.4
+// макс Качество если есть мутация 12.4
+// мин Качество 1 +  -0.5 = 0.5
+// мин Качество если есть мутация  10.5
 export const calculateRarity = (
   parents: number[],
   mutationChance: boolean,
@@ -62,7 +62,7 @@ export const calculateRarity = (
   baseRarity += 1;
   baseRarity += (3 * calculateRarityBonus(parents.length)) / 100;
 
-  // Мутация - шанс на повышенную качество
+  // Мутация - шанс на повышенную Качество
   if (mutationChance) {
     return baseRarity + 10 * Math.random(); // Сильнее мутации + 0-10 ед
   }
@@ -78,7 +78,7 @@ export const calculateBreedingTime = (
 ): number => {
   // Базовое время: 2 часов для средней редкости (50)
   const baseTime = 60 * 60 * 1000; // 1 часов в миллисекундах
-  const rarityFactor = rarity / 50; // Чем выше качество, тем дольше
+  const rarityFactor = rarity / 50; // Чем выше Качество, тем дольше
   const time = baseTime * rarityFactor;
 
   return time / speedMultiplier;

@@ -42,7 +42,7 @@ export const CompactToadItem = ({
       className={`bg-color-main flex flex-col gap-1.5 rounded-xl p-1 border transition-colors cursor-pointer ${
         isSelected
           ? "border-yellow-400 bg-yellow-500/10 shadow-sm shadow-yellow-500/20"
-          : "border-gray-600/30 hover:border-gray-500/50"
+          : "border-slate-600/30 hover:border-slate-500/50"
       }`}
       style={{
         backgroundColor: familyColor ? familyColor : undefined,
@@ -81,7 +81,7 @@ export const CompactToadItem = ({
 
       {/* Средняя строка: шкала голода */}
       <div className="flex items-center gap-2">
-        <div className="flex-1 h-2 bg-gray-600 rounded-full overflow-hidden">
+        <div className="flex-1 h-2 bg-slate-600 rounded-full overflow-hidden">
           <div
             className={`h-full rounded-full ${getHungerColor(
               toad.state.hunger,
@@ -89,12 +89,12 @@ export const CompactToadItem = ({
             style={{ width: `${toad.state.hunger}%` }}
           />
         </div>
-        <span className="text-gray-300 text-xs font-medium w-6 text-right">
+        <span className="text-slate-300 text-xs font-medium w-6 text-right">
           {Math.round(toad.state.hunger)}%
         </span>
       </div>
 
-      {/* Нижняя строка: качество + поломка + кнопка профиля */}
+      {/* Нижняя строка: Качество + поломка + кнопка профиля */}
       <div className="flex items-center justify-between text-xs">
         <div className={`flex items-center gap-1 ${rarityConfig.color}`}>
           <span>{rarityConfig.icon}</span>
@@ -112,7 +112,7 @@ export const CompactToadItem = ({
             e.stopPropagation();
             onProfileClick(toad);
           }}
-          className="flex-shrink-0 p-1 text-gray-300 hover:text-white transition-colors"
+          className="flex-shrink-0 p-1 text-slate-300 hover:text-white transition-colors"
           title="Перейти в профиль"
         >
           <svg

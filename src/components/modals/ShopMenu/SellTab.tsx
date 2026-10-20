@@ -179,7 +179,7 @@ const SellTab: React.FC = () => {
             <div className="text-emerald-300 font-semibold text-sm truncate">
               🧪 Биомасса: {formatBiomass(biomass)}
             </div>
-            <div className="text-gray-400 text-xs">
+            <div className="text-slate-400 text-xs">
               Курс обмена: 2 биомассы = 1{" "}
               <CurrencyIcon currency="tokens" className="h-3 w-3" />
             </div>
@@ -194,8 +194,8 @@ const SellTab: React.FC = () => {
             }
             className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all shrink-0 ${
               sellTokens > 0
-                ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white border-emerald-400/30 hover:from-emerald-500 hover:to-teal-500"
-                : "bg-gray-600/30 text-gray-400 border-gray-500/30 cursor-not-allowed"
+                ? "ui-button-primary"
+                : "cursor-not-allowed border border-slate-500/30 bg-slate-600/30 text-slate-400"
             }`}
           >
             Обменять ({sellTokens}{" "}
@@ -215,11 +215,11 @@ const SellTab: React.FC = () => {
             disabled={maxBiomass <= 0}
             aria-label="Сколько биомассы обменять на Кваксы"
             title="Ползунок: сколько биомассы отдать за Кваксы"
-            className="flex-1 accent-emerald-500 h-2 rounded-lg bg-gray-600 disabled:opacity-50"
+            className="flex-1 accent-emerald-500 h-2 rounded-lg bg-slate-600 disabled:opacity-50"
           />
           <span
             className={`w-20 shrink-0 text-right text-xs font-medium ${
-              sellBiomass > 0 ? "text-emerald-200" : "text-gray-500"
+              sellBiomass > 0 ? "text-emerald-200" : "text-slate-500"
             }`}
           >
             {sellBiomass} 🧪
@@ -227,7 +227,7 @@ const SellTab: React.FC = () => {
         </div>
 
         <div className="flex items-center justify-between gap-2 text-2xs">
-          <span className="text-gray-400">
+          <span className="text-slate-400">
             Обмен:{" "}
             <span className="text-emerald-300 font-semibold">
               {sellTokens}{" "}
@@ -260,11 +260,11 @@ const SellTab: React.FC = () => {
       />
 
       {/* Панель выбора */}
-      <div className="bg-color-main rounded-xl p-3 border border-gray-500/30">
+      <div className="bg-color-main rounded-xl p-3 border border-slate-500/30">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
-              <span className="text-gray-200 text-sm">Сумма:</span>
+              <span className="text-slate-200 text-sm">Сумма:</span>
               <span className="text-yellow-200 font-bold text-sm">
                 {totalSellPrice}{" "}
                 <CurrencyIcon currency="tokens" className="h-3.5 w-3.5" />
@@ -276,7 +276,7 @@ const SellTab: React.FC = () => {
             {selectedFilteredToads.length > 0 && (
               <button
                 onClick={handleSellToads}
-                className="px-3 py-1.5 bg-gradient-to-r from-yellow-600 to-amber-600 hover:from-yellow-500 hover:to-amber-500 text-white rounded-lg text-xs font-bold transition-all shadow-sm border border-yellow-500/30"
+                className="ui-button-primary px-3 py-1.5"
               >
                 Продать ({selectedFilteredToads.length})
               </button>
@@ -285,8 +285,8 @@ const SellTab: React.FC = () => {
               onClick={handleSelectAllFiltered}
               className={`w-8 h-8 flex items-center justify-center rounded-lg border transition-all ${
                 isAllFilteredSelected
-                  ? "bg-red-500/20 text-red-400 border-red-500/40"
-                  : "bg-green-500/10 text-green-400 border-green-500/30 hover:bg-green-500/20"
+                  ? "border-cyan-400/50 bg-cyan-500/20 text-cyan-200"
+                  : "border-slate-600/50 bg-slate-800/60 text-slate-300 hover:bg-slate-700/60"
               }`}
               title={isAllFilteredSelected ? "Снять выделение" : "Выбрать все"}
             >
@@ -298,13 +298,13 @@ const SellTab: React.FC = () => {
 
       {/* Список жаб */}
       {filteredToads.length === 0 ? (
-        <div className="bg-color-main backdrop-blur-sm rounded-xl p-6 border border-gray-600/20 text-center">
-          <p className="text-gray-300 text-sm">
+        <div className="bg-color-main backdrop-blur-sm rounded-xl p-6 border border-slate-600/20 text-center">
+          <p className="text-slate-300 text-sm">
             {activeToads.length === 0
               ? "У вас пока нет жаб"
               : "Жабы не найдены"}
           </p>
-          <p className="text-gray-500 text-xs mt-1">
+          <p className="text-slate-500 text-xs mt-1">
             {activeToads.length === 0
               ? "Приобретите жаб на рынке"
               : "Измените фильтры для отображения"}
@@ -335,7 +335,7 @@ const SellTab: React.FC = () => {
                       e.stopPropagation();
                       handleSellSingleToad(toad.id);
                     }}
-                    className="px-3 min-w-[64px] py-1.5 bg-gradient-to-r from-yellow-600 to-amber-600  text-white rounded-lg text-sm font-medium transition-all shadow-sm border border-yellow-500/30 ml-2"
+                    className="ui-button-primary ml-2 min-w-[64px] whitespace-nowrap px-3 py-1.5"
                   >
                     {price}{" "}
                     <CurrencyIcon currency="tokens" className="h-3.5 w-3.5" />
@@ -351,7 +351,7 @@ const SellTab: React.FC = () => {
               className="flex justify-center py-4"
               key="load-more"
             >
-              <div className="animate-pulse text-gray-300 text-sm">
+              <div className="animate-pulse text-slate-300 text-sm">
                 Загрузка жаб...
               </div>
             </div>

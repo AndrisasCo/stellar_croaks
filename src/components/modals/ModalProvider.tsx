@@ -183,8 +183,13 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({
             // Каркас: колонка, всё внутри обрезается по скруглению панели
             "relative flex h-full w-full flex-col overflow-hidden text-white",
             "bg-color-main shadow-2xl backdrop-blur-md",
-            // Десктоп: карточка по центру — уже не во всю высоту, пошире, со скруглением
-            "md:h-auto md:max-h-[85dvh] md:max-w-5xl md:rounded-3xl md:border md:border-white/20",
+            // Десктоп: карточка по центру — уже не во всю высоту, пошире, со скруглением.
+            // Минимум 600px не даёт коротким окнам «схлопываться»; 80dvh ограничивает
+            // высоту на низких экранах, чтобы карточка не выходила за пределы вьюпорта.
+            // Если модалка задала свою max-width, общий `md:max-w-5xl` не подключаем:
+            // иначе побеждает правило из CSS, а не класс, добавленный позже.
+            "md:h-auto md:min-h-[min(600px,80dvh)] md:max-h-[85dvh] md:rounded-3xl md:border md:border-white/20",
+            /\bmax-w-/.test(options.className ?? "") ? "" : "md:max-w-5xl",
             // Анимация появления (index.css); без значения панель появляется без неё
             options.animation ? `modal-anim-${options.animation}` : "",
             options.className ?? "",
@@ -193,7 +198,7 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({
             .join(" ")}
         >
           {/* Полоска-акцент: тот же градиент, что у заголовков модалок (shared/Header) */}
-          <div className="h-1 w-full shrink-0 bg-gradient-to-r from-green-400 via-teal-500 to-purple-500" />
+          <div className="brand-bar h-1 w-full shrink-0" />
 
           {/* no-overscroll: свайп по списку не уходит в pull-to-refresh — иначе
               iOS Safari перезагружал страницу и «шторка» будто закрывалась сама.
@@ -207,7 +212,7 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({
               <ClickButton
                 onClick={closeModal}
                 aria-label="Закрыть"
-                className="absolute right-2 top-2 z-50 flex h-10 w-10 items-center justify-center rounded-full text-3xl leading-none text-gray-300 transition-colors duration-300 hover:scale-110 hover:bg-white/10 hover:text-green-400 md:right-3 md:top-3"
+                className="absolute right-2 top-2 z-50 flex h-10 w-10 items-center justify-center rounded-full text-3xl leading-none text-slate-300 transition-colors duration-300 hover:scale-110 hover:bg-white/10 hover:text-cyan-300 md:right-3 md:top-3"
               >
                 ×
               </ClickButton>
@@ -217,7 +222,7 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({
 
             <div className="min-h-4" />
             <ClickButton
-              className="w-full mt-auto relative bg-color-second hover:bg-slate-800/70 text-gray-200 py-3 rounded-xl "
+              className="ui-button-secondary relative mt-auto w-full py-3"
               onClick={closeModal}
             >
               Закрыть

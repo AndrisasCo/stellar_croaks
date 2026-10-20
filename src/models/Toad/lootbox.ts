@@ -10,9 +10,9 @@ export enum LootboxRarity {
   common = "common",
 }
 
-// База данных уникальных жаб с разной качеством
+// База данных уникальных жаб с разной Качеством
 export const UNIQUE_TOADS_BY_RARITY: Record<LootboxRarity, Partial<Toad>[]> = {
-  // качество 1-5 (Обычные)
+  // Качество 1-5 (Обычные)
   [LootboxRarity.common]: [
     {
       name: "Лесной странник",
@@ -43,7 +43,7 @@ export const UNIQUE_TOADS_BY_RARITY: Record<LootboxRarity, Partial<Toad>[]> = {
       },
     },
   ],
-  // качество 6-10 (Необычные)
+  // Качество 6-10 (Необычные)
   [LootboxRarity.uncommon]: [
     {
       name: "Изумрудный прыгун",
@@ -74,7 +74,7 @@ export const UNIQUE_TOADS_BY_RARITY: Record<LootboxRarity, Partial<Toad>[]> = {
       },
     },
   ],
-  // качество 11-20 (Редкие) - САМАЯ РАСПРОСТРАНЕННАЯ
+  // Качество 11-20 (Редкие) - САМАЯ РАСПРОСТРАНЕННАЯ
   [LootboxRarity.rare]: [
     {
       name: "Саванна",
@@ -147,7 +147,7 @@ export const UNIQUE_TOADS_BY_RARITY: Record<LootboxRarity, Partial<Toad>[]> = {
       },
     },
   ],
-  // качество 21-35 (Эпические) - ОЧЕНЬ РЕДКИЕ
+  // Качество 21-35 (Эпические) - ОЧЕНЬ РЕДКИЕ
   [LootboxRarity.epic]: [
     {
       name: "Кваккон",
@@ -192,7 +192,7 @@ export const UNIQUE_TOADS_BY_RARITY: Record<LootboxRarity, Partial<Toad>[]> = {
       },
     },
   ],
-  // качество 36-50 (Легендарные) - СУПЕР РЕДКИЕ
+  // Качество 36-50 (Легендарные) - СУПЕР РЕДКИЕ
   [LootboxRarity.legendary]: [
     {
       name: "Галактрон",
@@ -321,8 +321,8 @@ const getToadRarity = (): LootboxRarity => {
 };
 
 /**
- * качество гена по тиру лутбокса. В шаблонах у всех жаб стоял `rarity: 5`, поэтому
- * «легендарная» жаба не отличалась качеством от обычной (аудит P2): теперь тир коробки
+ * Качество гена по тиру лутбокса. В шаблонах у всех жаб стоял `rarity: 5`, поэтому
+ * «легендарная» жаба не отличалась Качеством от обычной (аудит P2): теперь тир коробки
  * видно и в характеристиках, с небольшим разбросом.
  */
 const TIER_GENE_RARITY: Record<LootboxRarity, number> = {

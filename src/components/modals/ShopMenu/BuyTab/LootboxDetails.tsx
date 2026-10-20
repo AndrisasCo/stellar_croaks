@@ -16,8 +16,8 @@ export const LootboxDetails: React.FC = () => {
   return (
     <>
       <div className="flex items-center gap-2 pb-4 ">
-        <h2 className="text-xl font-bold bg-gradient-to-r from-green-400 to-purple-500 bg-clip-text text-transparent">
-          <div className="text-2xl font-bold text-white flex gap-6 items-center">
+        <h2 className="text-xl font-bold">
+          <div className="brand-text flex items-center gap-6 text-2xl font-bold">
             <img src="assets/lootbox.webp" width={180} />
             Жаббокс
           </div>
@@ -25,16 +25,16 @@ export const LootboxDetails: React.FC = () => {
       </div>
       <div>
         <div className="p-6">
-          <p className="text-gray-200 mb-2">
+          <p className="text-slate-200 mb-2">
             В лутбоксе можно получить уникальных жаб разной редкости.
           </p>
-          <p className="text-xs text-gray-400 mb-6">
+          <p className="text-xs text-slate-400 mb-6">
             Базовые шансы указаны без гарантий: счётчик неудач даёт редкую жабу
             не позже 10-го открытия, а эпическую — не позже 50-го.
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            <div className="bg-color-main p-4 rounded-xl border border-gray-700">
+            <div className="bg-color-main p-4 rounded-xl border border-slate-700">
               <h4 className="text-green-400 font-bold mb-2">
                 🟢 Обычные ({formatChance(LootboxRarity.common)})
               </h4>

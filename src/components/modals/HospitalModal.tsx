@@ -59,8 +59,8 @@ type HospitalTab = "beds" | "patients" | "room-data";
 
 /** Табы Медотсека: лечение — первым, «Данные сектора» — последним (как у всех секторов) */
 const HOSPITAL_TABS: ModalTabItem<HospitalTab>[] = [
-  { id: "beds", label: "🛏️ Койки", color: "text-amber-400" },
-  { id: "patients", label: "📋 Пациенты", color: "text-emerald-400" },
+  { id: "beds", label: "🛏️ Койки" },
+  { id: "patients", label: "📋 Пациенты" },
   { ...ROOM_DATA_TAB },
 ];
 
@@ -292,18 +292,18 @@ export default function HospitalModal({ room }: HospitalModalProps) {
     return (
       <div
         key={toad.id}
-        className="bg-color-main rounded-2xl p-3 border border-gray-600/30 flex flex-col gap-1.5"
+        className="bg-color-main rounded-2xl p-3 border border-slate-600/30 flex flex-col gap-1.5"
       >
         <div className="flex items-center justify-between">
           <p className="text-xs font-bold text-white">
             {toad.name}{" "}
-            <span className="text-2xs font-normal text-gray-400">
+            <span className="text-2xs font-normal text-slate-400">
               · {getToadHpStatusLabel(toad)}
               {disease && ` · ${disease.icon} ${disease.name}`}
               {inBed && " · на койке"}
             </span>
           </p>
-          <span className="text-2xs text-gray-300">
+          <span className="text-2xs text-slate-300">
             {Math.round(hp)}/{maxHp} HP
           </span>
         </div>
@@ -314,7 +314,7 @@ export default function HospitalModal({ room }: HospitalModalProps) {
         {disease && <DiseaseBar toad={toad} inHospital={inBed} />}
 
         {wounded && (
-          <p className="text-2xs text-gray-400">
+          <p className="text-2xs text-slate-400">
             До полного HP:{" "}
             {inBed
               ? `${getHoursToFullHp(missingHp, true)} ч на койке`
@@ -326,7 +326,7 @@ export default function HospitalModal({ room }: HospitalModalProps) {
         )}
 
         {!wounded && disease && (
-          <p className="text-2xs text-gray-400">
+          <p className="text-2xs text-slate-400">
             Раны зажили — осталась болезнь: на койке срок идёт в{" "}
             {HOSPITAL_DISEASE_SPEED} раза быстрее, а пациент никого не заражает.
           </p>
@@ -336,10 +336,10 @@ export default function HospitalModal({ room }: HospitalModalProps) {
           <ClickButton
             onClick={() => handleHeal(toad.id)}
             disabled={!affordable}
-            className={`w-full py-2 rounded-xl text-2xs font-bold border transition-colors duration-300 ${
+            className={`w-full py-2 rounded-xl text-xs font-bold border transition-colors duration-300 ${
               affordable
                 ? "bg-emerald-900/50 border-emerald-500/50 text-emerald-100 hover:bg-emerald-800/60"
-                : "bg-slate-800/40 border-gray-700/40 text-gray-500"
+                : "bg-slate-800/40 border-slate-700/40 text-slate-500"
             }`}
           >
             🩹 Мгновенно вылечить за {healCost}{" "}
@@ -351,10 +351,10 @@ export default function HospitalModal({ room }: HospitalModalProps) {
           <ClickButton
             onClick={() => handleCure(toad.id)}
             disabled={!cureAffordable}
-            className={`w-full py-2 rounded-xl text-2xs font-bold border transition-colors duration-300 ${
+            className={`w-full py-2 rounded-xl text-xs font-bold border transition-colors duration-300 ${
               cureAffordable
                 ? "bg-sky-900/50 border-sky-500/50 text-sky-100 hover:bg-sky-800/60"
-                : "bg-slate-800/40 border-gray-700/40 text-gray-500"
+                : "bg-slate-800/40 border-slate-700/40 text-slate-500"
             }`}
           >
             💊 Мгновенный курс от болезни за {cureCost}{" "}
@@ -366,10 +366,10 @@ export default function HospitalModal({ room }: HospitalModalProps) {
           <ClickButton
             onClick={() => admission?.room && handleAdmit(toad, admission.room)}
             disabled={!admission?.room}
-            className={`w-full py-2 rounded-xl text-2xs font-bold border transition-colors duration-300 ${
+            className={`w-full py-2 rounded-xl text-xs font-bold border transition-colors duration-300 ${
               admission?.room
                 ? "bg-amber-900/50 border-amber-500/50 text-amber-100 hover:bg-amber-800/60"
-                : "bg-slate-800/40 border-gray-700/40 text-gray-500"
+                : "bg-slate-800/40 border-slate-700/40 text-slate-500"
             }`}
           >
             {admitLabel}
@@ -380,10 +380,10 @@ export default function HospitalModal({ room }: HospitalModalProps) {
           <ClickButton
             onClick={() => handleDischarge(toad)}
             disabled={Boolean(dischargeIssue)}
-            className={`w-full py-2 rounded-xl text-2xs font-bold border transition-colors duration-300 ${
+            className={`w-full py-2 rounded-xl text-xs font-bold border transition-colors duration-300 ${
               dischargeIssue
-                ? "bg-slate-800/40 border-gray-700/40 text-gray-500"
-                : "bg-slate-800/60 border-gray-500/50 text-gray-200 hover:bg-slate-700/70"
+                ? "bg-slate-800/40 border-slate-700/40 text-slate-500"
+                : "bg-slate-800/60 border-slate-500/50 text-slate-200 hover:bg-slate-700/70"
             }`}
           >
             {dischargeIssue
@@ -399,18 +399,18 @@ export default function HospitalModal({ room }: HospitalModalProps) {
     <Modal icon={<span className="text-xl">🛏️</span>} title="Медотсек">
       {/* Сводка нужна на всех табах — как кошелёк над табами «Космического рынка» */}
       <div className="grid grid-cols-3 gap-2 px-1 pb-3 text-center">
-        <div className="bg-color-main rounded-xl py-2 px-1 border border-gray-600/30">
-          <p className="text-2xs text-gray-400">Койки в колонии</p>
+        <div className="bg-color-main rounded-xl py-2 px-1 border border-slate-600/30">
+          <p className="text-2xs text-slate-400">Койки в колонии</p>
           <p className="text-base font-bold text-white">
             {patients.length}/{hospitalCapacity}
           </p>
         </div>
-        <div className="bg-color-main rounded-xl py-2 px-1 border border-gray-600/30">
-          <p className="text-2xs text-gray-400">Нужна помощь</p>
+        <div className="bg-color-main rounded-xl py-2 px-1 border border-slate-600/30">
+          <p className="text-2xs text-slate-400">Нужна помощь</p>
           <p className="text-base font-bold text-white">{needingCare.length}</p>
         </div>
-        <div className="bg-color-main rounded-xl py-2 px-1 border border-gray-600/30">
-          <p className="text-2xs text-gray-400">В запасе</p>
+        <div className="bg-color-main rounded-xl py-2 px-1 border border-slate-600/30">
+          <p className="text-2xs text-slate-400">В запасе</p>
           <p className="text-base font-bold text-amber-300">
             <CurrencyIcon currency="tokens" className="h-4 w-4" /> {tokens}
           </p>
@@ -423,7 +423,7 @@ export default function HospitalModal({ room }: HospitalModalProps) {
         {/* ВКЛАДКА «Койки»: кто лежит в этом Медотсеке и подсадка жаб на лечение */}
         {tab === "beds" && (
           <>
-            <p className="text-2xs leading-snug text-gray-400">
+            <p className="text-2xs leading-snug text-slate-400">
               Дома жаба восстанавливает всего {HP_REGEN_PER_HOUR} HP в час.
               Койка в Медотсеке лечит +{HOSPITAL_HP_REGEN_PER_HOUR} HP в час (в{" "}
               {HOSPITAL_HP_REGEN_PER_HOUR / HP_REGEN_PER_HOUR} раз быстрее), а
@@ -436,13 +436,13 @@ export default function HospitalModal({ room }: HospitalModalProps) {
                 🛏️ В «{room.name}» ({roomToads.length}/
                 {HOSPITAL_ROOM_TOAD_SLOTS})
               </p>
-              <span className="text-2xs text-gray-500">
+              <span className="text-2xs text-slate-500">
                 свободно мест: {freeSlots}
               </span>
             </div>
 
             {roomToads.length === 0 && (
-              <p className="text-2xs leading-snug text-gray-500">
+              <p className="text-2xs leading-snug text-slate-500">
                 Койки свободны: возьмите жабу из списка ниже — сюда можно
                 положить любую, а поправляется она на койке в разы быстрее.
               </p>
@@ -494,7 +494,7 @@ export default function HospitalModal({ room }: HospitalModalProps) {
         {/* ВКЛАДКА «Пациенты»: все раненые и больные колонии — на койку или за Кваксы */}
         {tab === "patients" && (
           <>
-            <p className="text-2xs leading-snug text-gray-400">
+            <p className="text-2xs leading-snug text-slate-400">
               Все раненые и больные жабы колонии в одном списке: отсюда их
               быстро отправляют на койку (в любой Медотсек, где есть место) или
               лечат мгновенно за Кваксы — это самый дорогой способ, зато без
@@ -509,14 +509,14 @@ export default function HospitalModal({ room }: HospitalModalProps) {
             )}
 
             {awayWounded > 0 && (
-              <p className="text-2xs text-gray-500">
+              <p className="text-2xs text-slate-500">
                 Ещё {awayWounded} жаб(ы) с ранами в походе: займёмся ими, когда
                 команда вернётся домой.
               </p>
             )}
 
             {needingCare.length === 0 && (
-              <p className="text-2xs text-gray-500">
+              <p className="text-2xs text-slate-500">
                 Все жабы в форме: ни ран, ни кибер-болезней.
               </p>
             )}
@@ -532,19 +532,19 @@ export default function HospitalModal({ room }: HospitalModalProps) {
             stats={
               <div className="grid grid-cols-3 gap-1.5 text-center text-2xs">
                 <div className="rounded-lg bg-slate-900/40 px-1 py-1">
-                  <p className="text-gray-400">На этих койках</p>
+                  <p className="text-slate-400">На этих койках</p>
                   <p className="font-bold text-white">
                     {roomToads.length}/{HOSPITAL_ROOM_TOAD_SLOTS}
                   </p>
                 </div>
                 <div className="rounded-lg bg-slate-900/40 px-1 py-1">
-                  <p className="text-gray-400">Лежит в колонии</p>
+                  <p className="text-slate-400">Лежит в колонии</p>
                   <p className="font-bold text-white">
                     {patients.length}/{hospitalCapacity}
                   </p>
                 </div>
                 <div className="rounded-lg bg-slate-900/40 px-1 py-1">
-                  <p className="text-gray-400">Нужна помощь</p>
+                  <p className="text-slate-400">Нужна помощь</p>
                   <p className="font-bold text-white">{needingCare.length}</p>
                 </div>
               </div>

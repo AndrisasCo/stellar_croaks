@@ -97,7 +97,7 @@ const RoomRow = ({
           <span className="truncate text-sm font-semibold text-white">
             {room.name}
           </span>
-          <span className={`shrink-0 text-3xs ${power.className}`}>
+          <span className={`shrink-0 text-2xs ${power.className}`}>
             {power.text}
           </span>
         </div>

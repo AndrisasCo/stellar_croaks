@@ -7,9 +7,15 @@ import ambientMusic3 from "../../assets/music3.mp3";
 import ambientMusic4 from "../../assets/music4.mp3";
 import ambientMusic5 from "../../assets/music5.mp3";
 import ambientMusic6 from "../../assets/music6.mp3";
+import ambientMusic7 from "../../assets/music7.mp3";
+import ambientMusic8 from "../../assets/music8.mp3";
+import ambientMusic9 from "../../assets/music9.mp3";
 import { shuffle } from "../../utils";
 
-const tracks = shuffle([ambientMusic5, ambientMusic4, ambientMusic6]).concat([
+const tracks = shuffle([ambientMusic9, ambientMusic8, ambientMusic7]).concat([
+  ambientMusic5,
+  ambientMusic4,
+  ambientMusic6,
   ambientMusic3,
   ambientMusic2,
   ambientMusic,

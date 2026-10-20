@@ -50,7 +50,6 @@ export type RoomDataTabId = typeof ROOM_DATA_TAB_ID;
 export const ROOM_DATA_TAB = {
   id: ROOM_DATA_TAB_ID,
   label: "ⓘ Данные сектора",
-  color: "text-sky-400",
 } as const;
 
 interface RoomDataTabProps {
@@ -134,7 +133,7 @@ export default function RoomDataTab({ room, stats }: RoomDataTabProps) {
       )}
 
       {/* Что это за гекс и кто в нём живёт */}
-      <div className="rounded-xl border border-gray-600/40 bg-color-second p-2">
+      <div className="ui-panel p-2">
         <div className="flex items-center gap-2">
           <span className="text-2xl">{room.icon}</span>
           <div className="min-w-0 flex-1">
@@ -143,24 +142,24 @@ export default function RoomDataTab({ room, stats }: RoomDataTabProps) {
                 {room.name}
               </span>
               {scene && (
-                <span className="text-2xs text-gray-400">
+                <span className="text-2xs text-slate-400">
                   биопод «{scene.name}»
                 </span>
               )}
             </div>
-            <p className="text-2xs leading-snug text-gray-400">
+            <p className="ui-caption">
               {room.subtitle}
             </p>
           </div>
         </div>
 
         <div className="mt-2 grid grid-cols-3 gap-1.5 text-center text-2xs">
-          <div className="rounded-lg bg-slate-900/40 px-1 py-1">
-            <p className="text-gray-400">Жаб в секторе</p>
+          <div className="rounded-lg bg-slate-950/40 px-1 py-1">
+            <p className="text-slate-400">Жаб в секторе</p>
             <p className="font-bold text-white">{roomToads.length}</p>
           </div>
-          <div className="rounded-lg bg-slate-900/40 px-1 py-1">
-            <p className="text-gray-400">Питание</p>
+          <div className="rounded-lg bg-slate-950/40 px-1 py-1">
+            <p className="text-slate-400">Питание</p>
             <p
               className={`font-bold ${
                 powered ? "text-emerald-300" : "text-rose-300"
@@ -169,8 +168,8 @@ export default function RoomDataTab({ room, stats }: RoomDataTabProps) {
               {powered ? "⚡ есть ток" : "🔌 без тока"}
             </p>
           </div>
-          <div className="rounded-lg bg-slate-900/40 px-1 py-1">
-            <p className="text-gray-400">Улучшения</p>
+          <div className="rounded-lg bg-slate-950/40 px-1 py-1">
+            <p className="text-slate-400">Улучшения</p>
             <p className="font-bold text-white">
               {canUpgrade ? `${installed}/${ROOM_UPGRADES.length}` : "—"}
             </p>
@@ -179,7 +178,7 @@ export default function RoomDataTab({ room, stats }: RoomDataTabProps) {
       </div>
 
       {/* Описание сектора — то же, что видно в каталоге карты */}
-      <div className="rounded-xl border border-sky-500/30 bg-sky-950/40 p-2">
+      <div className="rounded-xl border border-sky-400/25 bg-sky-950/30 p-2">
         <p className="mb-1 text-2xs font-bold uppercase tracking-wide text-sky-200">
           📖 О секторе
         </p>
@@ -196,7 +195,7 @@ export default function RoomDataTab({ room, stats }: RoomDataTabProps) {
         </p>
 
         {!canUpgrade && (
-          <p className="text-2xs leading-snug text-gray-400">
+          <p className="ui-caption">
             У этого сектора улучшений нет.
           </p>
         )}
@@ -212,7 +211,7 @@ export default function RoomDataTab({ room, stats }: RoomDataTabProps) {
                 className={`rounded-xl border p-2 ${
                   bought
                     ? "border-emerald-500/40 bg-emerald-900/20"
-                    : "border-gray-600/40 bg-color-main"
+                    : "border-white/10 bg-slate-950/40"
                 }`}
               >
                 <div className="flex items-start gap-2">
@@ -221,7 +220,7 @@ export default function RoomDataTab({ room, stats }: RoomDataTabProps) {
                     <p className="text-xs font-semibold text-white">
                       {option.title}
                     </p>
-                    <p className="text-2xs leading-snug text-gray-400">
+                    <p className="ui-caption">
                       {option.description}
                     </p>
                   </div>
@@ -230,12 +229,12 @@ export default function RoomDataTab({ room, stats }: RoomDataTabProps) {
                 <ClickButton
                   disabled={bought || !enough}
                   onClick={() => handleBuy(option)}
-                  className={`mt-2 w-full rounded-lg border px-3 py-2 text-2xs font-bold transition-colors duration-300 ${
+                  className={`mt-2 w-full rounded-lg border px-3 py-2 text-xs font-bold transition-colors duration-300 ${
                     bought
                       ? "border-emerald-500/40 text-emerald-300"
                       : enough
                         ? "border-amber-500/50 text-amber-100 hover:bg-amber-800/40"
-                        : "border-gray-600/40 text-gray-500"
+                        : "border-slate-600/40 text-slate-500"
                   }`}
                 >
                   {bought ? (
@@ -253,7 +252,7 @@ export default function RoomDataTab({ room, stats }: RoomDataTabProps) {
           })}
 
         {canUpgrade && (
-          <p className="text-2xs text-gray-500">
+          <p className="text-2xs text-slate-500">
             <CurrencyIcon currency="tokens" className="h-3 w-3" /> в запасе:{" "}
             {tokens}
           </p>
@@ -266,7 +265,7 @@ export default function RoomDataTab({ room, stats }: RoomDataTabProps) {
           🗑️ Снос сектора
         </p>
 
-        <p className="text-2xs leading-snug text-gray-400">
+        <p className="ui-caption">
           Снос стоит {DEMOLISH_ROOM_COST}{" "}
           <CurrencyIcon currency="tokens" className="h-3 w-3" /> и
           подтверждается отдельным окном. Кваксы за постройку не возвращаются,
@@ -277,7 +276,7 @@ export default function RoomDataTab({ room, stats }: RoomDataTabProps) {
 
         <ClickButton
           onClick={() => openModal(() => <RoomDemolishModal room={room} />)}
-          className="w-full rounded-lg border border-rose-500/40 px-3 py-2 text-2xs font-bold text-rose-200 transition-colors duration-300 hover:bg-rose-900/40"
+          className="ui-button-danger w-full border-rose-500/40 text-rose-200"
         >
           🗑️ Снести «{room.name}» · {DEMOLISH_ROOM_COST}{" "}
           <CurrencyIcon currency="tokens" className="h-3 w-3" />

@@ -368,30 +368,30 @@ export const eliteOrders: EliteOrder[] = [
   {
     id: "elite_5",
     title: "Исполин рассвета",
-    description: "Жаба качеством 7 и больше размером более 40",
+    description: "Жаба Качеством 7 и больше размером более 40",
     requirement: (toad: Toad) =>
       toad.genes.weight > 40 && toad.genes.rarity >= 7,
-    reward: 600, // масса 40+ И качество 7+: экстремальная селекция
+    reward: 600, // масса 40+ И Качество 7+: экстремальная селекция
     difficulty: "extreme",
   },
   {
     id: "elite_6",
     title: "Вечный странник",
-    description: "Жаба с полом Бесполый и качеством 7+",
+    description: "Жаба с полом Бесполый и Качеством 7+",
     requirement: (toad: Toad) =>
       toad.sex === "neuter" && toad.genes.rarity >= 7,
-    reward: 120, // бесполый И качество 7+
+    reward: 120, // бесполый И Качество 7+
     difficulty: "extreme",
   },
   {
     id: "elite_7",
     title: "Безумный гений",
-    description: "Жаба с характером Новатор или Энергичный и качеством 6+",
+    description: "Жаба с характером Новатор или Энергичный и Качеством 6+",
     requirement: (toad: Toad) =>
       (toad.genes.personality === "innovator" ||
         toad.genes.personality === "energetic") &&
       toad.genes.rarity >= 6,
-    reward: 150, // Новатор или Энергичный И качество 6+
+    reward: 150, // Новатор или Энергичный И Качество 6+
     difficulty: "hard",
   },
   {
@@ -410,7 +410,7 @@ export const eliteOrders: EliteOrder[] = [
   {
     id: "elite_9",
     title: "Наследник легенд",
-    description: "Головастик 8+ поколения с качеством 6+",
+    description: "Головастик 8+ поколения с Качеством 6+",
     requirement: (toad: Toad) =>
       toad.stage === "toadpole" &&
       toad.generation >= 8 &&
@@ -448,10 +448,10 @@ export const eliteOrders: EliteOrder[] = [
   {
     id: "elite_13",
     title: "Повелитель иллюзий",
-    description: "Жаба с характером Лидер и качеством 5+",
+    description: "Жаба с характером Лидер и Качеством 5+",
     requirement: (toad: Toad) =>
       toad.genes.personality === "leader" && toad.genes.rarity >= 5,
-    reward: 90, // Лидер И качество 5+
+    reward: 90, // Лидер И Качество 5+
     difficulty: "medium",
   },
   {
@@ -475,12 +475,12 @@ export const eliteOrders: EliteOrder[] = [
   {
     id: "elite_16",
     title: "Болотная дива",
-    description: "Самка с характером Светская жаба и качеством 6+",
+    description: "Самка с характером Светская жаба и Качеством 6+",
     requirement: (toad: Toad) =>
       toad.sex === "female" &&
       toad.genes.personality === "socialite" &&
       toad.genes.rarity >= 6,
-    reward: 120, // самка, Светская жаба, качество 6+
+    reward: 120, // самка, Светская жаба, Качество 6+
     difficulty: "medium",
   },
   {
@@ -534,10 +534,10 @@ export const eliteOrders: EliteOrder[] = [
   {
     id: "elite_22",
     title: "Молчание мудреца",
-    description: "Жаба с характером Отшельник и качеством 8+",
+    description: "Жаба с характером Отшельник и Качеством 8+",
     requirement: (toad: Toad) =>
       toad.genes.personality === "hermit" && toad.genes.rarity >= 8,
-    reward: 180, // Отшельник И качество 8+
+    reward: 180, // Отшельник И Качество 8+
     difficulty: "extreme",
   },
   {
@@ -566,12 +566,12 @@ export const eliteOrders: EliteOrder[] = [
     id: "elite_25",
     title: "Продукт распада",
     description:
-      "Жаба с серьезными генетическими повреждениями (уровень мутации 50+) и качеством 5+",
+      "Жаба с серьезными генетическими повреждениями (уровень мутации 50+) и Качеством 5+",
     requirement: (toad: Toad) =>
       toad.state.genetic_fault !== undefined &&
       toad.state.genetic_fault >= 50 &&
       toad.genes.rarity >= 5,
-    reward: 40, // мутация 50+ И качество 5+
+    reward: 40, // мутация 50+ И Качество 5+
     difficulty: "hard",
   },
   {

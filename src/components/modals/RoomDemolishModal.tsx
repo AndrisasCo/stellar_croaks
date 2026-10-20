@@ -125,26 +125,26 @@ export default function RoomDemolishModal({ room }: { room: RoomConfig }) {
           </p>
         </div>
 
-        <div className="mb-2 rounded-xl border border-gray-600/40 bg-color-second p-2">
+        <div className="mb-2 rounded-xl border border-slate-600/40 bg-color-second p-2">
           <div className="flex items-center gap-2">
             <span className="text-2xl">{room.icon}</span>
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-1 text-sm font-semibold text-amber-100">
                 {room.name || room.title}
                 {sceneName && (
-                  <span className="text-2xs font-normal text-gray-400">
+                  <span className="text-2xs font-normal text-slate-400">
                     «{sceneName}»
                   </span>
                 )}
               </div>
-              <div className="text-2xs leading-snug text-gray-400">
+              <div className="text-2xs leading-snug text-slate-400">
                 {room.subtitle} · жаб в секторе: {roomToads.length}
               </div>
             </div>
           </div>
         </div>
 
-        <div className="mb-2 space-y-1 rounded-xl border border-gray-600/40 bg-color-second p-2 text-2xs leading-snug text-gray-300">
+        <div className="mb-2 space-y-1 rounded-xl border border-slate-600/40 bg-color-second p-2 text-2xs leading-snug text-slate-300">
           <div>
             🗺 Гекс останется на карте свободным слотом: территорию снос не отбирает, гексы
             вокруг него тоже остаются открытыми.
@@ -191,7 +191,7 @@ export default function RoomDemolishModal({ room }: { room: RoomConfig }) {
           <div className="flex items-center gap-2">
             <ClickButton
               onClick={closeModal}
-              className="rounded-lg bg-gray-700/60 px-3 py-1 text-xs font-bold text-gray-200 transition-all hover:bg-gray-600/60 active:scale-95"
+              className="rounded-lg bg-slate-700/60 px-3 py-1 text-xs font-bold text-slate-200 transition-all hover:bg-slate-600/60 active:scale-95"
             >
               Оставить
             </ClickButton>
@@ -200,7 +200,7 @@ export default function RoomDemolishModal({ room }: { room: RoomConfig }) {
               disabled={blocked}
               className={`rounded-lg px-3 py-1 text-xs font-bold transition-all ${
                 blocked
-                  ? "cursor-not-allowed bg-gray-700/60 text-gray-400"
+                  ? "cursor-not-allowed bg-slate-700/60 text-slate-400"
                   : "bg-rose-600 text-white hover:bg-rose-500 active:scale-95"
               }`}
             >

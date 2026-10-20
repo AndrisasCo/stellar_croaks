@@ -35,16 +35,16 @@ const ToadHpRow = ({ toad }: { toad: Toad }) => {
 
   return (
     <div className="flex w-full mt-2 items-center justify-between gap-3">
-      <span className="text-2xs text-gray-300 whitespace-nowrap">
+      <span className="text-2xs text-slate-300 whitespace-nowrap">
         ❤️ {hp}/{maxHp}
       </span>
-      <div className="flex-1 h-1.5 bg-gray-600 rounded-full overflow-hidden">
+      <div className="flex-1 h-1.5 bg-slate-600 rounded-full overflow-hidden">
         <div
           className={`h-full rounded-full transition-all duration-500 ${color}`}
           style={{ width: `${Math.max(0, Math.min(1, ratio)) * 100}%` }}
         />
       </div>
-      <span className="text-2xs text-gray-400 whitespace-nowrap">
+      <span className="text-2xs text-slate-400 whitespace-nowrap">
         {getToadHpStatusLabel(toad)}
       </span>
     </div>
@@ -80,7 +80,7 @@ const HungerLabel = ({ level }: { level: number }) => {
           : "Сытость умножает выработку биомассы: корм на складе, автокормушка сектора кормит сама"
       }
     >
-      <span className="text-2xs text-gray-400">Сытость</span>
+      <span className="text-2xs text-slate-400">Сытость</span>
       <span className={`text-2xs font-medium ${color}`}>
         {Math.round(level)}%
       </span>
@@ -122,7 +122,7 @@ export const ToadItem = ({
       className={`bg-color-main rounded-2xl py-4 px-2 border ${
         isSelected
           ? "border-yellow-400 bg-yellow-500/10 shadow-sm shadow-yellow-500/20"
-          : "border-gray-600/30 hover:border-gray-500/50"
+          : "border-slate-600/30 hover:border-slate-500/50"
       } `}
       {...rest}
     >
@@ -146,7 +146,7 @@ export const ToadItem = ({
             )}
             <div>
               <p className="text-white font-medium text-base">{toad.name}</p>
-              <div className="flex items-center gap-2 text-sm text-gray-300 mt-1">
+              <div className="flex items-center gap-2 text-sm text-slate-300 mt-1">
                 <ToadGender gender={toad.sex} />
 
                 <span>•</span>
@@ -173,37 +173,37 @@ export const ToadItem = ({
           {button}
         </div>
 
-        {/* качество и генетика в одной строке */}
+        {/* Качество и генетика в одной строке */}
         {/* Характеристики */}
         <div className="grid grid-cols-2 gap-2 text-sm">
           <div className={`${getRarityConfig(toad.genes?.rarity).color}`}>
-            <span className="text-gray-500">качество:</span>{" "}
+            <span className="text-slate-500">Качество:</span>{" "}
             {getRarityConfig(toad.genes?.rarity).icon}{" "}
             <span className="font-semibold">
               {toad.genes?.rarity?.toFixed(1)}
             </span>
           </div>
 
-          <div className="text-gray-300 flex gap-1">
-            <span className="text-gray-500">Поломки ДНК:</span>
+          <div className="text-slate-300 flex gap-1">
+            <span className="text-slate-500">Поломки ДНК:</span>
             <GeneticFaultIcon fault={toad.state?.genetic_fault || 0} />
           </div>
 
-          <div className="text-gray-300">
-            <span className="text-gray-500">Размер:</span>{" "}
+          <div className="text-slate-300">
+            <span className="text-slate-500">Размер:</span>{" "}
             {toad.genes?.weight.toFixed(1)}
           </div>
-          <div className="text-gray-300">
-            <span className="text-gray-500">Скорость:</span>{" "}
+          <div className="text-slate-300">
+            <span className="text-slate-500">Скорость:</span>{" "}
             {toad.genes?.speed.toFixed(1)}
           </div>
 
-          <div className="text-gray-300">
-            <span className="text-gray-500">Аппетит:</span>{" "}
+          <div className="text-slate-300">
+            <span className="text-slate-500">Аппетит:</span>{" "}
             {toad.genes.hungerRate.toFixed(1)}
           </div>
-          <div className="text-gray-300">
-            <span className="text-gray-500">Плодовитость:</span>{" "}
+          <div className="text-slate-300">
+            <span className="text-slate-500">Плодовитость:</span>{" "}
             {toad.genes.fertility.toFixed(1)}
           </div>
         </div>
@@ -212,7 +212,7 @@ export const ToadItem = ({
         <div className="flex w-full mt-2 items-center justify-between gap-3">
           <HungerLabel level={toad.state.hunger} />
           {/* Прогресс-бар сытости: цвет той же лестницы, что у подписи */}
-          <div className="flex-1 h-1.5 bg-gray-600 rounded-full overflow-hidden">
+          <div className="flex-1 h-1.5 bg-slate-600 rounded-full overflow-hidden">
             <div
               className={`h-full rounded-full ${
                 toad.state.hunger >= 80

@@ -35,7 +35,7 @@ const LoreArchiveModal: React.FC = () => {
     <Modal icon={icon} title={`Архив ${KVAZ_NAME}а`}>
       <div className="flex flex-col gap-3">
         <div className="rounded-xl border border-cyan-400/25 bg-cyan-400/10 px-3 py-3">
-          <p className="text-3xs font-semibold uppercase tracking-[0.2em] text-cyan-300/80">
+          <p className="ui-kicker">
             Станция «{STATION_NAME}» · восстановлено {LORE_ENTRIES.length} записей
           </p>
           <p className="mt-1.5 text-sm leading-relaxed text-cyan-50">
@@ -43,7 +43,7 @@ const LoreArchiveModal: React.FC = () => {
             противоречит официальной сводке. {KVAZ_NAME} не уверен, что все
             записи принадлежат ему.
           </p>
-          <p className="mt-2 text-3xs text-cyan-200/60">
+          <p className="mt-2 text-2xs text-cyan-200/60">
             {KVAZ_NAME} — {KVAZ_ACRONYM}.
           </p>
         </div>
@@ -61,7 +61,7 @@ const LoreArchiveModal: React.FC = () => {
                   {String(index + 1).padStart(2, "0")}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="text-3xs font-semibold uppercase tracking-[0.14em] text-cyan-300/70">
+                  <p className="ui-kicker">
                     {entry.source}
                   </p>
                   <h3 className="mt-0.5 text-sm font-bold leading-tight text-white">
@@ -69,7 +69,7 @@ const LoreArchiveModal: React.FC = () => {
                   </h3>
                 </div>
                 <span
-                  className={`shrink-0 rounded-full border px-2 py-0.5 text-3xs font-semibold ${status.className}`}
+                  className={`shrink-0 rounded-full border px-2 py-0.5 text-2xs font-semibold ${status.className}`}
                 >
                   {status.label}
                 </span>

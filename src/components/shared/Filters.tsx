@@ -100,7 +100,7 @@ export const Filters = ({
             </span>
             <HorizontalScroll className="flex bg-color-main rounded-lg p-1 border border-cyan-500/10">
               {[
-                { key: "rarity", label: "качество" },
+                { key: "rarity", label: "Качество" },
                 addPrice ? { key: "price", label: "Цена" } : {},
                 { key: "name", label: "Имя" },
                 { key: "type", label: "Вид" },
@@ -122,7 +122,7 @@ export const Filters = ({
                       className={`px-2 py-1 rounded text-xs font-medium transition-all flex items-center gap-1 ${
                         sortBy === item.key
                           ? "bg-cyan-600 text-white shadow-sm shadow-cyan-500/30"
-                          : "text-gray-200 hover:text-cyan-300"
+                          : "text-slate-200 hover:text-cyan-300"
                       }`}
                     >
                       {item.label}
@@ -138,7 +138,7 @@ export const Filters = ({
           {/* Селектор фильтрации */}
           {!addPrice && (
             <div className="flex items-center gap-2">
-              <span className="text-purple-300 text-xs font-medium min-w-[20px]">
+              <span className="text-cyan-300 text-xs font-medium min-w-[20px]">
                 <svg
                   className="w-4 h-4"
                   viewBox="0 0 16 16"
@@ -155,46 +155,46 @@ export const Filters = ({
                   />
                 </svg>
               </span>
-              <HorizontalScroll className="flex bg-color-main rounded-lg p-1 border text-nowrap border-purple-500/10">
+              <HorizontalScroll className="flex bg-color-main rounded-lg p-1 border text-nowrap border-cyan-500/10">
                 <button
                   onClick={() => setFilterBy("all")}
                   className={`px-2 py-1 text-nowrap rounded text-xs font-medium transition-all ${
                     filterBy === "all"
-                      ? "bg-purple-600 text-white shadow-sm shadow-purple-500/30"
-                      : "text-gray-200 hover:text-purple-300"
+                      ? "bg-cyan-600 text-white shadow-sm shadow-cyan-500/30"
+                      : "text-slate-200 hover:text-cyan-300"
                   }`}
                 >
                   Все ({toads.length})
                 </button>
-                <div className="w-px bg-purple-500/20 my-1"></div>
+                <div className="w-px bg-cyan-500/20 my-1"></div>
                 <button
                   onClick={() => setFilterBy("females")}
                   className={`px-2 py-1 rounded text-xs font-medium transition-all ${
                     filterBy === "females"
-                      ? "bg-purple-600 text-white shadow-sm shadow-purple-500/30"
-                      : "text-gray-200 hover:text-purple-300"
+                      ? "bg-cyan-600 text-white shadow-sm shadow-cyan-500/30"
+                      : "text-slate-200 hover:text-cyan-300"
                   }`}
                 >
                   Самки ({femalesCount})
                 </button>
-                <div className="w-px bg-purple-500/20 my-1"></div>
+                <div className="w-px bg-cyan-500/20 my-1"></div>
                 <button
                   onClick={() => setFilterBy("males")}
                   className={`px-2 py-1 rounded text-xs font-medium transition-all ${
                     filterBy === "males"
-                      ? "bg-purple-600 text-white shadow-sm shadow-purple-500/30"
-                      : "text-gray-200 hover:text-purple-300"
+                      ? "bg-cyan-600 text-white shadow-sm shadow-cyan-500/30"
+                      : "text-slate-200 hover:text-cyan-300"
                   }`}
                 >
                   Самцы ({malesCount})
                 </button>
-                <div className="w-px bg-purple-500/20 my-1"></div>
+                <div className="w-px bg-cyan-500/20 my-1"></div>
                 <button
                   onClick={() => setFilterBy("toadpoles")}
                   className={`px-2 py-1 rounded text-xs font-medium transition-all ${
                     filterBy === "toadpoles"
-                      ? "bg-purple-600 text-white shadow-sm shadow-purple-500/30"
-                      : "text-gray-200 hover:text-purple-300"
+                      ? "bg-cyan-600 text-white shadow-sm shadow-cyan-500/30"
+                      : "text-slate-200 hover:text-cyan-300"
                   }`}
                 >
                   Головастики ({toadPolesCount})
@@ -206,7 +206,7 @@ export const Filters = ({
           {/* Селектор фильтрации */}
           {addPrice && (
             <div className="flex items-center gap-2">
-              <span className="text-purple-300 text-xs font-medium min-w-[20px]">
+              <span className="text-cyan-300 text-xs font-medium min-w-[20px]">
                 <svg
                   className="w-4 h-4"
                   viewBox="0 0 16 16"
@@ -223,13 +223,13 @@ export const Filters = ({
                   />
                 </svg>
               </span>
-              <HorizontalScroll className="flex bg-color-main rounded-lg p-1 border text-nowrap border-purple-500/10">
+              <HorizontalScroll className="flex bg-color-main rounded-lg p-1 border text-nowrap border-cyan-500/10">
                 <button
                   onClick={() => setFilterBy("all")}
                   className={`px-2 py-1 text-nowrap rounded text-xs font-medium transition-all ${
                     filterBy === "all"
-                      ? "bg-purple-600 text-white shadow-sm shadow-purple-500/30"
-                      : "text-gray-200 hover:text-purple-300"
+                      ? "bg-cyan-600 text-white shadow-sm shadow-cyan-500/30"
+                      : "text-slate-200 hover:text-cyan-300"
                   }`}
                 >
                   Все ({toads.length})

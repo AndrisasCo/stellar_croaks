@@ -20,6 +20,14 @@
 
 @font-face {
   font-family: "Jura";
+  src: url("./assets/fonts/Jura/Jura-Medium.ttf") format("truetype");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap; /* Для лучшей производительности */
+}
+
+@font-face {
+  font-family: "Jura";
   src: url("./assets/fonts/Jura/Jura-SemiBold.ttf") format("truetype");
   font-weight: 600;
   font-style: normal;
@@ -34,14 +42,21 @@
   font-display: swap; /* Для лучшей производительности */
 }
 
-/* ===== Типографика: масштаб шрифтов ===== */
-/* Мобильная версия: значения = дефолтам Tailwind, внешний вид не меняется. */
+/* ===== Типографика: единая шкала шрифтов ===== */
+/* Правила системы:
+   - 3xs — только микро-подписи: кикеры и бейджи ЗАГЛАВНЫМИ;
+   - 2xs — читаемые подписи и пояснения под элементами;
+   - xs  — вторичный текст, sm — основной текст карточек и модалок.
+   Нижняя граница на десктопе — 12px: мельче текст в игре не встречается. */
 :root {
-  --fs-3xs: 9px;
-  --fs-2xs: 10px;
-  --fs-1xs: 11px;
-  --fs-xs: 0.75rem;
-  --lh-xs: 1rem;
+  --fs-3xs: 12px;
+  --lh-3xs: 1rem;
+  --fs-2xs: 12px;
+  --lh-2xs: 1.125rem;
+  --fs-1xs: 12px;
+  --lh-1xs: 1.25rem;
+  --fs-xs: 0.8125rem;
+  --lh-xs: 1.125rem;
   --fs-sm: 0.875rem;
   --lh-sm: 1.25rem;
   --fs-base: 1rem;
@@ -60,17 +75,21 @@
   --lh-5xl: 1;
 }
 
-/* Desktop-версия (окно ≥ 768px): шрифт немного крупнее.
-   Меняются только размеры текста — отступы, ширины и gap (rem-сетка) не затронуты. */
+/* Desktop-версия (окно ≥ 768px): текст крупнее, чтобы мелкие подписи
+   читались без напряжения. Меняются только размеры текста — отступы,
+   ширины и gap (rem-сетка) не затронуты. */
 @media (min-width: 768px) {
   :root {
-    --fs-3xs: 10px; /* 9 → 10px */
-    --fs-2xs: 11px; /* 10 → 11px */
-    --fs-1xs: 12px; /* 11 → 12px */
-    --fs-xs: 0.8125rem; /* 12 → 13px */
-    --lh-xs: 1.125rem;
-    --fs-sm: 0.9375rem; /* 14 → 15px */
-    --lh-sm: 1.375rem;
+    --fs-3xs: 12px; /* микро-подписи: 10 → 12px */
+    --lh-3xs: 1.125rem;
+    --fs-2xs: 13px; /* подписи: 11 → 13px */
+    --lh-2xs: 1.25rem;
+    --fs-1xs: 14px; /* мелкий текст: 12 → 14px */
+    --lh-1xs: 1.375rem;
+    --fs-xs: 0.9375rem; /* 13 → 15px */
+    --lh-xs: 1.375rem;
+    --fs-sm: 1rem; /* 14 → 16px */
+    --lh-sm: 1.5rem;
     --fs-base: 1.0625rem; /* 16 → 17px */
     --lh-base: 1.625rem;
     --fs-lg: 1.1875rem; /* 18 → 19px */
@@ -89,7 +108,7 @@
 }
 
 :root {
-  --background: #111827;
+  --background: #070c14;
   --foreground: #f8f8f8;
 }
 
@@ -104,6 +123,20 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Jura, Arial;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Один цвет выделения и один видимый фокус на всю игру */
+::selection {
+  background: rgb(34 211 238 / 30%);
+  color: #f8fafc;
+}
+
+:where(button, a, [role="button"], input, select, textarea):focus-visible {
+  outline: 2px solid rgb(34 211 238 / 70%);
+  outline-offset: 2px;
 }
 
 @keyframes spin-slow {
@@ -231,6 +264,73 @@ body {
   --color-green-500-30: rgba(16, 185, 129, 0.3);
   --color-green-500-50: rgba(16, 185, 129, 0.5);
   --color-white-20: rgba(255, 255, 255, 0.2);
+
+  /* ===== ПОВЕРХНОСТИ И АКЦЕНТЫ ===== */
+  /* Одна палитра на все экраны: глубокий сине-чёрный космос, бирюзовый
+     системный акцент, янтарный — бытовой/экономический, фиолетовый — лаборатория. */
+  --surface: rgb(8 15 26 / 88%);
+  --surface-raised: rgb(15 23 42 / 82%);
+  --surface-soft: rgb(15 23 42 / 55%);
+  --border-soft: rgb(255 255 255 / 10%);
+  --accent-cyan: #22d3ee;
+  --accent-amber: #fbbf24;
+  --accent-emerald: #34d399;
+  --accent-purple: #a78bfa;
+  --accent-rose: #fb7185;
+}
+
+@layer components {
+  /* ----- Бренд: одинаковый градиент у заголовков и акцентных полос ----- */
+  .brand-text {
+    @apply bg-gradient-to-r from-cyan-300 via-emerald-300 to-purple-300 bg-clip-text text-transparent;
+  }
+
+  .brand-bar {
+    @apply bg-gradient-to-r from-cyan-400 via-emerald-400 to-purple-500;
+  }
+
+  /* ----- Микротипографика: правила из шапки файла ----- */
+  .ui-kicker {
+    @apply text-3xs font-semibold uppercase tracking-[0.16em] text-cyan-300/80;
+  }
+
+  .ui-caption {
+    @apply text-2xs leading-snug text-slate-400;
+  }
+
+  .ui-hint {
+    @apply text-2xs leading-snug text-slate-400/90;
+  }
+
+  /* ----- Поверхности карточек ----- */
+  .ui-panel {
+    @apply rounded-xl border border-white/10 bg-slate-950/40;
+  }
+
+  .ui-panel-raised {
+    @apply rounded-2xl border border-white/10 bg-slate-950/60 shadow-lg backdrop-blur-md;
+  }
+
+  .ui-chip {
+    @apply inline-flex items-center gap-1 rounded-lg border border-white/10 bg-slate-950/50 px-2 py-1 text-2xs font-semibold;
+  }
+
+  /* ----- Кнопки: один радиус, один размер текста, один ритм нажатия ----- */
+  .ui-button {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-bold transition-colors duration-300 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .ui-button-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-cyan-300/40 bg-gradient-to-r from-cyan-600 to-emerald-600 px-3 py-2 text-sm font-bold text-white shadow-lg transition-colors duration-300 hover:from-cyan-500 hover:to-emerald-500 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .ui-button-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-slate-800/70 px-3 py-2 text-sm font-bold text-slate-200 transition-colors duration-300 hover:bg-slate-700/70 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .ui-button-danger {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-rose-300/40 bg-gradient-to-r from-rose-600 to-red-600 px-3 py-2 text-sm font-bold text-white shadow-lg shadow-rose-950/30 transition-colors duration-300 hover:from-rose-500 hover:to-red-500 disabled:cursor-not-allowed disabled:opacity-50;
+  }
 }
 
 /* Глобальные скроллбары для всего приложения */
@@ -294,12 +394,13 @@ body {
   background-position: center;
 }
 
+/* Поверхности модалок и карточек: те же оттенки, что у HUD и панелей карты */
 .bg-color-main {
-  background: rgb(24 36 54 / 75%);
+  background: var(--surface);
 }
 
 .bg-color-second {
-  background: rgba(32, 48, 71, 0.75);
+  background: var(--surface-raised);
 }
 
 /* ===== Тач и iOS Safari: игра — одноэкранное приложение =====

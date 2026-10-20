@@ -20,7 +20,7 @@ const TutorialModal: React.FC = () => {
 
   const icon = (
     <svg
-      className="w-6 h-6 text-blue-400"
+      className="h-6 w-6 text-cyan-300"
       fill="none"
       stroke="currentColor"
       viewBox="0 0 24 24"
@@ -70,9 +70,9 @@ const TutorialModal: React.FC = () => {
       color: "pink",
       tips: [
         "🔬 Посадите самца и самку в репродуктор на карте (2 места) и нажмите «Начать ухаживание» (15–30 мин) — кнопка активна, когда пара отдохнула и хватает биомассы",
-        "🧪 Спаривание стоит биомассы: 8 × (1 + качество/20) с каждой жабы",
-        "⚡ Спаривание стоит сил: 25 × (1 + качество/20) у каждой жабы",
-        "🛏️ После спаривания жабы отдыхают: 10 мин × (1 + качество/10) × характер — отдых можно сбросить за астро-кваксы в Репродукторе",
+        "🧪 Спаривание стоит биомассы: 8 × (1 + Качество/20) с каждой жабы",
+        "⚡ Спаривание стоит сил: 25 × (1 + Качество/20) у каждой жабы",
+        "🛏️ После спаривания жабы отдыхают: 10 мин × (1 + Качество/10) × характер — отдых можно сбросить за астро-кваксы в Репродукторе",
         "🐸 Из репродуктора жабы сами не уходят: и после ухаживания, и после родов их выносит игрок, а головастики, рождённые в репродукторе, ждут переноса в биопод",
         "🥚 В репродукторе 2 места — на одну пару. Нужна вторая пара — постройте ещё один «Репродуктор» на карте",
         "⏰ Головастик взрослеет за 2 часа, но таймер запускает только кормление: новорождённый выходит с 0 % сытости — сначала покормите его. Рост ускоряют черви, беременность — мушки",
@@ -82,14 +82,9 @@ const TutorialModal: React.FC = () => {
       icon: "⚡",
       title: "Силы жаб и отдых",
       description:
-        "У каждой жабы есть запас сил (энергия): он тратится на скрещивание и восстанавливается сам, но медленно. Ускорить процесс можно за Астро-кваксы.",
+        "У каждой жабы есть запас сил (энергия): он тратится на скрещивание, походы и другие действия и восстанавливается сам, но медленно.",
       color: "teal",
-      tips: [
-        "🔋 Максимум 100 сил, восстановление +6 в час",
-        "🛏️ Таймер отдыха после спаривания показан прямо в «Репродукторе»",
-        "★ Снять отдых можно за 1 Астро-квакс, ускорить роды - за 2",
-        "🌟 Бонусы биопода тоже ускоряют жизнь жаб",
-      ],
+      tips: ["🔋 всстановление энергии +6 в час"],
     },
     {
       icon: "⚗️",
@@ -125,7 +120,7 @@ const TutorialModal: React.FC = () => {
         "Постройка «Диссоциатор» в лаборатории мгновенно перерабатывает жабу в биомассу. Это быстрый способ закрыть дыру в биомассе, но жаба исчезает навсегда.",
       color: "orange",
       tips: [
-        "🧪 Выход биомассы = (2 + качество × 1.5) × вес × характер × здоровье",
+        "🧪 Выход биомассы = (2 + Качество × 1.5) × вес × характер × здоровье",
         "🦴 Головастик даёт 35% выхода, бесполая жаба - 60%",
         "🐛 Больные жабы тоже дают меньше: выгоднее разбирать здоровых",
         "🍼 Беременных разбирать можно, но вынашиваемое потомство пропадёт",
@@ -172,7 +167,7 @@ const TutorialModal: React.FC = () => {
       color: "teal",
       tips: [
         "⚡ Скорость влияет на передвижение по биоподу",
-        "📊 качество увеличивает стоимость жабы и выработку биомассы",
+        "📊 Качество увеличивает стоимость жабы и выработку биомассы",
         "💕 Плодовитость влияет на число детей в помёте",
         "🍽️ Аппетит определяет скорость голодания",
         "📏 Размер влияет на визуальное отображение и выработку биомассы",
@@ -205,37 +200,22 @@ const TutorialModal: React.FC = () => {
     },
   ];
 
-  const getColorClasses = (color: string) => {
-    const colors = {
-      green:
-        "from-green-900/20 to-emerald-900/10 border-green-400/50 text-green-400",
-      pink: "from-pink-900/20 to-rose-900/10 border-pink-400/50 text-pink-400",
-      yellow:
-        "from-yellow-900/20 to-amber-900/10 border-yellow-400/50 text-yellow-400",
-      purple:
-        "from-purple-900/20 to-violet-900/10 border-purple-400/50 text-purple-400",
-      indigo:
-        "from-indigo-900/20 to-purple-900/10 border-indigo-400/50 text-indigo-400",
-      teal: "from-teal-900/20 to-cyan-900/10 border-teal-400/50 text-teal-400",
-      orange:
-        "from-orange-900/20 to-red-900/10 border-orange-400/50 text-orange-400",
-      blue: "from-blue-900/20 to-cyan-900/10 border-blue-400/50 text-blue-400",
+  /**
+   * Цвет раздела — только тонкая полоса слева. Сами карточки всегда одной
+   * поверхности, иначе восемь разных градиентов разваливают экран на куски.
+   */
+  const getAccentClasses = (color: string) => {
+    const accents = {
+      green: "border-l-emerald-400",
+      pink: "border-l-pink-400",
+      yellow: "border-l-amber-400",
+      purple: "border-l-purple-400",
+      indigo: "border-l-indigo-400",
+      teal: "border-l-teal-400",
+      orange: "border-l-orange-400",
+      blue: "border-l-cyan-400",
     };
-    return colors[color as keyof typeof colors] || colors.blue;
-  };
-
-  const getTipColorClasses = (color: string) => {
-    const colors = {
-      green: "bg-green-900/30 border-green-500/30 text-green-300",
-      pink: "bg-pink-900/30 border-pink-500/30 text-pink-300",
-      yellow: "bg-yellow-900/30 border-yellow-500/30 text-yellow-300",
-      purple: "bg-purple-900/30 border-purple-500/30 text-purple-300",
-      indigo: "bg-indigo-900/30 border-indigo-500/30 text-indigo-300",
-      teal: "bg-teal-900/30 border-teal-500/30 text-teal-300",
-      orange: "bg-orange-900/30 border-orange-500/30 text-orange-300",
-      blue: "bg-blue-900/30 border-blue-500/30 text-blue-300",
-    };
-    return colors[color as keyof typeof colors] || colors.blue;
+    return accents[color as keyof typeof accents] || accents.blue;
   };
 
   return (
@@ -243,54 +223,40 @@ const TutorialModal: React.FC = () => {
       {/* Контент */}
       <div className="px-4">
         {/* Вступление */}
-        <div className="text-center mb-8">
-          <div className="text-4xl mb-4">🐸✨</div>
-          <h3 className="text-white font-semibold px-2 text-lg mb-2">
+        <div className="mb-6 text-center">
+          <div className="mb-3 text-4xl">🐸✨</div>
+          <h3 className="mb-2 text-lg font-semibold text-white">
             Добро пожаловать в мир космических жаб!
           </h3>
-          <p className="text-gray-300 text-sm">
+          <p className="text-sm text-slate-300">
             Освойте все механики игры и станьте лучшим жабоводом галактики
           </p>
         </div>
 
         {/* Секции обучения */}
-        <div className="space-y-6">
+        <div className="space-y-4">
           {tutorialSections.map((section, index) => (
             <div
               key={index}
-              className={`
-                relative rounded-xl p-5 border transition-all
-                bg-gradient-to-r ${getColorClasses(section.color)}
-                hover:shadow-lg hover:scale-[1.02] transform transition-all duration-300
-              `}
+              className={`ui-panel relative border-l-4 p-5 transition-colors duration-300 hover:bg-slate-900/60 ${getAccentClasses(
+                section.color,
+              )}`}
             >
               {/* Номер секции */}
-              <div
-                className={`
-                  absolute -top-3 -left-3 w-8 h-8 rounded-full flex items-center justify-center 
-                  text-white font-bold text-sm border-2
-                  ${
-                    section.color === "indigo"
-                      ? "bg-indigo-800 border-indigo-500"
-                      : section.color === "teal"
-                        ? "bg-teal-800 border-teal-500"
-                        : "bg-color-main border-gray-600"
-                  }
-                `}
-              >
+              <div className="absolute -left-3 -top-3 flex h-8 w-8 items-center justify-center rounded-full border-2 border-slate-600 bg-slate-950 text-sm font-bold text-white">
                 {index + 1}
               </div>
 
               {/* Заголовок секции */}
-              <div className="flex items-center gap-3 mb-3">
+              <div className="mb-3 flex items-center gap-3">
                 <div className="text-2xl">{section.icon}</div>
-                <h4 className="text-white font-semibold text-lg">
+                <h4 className="text-lg font-semibold text-white">
                   {section.title}
                 </h4>
               </div>
 
               {/* Описание */}
-              <p className="text-gray-200 mb-4 leading-relaxed">
+              <p className="mb-4 text-sm leading-relaxed text-slate-300">
                 <CurrencyText text={section.description} />
               </p>
 
@@ -299,19 +265,11 @@ const TutorialModal: React.FC = () => {
                 {section.tips.map((tip, tipIndex) => (
                   <div
                     key={tipIndex}
-                    className={`
-                      flex items-start gap-2 p-3 rounded-lg border text-sm
-                      ${getTipColorClasses(section.color)}
-                      ${
-                        section.color === "indigo"
-                          ? "hover:bg-indigo-800/50"
-                          : section.color === "teal"
-                            ? "hover:bg-teal-800/50"
-                            : ""
-                      }
-                    `}
+                    className="flex items-start gap-2 rounded-lg border border-white/10 bg-slate-900/40 p-3 text-sm text-slate-300"
                   >
-                    <span className="flex-shrink-0 mt-0.5">•</span>
+                    <span className="mt-0.5 flex-shrink-0 text-cyan-300">
+                      •
+                    </span>
                     <span>
                       <CurrencyText text={tip} />
                     </span>
@@ -323,39 +281,39 @@ const TutorialModal: React.FC = () => {
         </div>
 
         {/* Блок генетических уровней */}
-        <div className="mt-6 p-5 bg-gradient-to-r from-indigo-900/20 to-purple-900/20 rounded-xl border border-indigo-400/50">
-          <h4 className="text-indigo-400 font-semibold text-lg mb-3 text-center">
+        <div className="ui-panel mt-6 p-5">
+          <h4 className="mb-3 text-center text-lg font-semibold text-cyan-200">
             ⚗️ Уровни поломки ДНК
           </h4>
           <div className="grid grid-cols-2 gap-3 text-sm">
-            <div className="bg-green-900/30 border border-green-500/30 rounded-lg p-3 text-center hover:bg-green-800/40 transition-colors">
-              <div className="text-green-400 font-semibold mb-1">0% 🧬</div>
-              <div className="text-green-300 text-xs">Идеальная</div>
+            <div className="rounded-lg border border-emerald-400/30 bg-emerald-500/10 p-3 text-center transition-colors hover:bg-emerald-500/15">
+              <div className="mb-1 font-semibold text-emerald-200">0% 🧬</div>
+              <div className="text-xs text-emerald-300/80">Идеальная</div>
             </div>
-            <div className="bg-yellow-900/30 border border-yellow-500/30 rounded-lg p-3 text-center hover:bg-yellow-800/40 transition-colors">
-              <div className="text-yellow-400 font-semibold mb-1">1-25% 🔬</div>
-              <div className="text-yellow-300 text-xs">Стабильная</div>
+            <div className="rounded-lg border border-amber-400/30 bg-amber-500/10 p-3 text-center transition-colors hover:bg-amber-500/15">
+              <div className="mb-1 font-semibold text-amber-200">1-25% 🔬</div>
+              <div className="text-xs text-amber-300/80">Стабильная</div>
             </div>
-            <div className="bg-orange-900/30 border border-orange-500/30 rounded-lg p-3 text-center hover:bg-orange-800/40 transition-colors">
-              <div className="text-orange-400 font-semibold mb-1">
+            <div className="rounded-lg border border-orange-400/30 bg-orange-500/10 p-3 text-center transition-colors hover:bg-orange-500/15">
+              <div className="mb-1 font-semibold text-orange-200">
                 26-50% ⚠️
               </div>
-              <div className="text-orange-300 text-xs">Нестабильная</div>
+              <div className="text-xs text-orange-300/80">Нестабильная</div>
             </div>
-            <div className="bg-red-900/30 border border-red-500/30 rounded-lg p-3 text-center hover:bg-red-800/40 transition-colors">
-              <div className="text-red-400 font-semibold mb-1">51%+ 💥</div>
-              <div className="text-red-300 text-xs">Критическая</div>
+            <div className="rounded-lg border border-rose-400/30 bg-rose-500/10 p-3 text-center transition-colors hover:bg-rose-500/15">
+              <div className="mb-1 font-semibold text-rose-200">51%+ 💥</div>
+              <div className="text-xs text-rose-300/80">Критическая</div>
             </div>
           </div>
         </div>
 
         {/* Заключение */}
-        <div className="mt-6 p-5 bg-gradient-to-r from-purple-900/20 to-blue-900/20 rounded-xl border border-purple-400/50 text-center">
-          <div className="text-2xl mb-3">🚀🌟</div>
-          <h4 className="text-white font-semibold mb-2">
+        <div className="ui-panel mt-6 p-5 text-center">
+          <div className="mb-3 text-2xl">🚀🌟</div>
+          <h4 className="mb-2 font-semibold text-white">
             Готовы к приключениям?
           </h4>
-          <p className="text-gray-200 text-sm">
+          <p className="text-sm text-slate-300">
             Начните свое путешествие в мире космических жаб! Создавайте
             уникальных существ, управляйте генетикой и займите первое место в
             галактическом рейтинге!
@@ -368,7 +326,7 @@ const TutorialModal: React.FC = () => {
             playClick();
             handleClose();
           }}
-          className="w-full mt-5 bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl font-semibold transition-colors duration-200 transform hover:scale-105 active:scale-95"
+          className="ui-button-primary mt-5 w-full py-3"
         >
           Начать игру!
         </button>

@@ -306,7 +306,7 @@ export const getLootboxHint = (chanceLevel?: LootboxChanceLevel): string => {
     rare: "Редкая находка",
     epic: "Очень редкая",
     legendary: "Невероятно редкая",
-    mythical: "Легендарная качество",
+    mythical: "Легендарная Качество",
   };
 
   return hints[chanceLevel];

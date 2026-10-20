@@ -57,6 +57,7 @@ const MENU_ITEMS: {
   icon: JSX.Element;
   label: string;
   desc: string;
+  /** Цвет иконки: единственный акцент пункта, сама карточка всегда одной поверхности. */
   color: string;
   target: JSX.Element;
   /**
@@ -66,6 +67,8 @@ const MENU_ITEMS: {
   requiresRoom?: ColonyRoomKind;
   /** Подсказка вместо описания, пока нужный сектор не построен. */
   lockedDesc?: string;
+  /** Ширина карточки под содержимое: текст — уже, таблицы и списки — шире. */
+  modalClassName?: string;
 }[] = [
   // Рынок и склад по-прежнему доступны из меню, но «Рынок» открывается только когда
   // на карте колонии построен «Магазин» (`requiresRoom`): без сектора торговли нет.
@@ -74,7 +77,7 @@ const MENU_ITEMS: {
     icon: MenuIcons.shop,
     label: "Рынок",
     desc: "Жабы, предметы и улучшения",
-    color: "bg-fuchsia-900/50 border-fuchsia-500/50",
+    color: "text-fuchsia-300",
     target: <ShopMenu />,
     requiresRoom: "shop",
     lockedDesc: "Сначала постройте «Магазин» на карте колонии",
@@ -84,7 +87,7 @@ const MENU_ITEMS: {
     icon: MenuIcons.collection,
     label: "Склад",
     desc: "Ресурсы и запасы колонии",
-    color: "bg-green-900/50 border-green-500/50",
+    color: "text-emerald-300",
     target: <StorageModal />,
   },
   {
@@ -106,7 +109,7 @@ const MENU_ITEMS: {
     ),
     label: "Разведка",
     desc: "Походы команд за Периметр",
-    color: "bg-amber-900/50 border-amber-500/50",
+    color: "text-amber-300",
     target: <ExpeditionModal />,
   },
   {
@@ -128,7 +131,7 @@ const MENU_ITEMS: {
     ),
     label: "Жабопедия",
     desc: "Коллекция всех видов жаб",
-    color: "bg-purple-900/50 border-purple-500/50",
+    color: "text-purple-300",
     target: <ToadGalleryModal />,
   },
   {
@@ -136,24 +139,27 @@ const MENU_ITEMS: {
     icon: MenuIcons.stats,
     label: "Достижения",
     desc: "Ваши достижения и прогресс",
-    color: "bg-yellow-900/50 border-yellow-500/50",
+    color: "text-yellow-300",
     target: <AchivementsModal />,
+    modalClassName: "md:max-w-4xl",
   },
   {
     id: "leaderboard",
     icon: MenuIcons.leaderboard,
     label: "Лидерборд",
     desc: "Сравнение с другими игроками",
-    color: "bg-blue-900/50 border-blue-500/50",
+    color: "text-blue-300",
     target: <LeaderboardModal />,
+    modalClassName: "md:max-w-2xl",
   },
   {
     id: "tutorial",
     icon: MenuIcons.collection,
     label: "Обучение",
     desc: "Полный справочник: карта, жабы и экономика",
-    color: "bg-teal-900/50 border-teal-500/50",
+    color: "text-teal-300",
     target: <TutorialModal />,
+    modalClassName: "md:max-w-3xl",
   },
   {
     id: "lore",
@@ -174,16 +180,18 @@ const MENU_ITEMS: {
     ),
     label: "Архив КВАЗа",
     desc: "Восстановленные записи станции «Титан-9»",
-    color: "bg-cyan-900/50 border-cyan-500/50",
+    color: "text-cyan-300",
     target: <LoreArchiveModal />,
+    modalClassName: "md:max-w-3xl",
   },
   {
     id: "settings",
     icon: SettingsIcon,
     label: "Настройки",
     desc: "Звук, музыка и другие опции",
-    color: "bg-gray-900/50 border-gray-500/50",
+    color: "text-slate-300",
     target: <SettingsModal />,
+    modalClassName: "md:max-w-2xl",
   },
   {
     // Вход по почте — только для браузера: в Telegram личность уже подтверждена
@@ -206,8 +214,9 @@ const MENU_ITEMS: {
     ),
     label: "Аккаунт",
     desc: "Вход и регистрация по почте",
-    color: "bg-emerald-900/50 border-emerald-500/50",
+    color: "text-emerald-300",
     target: <AuthModal />,
+    modalClassName: "md:max-w-md",
   },
 ];
 
@@ -230,7 +239,7 @@ export const BurgerMenu = () => {
 
   return (
     <Modal title="Меню">
-      <div className="mb-3 flex flex-col gap-3">
+      <div className="mb-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
         {items.map((item, index) => (
           <button
             key={item.id}
@@ -244,12 +253,18 @@ export const BurgerMenu = () => {
                 return;
               }
 
-              openModal(() => item.target);
+              openModal(() => item.target, {
+                className: item.modalClassName,
+              });
             }}
-            className={`w-full ${item.color} rounded-xl py-4 px-2 shadow-lg border-2 transition-all duration-300 transform group ${
+            className={`group w-full rounded-xl border border-white/10 bg-slate-900/55 px-3 py-2.5 shadow-lg transition-colors duration-300 ${
+              items.length % 2 === 1 && index === items.length - 1
+                ? "sm:col-span-2"
+                : ""
+            } ${
               item.locked
                 ? "cursor-not-allowed opacity-45 grayscale"
-                : "hover:shadow-xl hover:scale-[1.02] active:scale-95"
+                : "hover:border-cyan-300/40 hover:bg-slate-800/70 active:scale-[0.99]"
             }`}
             style={{
               animationDelay: `${index * 70}ms`,
@@ -257,18 +272,18 @@ export const BurgerMenu = () => {
             }}
           >
             <div className="flex items-center space-x-3">
-              <div className="text-green-400 group-hover:text-green-300 transition-colors duration-300">
+              <div className={`transition-colors duration-300 ${item.color}`}>
                 {item.icon}
               </div>
-              <div className="text-left flex-1">
-                <div className="text-sm font-bold text-white group-hover:text-green-200 transition-colors duration-300">
+              <div className="flex-1 text-left">
+                <div className="text-sm font-bold text-white transition-colors duration-300 group-hover:text-cyan-50">
                   {item.label}
                 </div>
-                <div className="text-2xs text-gray-300 group-hover:text-gray-200 transition-colors duration-300">
+                <div className="ui-caption transition-colors duration-300 group-hover:text-slate-300">
                   {item.locked ? item.lockedDesc : item.desc}
                 </div>
               </div>
-              <div className="text-gray-500 group-hover:text-green-400 transition-colors duration-300 text-lg">
+              <div className="text-lg text-slate-500 transition-colors duration-300 group-hover:text-cyan-300">
                 {item.locked ? "🔒" : "›"}
               </div>
             </div>

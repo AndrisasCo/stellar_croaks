@@ -203,7 +203,7 @@ export const SwipeSlides = ({
             onClick={() => step(-1)}
             aria-label="Предыдущая страница"
             title={labels?.[index - 1]}
-            className="absolute left-0.5 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-gray-500/40 bg-slate-900/80 text-lg leading-none text-amber-100 transition-colors duration-300 hover:bg-slate-800/90"
+            className="absolute left-0.5 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-slate-500/40 bg-slate-900/80 text-lg leading-none text-amber-100 transition-colors duration-300 hover:bg-slate-800/90"
           >
             ‹
           </ClickButton>
@@ -213,7 +213,7 @@ export const SwipeSlides = ({
             onClick={() => step(1)}
             aria-label="Следующая страница"
             title={labels?.[index + 1]}
-            className="absolute right-0.5 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-gray-500/40 bg-slate-900/80 text-lg leading-none text-amber-100 transition-colors duration-300 hover:bg-slate-800/90"
+            className="absolute right-0.5 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-slate-500/40 bg-slate-900/80 text-lg leading-none text-amber-100 transition-colors duration-300 hover:bg-slate-800/90"
           >
             ›
           </ClickButton>
@@ -232,12 +232,12 @@ export const SwipeSlides = ({
               className={`h-1.5 rounded-full transition-all duration-300 ${
                 page === index
                   ? "w-4 bg-amber-400"
-                  : "w-1.5 bg-gray-600 hover:bg-gray-500"
+                  : "w-1.5 bg-slate-600 hover:bg-slate-500"
               }`}
             />
           ))}
         </div>
-        <span className="text-3xs text-gray-400">
+        <span className="text-2xs text-slate-400">
           {index + 1} / {slides.length}
         </span>
       </div>

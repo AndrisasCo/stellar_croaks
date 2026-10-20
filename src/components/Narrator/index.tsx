@@ -47,14 +47,14 @@ const StoryCard = ({
     aria-labelledby="narrator-title"
   >
     <div className="no-overscroll relative max-h-[88dvh] w-full max-w-md overflow-y-auto rounded-3xl border border-cyan-400/30 bg-[#08141c]/95 text-white shadow-[0_24px_80px_-12px_rgba(34,211,238,0.3)]">
-      <div className="h-1 w-full bg-gradient-to-r from-cyan-400 via-emerald-400 to-purple-500" />
+      <div className="brand-bar h-1 w-full" />
       <div className="relative p-4 md:p-5 overflow-hidden">
         <div className="pointer-events-none absolute -right-10 -top-14 h-40 w-40 rounded-full bg-cyan-400/10 blur-2xl" />
 
         <div className="relative flex items-start gap-3">
           <NarratorAvatar />
           <div className="min-w-0">
-            <p className="text-3xs font-semibold uppercase tracking-[0.2em] text-cyan-300/80">
+            <p className="ui-kicker">
               Станция «{STATION_NAME}» · канал связи
             </p>
             <h2
@@ -74,13 +74,13 @@ const StoryCard = ({
           <button
             type="button"
             onClick={onSkip}
-            className="text-3xs text-slate-500 underline decoration-dotted underline-offset-2 transition-colors hover:text-rose-300"
+            className="text-2xs text-slate-500 underline decoration-dotted underline-offset-2 transition-colors hover:text-rose-300"
           >
             Пропустить обучение
           </button>
           <ClickButton
             onClick={onContinue}
-            className="rounded-xl border border-cyan-300/40 bg-gradient-to-r from-cyan-600 to-emerald-600 px-4 py-2 text-sm font-bold text-white shadow-lg transition-transform hover:from-cyan-500 hover:to-emerald-500 active:scale-95"
+            className="ui-button-primary px-4 active:scale-95"
           >
             {step.actionLabel}
           </ClickButton>
@@ -108,7 +108,7 @@ const TaskCard = ({
     aria-live="polite"
   >
     <div className="pointer-events-auto relative w-full max-w-md overflow-hidden rounded-2xl border border-cyan-400/35 bg-[#07141c]/95 p-3 text-white shadow-[0_18px_50px_-10px_rgba(6,182,212,0.35)] backdrop-blur-md">
-      <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-cyan-400 via-emerald-400 to-purple-500" />
+      <div className="brand-bar absolute inset-x-0 top-0 h-0.5" />
 
       <div className="flex items-start gap-2.5">
         <NarratorAvatar sizeClass="h-10 w-10" />
@@ -116,7 +116,7 @@ const TaskCard = ({
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <p className="text-3xs font-semibold uppercase tracking-[0.18em] text-cyan-300/80">
+              <p className="ui-kicker">
                 КВАЗ · задание {taskNumber}/{NARRATOR_TASKS.length}
               </p>
               <h3 className="mt-0.5 text-sm font-bold leading-tight text-cyan-50">
@@ -161,7 +161,7 @@ const TaskCard = ({
             <button
               type="button"
               onClick={onSkip}
-              className="text-3xs text-slate-500 underline decoration-dotted underline-offset-2 transition-colors hover:text-rose-300"
+              className="text-2xs text-slate-500 underline decoration-dotted underline-offset-2 transition-colors hover:text-rose-300"
             >
               Пропустить
             </button>
@@ -206,7 +206,7 @@ const Narrator = () => {
         >
           <NarratorAvatar sizeClass="h-8 w-8" />
           <span className="min-w-0">
-            <span className="block text-3xs font-semibold uppercase tracking-[0.16em] text-cyan-300/80">
+            <span className="ui-kicker block">
               КВАЗ · подсказка
             </span>
             <span className="block truncate text-xs font-bold text-cyan-50">

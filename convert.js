@@ -22,7 +22,7 @@ async function convertImages() {
     (file) =>
       file.toLowerCase().endsWith(".png") ||
       file.toLowerCase().endsWith(".jpg") ||
-      file.toLowerCase().endsWith(".webp")
+      file.toLowerCase().endsWith(".webp"),
   );
 
   console.log(`Найдено ${pngFiles.length} изображений`);
@@ -38,10 +38,10 @@ async function convertImages() {
       // Оптимальные настройки для WebP
       await sharp(inputPath)
         .webp({
-          quality: 85, // качество 85% обычно оптимально
+          quality: 85, // Качество 85% обычно оптимально
           lossless: false, // lossy сжатие (меньше размер)
           effort: 6, // уровень оптимизации (0-6, 6 самый медленный но лучший)
-          alphaQuality: 85, // качество альфа-канала если есть
+          alphaQuality: 85, // Качество альфа-канала если есть
           nearLossless: true, // почти без потерь для лучшего качества
           smartSubsample: true, // умная субдискретизация
         })
@@ -64,8 +64,8 @@ async function convertImages() {
 
       console.log(
         `✓ ${file} → ${baseName}.webp (${formatSize(
-          originalStats.size
-        )} → ${formatSize(newStats.size)}, -${reduction}%)`
+          originalStats.size,
+        )} → ${formatSize(newStats.size)}, -${reduction}%)`,
       );
     } catch (error) {
       console.error(`✗ Ошибка при обработке ${file}:`, error.message);

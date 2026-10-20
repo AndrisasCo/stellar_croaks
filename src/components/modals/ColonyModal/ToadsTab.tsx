@@ -164,12 +164,12 @@ const ColonyToadCard = ({
           </div>
         </div>
 
-        <span className="shrink-0 rounded-md border border-white/10 bg-slate-950/40 px-1.5 py-0.5 text-3xs text-slate-300">
+        <span className="shrink-0 rounded-md border border-white/10 bg-slate-950/40 px-1.5 py-0.5 text-2xs text-slate-300">
           {getStageLabel(toad.stage)}
         </span>
       </div>
 
-      <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-3xs text-slate-400">
+      <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-2xs text-slate-400">
         <span className={`flex items-center gap-1 ${rarity.color}`}>
           {rarity.icon} {rarity.label} · {toad.genes.rarity.toFixed(1)}
         </span>
@@ -188,7 +188,7 @@ const ColonyToadCard = ({
       </div>
 
       <div className="flex items-center gap-2">
-        <span className="text-3xs text-slate-400">Сытость</span>
+        <span className="text-2xs text-slate-400">Сытость</span>
         <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-700">
           <div
             className={`h-full rounded-full ${getHungerColor(hunger)}`}
@@ -201,7 +201,7 @@ const ColonyToadCard = ({
       </div>
 
       {(hp !== undefined || toad.energy !== undefined || disease) && (
-        <div className="flex flex-wrap items-center gap-2 text-3xs">
+        <div className="flex flex-wrap items-center gap-2 text-2xs">
           {hp !== undefined && (
             <span className="rounded border border-rose-400/20 bg-rose-500/10 px-1.5 py-0.5 text-rose-200">
               ❤️ {Math.round(hp)}/{maxHp}

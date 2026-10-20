@@ -34,11 +34,7 @@ export const AcceptButton: React.FC<AcceptButtonProps> = ({
       <ClickButton
         onClick={() => setSelectedOrder(order)}
         disabled={!order.canComplete}
-        className={`w-full py-3 rounded-xl text-base font-medium transition-colors ${
-          order.canComplete
-            ? "bg-purple-600 hover:bg-purple-500 text-white"
-            : "bg-gray-600 text-gray-300 cursor-not-allowed"
-        }`}
+        className="ui-button-primary w-full py-3"
       >
         {order.canComplete ? "Принять заказ" : "Недоступно"}
       </ClickButton>

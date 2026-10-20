@@ -60,7 +60,6 @@ export default function DissolveModal({ room }: { room?: RoomConfig }) {
     {
       id: "dissolve",
       label: "🧪 Разбор",
-      color: "text-amber-400",
       disabled: Boolean(powerIssue),
       disabledHint: powerIssue ?? undefined,
     },
@@ -138,9 +137,7 @@ export default function DissolveModal({ room }: { room?: RoomConfig }) {
             alt="Диссоциатор"
             className="w-8 h-8 object-contain"
           />
-          <h2 className="text-xl font-bold bg-gradient-to-r from-amber-400 to-red-500 bg-clip-text text-transparent">
-            Диссоциатор
-          </h2>
+          <h2 className="brand-text text-xl font-bold">Диссоциатор</h2>
         </div>
       </div>
 
@@ -164,10 +161,10 @@ export default function DissolveModal({ room }: { room?: RoomConfig }) {
               </div>
               <p className="text-2xs text-amber-100 leading-snug">
                 ♻️ Диссоциатор мгновенно перерабатывает жабу в биомассу. Жабы
-                исчезают навсегда: качество, вес и здоровье влияют на выход,
+                исчезают навсегда: Качество, вес и здоровье влияют на выход,
                 головастики дают заметно меньше.
               </p>
-              <p className="text-2xs text-gray-400 mt-1">
+              <p className="text-2xs text-slate-400 mt-1">
                 Всего жаб в лаборатории: {allToads.length} · потенциал{" "}
                 {getDissolveBatchYield(availableToads)} 🧪
               </p>
@@ -175,8 +172,8 @@ export default function DissolveModal({ room }: { room?: RoomConfig }) {
 
             {groups.length === 0 ? (
               <div className="text-center py-8">
-                <div className="text-gray-300 text-4xl mb-3">♻️</div>
-                <p className="text-gray-300 text-sm">
+                <div className="text-slate-300 text-4xl mb-3">♻️</div>
+                <p className="text-slate-300 text-sm">
                   Жаб для переработки не найдено
                 </p>
               </div>
@@ -184,10 +181,10 @@ export default function DissolveModal({ room }: { room?: RoomConfig }) {
               groups.map((group) => (
                 <div key={group.key} className="mb-3">
                   <div className="flex justify-between items-center px-1 mb-1">
-                    <span className="text-gray-200 text-xs font-semibold">
+                    <span className="text-slate-200 text-xs font-semibold">
                       {group.label}
                     </span>
-                    <span className="text-gray-500 text-2xs">
+                    <span className="text-slate-500 text-2xs">
                       {group.toads.length}
                     </span>
                   </div>
@@ -207,7 +204,7 @@ export default function DissolveModal({ room }: { room?: RoomConfig }) {
                           className={`w-full flex items-center gap-2 rounded-xl border px-2 py-2 text-left transition-all ${
                             isSelected
                               ? "border-amber-400 bg-amber-500/10"
-                              : "border-gray-600/40 bg-color-second hover:border-amber-400/60"
+                              : "border-slate-600/40 bg-color-second hover:border-amber-400/60"
                           } ${isIncubating ? "opacity-50 cursor-not-allowed" : ""}`}
                         >
                           <ToadAvatar size={9} toad={toad} />
@@ -219,14 +216,14 @@ export default function DissolveModal({ room }: { room?: RoomConfig }) {
                             >
                               {toad.name}
                             </div>
-                            <div className="flex items-center gap-2 text-2xs text-gray-300 mt-0.5">
+                            <div className="flex items-center gap-2 text-2xs text-slate-300 mt-0.5">
                               <ToadGender gender={toad.sex} />
                               <span>
                                 {toad.stage === "adult"
                                   ? "Взрослый"
                                   : "Головастик"}
                               </span>
-                              <span className="text-gray-500">
+                              <span className="text-slate-500">
                                 ★ {toad.genes?.rarity?.toFixed(1)}
                               </span>
                               {toad.pregnancy?.isPregnant && (
@@ -251,7 +248,7 @@ export default function DissolveModal({ room }: { room?: RoomConfig }) {
                             <div className="text-amber-300 font-bold text-sm">
                               +{getDissolveYield(toad)} 🧪
                             </div>
-                            <div className="text-3xs text-gray-400">
+                            <div className="text-2xs text-slate-400">
                               {isIncubating
                                 ? "⏳ в инкубаторе"
                                 : isSelected
@@ -269,9 +266,9 @@ export default function DissolveModal({ room }: { room?: RoomConfig }) {
           </div>
 
           {/* Панель запуска разбора */}
-          <div className="sticky bottom-0 bg-color-main/95 backdrop-blur pt-2 pb-1 px-2 border-t border-gray-600/40">
+          <div className="sticky bottom-0 bg-color-main/95 backdrop-blur pt-2 pb-1 px-2 border-t border-slate-600/40">
             <div className="flex items-center justify-between mb-2 text-xs">
-              <span className="text-gray-300">
+              <span className="text-slate-300">
                 Выбрано {selectedToads.length} из {DISSOLVE_MAX_BATCH}
               </span>
               <span className="flex items-center gap-2">
@@ -282,7 +279,7 @@ export default function DissolveModal({ room }: { room?: RoomConfig }) {
               </span>
             </div>
             <ClickButton
-              className="w-full bg-gradient-to-r from-amber-600 to-red-600 hover:from-amber-500 hover:to-red-500 text-white font-bold py-3 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
+              className="ui-button-danger w-full py-3"
               disabled={selectedToads.length === 0}
               onClick={() =>
                 dissociatorReady ? setShowConfirm(true) : setShowBlocked(true)
@@ -292,7 +289,7 @@ export default function DissolveModal({ room }: { room?: RoomConfig }) {
             </ClickButton>
             {selectedToads.length > 0 && (
               <ClickButton
-                className="w-full mt-2 bg-color-second hover:bg-gray-600 text-gray-200 py-2 rounded-xl text-sm"
+                className="w-full mt-2 bg-color-second hover:bg-slate-600 text-slate-200 py-2 rounded-xl text-sm"
                 onClick={() => setSelectedIds([])}
               >
                 Очистить

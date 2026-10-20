@@ -153,7 +153,7 @@ const STAT_SCRIPTS: StatScriptConfig[] = [
     step: 0.5,
     read: (toad) => toad.genes.rarity,
     describe: (threshold) =>
-      `Жаба с качеством не менее ${formatNumber(threshold)}`,
+      `Жаба с Качеством не менее ${formatNumber(threshold)}`,
     reward: (threshold) => roundReward(70 + (threshold - 2) * 60),
   },
   {

@@ -33,7 +33,7 @@ export const ProgressBar = ({
         </button>
       )}
     </div>
-    <div className="w-full bg-gray-600/50 rounded-full h-2 overflow-hidden">
+    <div className="w-full bg-slate-600/50 rounded-full h-2 overflow-hidden">
       <div
         className={`h-2 rounded-full bg-${color}-500`}
         style={{ width: `${Math.min((current / max) * 100, 100)}%` }}

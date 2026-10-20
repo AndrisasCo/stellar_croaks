@@ -15,7 +15,7 @@ const Modal: React.FC<ToadListModalProps> = ({ children, icon, title }) => {
         {title && (
           <div className="flex items-center gap-2 pb-4 ">
             {icon}
-            <h2 className="text-xl font-bold bg-gradient-to-r from-green-400 to-purple-500 bg-clip-text text-transparent">
+            <h2 className="brand-text text-xl font-bold">
               {title}
             </h2>
           </div>

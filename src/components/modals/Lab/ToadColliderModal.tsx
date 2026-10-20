@@ -100,14 +100,12 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
     {
       id: "collider",
       label: "🧬 Коллайдер",
-      color: "text-purple-400",
       disabled: Boolean(powerIssue),
       disabledHint: powerIssue ?? undefined,
     },
     {
       id: "incubator",
       label: "🧫 Инкубатор",
-      color: "text-emerald-400",
       disabled: Boolean(powerIssue),
       disabledHint: powerIssue ?? undefined,
     },
@@ -166,7 +164,7 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
     }
     setIsMixing(true);
 
-    // Мутация - шанс на повышенную качество
+    // Мутация - шанс на повышенную Качество
     const mutationChance = Math.random() < 0.1;
     const genesBreakChance = Math.random() < 0.1;
     const isMutant = Math.random() < 0.1;
@@ -188,7 +186,7 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
     }
 
     if (mutationChance) {
-      message += " Идельное смешивание генов! Ее качество повышена";
+      message += " Идельное смешивание генов! Ее Качество повышена";
     }
 
     if (isMutant) {
@@ -248,7 +246,7 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
       <div className="flex w-full justify-center items-center relative">
         <div className="flex items-center gap-2 pb-4 ">
           {ColliderIcons.collider}
-          <h2 className="text-xl font-bold bg-gradient-to-r from-green-400 to-purple-500 bg-clip-text text-transparent">
+          <h2 className="brand-text text-xl font-bold">
             Генетический Коллайдер
           </h2>
         </div>
@@ -263,7 +261,7 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
         <>
           {!breedingResult ? (
             <>
-              <div className="bg-color-second  rounded-lg p-3 mb-4  border border-gray-600">
+              <div className="bg-color-second  rounded-lg p-3 mb-4  border border-slate-600">
                 <div className="text-xs sm:text-sm text-white font-medium mb-2  text-center flex items-center justify-center gap-2">
                   <span className="text-yellow-400">⭐</span>
                   Бонусы редкости
@@ -297,17 +295,15 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
                       className={`text-center p-1 sm:p-2 rounded-xl transition-all duration-500 transform ${
                         currentToads.length >= count
                           ? `bg-gradient-to-br ${colors} text-white shadow-lg ${shadow} scale-105 border-2 border-white border-opacity-30 animate-gradient-x`
-                          : "bg-color-main text-gray-300 border-2 border-transparent "
+                          : "bg-color-main text-slate-300 border-2 border-transparent "
                       }`}
                     >
-                      <div className="font-bold text-2xs sm:text-1xs">
-                        {count} жаб
-                      </div>
+                      <div className="text-1xs font-bold">{count} жаб</div>
                       <div
-                        className={`font-bold text-3xs sm:text-2xs mt-1 ${
+                        className={`mt-1 text-2xs font-bold ${
                           currentToads.length >= count
                             ? "text-yellow-300"
-                            : "text-gray-200"
+                            : "text-slate-200"
                         }`}
                       >
                         +{calculateRarityBonus(count)}%
@@ -369,11 +365,7 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
                   <button
                     onClick={() => setShowWarning(true)}
                     disabled={isDisabled}
-                    className={`px-4 py-2  rounded-xl text-sm sm:text-base font-bold transition-all duration-300 ${
-                      currentToads.length > 1
-                        ? "bg-gradient-to-r from-green-600 to-purple-600 hover:from-green-500 hover:to-purple-500 text-white shadow-lg hover:shadow-xl transform hover:scale-105 border-2 border-white/20"
-                        : "bg-color-second text-gray-300 cursor-not-allowed border-2 border-transparent"
-                    }`}
+                    className="ui-button-primary px-4 py-2"
                   >
                     <div className="flex items-center justify-center gap-2 px-6">
                       {ColliderIcons.mix}
@@ -386,13 +378,13 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
               {/* Список доступных жаб */}
               {!isMixing && (
                 <div className="mb-4 h-full">
-                  <p className="text-gray-200 text-xs sm:text-sm mb-2 text-center">
+                  <p className="text-slate-200 text-xs sm:text-sm mb-2 text-center">
                     Нажмите на жаб, чтобы добавить в колбы:
                   </p>
                   <div>
                     <div className="flex flex-wrap gap-1 sm:gap-2 justify-center">
                       {availableToads.length === 0 && (
-                        <div className="text-gray-500 text-sm py-4">
+                        <div className="text-slate-500 text-sm py-4">
                           Нет доступных жаб
                         </div>
                       )}
@@ -408,9 +400,9 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
                             className={`p-2 relative rounded-lg text-xs text-center transition-all flex flex-col items-center w-[100px] max-w-[100px] border ${
                               currentToads.find((t) => t.id === toad.id)
                                 ? "bg-purple-600/50 text-white cursor-not-allowed border-purple-500/50"
-                                : `text-gray-200 cursor-pointer ${getRarityBackground(
+                                : `text-slate-200 cursor-pointer ${getRarityBackground(
                                     toad.genes.rarity,
-                                  )} hover:bg-gray-600/30`
+                                  )} hover:bg-slate-600/30`
                             }`}
                           >
                             <ToadAvatar size={6} toad={toad} />
@@ -437,7 +429,7 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
                               </span>
                             </div>
 
-                            {/* качество */}
+                            {/* Качество */}
                             <div
                               className={`text-xs font-bold ${getRarityColor(
                                 toad.genes.rarity,
@@ -451,7 +443,7 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
 
                             {/* Генетическая поломка */}
                             <div
-                              className={`w-full rounded px-1 py-0.5 text-3xs font-medium border ${geneticFaultConfig.bgColor} ${geneticFaultConfig.borderColor} ${geneticFaultConfig.color}`}
+                              className={`w-full rounded border px-1 py-0.5 text-2xs font-medium ${geneticFaultConfig.bgColor} ${geneticFaultConfig.borderColor} ${geneticFaultConfig.color}`}
                             >
                               <div className="flex items-center justify-center gap-1">
                                 <span>{geneticFaultConfig.icon}</span>
@@ -469,7 +461,7 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
               {/* Кнопки управления */}
 
               <ClickButton
-                className="w-full mt-auto bg-color-second hover:bg-gray-600 text-gray-200 py-3 rounded-xl "
+                className="w-full mt-auto bg-color-second hover:bg-slate-600 text-slate-200 py-3 rounded-xl "
                 onClick={handleReset}
                 disabled={isMixing}
               >
@@ -501,14 +493,14 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
                 </div>
               </div>
 
-              <div className="bg-color-main rounded-xl p-2 border border-gray-600/50">
-                {/* Верхний блок: аватар + качество + имя */}
+              <div className="bg-color-main rounded-xl p-2 border border-slate-600/50">
+                {/* Верхний блок: аватар + Качество + имя */}
                 <div className="flex items-center gap-4 mb-4">
                   {/* Поле ввода имени */}
                   <div className="flex-1">
                     <div className="flex items-center gap-2 ">
                       <button
-                        className="text-xl p-2 hover:bg-gray-600/50 rounded-xl transition-colors flex-shrink-0"
+                        className="text-xl p-2 hover:bg-slate-600/50 rounded-xl transition-colors flex-shrink-0"
                         onClick={generateRandomName}
                         title="Сгенерировать имя"
                       >
@@ -519,7 +511,7 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
                         value={customName}
                         onChange={(e) => setCustomName(e.target.value)}
                         placeholder="Введите имя для жабы..."
-                        className="bg-gray-600/50 border border-gray-500 text-white rounded-xl px-3 py-2 text-center w-full text-sm placeholder-gray-400 focus:outline-none focus:border-green-500/50"
+                        className="w-full rounded-xl border border-white/10 bg-slate-950/50 px-3 py-2 text-center text-sm text-white placeholder-slate-500 focus:border-cyan-300/50 focus:outline-none focus:ring-2 focus:ring-cyan-400/20"
                       />
                     </div>
                   </div>
@@ -527,7 +519,7 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
                   <ToadAvatar size={10} toad={breedingResult.child} />
                 </div>
                 {/* Пол и поколение */}
-                <div className="flex items-center justify-center gap-3 text-sm text-gray-300">
+                <div className="flex items-center justify-center gap-3 text-sm text-slate-300">
                   <div className="flex items-center gap-2">
                     <ToadGender gender={breedingResult.child.sex} />
                     <span>
@@ -538,16 +530,16 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
                           : "Самка"}
                     </span>
                   </div>
-                  <div className="w-px h-4 bg-gray-500"></div>
+                  <div className="w-px h-4 bg-slate-500"></div>
                   <div>Поколение: {breedingResult.child!.generation}</div>
                 </div>
-                {/* качество */}
+                {/* Качество */}
                 <div
                   className={`text-center my-3 ${getRarityColor(
                     breedingResult.child!.genes.rarity,
                   )}`}
                 >
-                  <span className="text-gray-500 text-sm">качество:</span>{" "}
+                  <span className="text-slate-500 text-sm">Качество:</span>{" "}
                   {getRarityBadge(breedingResult.child!.genes.rarity)}{" "}
                   <span className="font-semibold">
                     {breedingResult.child!.genes.rarity.toFixed(1)}
@@ -556,26 +548,26 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
 
                 {/* Таблица характеристик */}
                 <div className="grid grid-cols-2 gap-2 text-sm mb-3">
-                  <div className="text-gray-300 bg-gray-600/30 rounded-lg p-2 text-center">
-                    <div className="text-gray-500 text-xs mb-1">Размер</div>
+                  <div className="text-slate-300 bg-slate-600/30 rounded-lg p-2 text-center">
+                    <div className="text-slate-500 text-xs mb-1">Размер</div>
                     <div className="font-semibold">
                       {breedingResult.child!.genes.weight.toFixed(1)}
                     </div>
                   </div>
-                  <div className="text-gray-300 bg-gray-600/30 rounded-lg p-2 text-center">
-                    <div className="text-gray-500 text-xs mb-1">Скорость</div>
+                  <div className="text-slate-300 bg-slate-600/30 rounded-lg p-2 text-center">
+                    <div className="text-slate-500 text-xs mb-1">Скорость</div>
                     <div className="font-semibold">
                       {breedingResult.child!.genes.speed.toFixed(1)}
                     </div>
                   </div>
-                  <div className="text-gray-300 bg-gray-600/30 rounded-lg p-2 text-center">
-                    <div className="text-gray-500 text-xs mb-1">Аппетит</div>
+                  <div className="text-slate-300 bg-slate-600/30 rounded-lg p-2 text-center">
+                    <div className="text-slate-500 text-xs mb-1">Аппетит</div>
                     <div className="font-semibold">
                       {breedingResult.child!.genes.hungerRate.toFixed(1)}
                     </div>
                   </div>
-                  <div className="text-gray-300 bg-gray-600/30 rounded-lg p-2 text-center">
-                    <div className="text-gray-500 text-xs mb-1">
+                  <div className="text-slate-300 bg-slate-600/30 rounded-lg p-2 text-center">
+                    <div className="text-slate-500 text-xs mb-1">
                       Плодовитость
                     </div>
                     <div className="font-semibold">
@@ -606,7 +598,7 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
                             ).icon
                           }
                         </span>
-                        <span className="text-gray-300 text-sm font-semibold">
+                        <span className="text-slate-300 text-sm font-semibold">
                           ГЕНЕТИКА
                         </span>
                       </div>
@@ -624,7 +616,7 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
                         }{" "}
                         ({breedingResult.child!.state?.genetic_fault}%)
                       </div>
-                      <div className="text-gray-500 text-xs leading-relaxed">
+                      <div className="text-slate-500 text-xs leading-relaxed">
                         {
                           getGeneticFaultConfig(
                             breedingResult.child!.state?.genetic_fault,
@@ -640,7 +632,7 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
               <div className="flex gap-3">
                 <button
                   onClick={handleConfirm}
-                  className="flex-1 bg-gradient-to-r mt-4 from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white py-3 text-base rounded-xl transition-all duration-300 transform hover:scale-105 border-2 border-white/20 shadow-lg font-bold"
+                  className="ui-button-primary mt-4 flex-1 py-3 text-base"
                 >
                   Поместить в инкубатор
                 </button>
@@ -650,12 +642,12 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
 
           {/* Подтверждение: жабы исчезнут навсегда (действие нельзя отменить) */}
           {showWarning && (
-            <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-              <div className="bg-color-main rounded-2xl border-2 border-red-500/50 p-5 max-w-sm w-full mx-auto">
-                <div className="text-center mb-3">
-                  <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-3">
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 p-4 backdrop-blur-sm">
+              <div className="ui-panel-raised mx-auto w-full max-w-sm border-rose-400/30 p-5">
+                <div className="mb-3 text-center">
+                  <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-rose-500/15">
                     <svg
-                      className="w-8 h-8 text-red-400"
+                      className="h-8 w-8 text-rose-300"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -671,7 +663,7 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
                   <h3 className="text-white font-bold text-lg mb-2">
                     Жабы исчезнут навсегда
                   </h3>
-                  <p className="text-gray-200 text-sm leading-snug">
+                  <p className="text-slate-200 text-sm leading-snug">
                     Генетический коллайдер разберёт выбранных жаб на гены и
                     соберёт из них одного нового гибрида. Вернуть исходных жаб
                     будет невозможно.
@@ -694,7 +686,7 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
                         >
                           {toad.name}
                         </span>
-                        <span className="text-gray-400 text-2xs shrink-0">
+                        <span className="text-slate-400 text-2xs shrink-0">
                           {getRarityBadge(toad.genes.rarity)}{" "}
                           {toad.genes.rarity.toFixed(1)}
                         </span>
@@ -715,15 +707,17 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
 
                 <div className="flex gap-3">
                   <button
+                    type="button"
                     onClick={() => setShowWarning(false)}
-                    className="flex-1 bg-gray-600 hover:bg-gray-500 text-white font-medium py-3 rounded-xl transition-all duration-300"
+                    className="ui-button-secondary flex-1 py-3"
                   >
                     Отмена
                   </button>
                   <button
+                    type="button"
                     onClick={handleConfirmMixing}
                     disabled={isDisabled}
-                    className="flex-1 bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-500 hover:to-orange-500 text-white font-bold py-3 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+                    className="ui-button-danger flex-1 py-3"
                   >
                     Разобрать и смешать
                   </button>

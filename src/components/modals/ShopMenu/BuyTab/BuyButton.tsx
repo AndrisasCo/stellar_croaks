@@ -9,7 +9,7 @@ export const BuyButton = (props: { item: ShopItem }) => {
 
   const mapRarityStyles = {
     common: {
-      border: "bg-color-main border-gray-700",
+      border: "bg-color-main border-slate-700",
       icon: "border-green-400",
       shadow: "0 0  1px  1px #00ff5233",
     },
@@ -59,7 +59,7 @@ export const BuyButton = (props: { item: ShopItem }) => {
             </div>
             <div>
               <p className="text-white font-medium text-base">{item.name}</p>
-              <p className="text-sm text-gray-300 font-medium ">
+              <p className="text-sm text-slate-300 font-medium ">
                 {item.description}
               </p>
               <p
@@ -76,8 +76,7 @@ export const BuyButton = (props: { item: ShopItem }) => {
 
           <div className="flex flex-col gap-2 ml-1">
             <button
-              className={`px-3 min-w-[99px] py-1.5 rounded-lg disabled:bg-gray-600 disabled:bg-none text-sm font-medium text-white whitespace-nowrap transition-colors bg-gradient-to-r from-emerald-600 to-emerald-800 text-white"
-              }`}
+              className="ui-button-primary min-w-[99px] whitespace-nowrap px-3 py-1.5"
               onClick={item.onClick}
               disabled={item.disabled}
             >
@@ -89,7 +88,7 @@ export const BuyButton = (props: { item: ShopItem }) => {
                 onClick={() => {
                   openModal(() => <LootboxDetails />);
                 }}
-                className="px-3 py-1.5 rounded-lg text-sm font-medium bg-color-second hover:bg-gray-600 text-gray-200 hover:text-white transition-colors"
+                className="px-3 py-1.5 rounded-lg text-sm font-medium bg-color-second hover:bg-slate-600 text-slate-200 hover:text-white transition-colors"
               >
                 Подробнее
               </button>

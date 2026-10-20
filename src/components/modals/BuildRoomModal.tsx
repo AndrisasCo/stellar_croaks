@@ -217,7 +217,7 @@ export default function BuildRoomModal({ slot }: { slot: RoomConfig }) {
             return (
               <div
                 key={option.kind}
-                className="rounded-xl border border-gray-600/40 bg-color-second p-2"
+                className="rounded-xl border border-slate-600/40 bg-color-second p-2"
               >
                 <div className="flex items-center gap-2">
                   <span className="text-2xl">{option.icon}</span>
@@ -225,12 +225,12 @@ export default function BuildRoomModal({ slot }: { slot: RoomConfig }) {
                     <div className="flex items-center gap-1 text-sm font-semibold text-amber-100">
                       {option.title}
                       {option.unique && (
-                        <span className="rounded bg-amber-500/20 px-1 text-3xs font-normal text-amber-200">
+                        <span className="rounded bg-amber-500/20 px-1 text-2xs font-normal text-amber-200">
                           единственная
                         </span>
                       )}
                     </div>
-                    <div className="text-2xs leading-snug text-gray-400">
+                    <div className="text-2xs leading-snug text-slate-400">
                       {option.description}
                     </div>
                   </div>
@@ -246,7 +246,7 @@ export default function BuildRoomModal({ slot }: { slot: RoomConfig }) {
 
                 <div className="mt-1 flex items-center justify-between gap-2">
                   <span
-                    className="text-2xs text-gray-400"
+                    className="text-2xs text-slate-400"
                     title={tutorialIssue ?? undefined}
                   >
                     {tutorialIssue
@@ -259,7 +259,7 @@ export default function BuildRoomModal({ slot }: { slot: RoomConfig }) {
                             ? "После постройки: ток дадут жабы ⚡"
                             : "После постройки: обесточена 🔌"}
                   </span>
-                  <span className="text-2xs text-gray-500">
+                  <span className="text-2xs text-slate-500">
                     {built > 0 ? `в колонии: ${built}` : "в колонии нет"}
                     {/* Имя новой постройки: «Репродуктор #3» — по нему её потом найдут в списке */}
                     {option.unique
@@ -271,7 +271,7 @@ export default function BuildRoomModal({ slot }: { slot: RoomConfig }) {
                     disabled={blocked}
                     className={`rounded-lg px-3 py-1 text-xs font-bold transition-all ${
                       blocked
-                        ? "cursor-not-allowed bg-gray-700/60 text-gray-400"
+                        ? "cursor-not-allowed bg-slate-700/60 text-slate-400"
                         : "bg-amber-600 text-white hover:bg-amber-500 active:scale-95"
                     }`}
                   >

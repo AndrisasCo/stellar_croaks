@@ -761,7 +761,7 @@ export const getPregnancyDuration = () => Math.floor(Math.random() * 5); // 0 - 
 
 export const HOURS_TO_GROW_UP = 2;
 
-// Функции для работы с качеством
+// Функции для работы с Качеством
 export const getRarityGroup = (rarity: number): keyof typeof RARITY_CONFIG => {
   if (rarity >= RARITY_CONFIG.legendary.treshold) return "legendary";
   if (rarity >= RARITY_CONFIG.epic.treshold) return "epic";

@@ -37,21 +37,18 @@ export default function ShopMenu({ room }: { room?: RoomConfig }) {
     {
       id: "buy",
       label: "Купить",
-      color: "text-green-400",
       disabled: Boolean(powerIssue),
       disabledHint: powerIssue ?? undefined,
     },
     {
       id: "sell",
       label: "Продать",
-      color: "text-yellow-400",
       disabled: Boolean(powerIssue),
       disabledHint: powerIssue ?? undefined,
     },
     {
       id: "elite",
       label: "Элитные",
-      color: "text-purple-400",
       disabled: Boolean(powerIssue),
       disabledHint: powerIssue ?? undefined,
     },
@@ -75,7 +72,7 @@ export default function ShopMenu({ room }: { room?: RoomConfig }) {
 
   return (
     <Modal title={room?.name}>
-      <div className="pb-4 px-2 border-b border-gray-700">
+      <div className="border-b border-slate-700/60 px-2 pb-4">
         {/* Валюта */}
         <div className="flex gap-4 mt-3 text-sm">
           <div className="flex items-center gap-1">

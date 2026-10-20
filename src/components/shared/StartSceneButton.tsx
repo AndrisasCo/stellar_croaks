@@ -6,10 +6,10 @@ const StartSceneButton = ({ onClick }: StartSceneButtonProps) => {
   return (
     <button
       onClick={onClick}
-      className="relative my-auto group bg-gradient-to-r from-green-500 via-emerald-500 to-purple-600 hover:from-green-400 hover:via-emerald-400 hover:to-purple-500 text-white font-bold py-6 px-12 rounded-2xl shadow-2xl shadow-green-500/30 hover:shadow-3xl hover:shadow-purple-500/40 transition-all duration-500 transform hover:scale-105 active:scale-95 border-2 border-white/20 backdrop-blur-sm"
+      className="group relative my-auto rounded-2xl border border-white/20 bg-gradient-to-r from-cyan-500 via-emerald-500 to-purple-600 px-12 py-6 font-bold text-white shadow-2xl shadow-cyan-500/25 backdrop-blur-sm transition-all duration-500 hover:scale-105 hover:from-cyan-400 hover:via-emerald-400 hover:to-purple-500 hover:shadow-3xl hover:shadow-purple-500/40 active:scale-95"
     >
       {/* Анимированный градиентный фон */}
-      <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-green-500/20 via-emerald-500/20 to-purple-600/20 group-hover:from-green-400/30 group-hover:via-emerald-400/30 group-hover:to-purple-500/30 animate-pulse-slow" />
+      <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-cyan-500/20 via-emerald-500/20 to-purple-600/20 animate-pulse-slow group-hover:from-cyan-400/30 group-hover:via-emerald-400/30 group-hover:to-purple-500/30" />
 
       {/* Основной контент */}
       <div className="relative z-10 flex items-center justify-center gap-4">

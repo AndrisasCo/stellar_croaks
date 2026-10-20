@@ -323,7 +323,7 @@ export const ToadInfo = () => {
             onClick={() =>
               openModal(() => <ToadListModal sceneId={getToadHomeId(toad)} />)
             }
-            className="flex items-center gap-1 rounded-md bg-color-second px-2 py-1 text-2xs font-medium text-gray-200 transition-colors duration-300 hover:text-cyan-200"
+            className="flex items-center gap-1 rounded-md bg-color-second px-2 py-1 text-2xs font-medium text-slate-200 transition-colors duration-300 hover:text-cyan-200"
             title={
               toadScene
                 ? `Открыть биопод «${toadScene.name}» со списком жаб`
@@ -346,7 +346,7 @@ export const ToadInfo = () => {
               <input
                 value={editedName}
                 onChange={(e) => setEditedName(e.target.value)}
-                className="bg-color-second border border-gray-600 rounded-lg px-2 py-1 text-white w-full"
+                className="bg-color-second border border-slate-600 rounded-lg px-2 py-1 text-white w-full"
                 autoFocus
                 onKeyDown={(e) => e.key === "Enter" && handleRename()}
               />
@@ -361,10 +361,10 @@ export const ToadInfo = () => {
               </button>
             </div>
           ) : (
-            <h2 className="font-bold flex gap-2 text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-purple-500">
-              <span className="text-lg">{toad.name}</span>
+            <h2 className="flex gap-2 font-bold">
+              <span className="brand-text text-lg">{toad.name}</span>
               <button
-                className="text-gray-300"
+                className="text-slate-300"
                 onClick={() => {
                   setEditedName(toad.name ?? "");
                   setIsEditingName(true);
@@ -387,12 +387,12 @@ export const ToadInfo = () => {
           {tooltips["avatar"] && (
             <div
               onClick={() => toggleTooltip("avatar")}
-              className={`absolute top-full z-10 bg-color-main border border-purple-500/50 rounded-xl p-2  shadow-lg`}
+              className={`absolute top-full z-10 bg-color-main border border-cyan-500/40 rounded-xl p-2  shadow-lg`}
             >
               <ToadAvatar toad={toad} size={75} />
             </div>
           )}
-          <div className="flex flex-col gap-1 mr-auto text-sm text-gray-300">
+          <div className="flex flex-col gap-1 mr-auto text-sm text-slate-300">
             <p>{getToadTypeLabel(toad.type)}</p>
             <p>Поколение {toad.generation}</p>
             <p>
@@ -417,7 +417,7 @@ export const ToadInfo = () => {
           {/* Navigation Left */}
           <button
             onClick={() => handleNav("prev")}
-            className="text-gray-300 hover:text-white p-1"
+            className="text-slate-300 hover:text-white p-1"
           >
             <svg
               className="w-8 h-8"
@@ -440,7 +440,7 @@ export const ToadInfo = () => {
             <div className="grid grid-cols-2 gap-2 mb-3 ">
               <StatCard
                 icon={InfoIcons.rarity}
-                label="качество"
+                label="Качество"
                 value={`${rarityConfig.label} (${toad.genes?.rarity?.toFixed(
                   1,
                 )})`}
@@ -462,7 +462,7 @@ export const ToadInfo = () => {
                       onClose={() => toggleTooltip("genetic")}
                       className="right-0 w-[200%]"
                     >
-                      <p className="text-sm text-gray-200">
+                      <p className="text-sm text-slate-200">
                         {geneticFault.description}
                       </p>
                     </Tooltip>
@@ -513,7 +513,7 @@ export const ToadInfo = () => {
                       onClose={() => toggleTooltip("energy")}
                       className="right-0 w-[200%]"
                     >
-                      <p className="text-sm text-gray-200">
+                      <p className="text-sm text-slate-200">
                         Силы ⚡ — личный запас жабы, максимум {MAX_ENERGY}.
                         Спаривание в «Репродукторе» стоит {energyCost} ⚡, а
                         поход за Периметр — от {EXPEDITION_ENERGY_BASE} ⚡ за
@@ -542,7 +542,7 @@ export const ToadInfo = () => {
                       onClose={() => toggleTooltip("hp")}
                       className="right-0 w-[200%]"
                     >
-                      <p className="text-sm text-gray-200">
+                      <p className="text-sm text-slate-200">
                         Сейчас жаба {hpStatusLabel}. Походы за Периметр ранят
                         жаб: провалы событий снимают HP. Дома здоровье капает
                         очень медленно (+{HP_REGEN_PER_HOUR} в час), на койке
@@ -580,7 +580,7 @@ export const ToadInfo = () => {
                 }
                 colorClass={
                   toad.stage !== "adult"
-                    ? "text-gray-400"
+                    ? "text-slate-400"
                     : productionFactor >= 1
                       ? "text-emerald-400"
                       : "text-orange-400"
@@ -594,13 +594,13 @@ export const ToadInfo = () => {
                       onClose={() => toggleTooltip("biomass")}
                       className="right-0 w-[200%]"
                     >
-                      <p className="text-sm text-gray-200">
+                      <p className="text-sm text-slate-200">
                         Биомасса 🧪 — топливо колонии: корм жаб, снаряжение
                         походов, содержание биоподов. Взрослая жаба даёт базовые{" "}
-                        {BIOMASS_PER_TOAD_HOUR} 🧪/ч, а её качество, вес,
+                        {BIOMASS_PER_TOAD_HOUR} 🧪/ч, а её Качество, вес,
                         характер и кибер-болезнь меняют это число.
                       </p>
-                      <div className="mt-2 space-y-0.5 text-xs text-gray-300">
+                      <div className="mt-2 space-y-0.5 text-xs text-slate-300">
                         <div className="flex justify-between">
                           <span>Сейчас (сытость {Math.round(hunger)} %)</span>
                           <span className="text-white">
@@ -632,7 +632,7 @@ export const ToadInfo = () => {
                           </span>
                         </div>
                       </div>
-                      <p className="mt-2 text-xs text-gray-300">
+                      <p className="mt-2 text-xs text-slate-300">
                         {hunger <= PRODUCTION_MIN_HUNGER
                           ? `Жаба голодает (сытость ≤ ${PRODUCTION_MIN_HUNGER} %) и работает на ${Math.round(
                               PRODUCTION_HUNGRY_FACTOR * 100,
@@ -671,7 +671,7 @@ export const ToadInfo = () => {
                         {relatives.map((rel: any) => (
                           <div
                             key={rel.id}
-                            className={`p-1 text-xs border-b border-gray-700  ${
+                            className={`p-1 text-xs border-b border-slate-700  ${
                               rel.sex !== toad.sex ? "bg-yellow-500/20 " : ""
                             }`}
                           >
@@ -701,11 +701,11 @@ export const ToadInfo = () => {
                       isOpen
                       onClose={() => toggleTooltip("personality")}
                     >
-                      <p className="text-xs italic text-gray-300">
+                      <p className="text-xs italic text-slate-300">
                         {personality.description}
                       </p>
                       {/* Влияние характера на гены и отдых */}
-                      <div className="mt-2 text-xs text-gray-300 space-y-0.5">
+                      <div className="mt-2 text-xs text-slate-300 space-y-0.5">
                         <div className="flex justify-between">
                           <span>Аппетит</span>
                           <span className="text-white">
@@ -801,7 +801,7 @@ export const ToadInfo = () => {
             )}
 
             {/* ACTIONS */}
-            <div className="bg-color-main rounded-xl p-2 border border-gray-600/50 mt-1 grid grid-cols-2 gap-2">
+            <div className="bg-color-main rounded-xl p-2 border border-slate-600/50 mt-1 grid grid-cols-2 gap-2">
               <button
                 onClick={() => {
                   playCrunchShort();
@@ -815,7 +815,7 @@ export const ToadInfo = () => {
               <div className="relative">
                 <button
                   onClick={() => toggleTooltip("scenes")}
-                  className="bg-blue-600/30 hover:bg-blue-600/40 rounded-lg py-2 text-xs w-full flex justify-center gap-2"
+                  className="rounded-lg border border-cyan-400/30 bg-cyan-500/15 py-2 text-xs text-cyan-100 transition-colors hover:bg-cyan-500/25 w-full flex justify-center gap-2"
                 >
                   <span>🏠</span> Переместить
                 </button>
@@ -834,7 +834,7 @@ export const ToadInfo = () => {
                         <button
                           key={s.id}
                           onClick={() => handleMove(s.id)}
-                          className="w-full text-left p-2 hover:bg-gray-600 rounded text-xs"
+                          className="w-full text-left p-2 hover:bg-slate-600 rounded text-xs"
                         >
                           {s.name}
                         </button>
@@ -887,7 +887,7 @@ export const ToadInfo = () => {
           {/* Navigation Right */}
           <button
             onClick={() => handleNav("next")}
-            className="text-gray-300 hover:text-white p-1"
+            className="text-slate-300 hover:text-white p-1"
           >
             <svg
               className="w-8 h-8"

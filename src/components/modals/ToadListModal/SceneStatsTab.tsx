@@ -12,6 +12,7 @@ import {
   getAstroBalance,
 } from "../../../utils/astro-shop";
 import { PRODUCTION_MIN_HUNGER } from "../../../utils/gamification-config";
+import { CURRENCY_CONFIG } from "../../../utils/constants";
 
 /**
  * «Статистика биопода» — вторая вкладка модалки списка жаб (`ToadListModal/index.tsx`).
@@ -154,10 +155,10 @@ export const SceneStatsTab: React.FC<{
     color?: string;
     icon?: React.ReactNode;
   }) => (
-    <div className="flex justify-between items-center p-3 bg-color-main rounded-lg border border-gray-600/50">
+    <div className="flex justify-between items-center p-3 bg-color-main rounded-lg border border-slate-600/50">
       <div className="flex items-center gap-2">
-        {icon && <span className="text-gray-300">{icon}</span>}
-        <span className="text-gray-200 text-sm">{label}</span>
+        {icon && <span className="text-slate-300">{icon}</span>}
+        <span className="text-slate-200 text-sm">{label}</span>
       </div>
       <span className={`${color} font-medium text-sm`}>{value}</span>
     </div>
@@ -166,10 +167,10 @@ export const SceneStatsTab: React.FC<{
   return (
     <div className="space-y-3 mb-6 px-1">
       {/* Название биопода: правится прямо здесь, сохранение — кнопкой галочки */}
-      <div className="flex justify-between items-center p-3 bg-color-main rounded-lg border border-gray-600/50">
+      <div className="flex justify-between items-center p-3 bg-color-main rounded-lg border border-slate-600/50">
         <div className="flex items-center gap-2 flex-1">
           <svg
-            className="w-4 h-4 text-gray-300 flex-shrink-0"
+            className="w-4 h-4 text-slate-300 flex-shrink-0"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -188,7 +189,7 @@ export const SceneStatsTab: React.FC<{
                 value={sceneName}
                 onChange={(e) => setSceneName(e.target.value)}
                 onKeyDown={handleKeyPress}
-                className="flex-1 bg-gray-600/50 border border-blue-500/50 rounded px-2 py-1 text-white text-sm focus:outline-none focus:border-blue-400"
+                className="flex-1 bg-slate-600/50 border border-blue-500/50 rounded px-2 py-1 text-white text-sm focus:outline-none focus:border-blue-400"
                 placeholder="Введите название биопода"
                 autoFocus
               />
@@ -235,13 +236,13 @@ export const SceneStatsTab: React.FC<{
             </div>
           ) : (
             <>
-              <span className="text-gray-200 text-sm">Название</span>
+              <span className="text-slate-200 text-sm">Название</span>
               <span className="text-white font-medium text-sm ml-2 flex-1 overflow-auto">
                 {scene.name}
               </span>
               <button
                 onClick={() => setIsEditing(true)}
-                className="p-1 text-gray-300 hover:text-blue-400 transition-colors flex-shrink-0"
+                className="p-1 text-slate-300 hover:text-blue-400 transition-colors flex-shrink-0"
                 title="Редактировать название"
               >
                 {InfoIcons.pencil}
@@ -290,7 +291,7 @@ export const SceneStatsTab: React.FC<{
             <StatItem
               label="Бесполые"
               value={toadStats.neuter}
-              color="text-gray-300"
+              color="text-slate-300"
             />
           </div>
 
@@ -332,7 +333,7 @@ export const SceneStatsTab: React.FC<{
                 : "Больных жаб нет — карантин не нужен."}
             </span>
             <span className="shrink-0 text-purple-200">
-              {quarantineCost} ★ · у вас {astro}
+              {quarantineCost} {CURRENCY_CONFIG.astro_quax.icon} · у вас {astro}
             </span>
           </div>
 
@@ -343,14 +344,14 @@ export const SceneStatsTab: React.FC<{
             className={`rounded-lg px-3 py-2 text-xs font-semibold transition-all ${
               canQuarantine
                 ? "bg-rose-600 text-white hover:bg-rose-500 active:scale-95"
-                : "cursor-not-allowed bg-gray-700/60 text-gray-400"
+                : "cursor-not-allowed bg-slate-700/60 text-slate-400"
             }`}
           >
             {sickToads.length === 0
               ? "Больных нет"
               : astro < quarantineCost
-                ? `Не хватает ${quarantineCost - astro} ★`
-                : `Провести карантин · ${quarantineCost} ★`}
+                ? `Не хватает ${quarantineCost - astro} ${CURRENCY_CONFIG.astro_quax.icon}`
+                : `Провести карантин · ${quarantineCost} ${CURRENCY_CONFIG.astro_quax.icon}`}
           </button>
         </div>
       </div>
@@ -374,23 +375,23 @@ export const SceneStatsTab: React.FC<{
           Средние показатели
         </h4>
         <div className="grid grid-cols-3 gap-2">
-          <div className="bg-color-main rounded-lg p-3 text-center border border-gray-600/50">
+          <div className="bg-color-main rounded-lg p-3 text-center border border-slate-600/50">
             <div className="text-purple-400 text-lg font-bold">
               {averageStats.rarity}
             </div>
-            <div className="text-gray-300 text-2xs mt-1">качество</div>
+            <div className="text-slate-300 text-2xs mt-1">Качество</div>
           </div>
-          <div className="bg-color-main rounded-lg p-3 text-center border border-gray-600/50">
+          <div className="bg-color-main rounded-lg p-3 text-center border border-slate-600/50">
             <div className="text-blue-400 text-lg font-bold">
               {averageStats.weight}
             </div>
-            <div className="text-gray-300 text-2xs mt-1">Размер</div>
+            <div className="text-slate-300 text-2xs mt-1">Размер</div>
           </div>
-          <div className="bg-color-main rounded-lg p-3 text-center border border-gray-600/50">
+          <div className="bg-color-main rounded-lg p-3 text-center border border-slate-600/50">
             <div className="text-green-400 text-lg font-bold">
               {averageStats.speed}
             </div>
-            <div className="text-gray-300 text-2xs mt-1">Скорость</div>
+            <div className="text-slate-300 text-2xs mt-1">Скорость</div>
           </div>
         </div>
       </div>

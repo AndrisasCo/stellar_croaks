@@ -147,10 +147,10 @@ export const EliteTab: React.FC = () => {
 
   return (
     <div className="space-y-4  pb-4">
-      <div className="bg-color-main rounded-2xl py-4 px-2 border border-gray-700">
+      <div className="bg-color-main rounded-2xl py-4 px-2 border border-slate-700">
         <div className="flex flex-col gap-3">
           <div className="flex justify-between items-center">
-            <span className="text-gray-300">Обновление заказов:</span>
+            <span className="text-slate-300">Обновление заказов:</span>
             <span className="text-white font-mono">{timeLeft}</span>
           </div>
 
@@ -158,11 +158,7 @@ export const EliteTab: React.FC = () => {
             <button
               onClick={handleRefreshShop}
               disabled={!canRefresh}
-              className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                canRefresh
-                  ? "bg-blue-600 hover:bg-blue-500 text-white"
-                  : "bg-gray-600 text-gray-300 cursor-not-allowed"
-              }`}
+              className="ui-button-primary flex-1"
             >
               Обновить
             </button>
@@ -170,11 +166,7 @@ export const EliteTab: React.FC = () => {
             <button
               onClick={handleInstantRefresh}
               disabled={tokens < INSTANT_REFRESH_ELITE_COST}
-              className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
-                tokens >= INSTANT_REFRESH_ELITE_COST
-                  ? "bg-purple-600 hover:bg-purple-500 text-white"
-                  : "bg-gray-600 text-gray-300 cursor-not-allowed"
-              }`}
+              className="ui-button-secondary whitespace-nowrap"
             >
               {INSTANT_REFRESH_ELITE_COST}{" "}
               <CurrencyIcon currency="tokens" className="h-4 w-4" />
@@ -192,8 +184,8 @@ export const EliteTab: React.FC = () => {
           key={order.id}
           className={`rounded-2xl py-4 px-2 border ${
             order.canComplete
-              ? "bg-purple-900/20 border-purple-500/50"
-              : "bg-color-main border-gray-600/50"
+              ? "border-cyan-400/40 bg-cyan-500/10"
+              : "bg-color-main border-slate-600/50"
           }`}
         >
           <div className="flex flex-col gap-3">
@@ -209,9 +201,9 @@ export const EliteTab: React.FC = () => {
                   {order.title}
                 </h4>
               </div>
-              <p className="text-gray-200 text-sm mb-3">{order.description}</p>
+              <p className="text-slate-200 text-sm mb-3">{order.description}</p>
 
-              <div className="flex flex-col gap-2 text-sm text-gray-300 mb-3">
+              <div className="flex flex-col gap-2 text-sm text-slate-300 mb-3">
                 <div className="flex justify-between">
                   <span>Подходит жаб:</span>
                   <span>{order.suitableToads.length}</span>
@@ -227,7 +219,7 @@ export const EliteTab: React.FC = () => {
 
               <div
                 className={`text-sm ${
-                  order.canComplete ? "text-green-400" : "text-gray-500"
+                  order.canComplete ? "text-green-400" : "text-slate-500"
                 }`}
               >
                 {order.canComplete

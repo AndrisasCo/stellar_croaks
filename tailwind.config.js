@@ -9,9 +9,9 @@ export default {
       // ширины, gap и т.д.) остаётся прежним, растёт только текст.
       fontSize: {
         // микро-подписи (бейджи, подписи в модалках)
-        "3xs": "var(--fs-3xs)", // 9px → 10px
-        "2xs": "var(--fs-2xs)", // 10px → 11px
-        "1xs": "var(--fs-1xs)", // 11px → 12px
+        "3xs": ["var(--fs-3xs)", { lineHeight: "var(--lh-3xs)" }], // 10 → 12px
+        "2xs": ["var(--fs-2xs)", { lineHeight: "var(--lh-2xs)" }], // 11 → 13px
+        "1xs": ["var(--fs-1xs)", { lineHeight: "var(--lh-1xs)" }], // 12 → 14px
         xs: ["var(--fs-xs)", { lineHeight: "var(--lh-xs)" }], // 12 → 13px
         sm: ["var(--fs-sm)", { lineHeight: "var(--lh-sm)" }], // 14 → 15px
         base: ["var(--fs-base)", { lineHeight: "var(--lh-base)" }], // 16 → 17px
