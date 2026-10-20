@@ -1,5 +1,6 @@
 import { Toad } from "../../models/Toad";
 import { ColonyRoomKind, ColonyState } from "../../models/colony";
+import { Expedition } from "../../models/expedition";
 import { Scene } from "../../models/scene";
 import type { NarratorTaskId } from "../../utils/narrator";
 import { hexCoordKey, hexNeighbors } from "./hex-geometry";
@@ -272,19 +273,25 @@ export const getBuildableSlots = (rooms: RoomConfig[]): RoomConfig[] =>
 export const getPowerNodes = (
   rooms: RoomConfig[],
   toadsByRoom: Record<string, Toad[]>,
+  expeditions?: Expedition[],
 ): PowerNode[] =>
   rooms.filter(isBuiltRoom).map((room) => ({
     id: room.id,
     coord: room.coord,
     kind: room.kind,
-    capacity: getSourceCapacity(room.kind, toadsByRoom[room.id] ?? []),
+    capacity: getSourceCapacity(
+      room.kind,
+      toadsByRoom[room.id] ?? [],
+      expeditions,
+    ),
   }));
 
 /** Энергосеть колонии: у каждой построенного сектора видно, есть ли ток. */
 export const getPowerGrid = (
   rooms: RoomConfig[],
   toadsByRoom: Record<string, Toad[]>,
-): PowerGrid => computePowerGrid(getPowerNodes(rooms, toadsByRoom));
+  expeditions?: Expedition[],
+): PowerGrid => computePowerGrid(getPowerNodes(rooms, toadsByRoom, expeditions));
 
 /** Есть ли в секторе ток (непостроенным слотам ток не нужен). */
 export const isRoomPowered = (room: RoomConfig, grid: PowerGrid): boolean =>
@@ -328,8 +335,11 @@ export const getUnpoweredAviarySceneIds = (
 };
 
 /** Сколько единиц тока даёт сектор соседям прямо сейчас. */
-export const getRoomPowerOutput = (room: RoomConfig, toads: Toad[]): number =>
-  getSourceCapacity(room.kind, toads);
+export const getRoomPowerOutput = (
+  room: RoomConfig,
+  toads: Toad[],
+  expeditions?: Expedition[],
+): number => getSourceCapacity(room.kind, toads, expeditions);
 
 /** Сектор карты, стоящая рядом с указанной (соседи по гексам). */
 export const getRoomNeighbours = (
@@ -357,6 +367,7 @@ export const willBePoweredAfterBuild = (
   kind: ColonyRoomKind,
   colony: ColonyState,
   toadsByRoom: Record<string, Toad[]>,
+  expeditions?: Expedition[],
 ): boolean => {
   const nextColony: ColonyState = {
     ...colony,
@@ -375,9 +386,8 @@ export const willBePoweredAfterBuild = (
   };
 
   return (
-    getPowerGrid(resolveColonyRooms(nextColony), toadsByRoom).powered[
-      slot.id
-    ] === true
+    getPowerGrid(resolveColonyRooms(nextColony), toadsByRoom, expeditions)
+      .powered[slot.id] === true
   );
 };
 
@@ -394,12 +404,13 @@ export const getTutorialBuildIssue = (
   colony: ColonyState,
   toadsByRoom: Record<string, Toad[]>,
   task: NarratorTaskId | null,
+  expeditions?: Expedition[],
 ): string | null => {
   if (task !== "build-shop" || kind !== "shop") {
     return null;
   }
 
-  if (willBePoweredAfterBuild(slot, kind, colony, toadsByRoom)) {
+  if (willBePoweredAfterBuild(slot, kind, colony, toadsByRoom, expeditions)) {
     return null;
   }
 

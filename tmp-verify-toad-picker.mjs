@@ -236,7 +236,7 @@ const patchToad = (id, patch) => {
 
 const breeding = bundle("src/utils/breeding-manager.ts", "breeding-manager");
 const cfg = bundle("src/utils/gamification-config.ts", "gamification-config");
-const constants = bundle("src/utils/constants.ts", "constants");
+const constants = bundle("src/utils/constants.tsx", "constants");
 
 const NEST = constants.NEST_ROOM_ID;
 const OTHER_NEST = "outpost-3";

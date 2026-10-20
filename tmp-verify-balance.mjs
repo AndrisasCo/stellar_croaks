@@ -109,6 +109,10 @@ const storage = bundle("src/utils/storage.ts", "storage");
 const housing = bundle("src/utils/housing.ts", "housing");
 const rooms = bundle("src/components/HexMap/rooms-config.ts", "rooms-config");
 const shop = bundle("src/backend/shop-state.ts", "shop-state");
+const eliteGenerator = bundle(
+  "src/backend/elite-order-generator.ts",
+  "elite-generator",
+);
 const gami = bundle("src/utils/gamification-config.ts", "gamification-config");
 
 /** Жаба с заданными генами (для расчёта силы роли) */
@@ -190,6 +194,18 @@ check(
   cfg.rollExpeditionLuck(() => 1),
   1.1,
 );
+check(
+  "астро-находка в стартовом секторе = 1 💎",
+  cfg.getExpeditionAstroDrop(starter),
+  1,
+);
+check(
+  "астро-находка в «Дальнем Периметре» = 3 💎",
+  cfg.getExpeditionAstroDrop(deep),
+  3,
+);
+check("шанс астро-находки в хорошем событии", cfg.EXPEDITION_ASTRO_CHANCE, 0.18);
+check("курс астро в норме добычи (1 💎 = 5 🔷)", cfg.EXPEDITION_ASTRO_VALUE, 5);
 
 console.log("\n[2] Поход против фермы");
 console.log("─".repeat(60));
@@ -314,7 +330,59 @@ check(
 check(
   "чистое ожидание (10 дней) платит мало",
   shop.eliteOrders.find((item) => item.id === "elite_23")?.reward,
-  25,
+  5,
+);
+check(
+  "элитные заказы не печатают астро пачками (максимум 150 💎)",
+  Math.max(...rewards) <= 150,
+  true,
+);
+const generatedKinds = ["personality", "color", "stat"];
+const generatedRewards = Array.from({ length: 3000 }, (_, index) =>
+  eliteGenerator.createScriptedEliteOrder(
+    generatedKinds[index % generatedKinds.length],
+  )
+    .reward,
+);
+check(
+  "генератор случайных заказов держит награду в новой шкале",
+  Math.min(...generatedRewards) >= 5 && Math.max(...generatedRewards) <= 150,
+  true,
+);
+const legacyOrder = eliteGenerator.getScriptedEliteOrder(
+  "scripted_v1/personality/romantic/0/400",
+);
+check(
+  "старый заказ из localStorage урезается до новой шкалы",
+  legacyOrder?.reward,
+  150,
+);
+
+const colorOrder = eliteGenerator.createScriptedEliteOrder("color");
+const toadOfType = (type) => ({
+  ...toad(),
+  type,
+  genes: { ...toad().genes, colors: [colorOrder.colorSwatch] },
+});
+check(
+  "заказ на окрас принимает обычную жабу",
+  colorOrder.requirement(toadOfType("hybrid")),
+  true,
+);
+check(
+  "заказ на окрас принимает пятнистую жабу",
+  colorOrder.requirement(toadOfType("camouflage")),
+  true,
+);
+check(
+  "заказ на окрас отклоняет остальные виды (тигровая)",
+  colorOrder.requirement(toadOfType("tiger")),
+  false,
+);
+console.log(
+  `ℹ️  случайные заказы: ${Math.min(...generatedRewards)}..${Math.max(
+    ...generatedRewards,
+  )} 💎`,
 );
 console.log(
   `ℹ️  награды: ${Math.min(...rewards)}..${Math.max(...rewards)} 💎, заказов: ${rewards.length}`,

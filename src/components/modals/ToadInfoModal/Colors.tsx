@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Toad } from "../../../models/Toad";
 
+import { isColorableToadType } from "../../../models/Toad/toad-species";
+
 import { Tooltip } from "../../shared/Tooltip";
 
-import { ToadTypes } from "../../../models/Toad/toad-species";
 import { ClickButton } from "../../shared/ClickButton";
 import { InventoryItem, Items, itemsFull } from "../../../models/user";
 import { useToads } from "../../ToadContext";
@@ -13,6 +14,10 @@ import {
   varyColor,
 } from "../../../utils/randomize-toad-characteristics";
 import { useNotifications } from "../../../hooks/use-notification";
+import {
+  EXPEDITION_TOAD_BUSY_REASON,
+  isToadBusyOnExpedition,
+} from "../../../utils/expedition-manager";
 
 export const Colors = ({ toad }: { toad: Toad }) => {
   const { account } = useToads();
@@ -20,9 +25,9 @@ export const Colors = ({ toad }: { toad: Toad }) => {
 
   const inventory = account.storage;
   const [openTooltip, setOpenToopltip] = useState(false);
-  const coloredTypes = [ToadTypes.camouflage, ToadTypes.hybrid].includes(
-    toad.type,
-  );
+  const coloredTypes = isColorableToadType(toad.type);
+  /** Жабу в походе не перекрашивают: добыча и возвращение идут своим порядком */
+  const onExpedition = isToadBusyOnExpedition(toad);
 
   const color = toad.genes.colors[0];
 
@@ -41,6 +46,15 @@ export const Colors = ({ toad }: { toad: Toad }) => {
 
   const handleUsePigment = (pigment: InventoryItem) => () => {
     setOpenToopltip(false);
+
+    if (onExpedition) {
+      addNotification({
+        type: "warn",
+        content: EXPEDITION_TOAD_BUSY_REASON,
+      });
+      return;
+    }
+
     if ((account.storage[pigment.key] || 0) <= 0) {
       addNotification({
         type: "warn",
@@ -80,7 +94,9 @@ export const Colors = ({ toad }: { toad: Toad }) => {
 
       <ClickButton
         onClick={() => setOpenToopltip(true)}
-        className="bg-slate-600/50 hover:bg-green-600/40 px-1 rounded-lg py-2 text-xs flex justify-center gap-2"
+        disabled={onExpedition}
+        title={onExpedition ? EXPEDITION_TOAD_BUSY_REASON : undefined}
+        className="bg-slate-600/50 hover:bg-green-600/40 px-1 rounded-lg py-2 text-xs flex justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-slate-600/50"
       >
         <span>🎨</span> Покрасить
       </ClickButton>
@@ -98,7 +114,8 @@ export const Colors = ({ toad }: { toad: Toad }) => {
                 <ClickButton
                   key={p.key}
                   onClick={handleUsePigment(p)}
-                  className="text-left p-1 border-2 rounded-sm border-slate-400/20 w-full text-sm flex gap-2 items-center"
+                  disabled={onExpedition}
+                  className="text-left p-1 border-2 rounded-sm border-slate-400/20 w-full text-sm flex gap-2 items-center disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <img width={30} src={p.icon} />
                   {p.name}

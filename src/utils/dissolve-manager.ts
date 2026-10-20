@@ -141,6 +141,24 @@ export interface DissolveResult {
 }
 
 /**
+ * Разбор жабы, которой ещё нет в колонии (лутбокс).
+ *
+ * Лутбокс создаёт жабу только после выбора биопода, поэтому «распылить» надо уметь
+ * до `createToad`. Биомасса и достижения начисляются по тем же правилам, что и в
+ * `dissolveToads`, но удалять из сохранения нечего.
+ */
+export const dissolveNewToad = (toad: Toad): number => {
+  const state = getGameState();
+  const biomassGained = getDissolveYield(toad);
+
+  updateUser({ biomass: round2((state.user.biomass || 0) + biomassGained) });
+  completeAchivement("first-dissolve");
+  completeAchivementCounter("dissolve", 1);
+
+  return biomassGained;
+};
+
+/**
  * Необратимо перерабатывает жаб в биомассу.
  * Жабы в инкубаторе и несуществующие ID игнорируются.
  */

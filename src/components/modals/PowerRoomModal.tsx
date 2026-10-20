@@ -5,6 +5,10 @@ import { useGameState } from "../../hooks/use-game-state";
 import { useNotifications } from "../../hooks/use-notification";
 import { useSoundEffects } from "../../hooks/use-sound-effects";
 import { getFeedCost } from "../../utils/feeding";
+import {
+  EXPEDITION_TOAD_BUSY_REASON,
+  isToadBusyOnExpedition,
+} from "../../utils/expedition-manager";
 import { getToadHomeId } from "../../utils/toad-location";
 import {
   TOAD_PICKER_REJECTED_GROUP,
@@ -64,20 +68,27 @@ export default function PowerRoomModal({ room }: { room: RoomConfig }) {
   const { allToads, account, handleFeedToads } = useToads();
   const { powerGrid, toadsByRoom, placeToad, releaseToad, rooms } = useColony();
   const { addNotification } = useNotifications();
-  const { playOk, playBeep, playCrunchShort, playCroakSmall } =
+  const { playSuccess, playError, playCrunchShort, playCroakSmall } =
     useSoundEffects();
   const gameState = useGameState();
+  const expeditions = gameState.expeditions ?? [];
   /** Состояние сектора: жабы у сети (по умолчанию) или данные сектора */
   const [tab, setTab] = useState<PowerTab>("power");
 
   const roomToads = toadsByRoom[room.id] ?? [];
+  /** Жабы, свободные от похода: вернувшиеся ждут разбора добычи и в секторе не работают */
+  const activeRoomToads = roomToads.filter(
+    (toad) => !isToadBusyOnExpedition(toad, expeditions),
+  );
   // Ток сектора считает сеть: у ⚡ с работающими жабами он есть даже без подачи извне
   const powered = isRoomPowered(room, powerGrid);
-  const output = getToadPowerCapacity(roomToads);
-  const hungryToads = roomToads.filter((toad) => !isToadPowering(toad));
+  const output = getToadPowerCapacity(activeRoomToads, expeditions);
+  const hungryToads = activeRoomToads.filter(
+    (toad) => !isToadPowering(toad, expeditions),
+  );
   const freeSlots = POWER_ROOM_TOAD_SLOTS - roomToads.length;
-  // Корм считает `getFeedCost`: один корм на жабу
-  const feedCost = getFeedCost(roomToads);
+  // Корм считает `getFeedCost`: один корм на жабу; жабы в походе не едят
+  const feedCost = getFeedCost(activeRoomToads);
   const food = Math.floor(account?.storage?.food || 0);
 
   /** Как называется сектор, в котором жаба работает сейчас */
@@ -99,17 +110,23 @@ export default function PowerRoomModal({ room }: { room: RoomConfig }) {
         allToads
           // Жабы самого энергосектора и так стоят списком выше
           .filter((toad) => toad.scene_id !== room.id)
-          .map((toad) => ({
-            toad,
-            // Сверху — те, кто уже даёт ток: сытые взрослые на своих местах
-            rank: isToadPowering(toad) ? 1 : 0,
-            reason:
-              typeof toad.scene_id === "string"
-                ? `Жаба уже работает в секторе «${getRoomName(toad.scene_id)}»`
-                : getToadPowerIssue(toad),
-          }))
+          .map((toad) => {
+            const onExpedition = isToadBusyOnExpedition(toad, expeditions);
+
+            return {
+              toad,
+              // Сверху — те, кто уже даёт ток: сытые взрослые на своих местах
+              rank:
+                !onExpedition && isToadPowering(toad, expeditions) ? 1 : 0,
+              reason: onExpedition
+                ? EXPEDITION_TOAD_BUSY_REASON
+                : typeof toad.scene_id === "string"
+                  ? `Жаба уже работает в секторе «${getRoomName(toad.scene_id)}»`
+                  : getToadPowerIssue(toad, expeditions),
+            };
+          })
       ),
-    [allToads, room.id, rooms]
+    [allToads, room.id, rooms, expeditions]
   );
 
   /** Где жаба живёт сейчас — строкой списка: сектор колонии или её биопод */
@@ -126,25 +143,31 @@ export default function PowerRoomModal({ room }: { room: RoomConfig }) {
   };
 
   const handleFeed = () => {
-    if (roomToads.length === 0) {
+    if (activeRoomToads.length === 0) {
       return;
     }
 
     playCrunchShort();
-    handleFeedToads(roomToads.map((toad) => toad.id));
+    handleFeedToads(activeRoomToads.map((toad) => toad.id));
   };
 
   const handlePlace = (toad: Toad) => {
-    const issue = getToadPowerIssue(toad);
+    if (isToadBusyOnExpedition(toad, expeditions)) {
+      playError();
+      addNotification({ type: "warn", content: EXPEDITION_TOAD_BUSY_REASON });
+      return;
+    }
+
+    const issue = getToadPowerIssue(toad, expeditions);
 
     if (issue) {
-      playBeep();
+      playError();
       addNotification({ type: "warn", content: issue });
       return;
     }
 
     if (freeSlots <= 0) {
-      playBeep();
+      playError();
       addNotification({
         type: "warn",
         content: `В энергосекторе уже ${POWER_ROOM_TOAD_SLOTS} жаб — мест нет.`,
@@ -162,11 +185,17 @@ export default function PowerRoomModal({ room }: { room: RoomConfig }) {
 
   /** Вернуть жабу домой — в биопод, который она помнит (`homeId`) */
   const handleRelease = (toad: Toad) => {
+    if (isToadBusyOnExpedition(toad, expeditions)) {
+      playError();
+      addNotification({ type: "warn", content: EXPEDITION_TOAD_BUSY_REASON });
+      return;
+    }
+
     const result = releaseToad(toad.id);
 
     // Место в биоподе не бронировалось: пока жаба работала в ⚡-секторе, его могли занять
     if (!result.ok) {
-      playBeep();
+      playError();
       addNotification({
         type: "warn",
         content:
@@ -178,7 +207,7 @@ export default function PowerRoomModal({ room }: { room: RoomConfig }) {
       return;
     }
 
-    playOk();
+    playSuccess();
     addNotification({
       type: "info",
       content: `${toad.name ?? "Жаба"} вернулась в биопод.`,
@@ -186,7 +215,7 @@ export default function PowerRoomModal({ room }: { room: RoomConfig }) {
   };
 
   return (
-    <Modal icon={<span className="text-2xl">⚡</span>} title="Энергосектор">
+    <Modal icon={<span className="text-2xl">⚡</span>} title={room.name}>
       {/* Переключение вкладок: вид один на все секторы (`shared/ModalTabs`) */}
       <ModalTabs tabs={POWER_TABS} active={tab} onChange={setTab} />
 
@@ -228,15 +257,17 @@ export default function PowerRoomModal({ room }: { room: RoomConfig }) {
             </div>
             <div className="mt-2 flex items-center justify-between gap-2">
               <span className="text-2xs leading-snug text-slate-400">
-                {hungryToads.length > 0
-                  ? `Не вырабатывают ток: ${hungryToads.length} (нужна сытость выше ${POWER_MIN_HUNGER})`
-                  : "Все жабы сыты и вырабатывают ток"}
+                {activeRoomToads.length === 0 && roomToads.length > 0
+                  ? "Жабы в походе — ток не вырабатывают до разбора добычи"
+                  : hungryToads.length > 0
+                    ? `Не вырабатывают ток: ${hungryToads.length} (нужна сытость выше ${POWER_MIN_HUNGER})`
+                    : "Все жабы сыты и вырабатывают ток"}
               </span>
               <ClickButton
                 onClick={handleFeed}
-                disabled={roomToads.length === 0 || food < feedCost}
+                disabled={activeRoomToads.length === 0 || food < feedCost}
                 className={`shrink-0 rounded-lg px-3 py-1 text-xs font-bold transition-all ${
-                  roomToads.length === 0 || food < feedCost
+                  activeRoomToads.length === 0 || food < feedCost
                     ? "cursor-not-allowed bg-slate-700/60 text-slate-400"
                     : "bg-amber-600 text-white hover:bg-amber-500 active:scale-95"
                 }`}
@@ -260,20 +291,24 @@ export default function PowerRoomModal({ room }: { room: RoomConfig }) {
           ) : (
             <div className="space-y-1.5">
               {roomToads.map((toad) => {
-                const powering = isToadPowering(toad);
+                const onExpedition = isToadBusyOnExpedition(toad, expeditions);
+                const powering =
+                  !onExpedition && isToadPowering(toad, expeditions);
                 const rarity = getRarityConfig(toad.genes.rarity);
 
                 return (
                   <div
                     key={toad.id}
                     className={`flex items-center gap-2 rounded-xl border px-2 py-1.5 ${
-                      powering
-                        ? "border-emerald-500/40 bg-emerald-900/10"
-                        : "border-amber-500/40 bg-amber-900/10"
+                      onExpedition
+                        ? "border-amber-500/40 bg-amber-900/10"
+                        : powering
+                          ? "border-emerald-500/40 bg-emerald-900/10"
+                          : "border-amber-500/40 bg-amber-900/10"
                     }`}
                   >
                     <span className="text-lg leading-none">
-                      {powering ? "⚡" : "🔌"}
+                      {onExpedition ? "🧭" : powering ? "⚡" : "🔌"}
                     </span>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-2">
@@ -283,14 +318,22 @@ export default function PowerRoomModal({ room }: { room: RoomConfig }) {
                           {toad.name}
                         </span>
                         <span className="shrink-0 text-2xs text-slate-400">
-                          🍽 {Math.round(toad.state.hunger)}
+                          {onExpedition
+                            ? "в походе"
+                            : `🍽 ${Math.round(toad.state.hunger)}`}
                         </span>
                       </div>
                       <HungerBar value={toad.state.hunger} />
                     </div>
                     <ClickButton
                       onClick={() => handleRelease(toad)}
-                      className="shrink-0 rounded-lg border border-slate-600/60 px-2 py-1 text-2xs text-slate-300 transition-colors hover:border-rose-400 hover:text-rose-200"
+                      disabled={onExpedition}
+                      title={onExpedition ? EXPEDITION_TOAD_BUSY_REASON : undefined}
+                      className={`shrink-0 rounded-lg border px-2 py-1 text-2xs transition-colors ${
+                        onExpedition
+                          ? "cursor-not-allowed border-slate-700/60 text-slate-500"
+                          : "border-slate-600/60 text-slate-300 hover:border-rose-400 hover:text-rose-200"
+                      }`}
                     >
                       В биопод
                     </ClickButton>
@@ -318,7 +361,7 @@ export default function PowerRoomModal({ room }: { room: RoomConfig }) {
                   // Порядок строк уже задан `splitToadPickerCandidates`: кто даёт ток — сверху
                   items: candidates.available.map(({ toad }) => ({
                     toad,
-                    note: isToadPowering(toad)
+                    note: isToadPowering(toad, expeditions)
                       ? "даёт ток"
                       : `голодная — ток не даёт (нужна сытость выше ${POWER_MIN_HUNGER})`,
                   })),

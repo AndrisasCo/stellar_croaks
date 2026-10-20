@@ -5,6 +5,7 @@ import {
   randomPointInPolygon,
 } from "./hex-geometry";
 import { Toad } from "../../models/Toad";
+import { getExpeditions } from "../../utils/expedition-manager";
 import { getTextureByType } from "../ToadCanvas/utils";
 import { updateToadAppearance } from "../ToadCanvas/update-toad";
 import { isToadVisibleInRoom } from "./rooms-config";
@@ -202,8 +203,12 @@ export const createRoomToads = (
   };
 
   const sync = (nextToads: Toad[], spawns?: Record<number, Point>) => {
-    // Ушедшие в поход жабы в секторе не сидят (место они освобождают): спрайт не рисуем
-    nextToads = nextToads.filter(isToadVisibleInRoom);
+    // Ушедшие в поход жабы в секторе не сидят (место они освобождают): спрайт не рисуем.
+    // Список походов читаем один раз на синхронизацию, а не на каждую жабу.
+    const expeditions = getExpeditions();
+    nextToads = nextToads.filter((toad) =>
+      isToadVisibleInRoom(toad, expeditions),
+    );
 
     const nextIds = new Set(nextToads.map((toad) => toad.id));
 

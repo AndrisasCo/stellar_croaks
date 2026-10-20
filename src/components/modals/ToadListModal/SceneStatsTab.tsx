@@ -31,7 +31,10 @@ import { CURRENCY_CONFIG } from "../../../utils/constants";
 export const SceneStatsTab: React.FC<{
   /** Биопод, статистику которого смотрим (его же листают стрелки) */
   scene: Scene;
-  /** Жабы биопода — те, кто живёт в нём сейчас (`scene_id`); ушедшие в сектора не в счёте */
+  /**
+   * Жабы биопода — те, кто живёт в нём сейчас (`scene_id`); ушедшие в сектора
+   * и в поход не в счёте (в походе они видны отдельной плашкой в списке жаб).
+   */
   toads: Toad[];
   /** Стоит ли у сектора автокормушка: по ней понятно, кормят жаб или кормят руками */
   hasAutoFeeder: boolean;
@@ -39,7 +42,7 @@ export const SceneStatsTab: React.FC<{
   const [isEditing, setIsEditing] = useState(false);
   const [sceneName, setSceneName] = useState(scene.name || "");
   const { addNotification } = useNotifications();
-  const { playOk, playExited } = useSoundEffects();
+  const { playSuccess, playError } = useSoundEffects();
 
   /** Заражённые жильцы этого биопода: карантин лечит только их (Медотсек — отдельно) */
   const sickToads = toads.filter((toad) => isToadSick(toad));
@@ -54,7 +57,7 @@ export const SceneStatsTab: React.FC<{
       type: result.success ? "success" : "warn",
       content: result.message,
     });
-    result.success ? playOk() : playExited();
+    result.success ? playSuccess() : playError();
   };
 
   /**

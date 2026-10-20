@@ -21,6 +21,15 @@ export interface ExtendedColliderState {
 // Ключи для localStorage
 const COLLIDER_STATE_KEY = "toadColliderState";
 
+/**
+ * Занят ли инкубатор: коллайдер смешивает только одну пару за раз, пока гибрида
+ * не забрали в биопод. Проверка нужна и до старта смешивания, и внутри
+ * `startBreeding` — иначе при занятой колбе родители исчезнут без ребёнка.
+ */
+export const hasIncubatingChild = (state: {
+  slots: Array<{ child: Toad | null }>;
+}): boolean => state.slots.some((slot) => Boolean(slot.child));
+
 // Начальное состояние коллайдера
 export const initialColliderState: ColliderState = {
   slots: [

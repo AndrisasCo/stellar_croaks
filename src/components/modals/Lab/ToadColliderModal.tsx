@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { ColliderIcons, PregnancyIcon } from "../../../assets/icons";
 import { deleteToadsByIds } from "../../../backend";
+import { hasIncubatingChild } from "../../../backend/collider-manager";
 import { useColony } from "../../../hooks/use-colony";
+import { useNotifications } from "../../../hooks/use-notification";
 import { useRoomPowerTab } from "../../../hooks/use-room-power-tab";
 import { useSoundEffects } from "../../../hooks/use-sound-effects";
 import {
@@ -17,7 +19,12 @@ import {
 } from "../../../utils/calculate-genetics";
 import { MIXING_DURATION } from "../../../utils/constants";
 import { nameGenerator } from "../../../utils/name-generator";
+import {
+  EXPEDITION_TOAD_BUSY_REASON,
+  isToadBusyOnExpedition,
+} from "../../../utils/expedition-manager";
 import { ClickButton } from "../../shared/ClickButton";
+import Modal from "../../shared/Header";
 import { ToadAvatar } from "../../shared/ToadAvatar";
 import { ToadGender } from "../../shared/ToadGender";
 import { useToads } from "../../ToadContext";
@@ -79,7 +86,8 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
   // после явного подтверждения.
   const [showWarning, setShowWarning] = useState(false);
 
-  const { startBreeding, updateBreeding, allToads } = useToads();
+  const { startBreeding, updateBreeding, allToads, colliderState } = useToads();
+  const { addNotification } = useNotifications();
   const { powerGrid } = useColony();
   /** Состояние сектора: смешивание жаб (по умолчанию), инкубатор или данные сектора */
   const {
@@ -115,8 +123,12 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
   // Часть 5: жабы в походе недоступны для коллайдера (они на Периметре).
   // Список — вся колония: коллайдер работает с генами, а не с биоподом.
   const availableToads = allToads.filter(
-    (t) => t.stage === "adult" && t.status !== "out",
+    (t) => t.stage === "adult" && !isToadBusyOnExpedition(t),
   );
+  /** Гибрид в колбе блокирует новое смешивание, пока его не заберут в биопод. */
+  const incubatingChild =
+    colliderState.slots.find((slot) => slot.child)?.child ?? null;
+  const incubatorBusy = hasIncubatingChild(colliderState);
   const { playBubble2 } = useSoundEffects();
   const [breedingResult, setBreedingResult] = useState<BreedingResult | null>(
     null,
@@ -128,6 +140,11 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
   const isDisabled = currentToads.length < 2;
 
   const handleSelectToad = (toad: Toad) => {
+    if (isToadBusyOnExpedition(toad)) {
+      addNotification({ type: "warn", content: EXPEDITION_TOAD_BUSY_REASON });
+      return;
+    }
+
     const currentToadIndex = selectedToads.findIndex(
       (t) => t && t.id === toad.id,
     );
@@ -159,9 +176,16 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
   };
 
   const handleBreed = async () => {
-    if (isDisabled || isMixing) {
+    if (isDisabled || isMixing || incubatorBusy) {
       return;
     }
+
+    // Жабу могли отправить в поход, пока модалка открыта: смешивание ждёт возвращения
+    if (currentToads.some((toad) => isToadBusyOnExpedition(toad))) {
+      addNotification({ type: "warn", content: EXPEDITION_TOAD_BUSY_REASON });
+      return;
+    }
+
     setIsMixing(true);
 
     // Мутация - шанс на повышенную Качество
@@ -193,6 +217,18 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
       message += " Жаба мутировала! Ее облик изменен...";
     }
 
+    // Колбу могли занять, пока шло смешивание (например, в другой вкладке):
+    // не удаляем родителей, если ребёнку некуда лечь.
+    if (!startBreeding(child)) {
+      setIsMixing(false);
+      addNotification({
+        type: "danger",
+        content:
+          "Инкубатор занят: сначала заберите гибрида, потом смешивайте жаб снова.",
+      });
+      return;
+    }
+
     setBreedingResult({
       success: !genesBreakChance,
       child,
@@ -201,7 +237,6 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
 
     setIsMixing(false);
 
-    startBreeding(child as Toad);
     deleteToadsByIds(currentToads.map((t) => t.id));
     setSelectedToads([null, null, null, null, null]);
   };
@@ -242,16 +277,10 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
   };
 
   return (
-    <>
-      <div className="flex w-full justify-center items-center relative">
-        <div className="flex items-center gap-2 pb-4 ">
-          {ColliderIcons.collider}
-          <h2 className="brand-text text-xl font-bold">
-            Генетический Коллайдер
-          </h2>
-        </div>
-      </div>
-
+    <Modal
+      title={room?.name ?? "Генетический Коллайдер"}
+      icon={ColliderIcons.collider}
+    >
       {/* Переключение вкладок: вид один на все секторы (`shared/ModalTabs`) */}
       {tabs.length > 1 && (
         <ModalTabs tabs={tabs} active={tab} onChange={setTab} />
@@ -260,7 +289,27 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
       {tab === "collider" && (
         <>
           {!breedingResult ? (
-            <>
+            incubatorBusy ? (
+              <div className="rounded-xl border border-amber-400/40 bg-amber-500/10 p-5 text-center">
+                <div className="text-3xl">🧫</div>
+                <h3 className="mt-2 text-lg font-bold text-amber-200">
+                  Коллайдер заблокирован
+                </h3>
+                <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-slate-200">
+                  В инкубаторе уже дозревает гибрид
+                  {incubatingChild ? ` «${incubatingChild.name}»` : ""}. Заберите
+                  его в биопод — после этого можно снова смешивать жаб.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setTab("incubator")}
+                  className="ui-button-primary mt-4 px-6 py-2"
+                >
+                  Перейти в инкубатор
+                </button>
+              </div>
+            ) : (
+              <>
               <div className="bg-color-second  rounded-lg p-3 mb-4  border border-slate-600">
                 <div className="text-xs sm:text-sm text-white font-medium mb-2  text-center flex items-center justify-center gap-2">
                   <span className="text-yellow-400">⭐</span>
@@ -467,7 +516,8 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
               >
                 Очистить
               </ClickButton>
-            </>
+              </>
+            )
           ) : (
             <div className="text-center">
               {/* Сообщение о результате */}
@@ -733,6 +783,6 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
 
       {/* ВКЛАДКА «Данные сектора»: описание, улучшения и снос гекса коллайдера */}
       {tab === "room-data" && room && <RoomDataTab room={room} />}
-    </>
+    </Modal>
   );
 }

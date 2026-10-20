@@ -11,6 +11,7 @@ import {
 } from "../components/HexMap/colony-build";
 import { getRoomToadLists } from "../components/HexMap/room-toad-lists";
 import { EMPTY_COLONY } from "../models/colony";
+import { Expedition } from "../models/expedition";
 import { Toad } from "../models/Toad";
 import {
   BIOMASS_TO_TOKENS_RATE,
@@ -18,6 +19,10 @@ import {
   getBiomassRate,
 } from "./gamification-config";
 import { isToadDown } from "./expedition-config";
+import {
+  getExpeditions,
+  isToadBusyOnExpedition,
+} from "./expedition-manager";
 
 /**
  * Часть 3.3 — активная ферма.
@@ -28,8 +33,13 @@ import { isToadDown } from "./expedition-config";
 /** Часть 5: выработка раненой жабы (выбитой из строя дома) */
 export const INJURED_PRODUCTION_FACTOR = 0.5;
 
-/** Жаба в походе (разведка) — не работает на ферме и не ест биомассу */
-const isToadAway = (toad: Toad): boolean => toad.status === "out";
+/**
+ * Жаба в походе (разведка) — не работает на ферме и не ест биомассу.
+ * Проверяем и запись похода, а не только статус: вернувшаяся жаба ещё держит
+ * добычу до разбора (`isToadBusyOnExpedition`), поэтому работать раньше времени не должна.
+ */
+const isToadAway = (toad: Toad, expeditions?: Expedition[]): boolean =>
+  isToadBusyOnExpedition(toad, expeditions);
 
 /** Множитель выработки по состоянию здоровья жабы (выбитая — 0) */
 const getInjuryFactor = (toad: Toad): number => {
@@ -48,13 +58,14 @@ const getInjuryFactor = (toad: Toad): number => {
 export const getSceneProductionRate = (
   toads: Toad[],
   unpoweredSceneIds?: ReadonlySet<number>,
+  expeditions: Expedition[] = getExpeditions(),
 ): number =>
   toads.reduce((sum, toad) => {
     const inUnpoweredScene =
       typeof toad.scene_id === "number" &&
       unpoweredSceneIds?.has(toad.scene_id);
 
-    if (isToadAway(toad) || inUnpoweredScene) {
+    if (isToadAway(toad, expeditions) || inUnpoweredScene) {
       return sum;
     }
 
@@ -69,18 +80,22 @@ export const processProduction = (
   hoursPassed: number,
 ): { gross: number; upkeep: number; net: number } => {
   const state = getGameState();
+  const expeditions = state.expeditions ?? [];
 
-  const sceneToads = state.toads.filter((t) => !isToadAway(t));
+  const sceneToads = state.toads.filter(
+    (toad) => !isToadAway(toad, expeditions),
+  );
 
   // Обесточенный биопод остаётся жилым, но биомассу не производит. Содержание жаб
   // при этом не исчезает: они по-прежнему едят, поэтому upkeep считаем по всем жильцам.
   const rooms = resolveColonyRooms(state.colony ?? EMPTY_COLONY, state.scenes);
   const toadsByRoom = getRoomToadLists(rooms, state.toads);
-  const powerGrid = getPowerGrid(rooms, toadsByRoom);
+  const powerGrid = getPowerGrid(rooms, toadsByRoom, expeditions);
   const unpoweredSceneIds = getUnpoweredAviarySceneIds(rooms, powerGrid);
 
   const gross =
-    getSceneProductionRate(sceneToads, unpoweredSceneIds) * hoursPassed;
+    getSceneProductionRate(sceneToads, unpoweredSceneIds, expeditions) *
+    hoursPassed;
   const upkeep = sceneToads.length * UPKEEP_PER_TOAD_HOUR * hoursPassed;
   const net = gross - upkeep;
 

@@ -14,6 +14,7 @@ import {
 } from "../utils/narrator";
 import { useGameState } from "./use-game-state";
 import { NEST_ROOM_ID } from "../utils/constants";
+import { isToadBusyOnExpedition } from "../utils/expedition-manager";
 import { getToadRoomId } from "../utils/toad-location";
 
 /**
@@ -97,7 +98,10 @@ const isTaskComplete = (task: NarratorTaskId, state: GameState): boolean => {
       return [...pairs.values()].some((pair) => pair.male && pair.female);
     }
     case "feed": {
-      const feedable = state.toads.filter((toad) => toad.status !== "out");
+      const expeditions = state.expeditions ?? [];
+      const feedable = state.toads.filter(
+        (toad) => !isToadBusyOnExpedition(toad, expeditions),
+      );
       return (
         feedable.length > 0 &&
         feedable.every((toad) => toad.state.hunger >= 100)
@@ -189,8 +193,9 @@ export const useNarrator = () => {
         return;
       }
 
-      const feedable = gameStateRef.current.toads.filter(
-        (toad) => toad.status !== "out",
+      const { toads, expeditions = [] } = gameStateRef.current;
+      const feedable = toads.filter(
+        (toad) => !isToadBusyOnExpedition(toad, expeditions),
       );
       if (
         feedable.length === 0 ||

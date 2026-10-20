@@ -9,6 +9,10 @@ import { checkNestCourtship } from "../../utils/breeding-manager";
 import { getSceneProductionRate } from "../../utils/production-manager";
 import { getHousingInfo } from "../../utils/housing";
 import { getToadHomeId } from "../../utils/toad-location";
+import {
+  EXPEDITION_TOAD_BUSY_REASON,
+  isToadBusyOnExpedition,
+} from "../../utils/expedition-manager";
 import { getStorageCapacityInfo } from "../../utils/storage";
 import { platform } from "../../platform";
 import { useModal } from "../ModalContext";
@@ -76,11 +80,13 @@ export default function HexMapScreen() {
   const { openModal } = useModal();
   const { addNotification } = useNotifications();
   const { account, allToads, ownedScenes, selectToad } = useToads();
-  const { playCroak, playCroakBig, playCroakSmall, playBeep, playOk } =
+  const { playCroak, playCroakBig, playCroakSmall, playBeep, playError } =
     useSoundEffects();
 
   // Колония: построенные секторы, энергосеть и жабы по гексам
   const { rooms, powerGrid, toadsByRoom, placeToad, releaseToad } = useColony();
+  const gameState = useGameState();
+  const expeditions = gameState.expeditions ?? [];
 
   /**
    * Жабы биоподов: те, кто не работает в секторах колонии (⚡, «Разведка», репродуктор,
@@ -139,10 +145,18 @@ export default function HexMapScreen() {
     [rooms, powerGrid],
   );
 
+  // Жабы, вернувшиеся из похода, ещё держат добычу и не работают до её разбора
+  const activeAviaryToads = aviaryToads.filter(
+    (toad) => !isToadBusyOnExpedition(toad, expeditions),
+  );
+
   // Ферма считает только жаб биопода: жабы в энергосекторах не фармят биомассу
   const sceneFarmRate =
-    getSceneProductionRate(aviaryToads, unpoweredAviarySceneIds) -
-    aviaryToads.length * UPKEEP_PER_TOAD_HOUR;
+    getSceneProductionRate(
+      activeAviaryToads,
+      unpoweredAviarySceneIds,
+      expeditions,
+    ) - activeAviaryToads.length * UPKEEP_PER_TOAD_HOUR;
 
   // Энергия колонии для HUD: сколько построенных секторов реально под током
   const poweredRooms = useMemo(
@@ -151,7 +165,6 @@ export default function HexMapScreen() {
   );
   const builtRooms = Object.keys(powerGrid.powered).length;
   // День колонии: считается от даты создания аккаунта (как «День 13» в макете).
-  const gameState = useGameState();
   const colonyDay = useMemo(() => {
     const startedAt = new Date(gameState.createdAt || Date.now()).getTime();
 
@@ -292,7 +305,7 @@ export default function HexMapScreen() {
       // Ядро — центр управления колонией: сводка, все жабы и кормление всей колонии
       // (модалка не привязана к гексу, поэтому открывается до общей таблицы действий).
       if (room.kind === "core") {
-        openModal(() => <ColonyModal />, { className: "md:max-w-2xl" });
+        openModal(() => <ColonyModal />);
         return;
       }
 
@@ -337,14 +350,32 @@ export default function HexMapScreen() {
         aviaryCapacity: aviaryScene?.capacity ?? 0,
         rooms,
         powerGrid,
+        onExpedition: isToadBusyOnExpedition(toad, expeditions),
+        expeditions,
       });
     },
-    [allToads, getRoomOccupants, ownedScenes, powerGrid, rooms],
+    [
+      allToads,
+      getRoomOccupants,
+      ownedScenes,
+      powerGrid,
+      rooms,
+      expeditions,
+    ],
   );
 
   /** Жабу перенесли: биопод принимает жильца, ⚡-сектор — работника, «Разведка» — бойца. */
   const handleToadDrop = useCallback(
     (toad: Toad, room: RoomConfig) => {
+      if (isToadBusyOnExpedition(toad, expeditions)) {
+        playError();
+        addNotification({
+          type: "warn",
+          content: EXPEDITION_TOAD_BUSY_REASON,
+        });
+        return;
+      }
+
       if (room.kind === "power") {
         placeToad(toad.id, room.id);
         playCroakSmall();
@@ -376,7 +407,7 @@ export default function HexMapScreen() {
         const result = releaseToad(toad.id, room.sceneId ?? null);
 
         if (!result.ok) {
-          playBeep();
+          playError();
           addNotification({
             type: "warn",
             content: `В биоподе «${
@@ -414,13 +445,21 @@ export default function HexMapScreen() {
         }
       }
     },
-    [addNotification, placeToad, playBeep, playCroakSmall, playOk, releaseToad],
+    [
+      addNotification,
+      placeToad,
+      playBeep,
+      playCroakSmall,
+      playError,
+      releaseToad,
+      expeditions,
+    ],
   );
 
   /** Перенести жабу не вышло: она уже летит назад — показываем причину. */
   const handleToadRejected = useCallback(
     (toad: Toad, room: RoomConfig, reason?: string) => {
-      playBeep();
+      playError();
       addNotification({
         type: "warn",
         content:
@@ -431,7 +470,7 @@ export default function HexMapScreen() {
         timeout: 4500,
       });
     },
-    [addNotification, playBeep],
+    [addNotification, playError],
   );
 
   /** Жабу взяли в руку: крик по размеру и отклик удержания (в Telegram — вибрация). */
@@ -494,9 +533,7 @@ export default function HexMapScreen() {
 
           <ClickButton
             title="Меню колонии"
-            onClick={() =>
-              openModal(() => <BurgerMenu />, { className: "md:max-w-3xl" })
-            }
+            onClick={() => openModal(() => <BurgerMenu />)}
             className="pointer-events-auto rounded-xl border-2 border-purple-300/70 bg-slate-950/65 p-2 text-purple-200 backdrop-blur-md duration-300 active:scale-95"
           >
             {MenuIcons.menu}

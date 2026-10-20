@@ -67,8 +67,6 @@ const MENU_ITEMS: {
   requiresRoom?: ColonyRoomKind;
   /** Подсказка вместо описания, пока нужный сектор не построен. */
   lockedDesc?: string;
-  /** Ширина карточки под содержимое: текст — уже, таблицы и списки — шире. */
-  modalClassName?: string;
 }[] = [
   // Рынок и склад по-прежнему доступны из меню, но «Рынок» открывается только когда
   // на карте колонии построен «Магазин» (`requiresRoom`): без сектора торговли нет.
@@ -141,7 +139,6 @@ const MENU_ITEMS: {
     desc: "Ваши достижения и прогресс",
     color: "text-yellow-300",
     target: <AchivementsModal />,
-    modalClassName: "md:max-w-4xl",
   },
   {
     id: "leaderboard",
@@ -150,7 +147,6 @@ const MENU_ITEMS: {
     desc: "Сравнение с другими игроками",
     color: "text-blue-300",
     target: <LeaderboardModal />,
-    modalClassName: "md:max-w-2xl",
   },
   {
     id: "tutorial",
@@ -159,7 +155,6 @@ const MENU_ITEMS: {
     desc: "Полный справочник: карта, жабы и экономика",
     color: "text-teal-300",
     target: <TutorialModal />,
-    modalClassName: "md:max-w-3xl",
   },
   {
     id: "lore",
@@ -182,7 +177,6 @@ const MENU_ITEMS: {
     desc: "Восстановленные записи станции «Титан-9»",
     color: "text-cyan-300",
     target: <LoreArchiveModal />,
-    modalClassName: "md:max-w-3xl",
   },
   {
     id: "settings",
@@ -191,7 +185,6 @@ const MENU_ITEMS: {
     desc: "Звук, музыка и другие опции",
     color: "text-slate-300",
     target: <SettingsModal />,
-    modalClassName: "md:max-w-2xl",
   },
   {
     // Вход по почте — только для браузера: в Telegram личность уже подтверждена
@@ -216,7 +209,6 @@ const MENU_ITEMS: {
     desc: "Вход и регистрация по почте",
     color: "text-emerald-300",
     target: <AuthModal />,
-    modalClassName: "md:max-w-md",
   },
 ];
 
@@ -253,9 +245,7 @@ export const BurgerMenu = () => {
                 return;
               }
 
-              openModal(() => item.target, {
-                className: item.modalClassName,
-              });
+              openModal(() => item.target);
             }}
             className={`group w-full rounded-xl border border-white/10 bg-slate-900/55 px-3 py-2.5 shadow-lg transition-colors duration-300 ${
               items.length % 2 === 1 && index === items.length - 1

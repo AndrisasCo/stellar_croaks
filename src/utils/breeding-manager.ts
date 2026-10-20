@@ -16,7 +16,11 @@ import { getHoursFromNow } from "./date";
 import { getGameState } from "../backend/localStorage";
 import { completeAchivement } from "../backend/achivements-manager";
 import { assignToadsToScenes } from "./housing";
-import { getToadEnclosureId, getToadHomeId, getToadRoomId } from "./toad-location";
+import {
+  getToadEnclosureId,
+  getToadHomeId,
+  getToadRoomId,
+} from "./toad-location";
 import { getToadGrowthInfo } from "./toad-growth";
 import { placeToadInRoom } from "../backend/colony";
 import { NEST_ROOM_ID } from "./constants";
@@ -31,7 +35,7 @@ import {
   MATING_MIN_MINUTES,
 } from "./gamification-config";
 import { isToadDown } from "./expedition-config";
-import { isToadOnExpedition } from "./expedition-manager";
+import { isToadBusyOnExpedition } from "./expedition-manager";
 
 /**
  * Голодающие головастики, о которых уже предупредили в этой сессии.
@@ -211,7 +215,7 @@ const getMatingBreakReason = (toad: Toad, partner: Toad | null): string => {
     return "партнёр пропал";
   }
 
-  if (toad.status === "out" || partner.status === "out") {
+  if (isToadBusyOnExpedition(toad) || isToadBusyOnExpedition(partner)) {
     return "жаба ушла в поход";
   }
 
@@ -303,10 +307,10 @@ const processMating = (
   const pairBroken =
     !partner || !partner.mating || partner.mating.partnerId !== toad.id;
   const unavailable =
-    toad.status === "out" ||
+    isToadBusyOnExpedition(toad) ||
     (toad.hp ?? 1) <= 0 ||
     !partner ||
-    partner.status === "out" ||
+    isToadBusyOnExpedition(partner) ||
     (partner.hp ?? 1) <= 0;
 
   if (pairBroken || unavailable) {
@@ -390,15 +394,13 @@ export const endPregnancy = async (toad: Toad, addNotification: any) => {
     .fill(1)
     .map(() => generateChildToad([toad, father], false));
 
-  const currentSceneId =
-    getToadEnclosureId(toad) ?? getToadHomeId(toad);
+  const currentSceneId = getToadEnclosureId(toad) ?? getToadHomeId(toad);
 
   // Роды в репродукторе: головастики остаются рядом с матерью, даже если репродуктор
   // переполнен — игрок сам разнесёт их по биоподам. Склада жаб нет, поэтому
   // репродуктор остаётся единственным местом, где потомство может подождать места:
   // головастик в секторе место в биоподе не занимает, а дом помнит (`homeId`).
-  const nestRoomId =
-    typeof toad.scene_id === "string" ? toad.scene_id : null;
+  const nestRoomId = typeof toad.scene_id === "string" ? toad.scene_id : null;
 
   if (isNestRoomId(nestRoomId)) {
     const born = children.map(
@@ -566,7 +568,7 @@ export const getNestSlotRejectReason = (
       : "Второй слот репродуктора занимает самец.";
   }
 
-  if (toad.status === "out" || isToadOnExpedition(toad.id)) {
+  if (isToadBusyOnExpedition(toad)) {
     return "Жаба в походе за Периметр — размножение только дома.";
   }
 
@@ -661,7 +663,7 @@ export const checkNestCourtship = (roomId: string): CourtshipCheck => {
   if (adults.some((toad) => toad.mating)) {
     return {
       ready: false,
-      message: "Пара уже ухаживает — беременность придёт по таймеру.",
+      message: "Пара в процессе ухаживания.",
       pair: null,
     };
   }
@@ -699,7 +701,7 @@ export const checkNestCourtship = (roomId: string): CourtshipCheck => {
     };
   }
 
-  if (isToadOnExpedition(male.id) || isToadOnExpedition(female.id)) {
+  if (isToadBusyOnExpedition(male) || isToadBusyOnExpedition(female)) {
     return {
       ready: false,
       message: "Жаба в походе за Периметр — размножение только дома.",

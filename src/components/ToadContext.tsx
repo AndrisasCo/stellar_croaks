@@ -20,6 +20,7 @@ import { User } from "../models/user";
 import { useNotifications } from "../hooks/use-notification";
 import {
   ExtendedColliderState,
+  hasIncubatingChild,
   loadColliderState,
   saveColliderState,
 } from "../backend/collider-manager";
@@ -27,6 +28,10 @@ import { TOADS_FED_EVENT } from "../utils/narrator";
 import { getFeedCost } from "../utils/feeding";
 import { pickSceneForNewToad } from "../utils/housing";
 import { getToadHomeId } from "../utils/toad-location";
+import {
+  EXPEDITION_TOAD_BUSY_REASON,
+  isToadBusyOnExpedition,
+} from "../utils/expedition-manager";
 
 interface ToadContextType {
   /**
@@ -38,7 +43,7 @@ interface ToadContextType {
   selectToad: (toadId: number) => void;
   clearSelection: () => void;
   updateBreeding: (child: Toad) => void;
-  startBreeding: (child: Toad) => void;
+  startBreeding: (child: Toad) => boolean;
   collectChild: (slotId: number) => void;
   setSlotReady: (slotId: number) => void;
   /** Биоподы колонии: по ним гексы карты находят своих жильцов (`RoomConfig.sceneId`). */
@@ -59,6 +64,7 @@ export const ToadProvider: React.FC<ToadProviderProps> = ({ children }) => {
     user: account,
     scenes: ownedScenes,
     toads: allToads,
+    expeditions = [],
   } = useGameState();
 
   const [selectedToadId, setSelectedToadId] = useState<number | null>(null);
@@ -84,7 +90,19 @@ export const ToadProvider: React.FC<ToadProviderProps> = ({ children }) => {
     };
   }, [JSON.stringify(colliderState)]);
 
-  const startBreeding = (child: Toad) => {
+  const startBreeding = (child: Toad): boolean => {
+    // Одна колба — один гибрид. Пока его не забрали, новое смешивание
+    // запрещено: иначе ребёнок не попадёт в инкубатор, а родители уже исчезнут.
+    if (hasIncubatingChild(colliderState)) {
+      return false;
+    }
+
+    const emptySlot = colliderState.slots.find((slot) => slot.child === null);
+
+    if (!emptySlot) {
+      return false;
+    }
+
     const duration = calculateBreedingTime(
       child.genes.rarity,
       colliderState.speedMultiplier,
@@ -92,7 +110,7 @@ export const ToadProvider: React.FC<ToadProviderProps> = ({ children }) => {
     setColliderState((prev) => ({
       ...prev,
       slots: prev.slots.map((slot) =>
-        slot.child === null
+        slot.id === emptySlot.id
           ? {
               ...slot,
               child,
@@ -103,6 +121,8 @@ export const ToadProvider: React.FC<ToadProviderProps> = ({ children }) => {
           : slot,
       ),
     }));
+
+    return true;
   };
 
   const updateBreeding = (child: Toad) => {
@@ -194,7 +214,23 @@ export const ToadProvider: React.FC<ToadProviderProps> = ({ children }) => {
   };
 
   const handleFeedToads = (toadsId: number[]) => {
-    const fedToads = allToads.filter((toad) => toadsId.includes(toad.id));
+    // Жабы в походе дома не едят: в пути и до разбора добычи они заняты
+    const requestedToads = allToads.filter((toad) => toadsId.includes(toad.id));
+    const fedToads = requestedToads.filter(
+      (toad) => !isToadBusyOnExpedition(toad, expeditions),
+    );
+
+    if (fedToads.length < requestedToads.length) {
+      addNotification({
+        type: "warn",
+        content: EXPEDITION_TOAD_BUSY_REASON,
+      });
+    }
+
+    if (fedToads.length === 0) {
+      return;
+    }
+
     // Один корм на жабу (см. `getFeedCost`): автокормушка кормит сама, но корм не экономит
     const newFood = (account.storage?.food || 0) - getFeedCost(fedToads);
 
@@ -207,7 +243,10 @@ export const ToadProvider: React.FC<ToadProviderProps> = ({ children }) => {
       });
       return;
     }
-    updateToadStateByIds(toadsId, { hunger: 100 });
+    updateToadStateByIds(
+      fedToads.map((toad) => toad.id),
+      { hunger: 100 },
+    );
     // Головастик рождается с hunger: 0, и именно первое кормление запускает
     // его таймер роста (см. `utils/toad-growth.ts`). Уже начатый рост не сбрасываем.
     const growthStartIds = fedToads

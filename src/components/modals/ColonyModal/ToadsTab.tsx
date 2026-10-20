@@ -8,9 +8,12 @@ import {
 import { getToadDisease, isToadSick } from "../../../models/disease";
 import { getToadHomeId } from "../../../utils/toad-location";
 import { Scene } from "../../../models/scene";
+import { useFilters } from "../../../hooks/use-filters";
+import { isToadBusyOnExpedition } from "../../../utils/expedition-manager";
 import { useModal } from "../../ModalContext";
 import { useToads } from "../../ToadContext";
 import { ClickButton } from "../../shared/ClickButton";
+import { Filters } from "../../shared/Filters";
 import { ToadAvatar } from "../../shared/ToadAvatar";
 import { ToadGender } from "../../shared/ToadGender";
 import { ToadInfo } from "../ToadInfoModal";
@@ -35,11 +38,12 @@ const getToadPlace = (
   roomsById: Map<string, RoomConfig>,
   scenesById: Map<number, Scene>,
 ): ToadPlace => {
-  if (toad.status === "out") {
+  if (isToadBusyOnExpedition(toad)) {
     return {
       icon: "🧭",
       label: "В походе",
-      hint: "за Периметром",
+      hint:
+        toad.status === "out" ? "за Периметром" : "добыча ждёт разбора",
       className: "text-amber-300",
     };
   }
@@ -229,6 +233,7 @@ const ColonyToadCard = ({
  * Список показывает и тех, кто живёт в биоподе, и тех, кто работает в секторах,
  * и тех, кто ушёл в поход. Поэтому место у каждой жабы подписано отдельно
  * (`getToadPlace`) — иначе после переноса в сектор жаба «пропадала» бы из обоих списков.
+ * Над списком стоят те же фильтры и сортировки, что в меню биопода (`shared/Filters`).
  */
 const ToadsTab = ({
   toads,
@@ -256,6 +261,21 @@ const ToadsTab = ({
     openModal(() => <ToadInfo />);
   };
 
+  /**
+   * Фильтры и сортировка — те же, что в меню биопода (`shared/Filters` и
+   * `hooks/use-filters`). Список колонии шире списка одного биопода, но правила
+   * сортировки не должны отличаться: игрок ищет жабу одинаково в обоих местах.
+   */
+  const {
+    filteredAndSortedToads,
+    sortBy,
+    setSortBy,
+    sortDirection,
+    setSortDirection,
+    filterBy,
+    setFilterBy,
+  } = useFilters(toads);
+
   if (toads.length === 0) {
     return (
       <p className="py-8 text-center text-sm text-slate-400">
@@ -266,14 +286,31 @@ const ToadsTab = ({
 
   return (
     <div className="flex flex-col gap-2 pb-1">
-      {toads.map((toad) => (
-        <ColonyToadCard
-          key={toad.id}
-          toad={toad}
-          place={getToadPlace(toad, roomsById, scenesById)}
-          onOpen={() => openToad(toad)}
-        />
-      ))}
+      <Filters
+        toads={toads}
+        setSortDirection={setSortDirection}
+        setSortBy={setSortBy}
+        filterBy={filterBy}
+        setFilterBy={setFilterBy}
+        sortBy={sortBy}
+        sortDirection={sortDirection}
+        addHunger
+      />
+
+      {filteredAndSortedToads.length === 0 ? (
+        <p className="py-8 text-center text-sm text-slate-400">
+          Жабы не найдены. Измените фильтры.
+        </p>
+      ) : (
+        filteredAndSortedToads.map((toad) => (
+          <ColonyToadCard
+            key={toad.id}
+            toad={toad}
+            place={getToadPlace(toad, roomsById, scenesById)}
+            onOpen={() => openToad(toad)}
+          />
+        ))
+      )}
     </div>
   );
 };

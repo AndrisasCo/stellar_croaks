@@ -176,7 +176,7 @@ const cfg = bundle("src/utils/gamification-config.ts", "gamification-config");
 const breeding = bundle("src/utils/breeding-manager.ts", "breeding-manager");
 const astro = bundle("src/utils/astro-shop.ts", "astro-shop");
 const housing = bundle("src/utils/housing.ts", "housing");
-const constants = bundle("src/utils/constants.ts", "constants");
+const constants = bundle("src/utils/constants.tsx", "constants");
 const rooms = bundle("src/components/HexMap/rooms-config.ts", "rooms-config");
 const colonyBuild = bundle("src/components/HexMap/colony-build.ts", "colony-build");
 const moveRules = bundle("src/components/HexMap/toad-move-rules.ts", "move-rules");
@@ -309,7 +309,11 @@ intoNest(3);
 const busyCheck = breeding.checkNestCourtship(constants.NEST_ROOM_ID);
 const secondPair = breeding.startNestCourtship(constants.NEST_ROOM_ID, collect);
 check("кнопка погасла: ухаживание уже идёт", busyCheck.ready, false);
-checkText("причина: пара уже ухаживает", busyCheck.message, /уже ухаживает/);
+checkText(
+  "причина: пара уже ухаживает",
+  busyCheck.message,
+  /Пара в процессе ухаживания/,
+);
 check("вторую пару кнопка не берёт", secondPair.started, false);
 check("третья жаба в гнезде не ухаживает", Boolean(findToad(3).mating), false);
 

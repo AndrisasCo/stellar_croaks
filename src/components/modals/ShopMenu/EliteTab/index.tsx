@@ -17,6 +17,10 @@ import {
 import { useNotifications } from "../../../../hooks/use-notification";
 import { CurrencyIcon } from "../../../shared/CurrencyIcon";
 import { AcceptButton } from "./AcceptButton";
+import {
+  EXPEDITION_TOAD_BUSY_REASON,
+  isToadBusyOnExpedition,
+} from "../../../../utils/expedition-manager";
 
 /** Новые заказы на витрину: платное обновление даёт короткий кулдаун вместо суток */
 const refreshShop = (cooldownMs = ELITE_REFRESH_COOLDOWN): ShopState => {
@@ -87,6 +91,11 @@ export const EliteTab: React.FC = () => {
   };
 
   const handleSubmitEliteOrder = (order: string) => (toad: Toad) => {
+    if (isToadBusyOnExpedition(toad)) {
+      addNotification({ type: "warn", content: EXPEDITION_TOAD_BUSY_REASON });
+      return;
+    }
+
     const selectedOrder = availableOrders.find((a) => a.id === order);
     if (!selectedOrder) {
       return;
@@ -114,7 +123,9 @@ export const EliteTab: React.FC = () => {
         return [];
       }
 
-      const suitableToads = activeToads.filter(order.requirement);
+      const suitableToads = activeToads.filter(
+        (toad) => !isToadBusyOnExpedition(toad) && order.requirement(toad),
+      );
       return [
         {
           ...order,
@@ -142,6 +153,11 @@ export const EliteTab: React.FC = () => {
   };
 
   const availableOrders = getAvailableOrders();
+
+  /** Жабы в походе не участвуют в заказах до возвращения и разбора добычи */
+  const expeditionToadCount = activeToads.filter((toad) =>
+    isToadBusyOnExpedition(toad),
+  ).length;
 
   const canRefresh = Date.now() >= shopState.nextRefreshElite;
 
@@ -178,6 +194,13 @@ export const EliteTab: React.FC = () => {
       <h3 className="text-white font-semibold mb-3 px-2 text-lg">
         Элитные заказы
       </h3>
+
+      {expeditionToadCount > 0 && (
+        <p className="mx-2 rounded-xl border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-2xs leading-snug text-amber-200">
+          🧭 В походе жаб: {expeditionToadCount}. Они не участвуют в заказах до
+          возвращения и разбора добычи.
+        </p>
+      )}
 
       {availableOrders.map((order) => (
         <div

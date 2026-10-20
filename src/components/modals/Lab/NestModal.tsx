@@ -33,6 +33,10 @@ import {
   isToadInRoom,
 } from "../../../utils/toad-location";
 import {
+  EXPEDITION_TOAD_BUSY_REASON,
+  isToadBusyOnExpedition,
+} from "../../../utils/expedition-manager";
+import {
   CURRENCY_CONFIG,
   NEST_ROOM_ID,
   TYPE_ICONS,
@@ -47,6 +51,7 @@ import { getToadDisease } from "../../../utils/disease-manager";
 import { completeAchivement } from "../../../backend/achivements-manager";
 import { resolveColonyRooms } from "../../HexMap/colony-build";
 import { ClickButton } from "../../shared/ClickButton";
+import Modal from "../../shared/Header";
 import ModalTabs, { ModalTabItem } from "../../shared/ModalTabs";
 import { ToadPicker } from "../../shared/ToadPicker";
 import { RoomConfig } from "../../HexMap/rooms-config";
@@ -117,7 +122,7 @@ const readinessNote = (toad: Toad): string => {
     return `нужно ⚡${cost}`;
   }
 
-  return "готова к паре";
+  return "ухаживание доступно";
 };
 
 /** Что слот ищет — подсказка вверху раскрытого списка жаб */
@@ -138,7 +143,7 @@ const slotEmptyText = (slotIndex: number): string =>
 
 interface NestModalProps {
   /** id гекса-репродуктора, из которого открыли модалку: репродукторов в колонии может быть несколько */
-  roomId: string;
+  roomId?: string;
   /** Гекс, из которого открыли модалку: по нему появляется последний таб «Данные сектора» */
   room?: RoomConfig;
 }
@@ -152,7 +157,7 @@ export default function NestModal({
 }: NestModalProps) {
   const { allToads, account } = useToads();
   const { addNotification } = useNotifications();
-  const { playOk, playExited } = useSoundEffects();
+  const { playOk, playSuccess, playError } = useSoundEffects();
   const gameState = useGameState();
   const { powerGrid } = useColony();
   // Раз в секунду обновляем обратные отсчёты: ухаживание, отдых, статусы жаб
@@ -168,7 +173,7 @@ export default function NestModal({
   const tabs: ModalTabItem<NestTab>[] = [
     {
       id: "nest",
-      label: "🪺 Пары",
+      label: "Пары",
       disabled: Boolean(powerIssue),
       disabledHint: powerIssue ?? undefined,
     },
@@ -197,7 +202,8 @@ export default function NestModal({
 
   /** Жабы, которые физически стоят в этом репродукторе: их и показывают слоты */
   const nestToads = allToads.filter(
-    (toad) => toad.scene_id === roomId && toad.status !== "out",
+    (toad) =>
+      toad.scene_id === roomId && !isToadBusyOnExpedition(toad),
   );
   /** Взрослые занимают места репродуктора… */
   const nestAdults = nestToads.filter((toad) => toad.stage === "adult");
@@ -346,8 +352,14 @@ export default function NestModal({
 
   /** Посадить жабу из списка в репродуктор: пару заводит кнопка, а не посадка */
   const handlePlace = (toad: Toad) => {
+    if (isToadBusyOnExpedition(toad)) {
+      playError();
+      addNotification({ type: "warn", content: EXPEDITION_TOAD_BUSY_REASON });
+      return;
+    }
+
     placeToadInRoom(toad.id, roomId);
-    playOk();
+    playSuccess();
     // Ухаживание не стартует само: игрок сначала сажает пару, а потом жмёт
     // «Начать ухаживание» в блоке ниже (кнопка объяснит, чего не хватает)
     setTick((t) => t + 1);
@@ -358,12 +370,18 @@ export default function NestModal({
     const result = startNestCourtship(roomId, addNotification);
 
     // О причине отказа менеджер уже сказал уведомлением, и её же видно под кнопкой
-    result.started ? playOk() : playExited();
+    result.started ? playSuccess() : playError();
     setTick((t) => t + 1);
   };
 
   /** Вынести жабу из репродуктора домой — в её биопод (ухаживание при этом прерывается) */
   const handleRelease = (toad: Toad) => {
+    if (isToadBusyOnExpedition(toad)) {
+      playError();
+      addNotification({ type: "warn", content: EXPEDITION_TOAD_BUSY_REASON });
+      return;
+    }
+
     const wasCourting = Boolean(toad.mating);
 
     if (wasCourting) {
@@ -375,7 +393,7 @@ export default function NestModal({
     const result = sendToadHome(toad.id);
 
     if (!result.ok) {
-      playExited();
+      playError();
       addNotification({
         type: "warn",
         content:
@@ -388,7 +406,8 @@ export default function NestModal({
       return;
     }
 
-    playOk();
+    // Ухаживание прервано — это предупреждение, а не успех: оставляем нейтральный «ok»
+    wasCourting ? playOk() : playSuccess();
     addNotification({
       type: wasCourting ? "warn" : "success",
       content: wasCourting
@@ -406,7 +425,7 @@ export default function NestModal({
       type: result.success ? "success" : "warn",
       content: result.message,
     });
-    result.success ? playOk() : playExited();
+    result.success ? playSuccess() : playError();
     setTick((t) => t + 1);
   };
 
@@ -417,19 +436,15 @@ export default function NestModal({
       type: result.success ? "success" : "warn",
       content: result.message,
     });
-    result.success ? playOk() : playExited();
+    result.success ? playSuccess() : playError();
     setTick((t) => t + 1);
   };
 
   return (
-    <>
-      {/* Заголовок */}
-      <div className="flex w-full justify-center items-center relative">
-        <div className="flex items-center gap-2 pb-4">
-          <h2 className="brand-text text-xl font-bold">Репродуктор</h2>
-        </div>
-      </div>
-
+    <Modal
+      title={room?.name ?? "Репродуктор"}
+      icon={<span className="text-xl">🥚</span>}
+    >
       {/* Переключение вкладок: вид один на все секторы (`shared/ModalTabs`) */}
       {tabs.length > 1 && (
         <ModalTabs tabs={tabs} active={tab} onChange={setTab} />
@@ -449,21 +464,11 @@ export default function NestModal({
               </span>
             </div>
 
-            <p className="text-1xs text-slate-400 text-center leading-snug">
-              Репродуктор — на пару: самка садится в первый слот, самец во
-              второй. Посадите пару и нажмите «Начать ухаживание»: ухаживание
-              занимает {MATING_MIN_MINUTES}–{MATING_MAX_MINUTES} мин, и только
-              потом у самки стартует беременность. Из репродуктора жабы не
-              уходят — и после ухаживания, и после родов их выносит игрок.
-              Головастики, рождённые в репродукторе, остаются рядом с матерью,
-              даже если репродуктор переполнено.
-            </p>
-
             {/* Слоты пары: каждый слот — выпадающий список жаб своего пола */}
             <div className="bg-color-main rounded-xl px-3 py-2 border border-purple-500/40 flex flex-col gap-2">
               <div className="flex items-center justify-between">
                 <span className="text-xs text-purple-200 font-semibold">
-                  🪺 Места репродуктора
+                  Слоты репродуктора
                 </span>
                 <span className="text-2xs text-slate-400">{nestRoomTitle}</span>
               </div>
@@ -548,20 +553,20 @@ export default function NestModal({
 
                     {toad && (
                       <div className="flex flex-wrap gap-1.5">
-                        <ClickButton
-                          onClick={() => handleRelease(toad)}
-                          className="px-2 py-1 rounded-md text-2xs bg-color-main border border-slate-500/50 text-slate-200"
-                        >
-                          {toad.mating
-                            ? "Прервать и вынести"
-                            : "Вынести в биопод"}
-                        </ClickButton>
+                        {!toad.mating && (
+                          <ClickButton
+                            onClick={() => handleRelease(toad)}
+                            className="px-2 py-1 rounded-md text-2xs bg-color-main border border-slate-500/50 text-slate-200"
+                          >
+                            Вернуть в биопод
+                          </ClickButton>
+                        )}
                         {toad.mating && (
                           <ClickButton
                             onClick={() => handleAbortMating(toad)}
                             className="px-2 py-1 rounded-md text-2xs bg-color-main border border-amber-500/50 text-amber-200"
                           >
-                            Только прервать
+                            Прервать
                           </ClickButton>
                         )}
                       </div>
@@ -727,6 +732,6 @@ export default function NestModal({
 
       {/* ВКЛАДКА «Данные сектора»: описание, улучшения и снос гекса репродуктора */}
       {tab === "room-data" && room && <RoomDataTab room={room} />}
-    </>
+    </Modal>
   );
 }

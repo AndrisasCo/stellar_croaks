@@ -8,7 +8,6 @@ import { useSoundEffects } from "../../../hooks/use-sound-effects";
 import { createToad, updateUser } from "../../../backend";
 import { useNotifications } from "../../../hooks/use-notification";
 import { randomizeToadCharacteristics } from "../../../utils/randomize-toad-characteristics";
-import { ToadTypes } from "../../../models/Toad/toad-species";
 import { getGameState } from "../../../backend/localStorage";
 import {
   loadColliderState,
@@ -18,24 +17,26 @@ import {
   generateLootboxToad,
   LootboxRarity,
 } from "../../../models/Toad/lootbox";
-import { ConfettiAnimation } from "./animations";
 import { itemsFull, Items } from "../../../models/user";
-import {
-  completeAchivementCounter,
-  getAchievementState,
-} from "../../../backend/achivements-manager";
+import { completeAchivementCounter } from "../../../backend/achivements-manager";
 import {
   getStorageCapacityInfo,
   STORAGE_CAPACITY_PER_ROOM,
 } from "../../../utils/storage";
-import { pickSceneForNewToad } from "../../../utils/housing";
+import { getSceneFreeSlots } from "../../../utils/housing";
+import { dissolveNewToad } from "../../../utils/dissolve-manager";
+import { useDissociator } from "../../../hooks/use-dissociator";
+import { Toad } from "../../../models/Toad";
+import { LootboxReveal } from "./LootboxReveal";
 import RoomDataTab, { ROOM_DATA_TAB, RoomDataTabId } from "../RoomDataTab";
 import { RoomConfig } from "../../HexMap/rooms-config";
 
 /**
  * Склад — только предметы. Жаб здесь больше нет: каждая жаба живёт в биоподе
- * (`scene_id`), поэтому лутбокс открывается сразу в свободный биопод, а если места
- * нет — лутбокс остаётся лежать, и игра предлагает построить биопод.
+ * (`scene_id`), поэтому лутбокс сначала показывает окно с новой жабой
+ * (`LootboxReveal`), а игрок сам выбирает биопод или распыляет её на биомассу.
+ * Если свободных биоподов нет — лутбокс остаётся лежать, а игра предлагает
+ * построить новый биопод.
  *
  * Вместимость полок растёт постройками «Склад» на карте колонии: каждая постройка
  * даёт `STORAGE_CAPACITY_PER_ROOM` единиц (см. `utils/storage.ts`).
@@ -47,17 +48,12 @@ import { RoomConfig } from "../../HexMap/rooms-config";
 /** Табы склада: полки предметов и данные сектора-гекса */
 type StorageTab = "items" | RoomDataTabId;
 
-/** Сколько крафтовой пыли даёт дубликат жабы (Часть 3.7) */
-const getDuplicateDust = (rarity: LootboxRarity): number => {
-  switch (rarity) {
-    case LootboxRarity.rare:
-      return 10;
-    case LootboxRarity.uncommon:
-      return 5;
-    default:
-      return 3;
-  }
-};
+/** Новая жаба из лутбокса ещё не создана: ждёт выбора биопода или разбора */
+interface LootboxRevealState {
+  toad: Toad;
+  rarity: LootboxRarity;
+  defaultSceneId: number;
+}
 
 // Типы предметов на складе
 interface StorageItem {
@@ -75,8 +71,12 @@ interface StorageItem {
 const StorageModal: React.FC<{ room?: RoomConfig }> = ({ room }) => {
   const { addNotification } = useNotifications();
   const { account } = useToads();
-  const { playClick, playOk, playLegendary } = useSoundEffects();
-  const [showConfetti, setShowConfetti] = useState(0);
+  const { playOk, playError, playSuccess, playLegendary, playBubblesLong } =
+    useSoundEffects();
+  const { ready: dissociatorReady } = useDissociator();
+  const [lootboxReveal, setLootboxReveal] = useState<LootboxRevealState | null>(
+    null,
+  );
   const { powerGrid } = useColony();
   const {
     tab,
@@ -100,74 +100,99 @@ const StorageModal: React.FC<{ room?: RoomConfig }> = ({ room }) => {
   const handleOpenLootbox = () => {
     const current = getGameState().user;
 
-    if (!current.storage.lootbox) {
+    if (!current.storage.lootbox || lootboxReveal) {
       return;
     }
 
-    // Лутбокс открывается в живой биопод: склада жаб больше нет
-    const scene = pickSceneForNewToad();
+    // Новой жабе нужно место: без свободного биопода лутбокс не открываем
+    const freeScenes = getGameState().scenes.filter(
+      (scene) => getSceneFreeSlots(scene) > 0,
+    );
 
-    if (!scene) {
+    if (freeScenes.length === 0) {
+      playError();
       addNotification({
-        type: "warn",
-        content: "В био-подах нет мест или недостаточно питания.",
+        type: "danger",
+        content:
+          "Все биоподы заняты — постройте новый биопод на карте колонии, чтобы открыть лутбокс.",
       });
       return;
     }
 
-    setShowConfetti(showConfetti + 1);
     completeAchivementCounter("lootbox", 1);
     const { baseToad, rarity } = generateLootboxToad();
-    const randomToad = randomizeToadCharacteristics(baseToad);
-    let toadLabel = "";
+    const randomToad = randomizeToadCharacteristics(baseToad) as Toad;
 
     if ([LootboxRarity.epic, LootboxRarity.legendary].includes(rarity)) {
-      toadLabel =
-        rarity === LootboxRarity.epic ? "☄️ Эпическая" : "🐲 Легендарная ";
       playLegendary();
     } else {
       playOk();
-      toadLabel = rarity === LootboxRarity.rare ? "✨ Редкая" : "Обычная";
     }
-
-    const isHighRarity = [LootboxRarity.epic, LootboxRarity.legendary].includes(
-      rarity,
-    );
 
     updateUser({
       storage: { ...current.storage, lootbox: current.storage.lootbox - 1 },
     });
 
-    // // Часть 3.7: дубликат вида (кроме эпиков/легендарок) разбирается в крафтовую пыль
-    // const isDuplicate =
-    //   !isHighRarity &&
-    //   Boolean(randomToad.type) &&
-    //   (getAchievementState().toads_collection || []).includes(
-    //     randomToad.type as ToadTypes,
-    //   );
+    // Жабу создаём только после выбора биопода — до этого она «в окне» лутбокса
+    setLootboxReveal({
+      toad: randomToad,
+      rarity,
+      defaultSceneId: freeScenes[0].id,
+    });
+  };
 
-    // if (isDuplicate) {
-    //   const dust = getDuplicateDust(rarity);
-    //   updateUser({
-    //     storage: {
-    //       ...getGameState().user.storage,
-    //       [Items.craftDust]: (current.storage[Items.craftDust] || 0) + dust,
-    //     },
-    //   });
-    //   playOk();
-    //   addNotification({
-    //     type: "success",
-    //     content: `Дубликат (${toadLabel.toLowerCase()}) разобран на крафтовую пыль: +${dust} ${itemsFull[Items.craftDust].name}`,
-    //   });
-    //   return;
-    // }
+  const handlePlaceLootboxToad = (sceneId: number) => {
+    if (!lootboxReveal) {
+      return;
+    }
 
-    addNotification({
-      type: "success",
-      content: `${toadLabel} жаба ${randomToad.name} поселилась в «${scene.name}»!`,
+    // Пока окно открыто, биопод мог заполниться: проверяем место ещё раз
+    const scene = getGameState().scenes.find((item) => item.id === sceneId);
+
+    if (!scene || getSceneFreeSlots(scene) <= 0) {
+      playError();
+      addNotification({
+        type: "danger",
+        content: "Выбранный биопод уже заполнен — выберите другой.",
+      });
+      return;
+    }
+
+    createToad({
+      ...lootboxReveal.toad,
+      scene_id: scene.id,
+      homeId: scene.id,
     });
 
-    createToad({ ...randomToad, scene_id: scene.id });
+    setLootboxReveal(null);
+  };
+
+  const handleDissolveLootboxToad = () => {
+    if (!lootboxReveal) {
+      return;
+    }
+
+    if (!dissociatorReady) {
+      playError();
+      addNotification({
+        type: "danger",
+        content:
+          "Чтобы распылить жабу на биомассу, нужен построенный и запитанный диссоциатор.",
+      });
+      return;
+    }
+
+    playBubblesLong();
+    const biomassGained = dissolveNewToad(lootboxReveal.toad);
+
+    playSuccess();
+    addNotification({
+      type: "success",
+      content: `Жаба ${
+        lootboxReveal.toad.name || "без имени"
+      } распылена на биомассу: +${biomassGained} 🧪.`,
+    });
+    setLootboxReveal(null);
   };
 
   const handleClickBattery = () => {
@@ -232,7 +257,7 @@ const StorageModal: React.FC<{ room?: RoomConfig }> = ({ room }) => {
       name: "Лутбокс",
       icon: "/assets/lootbox.webp",
       quantity: account?.storage?.lootbox || 0,
-      description: "Открывается прямо в биопод",
+      description: "Новая жаба: поселить в биопод или распылить на биомассу",
       type: "tool",
       rarity: "rare",
       key: "lootbox",
@@ -345,9 +370,7 @@ const StorageModal: React.FC<{ room?: RoomConfig }> = ({ room }) => {
   );
 
   return (
-    <Modal icon={icon} title="Склад">
-      <ConfettiAnimation trigger={showConfetti} intensity={5} />
-
+    <Modal icon={icon} title={room?.name ?? "Склад"}>
       {/* Табы: полки и «Данные сектора» (у склада из бургер-меню гекса нет —
           тогда таб один, и рисовать полоску табов нечего) */}
       {storageTabs.length > 1 && (
@@ -463,6 +486,21 @@ const StorageModal: React.FC<{ room?: RoomConfig }> = ({ room }) => {
 
       {/* «Данные сектора»: у склада-гекса тот же таб, что и у остальных секторов карты */}
       {tab === "room-data" && room && <RoomDataTab room={room} />}
+
+      {/* Новая жаба: выбор биопода или разбор. Окно поверх «Склада» */}
+      {lootboxReveal && (
+        <LootboxReveal
+          toad={lootboxReveal.toad}
+          rarity={lootboxReveal.rarity}
+          scenes={getGameState().scenes.filter(
+            (scene) => getSceneFreeSlots(scene) > 0,
+          )}
+          defaultSceneId={lootboxReveal.defaultSceneId}
+          dissociatorReady={dissociatorReady}
+          onPlace={handlePlaceLootboxToad}
+          onDissolve={handleDissolveLootboxToad}
+        />
+      )}
     </Modal>
   );
 };

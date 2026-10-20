@@ -8,6 +8,7 @@ import { useColony } from "../../../hooks/use-colony";
 import { useNotifications } from "../../../hooks/use-notification";
 import { useSoundEffects } from "../../../hooks/use-sound-effects";
 import { getFeedCost } from "../../../utils/feeding";
+import { isToadBusyOnExpedition } from "../../../utils/expedition-manager";
 import { isRoomOpen } from "../../HexMap/rooms-config";
 import ToadsTab from "./ToadsTab";
 import RoomsTab from "./RoomsTab";
@@ -60,7 +61,7 @@ const ColonyModal = () => {
   const [tab, setTab] = useState<ColonyTab>("toads");
 
   const feedableToads = useMemo(
-    () => allToads.filter((toad) => toad.status !== "out"),
+    () => allToads.filter((toad) => !isToadBusyOnExpedition(toad)),
     [allToads],
   );
   const feedCost = getFeedCost(feedableToads);
@@ -70,8 +71,8 @@ const ColonyModal = () => {
   const unfedCount = feedableToads.filter(
     (toad) => toad.state.hunger < 100,
   ).length;
-  const expeditionCount = allToads.filter(
-    (toad) => toad.status === "out",
+  const expeditionCount = allToads.filter((toad) =>
+    isToadBusyOnExpedition(toad),
   ).length;
   const builtRoomCount = rooms.filter(
     (room) => room.kind !== "core" && isRoomOpen(room),
@@ -95,7 +96,10 @@ const ColonyModal = () => {
   };
 
   return (
-    <Modal title=" Управление колонией">
+    <Modal title="Управление колонией">
+      {/* Табы сразу под названием — общий каркас модалок секторов */}
+      <ModalTabs tabs={COLONY_TABS} active={tab} onChange={setTab} />
+
       <div className="flex flex-col gap-3">
         <div className="grid grid-cols-4 gap-1.5">
           <ColonyStat icon="🐸" value={allToads.length} label="жаб" />
@@ -174,9 +178,7 @@ const ColonyModal = () => {
           </p>
         </div>
 
-        <ModalTabs tabs={COLONY_TABS} active={tab} onChange={setTab} />
-
-        <div className="pt-0.5">
+        <div>
           {tab === "toads" ? (
             <ToadsTab toads={allToads} rooms={rooms} scenes={ownedScenes} />
           ) : (

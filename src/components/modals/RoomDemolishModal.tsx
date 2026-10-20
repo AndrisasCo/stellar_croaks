@@ -38,7 +38,7 @@ export default function RoomDemolishModal({ room }: { room: RoomConfig }) {
   const { account, ownedScenes } = useToads();
   const { colony, toadsByRoom, demolishRoom } = useColony();
   const { addNotification } = useNotifications();
-  const { playOk, playBeep } = useSoundEffects();
+  const { playSuccess, playError } = useSoundEffects();
 
   const tokens = Math.floor(account?.tokens || 0);
   const roomToads = toadsByRoom[room.id] ?? [];
@@ -76,13 +76,13 @@ export default function RoomDemolishModal({ room }: { room: RoomConfig }) {
 
   const handleDemolish = () => {
     if (issue) {
-      playBeep();
+      playError();
       addNotification({ type: "warn", content: issue });
       return;
     }
 
     if (!affordable) {
-      playBeep();
+      playError();
       addNotification({
         type: "danger",
         content: `Не хватает ${DEMOLISH_ROOM_COST - tokens} ${
@@ -94,7 +94,7 @@ export default function RoomDemolishModal({ room }: { room: RoomConfig }) {
 
     demolishRoom(room.id);
     updateUser({ tokens: tokens - DEMOLISH_ROOM_COST });
-    playOk();
+    playSuccess();
     addNotification({
       type: "success",
       content: `${room.icon} ${room.name || room.title || "Сектор"} снесена: гекс свободен${

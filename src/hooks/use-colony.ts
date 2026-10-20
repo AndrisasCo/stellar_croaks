@@ -55,6 +55,7 @@ export const useColony = (): ColonyController => {
   const colony = state.colony ?? EMPTY_COLONY;
   const toads = state.toads;
   const scenes = state.scenes;
+  const expeditions = state.expeditions ?? [];
 
   const rooms = useMemo(
     () => resolveColonyRooms(colony, scenes),
@@ -71,8 +72,8 @@ export const useColony = (): ColonyController => {
   );
 
   const powerGrid = useMemo(
-    () => getPowerGrid(rooms, toadsByRoom),
-    [rooms, toadsByRoom],
+    () => getPowerGrid(rooms, toadsByRoom, expeditions),
+    [rooms, toadsByRoom, expeditions],
   );
 
   const buildRoom = useCallback(

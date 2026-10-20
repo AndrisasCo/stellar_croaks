@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { useModal } from "../ModalContext";
 import { updateUser } from "../../backend";
 import { useColony } from "../../hooks/use-colony";
+import { useGameState } from "../../hooks/use-game-state";
 import { useNotifications } from "../../hooks/use-notification";
 import { useSoundEffects } from "../../hooks/use-sound-effects";
 import { CURRENCY_CONFIG } from "../../utils/constants";
@@ -37,8 +38,10 @@ export default function BuildRoomModal({ slot }: { slot: RoomConfig }) {
   const { closeModal } = useModal();
   const { account, ownedScenes } = useToads();
   const { colony, rooms, toadsByRoom, buildRoom } = useColony();
+  const gameState = useGameState();
+  const expeditions = gameState.expeditions ?? [];
   const { addNotification } = useNotifications();
-  const { playOk, playBeep } = useSoundEffects();
+  const { playSuccess, playError } = useSoundEffects();
 
   const tokens = Math.floor(account?.tokens || 0);
   const buildable = canBuildOnSlot(slot, rooms);
@@ -65,6 +68,7 @@ export default function BuildRoomModal({ slot }: { slot: RoomConfig }) {
           option.kind,
           colony,
           toadsByRoom,
+          expeditions,
         );
 
         return {
@@ -77,6 +81,7 @@ export default function BuildRoomModal({ slot }: { slot: RoomConfig }) {
             colony,
             toadsByRoom,
             narratorTask,
+            expeditions,
           ),
           built: getBuiltRoomsCount(colony, option.kind),
           allowed:
@@ -84,12 +89,19 @@ export default function BuildRoomModal({ slot }: { slot: RoomConfig }) {
             !(option.kind === "aviary" && enclosureLimitReached),
         };
       }),
-    [colony, slot, toadsByRoom, enclosureLimitReached, narratorTask],
+    [
+      colony,
+      slot,
+      toadsByRoom,
+      enclosureLimitReached,
+      narratorTask,
+      expeditions,
+    ],
   );
 
   const handleBuild = (option: BuildOption, cost: number) => {
     if (!buildable) {
-      playBeep();
+      playError();
       addNotification({
         type: "warn",
         content: "Этот гекс уже занят: выбирайте свободный.",
@@ -98,7 +110,7 @@ export default function BuildRoomModal({ slot }: { slot: RoomConfig }) {
     }
 
     if (!canBuildRoomKind(colony, option.kind)) {
-      playBeep();
+      playError();
       addNotification({
         type: "warn",
         content: `${option.title} уже построена.`,
@@ -107,7 +119,7 @@ export default function BuildRoomModal({ slot }: { slot: RoomConfig }) {
     }
 
     if (option.kind === "aviary" && ownedScenes.length >= MAX_OWNED_SCENES) {
-      playBeep();
+      playError();
       addNotification({
         type: "warn",
         content: `В колонии уже максимум биоподов (${MAX_OWNED_SCENES}).`,
@@ -121,6 +133,7 @@ export default function BuildRoomModal({ slot }: { slot: RoomConfig }) {
       option.kind,
       colony,
       toadsByRoom,
+      expeditions,
     );
 
     // Обучение: магазин не должен оказаться на обесточенном гексе — иначе задание
@@ -131,16 +144,17 @@ export default function BuildRoomModal({ slot }: { slot: RoomConfig }) {
       colony,
       toadsByRoom,
       narratorTask,
+      expeditions,
     );
 
     if (tutorialIssue) {
-      playBeep();
+      playError();
       addNotification({ type: "warn", content: tutorialIssue });
       return;
     }
 
     if (tokens < cost) {
-      playBeep();
+      playError();
       addNotification({
         type: "danger",
         content: `Не хватает ${cost - tokens} ${CURRENCY_CONFIG.tokens.icon}`,
@@ -154,7 +168,7 @@ export default function BuildRoomModal({ slot }: { slot: RoomConfig }) {
 
     buildRoom(slot.slotId, option.kind);
     updateUser({ tokens: tokens - cost });
-    playOk();
+    playSuccess();
 
     addNotification({
       type: "success",

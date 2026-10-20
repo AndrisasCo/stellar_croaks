@@ -14,6 +14,7 @@ import { DISSOLVE_MAX_BATCH } from "../../../utils/gamification-config";
 import { getToadHomeId } from "../../../utils/toad-location";
 import { ClickButton } from "../../shared/ClickButton";
 import { DissolveConfirm } from "../../shared/DissolveConfirm";
+import Modal from "../../shared/Header";
 import ModalTabs, { ModalTabItem } from "../../shared/ModalTabs";
 import { ToadAvatar } from "../../shared/ToadAvatar";
 import { ToadGender } from "../../shared/ToadGender";
@@ -39,7 +40,7 @@ type DissolveTab = "dissolve" | RoomDataTabId;
 export default function DissolveModal({ room }: { room?: RoomConfig }) {
   const { allToads = [], ownedScenes = [], account } = useToads();
   const { addNotification } = useNotifications();
-  const { playBubble2, playCrunch, playOk } = useSoundEffects();
+  const { playBubble2, playBubblesLong, playSuccess } = useSoundEffects();
 
   // Диссоциатор принимает жаб, только когда его сектор построен и под током
   const { ready: dissociatorReady, built: dissociatorBuilt } = useDissociator();
@@ -115,7 +116,8 @@ export default function DissolveModal({ room }: { room?: RoomConfig }) {
       return;
     }
 
-    playCrunch();
+    // Разбор в биомассу — «пузыри» диссоциатора, а не хруст
+    playBubblesLong();
     const result = dissolveToads(selectedIds);
 
     if (!result.success) {
@@ -123,24 +125,22 @@ export default function DissolveModal({ room }: { room?: RoomConfig }) {
       return;
     }
 
-    playOk();
+    playSuccess();
     addNotification({ type: "success", content: result.message });
     setSelectedIds([]);
   };
 
   return (
-    <>
-      <div className="flex w-full justify-center items-center relative">
-        <div className="flex items-center gap-2 pb-2">
-          <img
-            src="/assets/destructor.webp"
-            alt="Диссоциатор"
-            className="w-8 h-8 object-contain"
-          />
-          <h2 className="brand-text text-xl font-bold">Диссоциатор</h2>
-        </div>
-      </div>
-
+    <Modal
+      title={room?.name ?? "Диссоциатор"}
+      icon={
+        <img
+          src="/assets/destructor.webp"
+          alt=""
+          className="h-8 w-8 object-contain"
+        />
+      }
+    >
       {/* Табы: разбор жаб и «Данные сектора» (у модалки из лаборатории гекса нет —
           тогда таб один, и рисовать полоску табов нечего) */}
       {tabs.length > 1 && (
@@ -317,6 +317,6 @@ export default function DissolveModal({ room }: { room?: RoomConfig }) {
           onClose={() => setShowBlocked(false)}
         />
       )}
-    </>
+    </Modal>
   );
 }

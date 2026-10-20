@@ -54,7 +54,9 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({
           isOpen: true,
         };
 
-        // Закрываем предыдущие модалки если нужно
+        // Предыдущие модалки не удаляем и не размонтируем: они остаются в стеке
+        // скрытыми. Так «Вернуться» из карточки жабы возвращает тот же список
+        // с сохранёнными фильтрами, сортировкой и позицией скролла.
         const updatedModals = prev.map((modal) => ({
           ...modal,
           isOpen: false,
@@ -62,11 +64,6 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({
 
         return [...updatedModals, newModal];
       });
-
-      // Блокируем скролл если нужно
-      if (options?.disableScroll ?? defaultOptions.disableScroll) {
-        document.body.style.overflow = "hidden";
-      }
     },
     [defaultOptions]
   );
@@ -93,15 +90,31 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({
 
       return updatedModals;
     });
-
-    // Восстанавливаем скролл
-    document.body.style.overflow = "";
   }, []);
 
   const closeAllModals = useCallback(() => {
     setModals([]);
-    document.body.style.overflow = "";
   }, []);
+
+  /**
+   * Блокировка фонового скролла по стеку, а не по факту открытия/закрытия.
+   *
+   * При возврате из карточки жабы в ядро или список биопода в стеке остаётся
+   * предыдущая модалка, поэтому разблокировать страницу ещё рано. Держим скролл
+   * заблокированным, пока открыта хотя бы одна модалка с `disableScroll`.
+   */
+  useEffect(() => {
+    const activeModal = modals[modals.length - 1];
+    const lockScroll = Boolean(
+      activeModal?.isOpen && activeModal.options?.disableScroll
+    );
+
+    document.body.style.overflow = lockScroll ? "hidden" : "";
+
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [modals]);
 
   /** Стек модалок для слушателя Escape: колбэк не должен зависеть от рендера. */
   const modalsRef = useRef(modals);
@@ -142,7 +155,11 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({
   const currentModal = modals.length > 0 ? modals[modals.length - 1] : null;
 
   /**
-   * Оболочка модалки.
+   * Оболочка одной модалки из стека.
+   *
+   * В DOM остаются все модалки стека: активная показана, предыдущие скрыты через
+   * `visibility: hidden` + `pointer-events: none`. Так возврат назад (`closeModal`)
+   * не размонтирует список и не теряет его фильтры, сортировку и позицию скролла.
    *
    * Телефон: панель занимает весь экран (h-full по оверлею, без скруглений) — как и раньше,
    * тут скрывать нечего. Десктоп (≥768px, брейкпоинт проекта): панель превращается в карточку
@@ -156,14 +173,19 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({
    *
    * Скроллится только тело `#modal` (grow + min-h-0), кнопка «Закрыть» остаётся под рукой.
    *
-   * Ширину карточки на десктопе можно переопределить под содержимое:
-   * `openModal(<X/>, { className: "md:max-w-lg" })` — узкие меню просят себе узкую
-   * карточку, широкие списки (жабопедия, склад) остаются на общей `md:max-w-5xl`.
+   * Ширина карточки на десктопе у всех модалок одна — общий `md:max-w-5xl`
+   * (широкий вариант). Если когда-нибудь понадобится узкое окно, ширину можно
+   * переопределить через `openModal(<X/>, { className: "md:max-w-lg" })`: тогда
+   * общий класс не подключится и вступит заданный.
    */
-  const renderModal = () => {
-    if (!modalRoot || !currentModal || !currentModal.isOpen) return null;
+  const renderModal = (
+    modal: (typeof modals)[number],
+    isActive: boolean,
+    index: number
+  ) => {
+    if (!modalRoot) return null;
 
-    const { component: Component, options = {} } = currentModal;
+    const { component: Component, options = {} } = modal;
 
     /** Клик мимо панели закрывает верхнюю модалку (`closeOnOverlayClick` из App.tsx). */
     const handleOverlayClick = (event: React.MouseEvent<HTMLDivElement>) => {
@@ -175,6 +197,12 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({
     const modalContent = (
       <div
         className={`overlay md:p-4 ${options.overlayClassName ?? ""}`}
+        style={
+          isActive
+            ? undefined
+            : { visibility: "hidden", pointerEvents: "none" }
+        }
+        aria-hidden={isActive ? undefined : true}
         onClick={options.closeOnOverlayClick ? handleOverlayClick : undefined}
       >
         <div
@@ -205,7 +233,7 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({
               grow + min-h-0 вместо фиксированной высоты: тело занимает остаток панели
               на телефоне, а на пределе карточки скроллится само. */}
           <div
-            id="modal"
+            id={isActive ? "modal" : undefined}
             className="no-overscroll flex min-h-0 grow flex-col overflow-y-auto px-1 py-4 md:px-6 md:py-5"
           >
             {options.showCloseButton && (
@@ -232,7 +260,7 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({
       </div>
     );
 
-    return createPortal(modalContent, modalRoot);
+    return createPortal(modalContent, modalRoot, `modal-${index}`);
   };
 
   const contextValue = {
@@ -246,7 +274,9 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({
   return (
     <ModalContext.Provider value={contextValue}>
       {children}
-      {renderModal()}
+      {modals.map((modal, index) =>
+        renderModal(modal, index === modals.length - 1 && modal.isOpen, index)
+      )}
     </ModalContext.Provider>
   );
 };

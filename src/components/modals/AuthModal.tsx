@@ -161,7 +161,7 @@ export const AuthModal: React.FC = () => {
             }}
           />
 
-          <form onSubmit={handleSubmit} className="mt-3 flex flex-col gap-3">
+          <form onSubmit={handleSubmit} className="flex flex-col gap-3">
             <p className="text-xs leading-relaxed text-slate-300">
               {mode === "register"
                 ? "Почта и пароль — и колония больше не потеряется вместе с браузером."

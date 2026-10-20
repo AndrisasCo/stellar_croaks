@@ -6,6 +6,8 @@ const BIOMASS_TO_TOKENS_RATE = 0.5;
 const HUNGER_PER_DAY = 40;
 const HP_REGEN_PER_HOUR = 5;
 const HEAL_TOKENS_PER_HP = 0.4;
+const LOOTBOX_PRICE = 10; // use-shop.ts: Items.lootbox, price 10 💎
+const LOOTBOXES_PER_REFRESH = 10; // initialItemsAmount: 10 шт, рынок обновляется раз в 3 ч
 
 const BASE_EVENT_CHANCE = 0.55;
 const ROLE_CHANCE_BONUS = 0.35;
@@ -13,12 +15,15 @@ const DANGER_CHANCE_PENALTY = 0.12;
 const STEP_BIOMASS = 5;
 const STEP_TOKENS = 4;
 const MIN_DAMAGE = 6;
+const DAMAGE_MULTIPLIER = 1.2;
+const BASE_DISEASE_CHANCE = 0.2;
 const BASE_HP = 70;
 const HP_PER_WEIGHT = 2;
 const HP_PER_RARITY = 3;
 const PROGRESS_STEP = 0.12;
 const STEPS_TOTAL = Math.ceil(1 / PROGRESS_STEP);
-const ASTRO_CHANCE = 0.12;
+const ASTRO_CHANCE = 0.18;
+const astroDrop = (s) => 1 + Math.floor((Math.max(1, s.depth) - 1) / 3);
 const SAMPLE_CHANCE = 0.08;
 const TANK_REDIRECT = 0.6;
 const SUPPLY_PER_TOAD = 4;
@@ -50,7 +55,7 @@ const lootFactor = (s) => s.lootMultiplier * (1 + (s.depth - 1) * 0.08);
 const roleStat = (t, role) => role === "scout" ? t.speed : role === "tank" ? t.weight : role === "medic" ? t.fertility : role === "hacker" ? t.rarity : 1;
 const rolePower = (t, role) => Math.min(1, roleStat(t, role) / ROLE_CAP[role]);
 const maxHp = (t) => Math.min(400, Math.round(BASE_HP + t.weight * HP_PER_WEIGHT + t.rarity * HP_PER_RARITY));
-const scaleDamage = (s, base) => Math.max(MIN_DAMAGE, Math.round(base * s.dangerMultiplier));
+const scaleDamage = (s, base) => Math.max(MIN_DAMAGE, Math.round(base * s.dangerMultiplier * DAMAGE_MULTIPLIER));
 
 const permutations = (arr) => arr.length <= 1 ? [arr] : arr.flatMap((v, i) => permutations([...arr.slice(0, i), ...arr.slice(i + 1)]).map((p) => [v, ...p]));
 const subsets = (arr, k) => k === 0 ? [[]] : arr.flatMap((v, i) => subsets(arr.slice(i + 1), k - 1).map((s) => [v, ...s]));
@@ -104,7 +109,7 @@ const simulateExpedition = (sector, team, rolePerm) => {
   };
   const rareLoot = () => {
     const d = { astro: 0, sample: 0 };
-    if (rand() < ASTRO_CHANCE) d.astro = 1;
+    if (rand() < ASTRO_CHANCE) d.astro = astroDrop(sector);
     if (rand() < SAMPLE_CHANCE) d.sample = 1;
     return d;
   };
@@ -134,7 +139,7 @@ const simulateExpedition = (sector, team, rolePerm) => {
     fire[pool[Math.floor(rand() * pool.length)]]();
     if (!alive().length) break;
   }
-  return { loot, downed: members.filter((m) => m.down).length, hpLost: members.reduce((s, m) => s + (m.maxHp - m.hp), 0), worst: Math.max(...members.map((m) => m.maxHp - m.hp)) };
+  return { loot, downed: members.filter((m) => m.down).length, hpLost: members.reduce((s, m) => s + (m.maxHp - m.hp), 0), worst: Math.max(...members.map((m) => m.maxHp - m.hp)), disease: rand() < BASE_DISEASE_CHANCE ? 1 : 0 };
 };
 
 
@@ -148,18 +153,18 @@ console.log("  суммарная сила команды:", roleAssign.score.to
 console.log("\n=== Поход 5 диких жаб (9 событий за путь) ===");
 const rows = [];
 for (const s of SECTORS) {
-  let bio = 0, tok = 0, astro = 0, sample = 0, hpLost = 0, wipes = 0, food = 0, worst = 0;
+  let bio = 0, tok = 0, astro = 0, sample = 0, hpLost = 0, wipes = 0, food = 0, worst = 0, diseases = 0;
   for (let i = 0; i < N; i++) {
     const res = simulateExpedition(s, DEFAULT_TOADS, roleAssign.perm);
     bio += res.loot.biomass; tok += res.loot.tokens; astro += res.loot.astro; sample += res.loot.sample; food += res.loot.food;
-    hpLost += res.hpLost; worst += res.worst;
+    hpLost += res.hpLost; worst += res.worst; diseases += res.disease;
     if (res.downed === DEFAULT_TOADS.length) wipes++;
   }
-  const e = { bio: bio / N, tok: tok / N, astro: astro / N, sample: sample / N, hp: hpLost / N, wipe: wipes / N, food: food / N, worst: worst / N };
+  const e = { bio: bio / N, tok: tok / N, astro: astro / N, sample: sample / N, hp: hpLost / N, wipe: wipes / N, food: food / N, worst: worst / N, disease: diseases / N };
   rows.push({ s, e });
   const send = SUPPLY_PER_TOAD * s.depth * DEFAULT_TOADS.length;
   const trip = s.durationHours * 1.5;
-  console.log(`s${s.id} ${s.name.padEnd(22)} путь ${String(s.durationHours).padStart(4)}ч (+возврат ${(s.durationHours * 0.5).toFixed(1)}ч) снаряж ${String(send).padStart(3)}🧪 | био ${e.bio.toFixed(1).padStart(5)} ток ${e.tok.toFixed(1).padStart(4)} астро ${e.astro.toFixed(2).padStart(4)} обр ${e.sample.toFixed(2)} корм ${e.food.toFixed(1).padStart(4)} | урон ${e.hp.toFixed(0).padStart(3)} HP вайп ${(e.wipe * 100).toFixed(1)}% | нетто-био ${(e.bio - send).toFixed(1).padStart(5)} ток/ч ${(e.tok / trip).toFixed(2)}`);
+  console.log(`s${s.id} ${s.name.padEnd(22)} путь ${String(s.durationHours).padStart(4)}ч (+возврат ${(s.durationHours * 0.5).toFixed(1)}ч) снаряж ${String(send).padStart(3)}🧪 | био ${e.bio.toFixed(1).padStart(5)} ток ${e.tok.toFixed(1).padStart(4)} астро ${e.astro.toFixed(2).padStart(4)} обр ${e.sample.toFixed(2)} корм ${e.food.toFixed(1).padStart(4)} | урон ${e.hp.toFixed(0).padStart(3)} HP вайп ${(e.wipe * 100).toFixed(1)}% болезнь ${(e.disease * 100).toFixed(0)}% | нетто-био ${(e.bio - send).toFixed(1).padStart(5)} ток/ч ${(e.tok / trip).toFixed(2)}`);
 }
 
 // === Путь до сектора 8 ===
@@ -245,7 +250,7 @@ console.log(`  ВСЕГО ${grand} 🔷 ≈ ${(grand / 111).toFixed(0)} суто
 console.log(`  Прочие траты: ускорение возврата 8 🧪/ч пути, экстренный маяк 3 💎, лечение 0.4 🔷/HP, смена облика/лечение — см. HEAL_MIN_COST = 1`);
 
 // === Лутбокс ===
-console.log("\n=== Лутбокс (магазин: 50 💎) ===");
+console.log(`\n=== Лутбокс (магазин: ${LOOTBOX_PRICE} 💎) ===`);
 let pity = 0, sinceGuar = 0; const counts = { legendary: 0, epic: 0, rare: 0, uncommon: 0, common: 0 }; const gaps = [];
 const M = 200000;
 for (let i = 0; i < M; i++) {
@@ -258,12 +263,12 @@ for (let i = 0; i < M; i++) {
   if (r !== "common" && r !== "uncommon") { gaps.push(sinceGuar); sinceGuar = 0; }
 }
 console.log("  шансы по факту:", Object.entries(counts).map(([k, v]) => `${k} ${(v / M * 100).toFixed(1)}%`).join(", "));
-console.log(`  средний интервал «хорошей» жабы (rare+): ${(gaps.reduce((a, b) => a + b, 0) / gaps.length).toFixed(2)} боксов = ${(gaps.reduce((a, b) => a + b, 0) / gaps.length * 50).toFixed(0)} 💎`);
+console.log(`  средний интервал «хорошей» жабы (rare+): ${(gaps.reduce((a, b) => a + b, 0) / gaps.length).toFixed(2)} боксов = ${(gaps.reduce((a, b) => a + b, 0) / gaps.length * LOOTBOX_PRICE).toFixed(0)} 💎`);
 console.log(`  ⚠ ВАЖНО: во ВСЕХ шаблонах lootbox.ts rarity = 5 (кроме 2 common: 2.5 и 3.8) — банд роли не влияет, влияют вес/скорость/фертильность/характер`);
 console.log(`  топ-легендарка: вес 30, скорость 0.75, фертильность 2.2, голод 0.5 → HP ${70 + 60 + 15} = 145, танк-сила ${(30 / 40).toFixed(2)}`);
 console.log(`  сравнение: дикая HP ${DEFAULT_TOADS.map((t) => maxHp(t)).join("/")}, танк-сила ${DEFAULT_TOADS.map((t) => (t.weight / 40).toFixed(2)).join("/")}`);
-console.log(`  астро на 1 бокс: в s1 нужно ${(50 / rows[0].e.astro).toFixed(0)} походов (${(50 / rows[0].e.astro * 2.25).toFixed(0)} ч), в s8 — ${(50 / rows[7].e.astro).toFixed(0)} походов (${(50 / rows[7].e.astro * 30).toFixed(0)} ч) на одну команду`);
-console.log(`  астро на весь путь до s8 (~27 походов): +${rows.slice(0, 7).reduce((s, r) => s + r.e.astro * (r.s.id === 1 ? 1 : r.s.id), 0).toFixed(0)} 💎 ≈ ${(rows.slice(0, 7).reduce((s, r) => s + r.e.astro * (r.s.id === 1 ? 1 : r.s.id), 0) / 50).toFixed(1)} лутбокса`);
+console.log(`  астро на 1 бокс: в s1 нужно ${(LOOTBOX_PRICE / rows[0].e.astro).toFixed(0)} походов (${(LOOTBOX_PRICE / rows[0].e.astro * 2.25).toFixed(0)} ч), в s8 — ${(LOOTBOX_PRICE / rows[7].e.astro).toFixed(0)} походов (${(LOOTBOX_PRICE / rows[7].e.astro * 30).toFixed(0)} ч) на одну команду`);
+console.log(`  астро на весь путь до s8 (~27 походов): +${rows.slice(0, 7).reduce((s, r) => s + r.e.astro * (r.s.id === 1 ? 1 : r.s.id), 0).toFixed(0)} 💎 ≈ ${(rows.slice(0, 7).reduce((s, r) => s + r.e.astro * (r.s.id === 1 ? 1 : r.s.id), 0) / LOOTBOX_PRICE).toFixed(1)} лутбокса`);
 
 // === Генетика ===
 console.log("\n=== Рост редкости по поколениям (старт 1.2) ===");
@@ -309,24 +314,22 @@ console.log(`  падение голода в походе: −${(40 / 24).toFix
 console.log(`  альтернатива: ферма без походов = ${homeFarm.toFixed(1)} 🧪/ч = ${(homeFarm * BIOMASS_TO_TOKENS_RATE).toFixed(2)} 🔷/ч = ${(homeFarm * BIOMASS_TO_TOKENS_RATE * 24).toFixed(0)} 🔷/сут (это «пол» экономики, с которым соревнуются все остальные активности)`);
 
 // === Элитные заказы ===
-console.log("\n=== Элитные заказы — фактический печатный станок астро ===");
-const ELITE_MULT = [18, 4, 5, 14, 32, 8, 13, 11, 15, 9, 14, 17, 12, 8, 19, 13, 11, 15, 10, 16, 18, 22, 20, 7, 16, 25];
-const BASE_PRICE = 3;
-const avgMult = ELITE_MULT.reduce((a, b) => a + b, 0) / ELITE_MULT.length;
-console.log(`  всего заказов в пуле: ${ELITE_MULT.length}, на витрине 3`);
-console.log(`  БЕСПЛАТНОЕ обновление: nextRefreshElite = now + REFRESH_COOLDOWN×8 = 24 ч (handleRefreshShop)`);
-console.log(`  награда = BASE_PRICE(3) × множитель [${Math.min(...ELITE_MULT)}…${Math.max(...ELITE_MULT)}] = ${BASE_PRICE * Math.min(...ELITE_MULT)}…${BASE_PRICE * Math.max(...ELITE_MULT)} 💎, средняя ${(BASE_PRICE * avgMult).toFixed(0)} 💎 (комментарии обещают «токенов»)`);
-console.log(`  потолок на бесплатном обновлении: 3 заказа/сутки × ${(BASE_PRICE * avgMult).toFixed(0)} ≈ ${(3 * BASE_PRICE * avgMult).toFixed(0)} 💎/сут = ${(3 * BASE_PRICE * avgMult / 50).toFixed(1)} лутбокса/сутки`);
-console.log(`  ⚠ НО мгновенное обновление стоит ${50} 🔷 и НЕ имеет временного гейта → 50 🔷 → 3 новых заказа ≈ ${(3 * BASE_PRICE * avgMult).toFixed(0)} 💎 = ${(3 * BASE_PRICE * avgMult / 50).toFixed(1)} лутбокса, то есть ${(3 * BASE_PRICE * avgMult / 50).toFixed(2)} 💎 за 1 🔷 — тот же курс, что и при сдаче жабы (${(BASE_PRICE * avgMult / 18).toFixed(2)}), поэтому «прокрутка витрины» не помогает, помогает только поток жаб`);
-console.log(`  ⚠ астро-стоки ограничены: лутбокс 50 💎 × 1 шт на обновление витрины (3 ч) = макс 8/сут = 400 💎; пигменты 5–15 💎 бесконечно; астро-шоп 1–2 💎 за отдых/карантин/инкубацию`);
-console.log(`  ⚠ дисбаланс: приход ~${(3 * BASE_PRICE * avgMult).toFixed(0)}–${(24 * BASE_PRICE * avgMult).toFixed(0)} 💎/сут из элитников против стока ≤${400} 💎/сут (лутбоксы) → астро-инфляция, если игрок диссоциирует/приносит достаточно жаб`);
-console.log(`  цена входа: рыночная жаба ≈ ${Math.ceil(7 * 2.5)} 🔷 (продажа 7 🔷 × 2.5) → 1 элитка ≈ ${(BASE_PRICE * avgMult).toFixed(0)} 💎 за ~18 🔷`);
-console.log(`  ⚠ жаба при этом УДАЛЯЕТСЯ (deleteToadsByIds) — 18 🔷 → ~${(BASE_PRICE * avgMult).toFixed(0)} 💎, курс 1 🔷 ≈ ${(BASE_PRICE * avgMult / 18).toFixed(1)} 💎 (сильнее любого источника астро в походах: там ~0.4 💎 за рейд)`);
+console.log("\n=== Элитные заказы после оптимизации ===");
+const ELITE_REWARDS = [100, 20, 15, 150, 150, 30, 40, 30, 10, 20, 40, 150, 25, 20, 150, 30, 20, 15, 5, 35, 35, 45, 5, 5, 10, 50];
+const ELITE_SLOTS = 5;
+const INSTANT_REFRESH_COST = 150;
+const avgReward = ELITE_REWARDS.reduce((a, b) => a + b, 0) / ELITE_REWARDS.length;
+console.log(`  всего заказов в пуле: ${ELITE_REWARDS.length}, на витрине ${ELITE_SLOTS}`);
+console.log(`  бесплатное обновление раз в 24 ч; награда заказа ${Math.min(...ELITE_REWARDS)}…${Math.max(...ELITE_REWARDS)} 💎, средняя ${avgReward.toFixed(0)} 💎`);
+console.log(`  потолок бесплатной витрины: ${ELITE_SLOTS} заказов/сутки × ${avgReward.toFixed(0)} ≈ ${(ELITE_SLOTS * avgReward).toFixed(0)} 💎/сут = ${(ELITE_SLOTS * avgReward / LOOTBOX_PRICE).toFixed(1)} лутбокса/сутки`);
+console.log(`  мгновенное обновление: ${INSTANT_REFRESH_COST} 🔷 → ${ELITE_SLOTS} новых заказа ≈ ${(ELITE_SLOTS * avgReward).toFixed(0)} 💎, то есть ${(ELITE_SLOTS * avgReward / INSTANT_REFRESH_COST).toFixed(2)} 💎 за 1 🔷 (до правки было ~21 💎 за 1 🔷)`);
+console.log(`  сравнение с походами: ${astroGain.toFixed(1)} 💎 за весь маршрут до s8 (${completed} рейдов) ≈ ${(astroGain / completed).toFixed(2)} 💎/рейд; один элитный заказ в среднем = ${(avgReward / Math.max(0.01, astroGain / completed)).toFixed(0)} рейдов`);
+console.log(`  цена входа: рыночная жаба ≈ ${Math.ceil(7 * 2.5)} 🔷 → 1 элитка ≈ ${avgReward.toFixed(0)} 💎 за ~18 🔷 (${(avgReward / 18).toFixed(1)} 💎/🔷); жаба при этом УДАЛЯЕТСЯ (deleteToadsByIds)`);
+console.log(`  ⚠ астро-стоки: лутбокс ${LOOTBOX_PRICE} 💎 × ${LOOTBOXES_PER_REFRESH} шт на обновление рынка (3 ч) = макс ${LOOTBOXES_PER_REFRESH * 8}/сут = ${LOOTBOX_PRICE * LOOTBOXES_PER_REFRESH * 8} 💎; пигменты 5–15 💎 бесконечно; астро-шоп 1–2 💎 за отдых/карантин/инкубацию`);
 console.log("  ⚠ баги: (1) награда пишется в astro_quax, а мгновенное обновление списывает tokens, при этом текст говорит «Недостаточно астрокваксов»; (2) в shop-state.ts награды подписаны «токенов»; (3) initializeShop ставит nextRefreshElite = now, то есть при первом входе бесплатное обновление доступно сразу");
 
 // === Ачивки: главный источник лутбоксов (а значит и стартовых легендарок) ===
 console.log("\n=== Ачивки как источник астро/жаб (сравнить с 13 💎 из 27 походов!) ===");
-const LOOTBOX_PRICE = 50;
 const GROUPS = [
   { id: "first-steps2", boxes: 0, toads: 1, note: "туториал: жаб+а → 1 именная жаба (turtle)" },
   { id: "market-domination2", boxes: 5, toads: 1, note: "нужно 12 покупок жаб + заработать 1000 🔷" },
@@ -338,7 +341,7 @@ const GROUPS = [
 let totBox = 0;
 for (const g of GROUPS) { totBox += g.boxes; console.log(`  ${g.id.padEnd(20)} ${String(g.boxes).padStart(2)} лутбоксов, ${g.toads} жаба — ${g.note}`); }
 console.log(`  ИТОГО: ${totBox} лутбоксов = ${totBox * LOOTBOX_PRICE} 💎 + ${GROUPS.reduce((s, g) => s + g.toads, 0)} именных жаб («Проводник Периметра»: r6, вес 26, скорость 1.45 — сильнее любой дикой!)`);
-console.log(`  сравнение: ${totBox} ачивочных боксов = ${totBox * LOOTBOX_PRICE} 💎 vs ~13 💎 из всех ${completed} походов до s8 → астро в игре дают АЧИВКИ и элитники, а не походы`);
+console.log(`  сравнение: ${totBox} ачивочных боксов = ${totBox * LOOTBOX_PRICE} 💎 vs ${astroGain.toFixed(1)} 💎 из всех ${completed} походов до s8 → ачивки всё ещё разовые, но походы теперь дают заметный повторяемый поток`);
 console.log("  следствие: «Разведчики Периметра» (3 бокса + вес-26 жаба) за 50 походов — лучший приз в игре, а 50 походов по цене выше = это ~50 × 25–90 🔷 абстрактных потерь = 1.2–4.5 суток фермы");
 
 // === Итог: рекомендации ===
@@ -350,7 +353,7 @@ console.log("  оценка календарём: 3–5 дней активно�
 console.log("\n=== ГДЕ БАЛАНС ЛОМАЕТСЯ (приоритеты правок) ===");
 console.log("  P0 походы убыточны: −1.4…−3.1 🔷/ч против фермы +4.6 🔷/ч → нет мотивации ходить, кроме прогресс-гейта. Фикс: (а) не забирать жабу с фермы (или −50% выработки), (б) loot ×2–3, (в) простой фермы НЕ должен считаться как потеря.");
 console.log("  P0 добыча НЕ зависит от размера команды и риска: 1 жаба на s1 берёт 16.4 🧪/16.8 🔷 за 7.9 ч, 5 жаб — 15.6 🧪/18.6 🔷 за 4.7 ч → соло-спам выгоднее. Фикс: loot ∝ числу пройденных событий/ролям, которые реально сработали.");
-console.log("  P1 элитники: жаба за 18 🔷 → 12…96 💎 (43 в среднем), при этом астро — главная валюта лутбокса (50 💎) и стоки ограничены 400 💎/сут → астро-инфляция и «печатный станок». Фикс: награда ∝ редкость×вес×фертильность сдаваемой жабы (сейчас множитель-таблица абстрактная), и/или жёсткий лимит заказов в сутки.");
+console.log("  P1 элитники: после снижения жаба за 18 🔷 → 5…150 💎 (46 в среднем) — это меньше прежних 12…800 💎, но один заказ всё ещё равен нескольким походам. Дальше можно привязать награду к редкости сдаваемой жабы и/или ограничить число сдач в сутки.");
 console.log("  P1 баг: EliteTab пишет награду в astro_quax, а списывает tokens за мгновенное обновление, текст «Недостаточно астрокваксов» — рассинхрон валют.");
 console.log("  P2 лутбокс: все 26 шаблонов rarity=5 → «редкость сама по себе не падает из бокса», игрок не чувствует джекпот-редкости. Фикс: rarity = 5/6/8/10/12 по tier шаблона.");
 console.log("  P2 голод в походе: s7 отнимает 37.5 голода и НЕ кормится в пути → после дальнего рейда команда приходит на грани PRODUCTION_MIN_HUNGER (30) и ферма встаёт. Фикс: кормить в пути или ввести «рационы».");
@@ -386,7 +389,7 @@ for (const x of rows2) {
   console.log(`  ${x.n.padEnd(14)} | ${String(x.r).padStart(6)} | ${String(x.w).padStart(3)} | ${String(s).padStart(7)} | ${String(m).padStart(5)} | ${d.toFixed(1).padStart(9)} | ${(d * BIOMASS_TO_TOKENS_RATE).toFixed(1).padStart(9)} | ${((d * BIOMASS_TO_TOKENS_RATE) / m).toFixed(2).padStart(12)}`);
 }
 console.log("  вывод: разбор даёт в 4–5 раз меньше рыночной цены → диссоциатор это утилизация, а не доход; перепродажа не арбитражируется");
-console.log("  НО: рыночная жаба (18–30 🔷) → 1 элитный заказ (43 💎 в среднем) ≈ 0.9 лутбокса (50 💎) — единственный реально масштабируемый «фарм» астро");
+console.log(`  НО: рыночная жаба (18–30 🔷) → 1 элитный заказ (${avgReward.toFixed(0)} 💎 в среднем) ≈ ${(avgReward / LOOTBOX_PRICE).toFixed(1)} лутбокса (${LOOTBOX_PRICE} 💎) — всё ещё самый быстрый размен жаб на астро`);
 console.log("  ⚠ жабы из рынка/образцов приходят с голодом 10–50 (randomizeToadCharacteristics: varyNumber(hunger, 10, 50)) → до кормёжки их выработка 0.29…0.57 от максимума");
 console.log("  ⚠ скорость в рынке клампится 0.2–1.0, вес 5–30, редкость ±10% → роль «скаут» (нужно 1.5) из рынка недостижима, только лутбокс/коллайдер; «танк» (вес 40) тоже за пределами рынка");
 

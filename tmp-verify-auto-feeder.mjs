@@ -101,7 +101,7 @@ const roomToadLists = bundle(
   "src/components/HexMap/room-toad-lists.ts",
   "room-toad-lists",
 );
-const constants = bundle("src/utils/constants.ts", "constants");
+const constants = bundle("src/utils/constants.tsx", "constants");
 
 /** Жаба с нужными полями: голод, дом (`scene_id`), рабочее место (`roomId`), статус */
 const toad = (over = {}) => ({

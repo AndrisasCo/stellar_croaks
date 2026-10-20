@@ -27,8 +27,15 @@ export const Tooltip = ({
       <div className="flex justify-between items-center mb-2">
         <h4 className="text-cyan-300 font-semibold text-sm">{title}</h4>
         <button
-          onClick={onClose}
-          className="text-slate-300 hover:text-white text-lg"
+          type="button"
+          aria-label="Закрыть"
+          onClick={(event) => {
+            // Тултипы часто лежат внутри кликабельной карточки: без остановки
+            // всплытия её onClick тут же открывает тултип заново.
+            event.stopPropagation();
+            onClose();
+          }}
+          className="-my-1 -mr-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-2xl leading-none text-slate-300 transition-colors hover:bg-slate-600/50 hover:text-white"
         >
           ×
         </button>

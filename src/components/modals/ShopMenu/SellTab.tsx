@@ -23,6 +23,7 @@ import {
   getBiomassExchangeSpent,
   getBiomassExchangeTokens,
 } from "../../../utils/production-manager";
+import { isToadBusyOnExpedition } from "../../../utils/expedition-manager";
 
 /** Сколько биомассы продаём: `null` — «вся имеющаяся», число — выбор ползунка */
 type BiomassSellChoice = number | null;
@@ -73,8 +74,11 @@ const SellTab: React.FC = () => {
     }
   };
 
-  // Часть 5: жабы в походе за Периметр продаются только после возвращения
-  const saleableToads = activeToads.filter((toad) => toad.status !== "out");
+  // Часть 5: жабы в походе за Периметр продаются только после возвращения и разбора добычи
+  const saleableToads = activeToads.filter(
+    (toad) => !isToadBusyOnExpedition(toad),
+  );
+  const expeditionToadCount = activeToads.length - saleableToads.length;
 
   const {
     filteredAndSortedToads: filteredToads,
@@ -129,7 +133,7 @@ const SellTab: React.FC = () => {
   const handleSellSingleToad = async (toadId: number) => {
     const toad = activeToads.find((t) => t.id === toadId);
 
-    if (!toad || toad.status === "out") {
+    if (!toad || isToadBusyOnExpedition(toad)) {
       return;
     }
     completeAchivement("sell-toad");
@@ -247,9 +251,17 @@ const SellTab: React.FC = () => {
         </div>
       </div>
 
+      {/* Жабы в походе в списке продажи не участвуют — причина видна сразу */}
+      {expeditionToadCount > 0 && (
+        <p className="rounded-xl border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-2xs leading-snug text-amber-200">
+          🧭 В походе жаб: {expeditionToadCount}. Они появятся в продаже после
+          возвращения и разбора добычи.
+        </p>
+      )}
+
       {/* Панель фильтров */}
       <Filters
-        toads={activeToads}
+        toads={saleableToads}
         setSortDirection={setSortDirection}
         setSortBy={setSortBy}
         filterBy={filterBy}

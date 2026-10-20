@@ -1,7 +1,7 @@
 import { Container, Sprite } from "pixi.js";
 import { getTextureByType, makeColorWhiter } from "./utils";
 import { ANIMATION_SPEED, TOAD_FRAMES_COUNT } from "./constants";
-import { ToadTypes } from "../../models/Toad/toad-species";
+import { isColorableToadType } from "../../models/Toad/toad-species";
 import { Toad } from "../../models/Toad";
 
 export const updateToadAppearance =
@@ -33,10 +33,7 @@ export const updateToadAppearance =
     toadSprite.y = bodyY;
     const aspectRatio = toadSprite.height / toadSprite.width;
     toadSprite.setSize(size * 2, size * 2 * aspectRatio);
-    if (
-      toad.stage === "adult" &&
-      [ToadTypes.hybrid, ToadTypes.camouflage].includes(toad.type)
-    ) {
+    if (toad.stage === "adult" && isColorableToadType(toad.type)) {
       toadSprite.tint = makeColorWhiter(toad.genes.colors[0], 10);
     }
   };

@@ -130,6 +130,7 @@ export default function HospitalModal({ room }: HospitalModalProps) {
     aviaryCapacity: 0,
     rooms,
     powerGrid,
+    expeditions,
   });
 
   /**
@@ -155,6 +156,7 @@ export default function HospitalModal({ room }: HospitalModalProps) {
         aviaryCapacity: 0,
         rooms,
         powerGrid,
+        expeditions,
       });
 
       if (check.ok) {
@@ -278,7 +280,7 @@ export default function HospitalModal({ room }: HospitalModalProps) {
     // Выписывают в биопод по любым причинам, поэтому выбитого пациента тоже отпускаем:
     // правило «сначала подлечите» здесь не мешает (allowDown) — это же Медотсек
     const dischargeIssue = inBed
-      ? getToadMoveIssue(toad, { allowDown: true })
+      ? getToadMoveIssue(toad, { allowDown: true, expeditions })
       : null;
     const affordable = tokens >= healCost;
     const cureAffordable = tokens >= cureCost;
@@ -396,8 +398,11 @@ export default function HospitalModal({ room }: HospitalModalProps) {
   };
 
   return (
-    <Modal icon={<span className="text-xl">🛏️</span>} title="Медотсек">
-      {/* Сводка нужна на всех табах — как кошелёк над табами «Космического рынка» */}
+    <Modal icon={<span className="text-xl">🛏️</span>} title={room.name}>
+      {/* Табы сразу под названием — общий каркас модалок секторов */}
+      <ModalTabs tabs={hospitalTabs} active={tab} onChange={setTab} />
+
+      {/* Сводка нужна на всех табах — как кошелёк «Космического рынка» */}
       <div className="grid grid-cols-3 gap-2 px-1 pb-3 text-center">
         <div className="bg-color-main rounded-xl py-2 px-1 border border-slate-600/30">
           <p className="text-2xs text-slate-400">Койки в колонии</p>
@@ -417,9 +422,7 @@ export default function HospitalModal({ room }: HospitalModalProps) {
         </div>
       </div>
 
-      <ModalTabs tabs={hospitalTabs} active={tab} onChange={setTab} />
-
-      <div className="flex flex-col gap-2 px-1 pt-3">
+      <div className="flex flex-col gap-2 px-1">
         {/* ВКЛАДКА «Койки»: кто лежит в этом Медотсеке и подсадка жаб на лечение */}
         {tab === "beds" && (
           <>

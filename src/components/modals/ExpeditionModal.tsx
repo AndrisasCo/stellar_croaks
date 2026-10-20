@@ -10,7 +10,7 @@ import { useNotifications } from "../../hooks/use-notification";
 import { useGameState } from "../../hooks/use-game-state";
 import { useColony } from "../../hooks/use-colony";
 import { useRoomPowerTab } from "../../hooks/use-room-power-tab";
-import { Toad } from "../../models/Toad";
+import { Toad, getToadTypeLabel } from "../../models/Toad";
 import {
   Expedition,
   ExpeditionMember,
@@ -23,6 +23,7 @@ import {
 } from "../../models/expedition";
 import { Items } from "../../models/user";
 import {
+  EXPEDITION_BASE_DISEASE_CHANCE,
   EXPEDITION_RETURN_RATIO,
   EXPEDITION_TEAM_SIZE,
   EXTRACTION_ASTRO_COST,
@@ -36,6 +37,7 @@ import {
   getExpeditionSuccessChance,
   getExpeditionToadEnergyCost,
   getRoleStat,
+  getSectorDamageMultiplier,
   getSectorSuccessFactor,
   getSpeedUpReturnCost,
   getToadHp,
@@ -250,7 +252,7 @@ type ExpeditionTab = "runs" | "send" | "room-data";
 const ExpeditionModal: React.FC<{
   onClose?: () => void;
   /** Гекс «Разведки», из которого открыли модалку: его жильцы — экипаж для команды. */
-  roomId: string;
+  roomId?: string;
 }> = ({ roomId }) => {
   const { addNotification } = useNotifications();
   const state = useGameState();
@@ -716,8 +718,10 @@ const ExpeditionModal: React.FC<{
             <p className="font-bold">×{item.lootMultiplier}</p>
           </div>
           <div className="rounded-lg bg-slate-900/40 px-1 py-1">
-            <p className="text-slate-400">Риск</p>
-            <p className="font-bold">×{item.dangerMultiplier}</p>
+            <p className="text-slate-400">Урон</p>
+            <p className="font-bold">
+              ×{Math.round(getSectorDamageMultiplier(item) * 100) / 100}
+            </p>
           </div>
         </div>
 
@@ -751,6 +755,9 @@ const ExpeditionModal: React.FC<{
       title={room?.name ?? crewRoom?.name ?? "Разведка"}
       icon={<span className="text-xl">🧭</span>}
     >
+      {/* Переключатель сразу под названием: дальше — сводка и выбранный таб */}
+      <ModalTabs tabs={expeditionTabs} active={tab} onChange={setTab} />
+
       <div className="flex flex-col gap-3 px-1">
         {/* Сводка по разведке */}
         <div className="grid grid-cols-2 gap-2 text-center sm:grid-cols-4">
@@ -775,9 +782,6 @@ const ExpeditionModal: React.FC<{
             </p>
           </div>
         </div>
-
-        {/* Переключение вкладок: вид один на все секторы (`shared/ModalTabs`) */}
-        <ModalTabs tabs={expeditionTabs} active={tab} onChange={setTab} />
 
         {/* ВКЛАДКА: активные походы */}
         {tab === "runs" && (
@@ -950,6 +954,21 @@ const ExpeditionModal: React.FC<{
 
                   <TeamStatusList expedition={expedition} />
 
+                  {expedition.companions && expedition.companions.length > 0 && (
+                    <p className="text-2xs text-emerald-200">
+                      🐸 С командой идёт:{" "}
+                      {expedition.companions
+                        .map(
+                          (toad) =>
+                            `${getToadTypeLabel(
+                              toad.type ?? null,
+                            ).toLowerCase()} «${toad.name}»`,
+                        )
+                        .join(", ")}{" "}
+                      — дома поселится в биопод
+                    </p>
+                  )}
+
                   <p className="text-2xs text-slate-300">
                     🎒 В рюкзаке:{" "}
                     <CurrencyText
@@ -979,6 +998,11 @@ const ExpeditionModal: React.FC<{
                     )}
                     <ClickButton
                       onClick={() => handleExtract(expedition.id)}
+                      title={
+                        returning
+                          ? "Забрать команду домой сразу: добыча останется той, что уже лежит в рюкзаке"
+                          : "Забрать команду с середины пути: поход не будет успешным, добыча — только уже найденная"
+                      }
                       className="flex-1 py-2 rounded-xl bg-cyan-900/50 hover:bg-cyan-800/60 text-cyan-100 text-xs font-bold border border-cyan-500/40"
                     >
                       Закончить немедленно ({EXTRACTION_ASTRO_COST}{" "}
@@ -1244,10 +1268,20 @@ const ExpeditionModal: React.FC<{
                   {successChance >= 1 ? " (гарантия)" : ""}
                 </span>
               </div>
+              <div className="flex items-center justify-between rounded-lg bg-slate-800/50 px-2 py-1.5 text-2xs">
+                <span className="text-slate-300">
+                  🦠 Риск принести болезнь
+                </span>
+                <span className="font-bold text-rose-200">
+                  {Math.round(EXPEDITION_BASE_DISEASE_CHANCE * 100)}%
+                </span>
+              </div>
               <p className="text-2xs leading-snug text-slate-400">
                 Каждая роль даёт +20% (сила роли умножает вклад, глубина сектора
                 — ×{sectorSuccessFactor.toFixed(2)}). Удачное завершение
-                умножает добычу.
+                умножает добычу. Урон событий уже включает общий повышенный
+                коэффициент, а болезнь на возврате может подхватить любая живая
+                жаба.
               </p>
               {team.length > 0 && (
                 <p className="text-2xs leading-snug text-lime-300">

@@ -16,7 +16,9 @@ interface ConfettiPiece {
 export const ConfettiAnimation: React.FC<{
   trigger: number;
   intensity?: number;
-}> = ({ trigger, intensity = 1 }) => {
+  /** Слой поверх контента: модалки-порталы могут требовать z-index выше обычного */
+  layerClassName?: string;
+}> = ({ trigger, intensity = 1, layerClassName = "z-50" }) => {
   const [confetti, setConfetti] = useState<ConfettiPiece[]>([]);
 
   const shapes = ["circle", "square", "triangle"] as const;
@@ -75,7 +77,9 @@ export const ConfettiAnimation: React.FC<{
   if (confetti.length === 0) return null;
 
   return (
-    <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">
+    <div
+      className={`fixed inset-0 pointer-events-none overflow-hidden ${layerClassName}`}
+    >
       {confetti.map((piece) => (
         <div
           key={piece.id}

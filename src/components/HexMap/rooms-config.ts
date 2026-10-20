@@ -1,6 +1,8 @@
 import { ColonyRoomKind, ColonyRoomState } from "../../models/colony";
+import { Expedition } from "../../models/expedition";
 import { INITIAL_CAPACITY } from "../../models/scene";
 import { Toad } from "../../models/Toad";
+import { isToadBusyOnExpedition } from "../../utils/expedition-manager";
 import {
   AVIARY_ROOM_ID,
   CORE_ROOM_ID,
@@ -480,7 +482,7 @@ export const BASE_COLONY_RADIUS = 2;
  * 127 гексов), поэтому у постройки на предельном кольце новых соседей не открывается.
  * Слотов заведомо больше, чем игрок успеет застроить, а карта остаётся лёгкой для рендера.
  */
-export const MAX_COLONY_RADIUS = 6;
+export const MAX_COLONY_RADIUS = 20;
 
 /**
  * Сектора, которые стоят на карте с начала игры: ядро, биопод и репродуктор.
@@ -615,14 +617,19 @@ export const isToadRoom = (room: RoomConfig) =>
   room.kind === "hospital";
 
 /**
- * Видна ли жаба в секторе прямо сейчас: ушедшую в поход (`status: "out"`) карта не рисует —
- * жаба в походе, а не в секторе, и двух местах сразу не бывает. Место в секторе она при
+ * Видна ли жаба в секторе прямо сейчас: ушедшую в поход карта не рисует —
+ * жаба в походе, а не в секторе, и в двух местах сразу не бывает. Место в секторе она при
  * уходе освобождает (`scene_id` снова становится биоподом при отправке,
  * `utils/expedition-config.ts`), поэтому спрайт не вернётся «сам на старое место»:
  * домой жаба приходит в биопод.
+ * Проверяем и запись похода, а не только статус: вернувшаяся жаба остаётся в «Разведке»
+ * до разбора добычи и не должна появляться на карте раньше времени.
  * Страховка на случай сейва, где жаба уже в походе, но место ещё старое.
  */
-export const isToadVisibleInRoom = (toad: Toad) => toad.status !== "out";
+export const isToadVisibleInRoom = (
+  toad: Toad,
+  expeditions?: Expedition[],
+) => !isToadBusyOnExpedition(toad, expeditions);
 
 /** Кольцо, в котором стоит сектор (0 — ядро, дальше — кольца слотов вокруг него). */
 export const getRoomRing = (room: RoomConfig) =>

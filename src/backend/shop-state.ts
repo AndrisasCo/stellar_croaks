@@ -325,10 +325,13 @@ export const getNewElite = (): string[] => {
 
 /**
  * Награды элитных заказов — в Астро-кваксах 💎, а не в Кваксах.
- * Награда привязана к цене заказа по времени: чистое ожидание (10 дней возраста)
- * стоит дёшево, редкая комбинация гена и характера — дорого. До аудита награды шли
- * лестницей 20-160💎 без связи со сложностью: самые недостижимые заказы платили
- * меньше самых простых (аудит P0 «награда ↔ сложность перевёрнуты»).
+ *
+ * Шкала оптимизирована под цену лутбокса (10 💎) и поток астро из походов
+ * (~0,7–2 💎 за рейд): простое ожидание и лотерейные характеры платят 5–30 💎,
+ * самые редкие комбинации гена и характера — 100–150 💎. Раньше здесь были суммы
+ * до 800 💎: одна сдача окупала десятки лутбоксов и делала разведку бессмысленной.
+ * Внутри шкалы сохранён принцип «награда ↔ сложность»: чистое ожидание
+ * (10 дней возраста) стоит дёшево, селекционная редкость — дорого.
  */
 
 export const eliteOrders: EliteOrder[] = [
@@ -338,7 +341,7 @@ export const eliteOrders: EliteOrder[] = [
     description: "Жаба размером более 35 с характером Романтик",
     requirement: (toad: Toad) =>
       toad.genes.weight > 35 && toad.genes.personality === "romantic",
-    reward: 400, // размер 35+ И характер Романтик: почти недостижимая мечта селекции
+    reward: 100, // размер 35+ И характер Романтик: почти недостижимая мечта селекции
     difficulty: "extreme",
   },
   {
@@ -346,7 +349,7 @@ export const eliteOrders: EliteOrder[] = [
     title: "Поэт болотных глубин",
     description: "Жаба с характером Мечтатель",
     requirement: (toad: Toad) => toad.genes.personality === "dreamer",
-    reward: 60, // характер Мечтатель: личность приходит лотереей из коллидера
+    reward: 20, // характер Мечтатель: личность приходит лотереей из коллидера
     difficulty: "medium",
   },
   {
@@ -354,7 +357,7 @@ export const eliteOrders: EliteOrder[] = [
     title: "Загадка бездны",
     description: "Жаба с полом Бесполый",
     requirement: (toad: Toad) => toad.sex === "neuter",
-    reward: 40, // бесполый: редкий результат мутации
+    reward: 15, // бесполый: редкий результат мутации
     difficulty: "extreme",
   },
   {
@@ -362,7 +365,7 @@ export const eliteOrders: EliteOrder[] = [
     title: "Вихрь судьбы",
     description: "Жаба со скоростью более 2",
     requirement: (toad: Toad) => toad.genes.speed > 2,
-    reward: 600, // скорость 2+: почти не бывает, гены скорости упираются в 1.0
+    reward: 150, // скорость 2+: почти не бывает, гены скорости упираются в 1.0
     difficulty: "hard",
   },
   {
@@ -371,7 +374,7 @@ export const eliteOrders: EliteOrder[] = [
     description: "Жаба Качеством 7 и больше размером более 40",
     requirement: (toad: Toad) =>
       toad.genes.weight > 40 && toad.genes.rarity >= 7,
-    reward: 600, // масса 40+ И Качество 7+: экстремальная селекция
+    reward: 150, // масса 40+ И Качество 7+: экстремальная селекция
     difficulty: "extreme",
   },
   {
@@ -380,7 +383,7 @@ export const eliteOrders: EliteOrder[] = [
     description: "Жаба с полом Бесполый и Качеством 7+",
     requirement: (toad: Toad) =>
       toad.sex === "neuter" && toad.genes.rarity >= 7,
-    reward: 120, // бесполый И Качество 7+
+    reward: 30, // бесполый И Качество 7+
     difficulty: "extreme",
   },
   {
@@ -391,7 +394,7 @@ export const eliteOrders: EliteOrder[] = [
       (toad.genes.personality === "innovator" ||
         toad.genes.personality === "energetic") &&
       toad.genes.rarity >= 6,
-    reward: 150, // Новатор или Энергичный И Качество 6+
+    reward: 40, // Новатор или Энергичный И Качество 6+
     difficulty: "hard",
   },
   {
@@ -404,7 +407,7 @@ export const eliteOrders: EliteOrder[] = [
       toad.genes.speed >= 0.6 &&
       toad.genes.speed <= 0.8 &&
       toad.genes.fertility >= 3,
-    reward: 120, // масса 12-16, скорость 0.6-0.8, плодовитость 3+: узкий коридор
+    reward: 30, // масса 12-16, скорость 0.6-0.8, плодовитость 3+: узкий коридор
     difficulty: "medium",
   },
   {
@@ -415,7 +418,7 @@ export const eliteOrders: EliteOrder[] = [
       toad.stage === "toadpole" &&
       toad.generation >= 8 &&
       toad.genes.rarity >= 6,
-    reward: 25, // головастик 8+ поколения: головастиком он бывает всего час
+    reward: 10, // головастик 8+ поколения: головастиком он бывает всего час
     difficulty: "hard",
   },
   {
@@ -424,7 +427,7 @@ export const eliteOrders: EliteOrder[] = [
     description: "Жаба с характером Обжора и размером более 25",
     requirement: (toad: Toad) =>
       toad.genes.personality === "glutton" && toad.genes.weight > 25,
-    reward: 80, // Обжора И масса 25+: две линии селекции сразу
+    reward: 20, // Обжора И масса 25+: две линии селекции сразу
     difficulty: "medium",
   },
   {
@@ -433,7 +436,7 @@ export const eliteOrders: EliteOrder[] = [
     description: "Жаба 10+ поколения с характером Тусовщик",
     requirement: (toad: Toad) =>
       toad.generation >= 10 && toad.genes.personality === "partyAnimal",
-    reward: 160, // 10+ поколение И Тусовщик
+    reward: 40, // 10+ поколение И Тусовщик
     difficulty: "hard",
   },
   {
@@ -442,7 +445,7 @@ export const eliteOrders: EliteOrder[] = [
     description: "Жаба с характером Аскет и фертильностью более 3",
     requirement: (toad: Toad) =>
       toad.genes.personality === "ascetic" && toad.genes.fertility > 3,
-    reward: 600, // Аскет И плодовитость 3+: характер и ген тянут в разные стороны
+    reward: 150, // Аскет И плодовитость 3+: характер и ген тянут в разные стороны
     difficulty: "hard",
   },
   {
@@ -451,7 +454,7 @@ export const eliteOrders: EliteOrder[] = [
     description: "Жаба с характером Лидер и Качеством 5+",
     requirement: (toad: Toad) =>
       toad.genes.personality === "leader" && toad.genes.rarity >= 5,
-    reward: 90, // Лидер И Качество 5+
+    reward: 25, // Лидер И Качество 5+
     difficulty: "medium",
   },
   {
@@ -460,7 +463,7 @@ export const eliteOrders: EliteOrder[] = [
     description: "Жаба с характером Философ и скоростью менее 0.5",
     requirement: (toad: Toad) =>
       toad.genes.personality === "philosopher" && toad.genes.speed < 0.5,
-    reward: 70, // Философ И скорость меньше 0.5
+    reward: 20, // Философ И скорость меньше 0.5
     difficulty: "medium",
   },
   {
@@ -469,7 +472,7 @@ export const eliteOrders: EliteOrder[] = [
     description: "Жаба с характером Страстный и фертильностью более 4",
     requirement: (toad: Toad) =>
       toad.genes.personality === "passionate" && toad.genes.fertility > 4,
-    reward: 800, // Страстный И плодовитость 4+: почти невозможно
+    reward: 150, // Страстный И плодовитость 4+: почти невозможно
     difficulty: "hard",
   },
   {
@@ -480,7 +483,7 @@ export const eliteOrders: EliteOrder[] = [
       toad.sex === "female" &&
       toad.genes.personality === "socialite" &&
       toad.genes.rarity >= 6,
-    reward: 120, // самка, Светская жаба, Качество 6+
+    reward: 30, // самка, Светская жаба, Качество 6+
     difficulty: "medium",
   },
   {
@@ -490,7 +493,7 @@ export const eliteOrders: EliteOrder[] = [
     requirement: (toad: Toad) =>
       toad.genes.personality === "dreamer" &&
       Boolean(toad.pregnancy?.isPregnant),
-    reward: 70, // Мечтатель и беременна: заказ под окно в 10 минут
+    reward: 20, // Мечтатель и беременна: заказ под окно в 10 минут
     difficulty: "medium",
   },
   {
@@ -499,7 +502,7 @@ export const eliteOrders: EliteOrder[] = [
     description: "Жаба с характером Гурман и голодом менее 20%",
     requirement: (toad: Toad) =>
       toad.genes.personality === "gourmet" && toad.state.hunger < 20,
-    reward: 60, // Гурман и голод менее 20%: покормить — потерять заказ
+    reward: 15, // Гурман и голод менее 20%: покормить — потерять заказ
     difficulty: "hard",
   },
   {
@@ -510,7 +513,7 @@ export const eliteOrders: EliteOrder[] = [
       toad.genes.personality === "freeSpirit" &&
       Date.now() - new Date(toad.created_at).getTime() >
         3 * 24 * 60 * 60 * 1000,
-    reward: 20, // Свободный дух и возраст 3+ дня: чистое ожидание
+    reward: 5, // Свободный дух и возраст 3+ дня: чистое ожидание
     difficulty: "medium",
   },
   {
@@ -519,7 +522,7 @@ export const eliteOrders: EliteOrder[] = [
     description: "Жаба с характером Трудоголик и поколением 7+",
     requirement: (toad: Toad) =>
       toad.genes.personality === "workaholic" && toad.generation >= 7,
-    reward: 140, // Трудоголик И 7+ поколение
+    reward: 35, // Трудоголик И 7+ поколение
     difficulty: "hard",
   },
   {
@@ -528,7 +531,7 @@ export const eliteOrders: EliteOrder[] = [
     description: "Жаба с характером Обаятельный и поколением 9+",
     requirement: (toad: Toad) =>
       toad.genes.personality === "charmer" && toad.generation >= 9,
-    reward: 140, // Обаятельный И 9+ поколение
+    reward: 35, // Обаятельный И 9+ поколение
     difficulty: "hard",
   },
   {
@@ -537,7 +540,7 @@ export const eliteOrders: EliteOrder[] = [
     description: "Жаба с характером Отшельник и Качеством 8+",
     requirement: (toad: Toad) =>
       toad.genes.personality === "hermit" && toad.genes.rarity >= 8,
-    reward: 180, // Отшельник И Качество 8+
+    reward: 45, // Отшельник И Качество 8+
     difficulty: "extreme",
   },
   {
@@ -547,7 +550,7 @@ export const eliteOrders: EliteOrder[] = [
     requirement: (toad: Toad) =>
       Date.now() - new Date(toad.created_at).getTime() >
       10 * 24 * 60 * 60 * 1000,
-    reward: 25, // возраст 10+ дней: ждать долго, но делать ничего не надо
+    reward: 5, // возраст 10+ дней: ждать долго, но делать ничего не надо
     difficulty: "extreme",
   },
   {
@@ -559,7 +562,7 @@ export const eliteOrders: EliteOrder[] = [
       toad.state.genetic_fault !== undefined &&
       toad.state.genetic_fault >= 15 &&
       toad.state.genetic_fault <= 35,
-    reward: 15, // мутация 15-35: побочный продукт коллидера
+    reward: 5, // мутация 15-35: побочный продукт коллидера
     difficulty: "medium",
   },
   {
@@ -571,7 +574,7 @@ export const eliteOrders: EliteOrder[] = [
       toad.state.genetic_fault !== undefined &&
       toad.state.genetic_fault >= 50 &&
       toad.genes.rarity >= 5,
-    reward: 40, // мутация 50+ И Качество 5+
+    reward: 10, // мутация 50+ И Качество 5+
     difficulty: "hard",
   },
   {
@@ -584,7 +587,7 @@ export const eliteOrders: EliteOrder[] = [
       toad.state.genetic_fault >= 80 &&
       (toad.genes.personality === "hermit" ||
         toad.genes.personality === "ascetic"),
-    reward: 200, // мутант 80+ с характером Отшельник или Аскет
+    reward: 50, // мутант 80+ с характером Отшельник или Аскет
     difficulty: "extreme",
   },
 ];

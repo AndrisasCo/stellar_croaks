@@ -26,7 +26,9 @@ export const ProgressBar = ({
       {action && (
         <button
           onClick={action.handler}
-          className={`flex items-center gap-1 px-3 py-1 bg-gradient-to-r from-${color}-600 to-${color}-500 hover:brightness-110 rounded-lg transition-all text-xs font-semibold shadow-lg active:scale-95`}
+          disabled={action.disabled}
+          title={action.disabledReason}
+          className={`flex items-center gap-1 px-3 py-1 bg-gradient-to-r from-${color}-600 to-${color}-500 hover:brightness-110 rounded-lg transition-all text-xs font-semibold shadow-lg active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:brightness-100 disabled:active:scale-100`}
         >
           {/* Значок ⚡ убран: ускорение роста и беременности платится червями/мушками, а ⚡ — силы жабы */}
           <span className="text-white">{action.label}</span>

@@ -8,6 +8,7 @@ import { ToadGender } from "./ToadGender";
 import { PregnancyIcon } from "../../assets/icons";
 import { ToadAvatar } from "./ToadAvatar";
 import { isToadSick } from "../../utils/disease-manager";
+import { isToadBusyOnExpedition } from "../../utils/expedition-manager";
 import {
   getToadHp,
   getToadMaxHp,
@@ -154,7 +155,7 @@ export const ToadItem = ({
                   {toad.stage === "adult" ? "Взрослый" : "Головастик"}
                 </span>
 
-                {toad.status === "out" && (
+                {isToadBusyOnExpedition(toad) && (
                   <>
                     <span>•</span>
                     <span className="text-amber-300 text-2xs">🧭 в походе</span>

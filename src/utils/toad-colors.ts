@@ -39,18 +39,18 @@ export interface ToadColorGroupConfig {
  * которого можно получить обычным красным пигментом.
  */
 export const TOAD_COLOR_GROUPS: ToadColorGroupConfig[] = [
-  { id: "red", label: "Красный", sample: "#D14B3F", reward: 60 },
-  { id: "orange", label: "Оранжевый", sample: "#E8832E", reward: 75 },
-  { id: "yellow", label: "Жёлтый", sample: "#E8CF3B", reward: 70 },
-  { id: "green", label: "Зелёный", sample: "#5D8C59", reward: 55 },
-  { id: "cyan", label: "Голубой", sample: "#3FB8C4", reward: 80 },
-  { id: "blue", label: "Синий", sample: "#4056C7", reward: 65 },
-  { id: "purple", label: "Фиолетовый", sample: "#8253C7", reward: 85 },
-  { id: "pink", label: "Розовый", sample: "#D95FA8", reward: 90 },
-  { id: "brown", label: "Коричневый", sample: "#8B4513", reward: 60 },
-  { id: "white", label: "Белый", sample: "#F2F2F7", reward: 110 },
-  { id: "gray", label: "Серый", sample: "#8A8A8A", reward: 95 },
-  { id: "black", label: "Чёрный", sample: "#1A1A1A", reward: 120 },
+  { id: "red", label: "Красный", sample: "#D14B3F", reward: 20 },
+  { id: "orange", label: "Оранжевый", sample: "#E8832E", reward: 25 },
+  { id: "yellow", label: "Жёлтый", sample: "#E8CF3B", reward: 20 },
+  { id: "green", label: "Зелёный", sample: "#5D8C59", reward: 15 },
+  { id: "cyan", label: "Голубой", sample: "#3FB8C4", reward: 25 },
+  { id: "blue", label: "Синий", sample: "#4056C7", reward: 20 },
+  { id: "purple", label: "Фиолетовый", sample: "#8253C7", reward: 25 },
+  { id: "pink", label: "Розовый", sample: "#D95FA8", reward: 30 },
+  { id: "brown", label: "Коричневый", sample: "#8B4513", reward: 20 },
+  { id: "white", label: "Белый", sample: "#F2F2F7", reward: 35 },
+  { id: "gray", label: "Серый", sample: "#8A8A8A", reward: 30 },
+  { id: "black", label: "Чёрный", sample: "#1A1A1A", reward: 40 },
 ];
 
 export const TOAD_COLOR_GROUP_BY_ID = TOAD_COLOR_GROUPS.reduce(

@@ -392,7 +392,7 @@ check(
 check(
   "жаба в походе не выписывается и не переносится",
   moveRules.getToadMoveIssue(toad({ id: 9, status: "out" }), { allowDown: true }),
-  "Жаба в походе: сначала дождитесь её возвращения в биопод.",
+  manager.EXPEDITION_TOAD_BUSY_REASON,
 );
 
 console.log("\n[6] Списки лазарета для интерфейса");

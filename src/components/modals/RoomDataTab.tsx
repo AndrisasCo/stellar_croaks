@@ -64,7 +64,7 @@ export default function RoomDataTab({ room, stats }: RoomDataTabProps) {
   const { rooms, colony, toadsByRoom, powerGrid } = useColony();
   const { openModal } = useModal();
   const { addNotification } = useNotifications();
-  const { playOk, playBeep } = useSoundEffects();
+  const { playSuccess, playError } = useSoundEffects();
 
   const tokens = Math.floor(account?.tokens || 0);
   const roomToads = toadsByRoom[room.id] ?? [];
@@ -90,11 +90,12 @@ export default function RoomDataTab({ room, stats }: RoomDataTabProps) {
   /** Покупка апгрейда: списываем Кваксы, пишем апгрейд сектору и сразу кормим жаб */
   const handleBuy = (option: RoomUpgradeOption) => {
     if (!canUpgrade || hasUpgrade(upgrades, option.upgrade)) {
-      playBeep();
+      playError();
       return;
     }
 
     if (tokens < option.cost) {
+      playError();
       addNotification({
         type: "warn",
         content: `Не хватает Кваксов: нужно ${option.cost} ${CURRENCY_CONFIG.tokens.icon}, у вас ${tokens}.`,
@@ -108,7 +109,7 @@ export default function RoomDataTab({ room, stats }: RoomDataTabProps) {
     // Кормушка включается сразу: игрок видит её работу, не дожидаясь следующего тика голода
     const { fed } = processAutoFeeders(rooms, toadsByRoom);
 
-    playOk();
+    playSuccess();
     addNotification({
       type: "success",
       content: `«${option.title}» установлена в «${room.name}»${
@@ -119,6 +120,15 @@ export default function RoomDataTab({ room, stats }: RoomDataTabProps) {
 
   return (
     <div className="flex flex-col gap-3 px-2 pb-2">
+      {/* Описание сектора — то же, что видно в каталоге карты. Это первое, что нужно
+          прочитать о гексе, поэтому блок стоит выше сводки и предупреждений. */}
+      <div className="rounded-xl border border-sky-400/25 bg-sky-950/30 p-2">
+        <p className="mb-1 text-2xs font-bold uppercase tracking-wide text-sky-200">
+          📖 О секторе
+        </p>
+        <p className="text-2xs leading-snug text-sky-100">{description}</p>
+      </div>
+
       {/* Главная ошибка сектора: без тока рабочие вкладки закрыты, а биопод не производит биомассу */}
       {!powered && (
         <div className="rounded-xl border border-rose-500/60 bg-rose-950/40 p-2">
@@ -175,14 +185,6 @@ export default function RoomDataTab({ room, stats }: RoomDataTabProps) {
             </p>
           </div>
         </div>
-      </div>
-
-      {/* Описание сектора — то же, что видно в каталоге карты */}
-      <div className="rounded-xl border border-sky-400/25 bg-sky-950/30 p-2">
-        <p className="mb-1 text-2xs font-bold uppercase tracking-wide text-sky-200">
-          📖 О секторе
-        </p>
-        <p className="text-2xs leading-snug text-sky-100">{description}</p>
       </div>
 
       {/* Статистика самого места: у биопода, Медотсека и «Разведки» она своя */}

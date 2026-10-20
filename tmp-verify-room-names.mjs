@@ -52,7 +52,7 @@ const bundle = (entry, name) => {
 const roomsConfig = bundle("src/components/HexMap/rooms-config.ts", "rooms-config");
 const roomNames = bundle("src/components/HexMap/room-names.ts", "room-names");
 const colonyBuild = bundle("src/components/HexMap/colony-build.ts", "colony-build");
-const constants = bundle("src/utils/constants.ts", "constants");
+const constants = bundle("src/utils/constants.tsx", "constants");
 
 const NEST = constants.NEST_ROOM_ID;
 /** Виды, которые строятся сколько угодно раз: у них в имени обязан быть номер */

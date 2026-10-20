@@ -6,6 +6,7 @@ import {
 import { getRoomUpgrades } from "../backend/colony";
 import { getGameState } from "../backend/localStorage";
 import { Toad } from "../models/Toad";
+import { isToadBusyOnExpedition } from "./expedition-manager";
 import { PRODUCTION_MIN_HUNGER } from "./gamification-config";
 
 /**
@@ -64,14 +65,16 @@ export const processAutoFeeders = (
 
   const state = getGameState();
   const foodOnStack = state.user.storage?.food ?? 0;
-  // Корм кончился — дальше кормить нечем; жабы в походе (`status: "out"`) дома не едят
+  const expeditions = state.expeditions ?? [];
+  // Корм кончился — дальше кормить нечем; жабы в походе дома не едят, а вернувшиеся
+  // ждут разбора добычи и до него тоже считаются занятыми (`isToadBusyOnExpedition`)
   let foodLeft = Math.floor(foodOnStack);
   const hungry: number[] = [];
   const growthStartIds: number[] = [];
 
   autoFeederRooms.forEach((room) => {
     (toadsByRoom[room.id] ?? []).forEach((toad) => {
-      if (foodLeft <= 0 || toad.status === "out") {
+      if (foodLeft <= 0 || isToadBusyOnExpedition(toad, expeditions)) {
         return;
       }
 

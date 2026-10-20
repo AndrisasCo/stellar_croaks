@@ -1,5 +1,6 @@
 import { personalities } from "../models/Toad";
 import type { Toad } from "../models/Toad";
+import { isColorableToadType } from "../models/Toad/toad-species";
 import {
   TOAD_COLOR_GROUP_BY_ID,
   TOAD_COLOR_GROUP_IDS,
@@ -42,7 +43,10 @@ export const SCRIPTED_ELITE_KINDS: ScriptedEliteKind[] = [
 ];
 
 const SCRIPTED_ID_PREFIX = "scripted_v1";
-const MAX_SCRIPTED_REWARD = 2000;
+/** Потолок награды после ребаланса: дороже самого редкого кураторского заказа. */
+const MAX_SCRIPTED_REWARD = 150;
+/** Старые id (до ребаланса) содержат награды до ~460 💎 — их принимаем, но урезаем. */
+const LEGACY_SCRIPTED_REWARD_LIMIT = 2000;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 const PERSONALITY_TITLES = [
@@ -59,7 +63,12 @@ const COLOR_TITLES = [
   "Оттенок имеет значение",
 ];
 
-const PERSONALITY_REWARD = 90;
+/**
+ * Базовая награда за заказ на характер. До оптимизации астро-экономики здесь
+ * стояло 90 💎: одна простая сдача давала 9 лутбоксов и обесценивала походы.
+ * Теперь простая сдача — это 3 лутбокса, а редкие условия идут отдельно выше.
+ */
+const PERSONALITY_REWARD = 30;
 
 const randomInt = (min: number, max: number): number =>
   Math.floor(Math.random() * (max - min + 1)) + min;
@@ -78,14 +87,18 @@ const formatNumber = (value: number): string => {
   return value.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
 };
 
+/**
+ * Порог сложности считается по награде уже в новой шкале: максимум скриптованного
+ * заказа — около 135 💎, поэтому extreme начинается со 120, а не с 400.
+ */
 const getDifficulty = (reward: number): EliteDifficulty => {
-  if (reward >= 400) {
+  if (reward >= 120) {
     return "extreme";
   }
-  if (reward >= 200) {
+  if (reward >= 60) {
     return "hard";
   }
-  if (reward >= 100) {
+  if (reward >= 30) {
     return "medium";
   }
   return "easy";
@@ -121,7 +134,7 @@ const STAT_SCRIPTS: StatScriptConfig[] = [
     read: (toad) => toad.genes.weight,
     describe: (threshold) =>
       `Жаба с массой не менее ${formatNumber(threshold)}`,
-    reward: (threshold) => roundReward(80 + (threshold - 18) * 14),
+    reward: (threshold) => roundReward(25 + (threshold - 18) * 4),
   },
   {
     id: "speed",
@@ -132,7 +145,7 @@ const STAT_SCRIPTS: StatScriptConfig[] = [
     read: (toad) => toad.genes.speed,
     describe: (threshold) =>
       `Жаба со скоростью не менее ${formatNumber(threshold)}`,
-    reward: (threshold) => roundReward(120 + (threshold - 0.75) * 450),
+    reward: (threshold) => roundReward(35 + (threshold - 0.75) * 140),
   },
   {
     id: "fertility",
@@ -143,7 +156,7 @@ const STAT_SCRIPTS: StatScriptConfig[] = [
     read: (toad) => toad.genes.fertility,
     describe: (threshold) =>
       `Жаба с плодовитостью не менее ${formatNumber(threshold)}`,
-    reward: (threshold) => roundReward(100 + (threshold - 1.5) * 160),
+    reward: (threshold) => roundReward(30 + (threshold - 1.5) * 50),
   },
   {
     id: "rarity",
@@ -154,7 +167,7 @@ const STAT_SCRIPTS: StatScriptConfig[] = [
     read: (toad) => toad.genes.rarity,
     describe: (threshold) =>
       `Жаба с Качеством не менее ${formatNumber(threshold)}`,
-    reward: (threshold) => roundReward(70 + (threshold - 2) * 60),
+    reward: (threshold) => roundReward(20 + (threshold - 2) * 18),
   },
   {
     id: "generation",
@@ -165,7 +178,7 @@ const STAT_SCRIPTS: StatScriptConfig[] = [
     read: (toad) => toad.generation,
     describe: (threshold) =>
       `Жаба с поколением не менее ${formatNumber(threshold)}`,
-    reward: (threshold) => roundReward(70 + (threshold - 2) * 50),
+    reward: (threshold) => roundReward(20 + (threshold - 2) * 15),
   },
   {
     id: "ageDays",
@@ -177,7 +190,7 @@ const STAT_SCRIPTS: StatScriptConfig[] = [
       Math.floor((Date.now() - new Date(toad.created_at).getTime()) / DAY_MS),
     describe: (threshold) =>
       `Жаба возрастом не менее ${formatNumber(threshold)} дн.`,
-    reward: (threshold) => roundReward(20 + (threshold - 2) * 10),
+    reward: (threshold) => roundReward(5 + (threshold - 2) * 3),
   },
 ];
 
@@ -214,11 +227,17 @@ const parseReward = (value: string | undefined): number | null => {
   }
 
   const reward = Number(value);
-  if (!Number.isFinite(reward) || reward <= 0 || reward > MAX_SCRIPTED_REWARD) {
+  if (
+    !Number.isFinite(reward) ||
+    reward <= 0 ||
+    reward > LEGACY_SCRIPTED_REWARD_LIMIT
+  ) {
     return null;
   }
 
-  return Math.round(reward);
+  // Заказы, выданные до ребаланса, хранят старую награду в id. Не выбрасываем их
+  // с витрины, но и не позволяем забрать старые сотни астро — урезаем до потолка.
+  return Math.min(MAX_SCRIPTED_REWARD, Math.round(reward));
 };
 
 const parseThreshold = (
@@ -269,9 +288,11 @@ const buildColorOrder = (
     id: buildId("color", group, String(variant), String(reward)),
     title: COLOR_TITLES[variant],
     // «Приблизительно» — часть условия: игрок должен понимать, что ищется не
-    // конкретный HEX, а группа оттенков.
-    description: `Основной окрас — ${config.label.toLowerCase()} (приблизительная группа оттенков)`,
-    requirement: (toad) => toadMatchesColorGroup(toad, group),
+    // конкретный HEX, а группа оттенков. Красить можно только обычную и
+    // пятнистую жабу, поэтому заказ не должен приниматься за другие виды.
+    description: `Основной окрас — ${config.label.toLowerCase()} (приблизительная группа оттенков; только у обычной (смешанной) или пятнистой жабы)`,
+    requirement: (toad) =>
+      isColorableToadType(toad.type) && toadMatchesColorGroup(toad, group),
     reward,
     difficulty: getDifficulty(reward),
     colorSwatch: config.sample,

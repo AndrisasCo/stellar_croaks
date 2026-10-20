@@ -48,7 +48,7 @@ export const useShop = () => {
   const [shopState, setShopState] = useState<ShopState>(getShopState());
   const [timeLeft, setTimeLeft] = useState<string>("");
   const { addNotification } = useNotifications();
-  const { playBuy, playBeep } = useSoundEffects();
+  const { playBuy, playError } = useSoundEffects();
 
   // Таймер обратного отсчета
   useEffect(() => {
@@ -207,7 +207,7 @@ export const useShop = () => {
       // Склад предметов ограничен постройками «Склад» (Часть 3.7): без места покупка
       // не проходит — иначе игрок платил бы за предмет, который исчезнет.
       if (!canFitInStorage(storage, { [itemName]: item[itemName] })) {
-        playBeep();
+        playError();
         addNotification({
           type: "warn",
           content: `На складе нет места (${getStorageCapacityInfo(storage).used}/${
@@ -326,7 +326,7 @@ export const useShop = () => {
     const scene = pickSceneForNewToad();
 
     if (!scene) {
-      playBeep();
+      playError();
       addNotification({
         type: "warn",
         content: "В био-подах нет мест или недостаточно питания.",

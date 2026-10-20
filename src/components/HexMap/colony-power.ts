@@ -1,4 +1,6 @@
+import { Expedition } from "../../models/expedition";
 import { Toad } from "../../models/Toad";
+import { isToadBusyOnExpedition } from "../../utils/expedition-manager";
 import {
   AxialCoord,
   hexCoordKey,
@@ -63,13 +65,21 @@ export interface PowerGrid {
   capacityUsed: number;
 }
 
-/** Чем жаба не годится для работы в энергосекторе (null — годится). */
-export const getToadPowerIssue = (toad: Toad): string | null => {
+/**
+ * Чем жаба не годится для работы в энергосекторе (null — годится).
+ * `expeditions` передают готовым списком в горячих циклах, чтобы не перечитывать сейв
+ * на каждую жабу.
+ */
+export const getToadPowerIssue = (
+  toad: Toad,
+  expeditions?: Expedition[],
+): string | null => {
   if (toad.stage !== "adult") {
     return "Нужна взрослая жаба";
   }
 
-  if (toad.status === "out") {
+  // Жаба в пути или уже вернулась, но ещё держит добычу до разбора
+  if (isToadBusyOnExpedition(toad, expeditions)) {
     return "Жаба в походе";
   }
 
@@ -81,24 +91,35 @@ export const getToadPowerIssue = (toad: Toad): string | null => {
 };
 
 /** Даёт ли жаба ток прямо сейчас: взрослая, живая, не в походе и сытая выше порога. */
-export const isToadPowering = (toad: Toad): boolean =>
-  !getToadPowerIssue(toad) && toad.state.hunger > POWER_MIN_HUNGER;
+export const isToadPowering = (
+  toad: Toad,
+  expeditions?: Expedition[],
+): boolean =>
+  !getToadPowerIssue(toad, expeditions) &&
+  toad.state.hunger > POWER_MIN_HUNGER;
 
 /** Мощность энергосектора: одна единица тока на каждую работающую жабу. */
-export const getToadPowerCapacity = (toads: Toad[]): number =>
+export const getToadPowerCapacity = (
+  toads: Toad[],
+  expeditions?: Expedition[],
+): number =>
   Math.min(
     POWER_ROOM_TOAD_SLOTS,
-    toads.filter((toad) => isToadPowering(toad)).length,
+    toads.filter((toad) => isToadPowering(toad, expeditions)).length,
   );
 
 /** Мощность сектора как источника: ядро работает всегда, ⚡ — от жаб. */
-export const getSourceCapacity = (kind: string, toads: Toad[]): number => {
+export const getSourceCapacity = (
+  kind: string,
+  toads: Toad[],
+  expeditions?: Expedition[],
+): number => {
   if (kind === "core") {
     return CORE_POWER_CAPACITY;
   }
 
   if (kind === "power") {
-    return getToadPowerCapacity(toads);
+    return getToadPowerCapacity(toads, expeditions);
   }
 
   return 0;

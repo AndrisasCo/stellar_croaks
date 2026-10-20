@@ -1,4 +1,9 @@
+import { Expedition } from "../../models/expedition";
 import { Toad } from "../../models/Toad";
+import {
+  EXPEDITION_TOAD_BUSY_REASON,
+  isToadBusyOnExpedition,
+} from "../../utils/expedition-manager";
 import { EXPEDITION_TEAM_SIZE } from "../../utils/expedition-config";
 import { NEST_ROOM_TOAD_SLOTS } from "../../utils/gamification-config";
 import { HOSPITAL_ROOM_TOAD_SLOTS } from "../../utils/hospital";
@@ -24,6 +29,10 @@ export interface ToadMoveContext {
   /** Все секторы карты — нужны, чтобы понять, застраиваемый ли это пустой гекс. */
   rooms: RoomConfig[];
   powerGrid: PowerGrid;
+  /** Жаба занята походом, даже если статус уже снят (ждёт разбора добычи). */
+  onExpedition?: boolean;
+  /** Список походов, если он уже под рукой: иначе правило прочитает сейв. */
+  expeditions?: Expedition[];
 }
 
 export interface ToadMoveCheck {
@@ -38,10 +47,19 @@ export const getToadMoveIssue = (
   options?: {
     /** Медотсек принимает и выбитых: туда жабу как раз и несут. */
     allowDown?: boolean;
+    /** Жаба занята походом, даже если статус уже снят (ждёт разбора добычи). */
+    onExpedition?: boolean;
+    /** Список походов, если он уже под рукой: иначе правило прочитает сейв. */
+    expeditions?: Expedition[];
   },
 ): string | null => {
-  if (toad.status === "out") {
-    return "Жаба в походе: сначала дождитесь её возвращения в биопод.";
+  // В пути (`status: "out"`) или уже вернулась, но ждёт разбора добычи
+  // (`isToadBusyOnExpedition`; `onExpedition` — готовый ответ для карты)
+  if (
+    options?.onExpedition ||
+    isToadBusyOnExpedition(toad, options?.expeditions)
+  ) {
+    return EXPEDITION_TOAD_BUSY_REASON;
   }
 
   if ((toad.hp ?? 1) <= 0 && !options?.allowDown) {
@@ -81,7 +99,11 @@ export const canMoveToadToRoom = (
   room: RoomConfig,
   context: ToadMoveContext,
 ): ToadMoveCheck => {
-  const issue = getToadMoveIssue(toad, { allowDown: room.kind === "hospital" });
+  const issue = getToadMoveIssue(toad, {
+    allowDown: room.kind === "hospital",
+    onExpedition: context.onExpedition,
+    expeditions: context.expeditions,
+  });
 
   if (issue) {
     return { ok: false, reason: issue };

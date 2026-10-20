@@ -51,6 +51,10 @@ import {
   getHospitalRoomIds,
   isToadInHospital,
 } from "../../../utils/hospital";
+import {
+  EXPEDITION_TOAD_BUSY_REASON,
+  isToadBusyOnExpedition,
+} from "../../../utils/expedition-manager";
 import { ToadAvatar } from "../../shared/ToadAvatar";
 import { DiseaseBar } from "../../shared/DiseaseBar";
 import { ProgressBar } from "./ProgressBar";
@@ -63,7 +67,6 @@ import { DissolveConfirm } from "../../shared/DissolveConfirm";
 import { DissolveBlockedModal } from "../../shared/DissolveBlockedModal";
 import { useDissociator } from "../../../hooks/use-dissociator";
 import { ClickButton } from "../../shared/ClickButton";
-import ToadListModal from "../ToadListModal";
 import {
   canDissolveToad,
   dissolveToads,
@@ -91,9 +94,10 @@ export const ToadInfo = () => {
     ownedScenes,
     account,
   } = useToads();
-  const { playCrunchShort, playCrunch, playOk, playBeep } = useSoundEffects();
+  const { playCrunchShort, playBubblesLong, playSuccess, playError } =
+    useSoundEffects();
   const { addNotification } = useNotifications();
-  const { closeModal, openModal } = useModal();
+  const { closeModal } = useModal();
 
   /**
    * Жабы для листания карточки стрелками: вся колония, самые редкие — первыми.
@@ -122,6 +126,9 @@ export const ToadInfo = () => {
   const { ready: dissociatorReady, built: dissociatorBuilt } = useDissociator();
 
   if (!toad) return null;
+
+  /** Жаба в походе (в пути или ждёт разбора добычи): обычные действия с ней запрещены */
+  const onExpedition = isToadBusyOnExpedition(toad);
 
   // Derived Data
   const rarityConfig = getRarityConfig(toad.genes?.rarity || 1);
@@ -169,7 +176,7 @@ export const ToadInfo = () => {
       : cooldownLeft > 0
         ? `🛏️ отдых ${formatCooldownLeft(cooldownLeft)}`
         : energy >= energyCost
-          ? "✅ готова"
+          ? "✅ возможно"
           : `нужно ⚡${energyCost}`;
 
   // Разведка (Часть 5): HP жабы, состояние и стоимость лечения
@@ -202,7 +209,17 @@ export const ToadInfo = () => {
     selectToad(target.id);
   };
 
+  /** Единая причина отказа для действий с жабой в походе */
+  const warnExpeditionBusy = () =>
+    addNotification({ type: "warn", content: EXPEDITION_TOAD_BUSY_REASON });
+
   const handleRename = () => {
+    if (onExpedition) {
+      setIsEditingName(false);
+      warnExpeditionBusy();
+      return;
+    }
+
     if (editedName.trim() && editedName !== toad.name) {
       updateToadById(toad.id, { name: editedName.trim() });
     }
@@ -210,6 +227,11 @@ export const ToadInfo = () => {
   };
 
   const handleAccelerate = (type: "growth" | "pregnancy") => {
+    if (onExpedition) {
+      warnExpeditionBusy();
+      return;
+    }
+
     const resource = type === "growth" ? "worms" : "sparkleFlys";
     const resourceName =
       type === "growth" ? "Протеиновых Червей 🪱" : "Сияющих Мушек ✨";
@@ -237,6 +259,12 @@ export const ToadInfo = () => {
    * Место проверяет сам биопод (`moveToadToAviary`): в полный жаба не влезет.
    */
   const handleMove = (sceneId: number) => {
+    if (onExpedition) {
+      setTooltips({});
+      warnExpeditionBusy();
+      return;
+    }
+
     const result = moveToadToAviary(toad.id, sceneId);
 
     if (!result.ok) {
@@ -250,7 +278,15 @@ export const ToadInfo = () => {
       return;
     }
 
-    handleNav("next");
+    // Карточка остаётся на той же жабе: после переезда игрок продолжает смотреть её
+    // характеристики, а не перелистывается на следующую (раньше это выглядело как
+    // «нажала Переместить — открылась другая жаба»).
+    setTooltips({});
+    addNotification({
+      type: "success",
+      content: `${toad.name} переехала в биопод «${result.scene.name}» 🏠`,
+      timeout: 3000,
+    });
   };
 
   /**
@@ -258,10 +294,15 @@ export const ToadInfo = () => {
    * пока жаба работала в секторе, места там могли закончиться — тогда она остаётся на месте.
    */
   const handleSendHome = () => {
+    if (onExpedition) {
+      warnExpeditionBusy();
+      return;
+    }
+
     const result = sendToadHome(toad.id);
 
     if (!result.ok) {
-      playBeep();
+      playError();
       addNotification({
         type: "warn",
         content:
@@ -273,7 +314,7 @@ export const ToadInfo = () => {
       return;
     }
 
-    playOk();
+    playSuccess();
     addNotification({
       type: "success",
       content: `${toad.name} вернулась в биопод «${result.scene.name}» 🏠`,
@@ -285,13 +326,20 @@ export const ToadInfo = () => {
   const handleDissolve = () => {
     setShowDissolve(false);
 
+    // Жаба ещё в команде похода — сначала возвращение и разбор добычи
+    if (onExpedition) {
+      warnExpeditionBusy();
+      return;
+    }
+
     // Без построенного и запитанного сектора жаба в биомассу не уйдёт
     if (!dissociatorReady) {
       setShowBlockedDissolve(true);
       return;
     }
 
-    playCrunch();
+    // Разбор в биомассу — тот же звук пузырей, что и в диссоциаторе
+    playBubblesLong();
     const result = dissolveToads([toad.id]);
 
     if (!result.success) {
@@ -311,27 +359,56 @@ export const ToadInfo = () => {
     }
   };
 
-  /** Жаб в инкубаторе коллайдера разбирать нельзя */
-  const cannotDissolve = !canDissolveToad(toad, getIncubatingToadIds());
+  /** Жаб в инкубаторе коллайдера и в походе разбирать нельзя */
+  const incubatingIds = getIncubatingToadIds();
+  const incubating = incubatingIds.includes(toad.id);
+  const cannotDissolve =
+    onExpedition || !canDissolveToad(toad, incubatingIds);
+  const dissolveBlockedReason = onExpedition
+    ? EXPEDITION_TOAD_BUSY_REASON
+    : incubating
+      ? "Жаба находится в инкубаторе — разбор недоступен"
+      : null;
 
   return (
     <>
       <Modal>
-        {/* Возврат к списку жаб биопода: карточка — это «глубже» по клику из списка/с гекса */}
-        <div className="flex w-full items-center pb-1 px-10">
+        {/* Возврат ровно туда, откуда открыли карточку: ядро, список биопода или карта.
+            Это именно закрытие верхней модалки, а не новый экран поверх стека, поэтому
+            фильтры, сортировка и скролл предыдущего списка остаются как были.
+
+            Кнопка закреплена сверху: карточка длинная, и «Назад» должна оставаться
+            под рукой при прокрутке. Sticky, а не fixed, — чтобы на десктопе кнопка
+            не выезжала за пределы карточки и не висела над картой. */}
+        <div className="sticky -top-4 z-30 -mx-1 -mt-4 mb-4 flex w-auto items-center border-b border-white/5 bg-slate-950/95 px-10 py-2 backdrop-blur-md md:-top-5 md:-mx-6 md:-mt-5 md:mb-5">
           <ClickButton
-            onClick={() =>
-              openModal(() => <ToadListModal sceneId={getToadHomeId(toad)} />)
-            }
-            className="flex items-center gap-1 rounded-md bg-color-second px-2 py-1 text-2xs font-medium text-slate-200 transition-colors duration-300 hover:text-cyan-200"
-            title={
-              toadScene
-                ? `Открыть биопод «${toadScene.name}» со списком жаб`
-                : "Открыть список жаб биопода"
-            }
+            onClick={closeModal}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-amber-300/50 bg-amber-500/20 px-4 py-2 text-base font-bold text-amber-100 shadow-lg shadow-amber-950/30 transition-colors duration-300 hover:bg-amber-500/30 hover:text-amber-50"
+            title="Вернуться к предыдущему экрану"
           >
-            ‹ Биопод{toadScene ? `: ${toadScene.name}` : ""}
+            ‹ Назад
           </ClickButton>
+
+          {/* Листание жаб: стрелки внизу, рядом с кнопкой «Закрыть», а не по бокам
+              карточки. Крупные кнопки удобнее нажимать на телефоне. */}
+          <div className="flex m-auto items-center justify-center gap-3">
+            <ClickButton
+              onClick={() => handleNav("prev")}
+              aria-label="Предыдущая жаба"
+              title="Предыдущая жаба"
+              className="flex h-10 w-8 items-center justify-center rounded-xl border border-amber-300/40 bg-amber-500/15 text-3xl leading-none text-amber-100 transition-colors duration-300 hover:bg-amber-500/25 hover:text-amber-50"
+            >
+              ‹
+            </ClickButton>
+            <ClickButton
+              onClick={() => handleNav("next")}
+              aria-label="Следующая жаба"
+              title="Следующая жаба"
+              className="flex h-10 w-8 items-center justify-center rounded-xl border border-white/10 bg-slate-800/70 text-3xl leading-none text-slate-200 transition-colors duration-300 hover:bg-slate-700/70 hover:text-white"
+            >
+              ›
+            </ClickButton>
+          </div>
         </div>
 
         <div className="flex w-full items-center pb-1 px-10 ">
@@ -364,11 +441,17 @@ export const ToadInfo = () => {
             <h2 className="flex gap-2 font-bold">
               <span className="brand-text text-lg">{toad.name}</span>
               <button
-                className="text-slate-300"
+                className="text-slate-300 disabled:cursor-not-allowed disabled:opacity-40"
                 onClick={() => {
                   setEditedName(toad.name ?? "");
                   setIsEditingName(true);
                 }}
+                disabled={onExpedition}
+                title={
+                  onExpedition
+                    ? EXPEDITION_TOAD_BUSY_REASON
+                    : "Переименовать жабу"
+                }
               >
                 {InfoIcons.pencil}
               </button>
@@ -413,29 +496,20 @@ export const ToadInfo = () => {
           )}
         </div>
 
-        <div className="flex">
-          {/* Navigation Left */}
-          <button
-            onClick={() => handleNav("prev")}
-            className="text-slate-300 hover:text-white p-1"
-          >
-            <svg
-              className="w-8 h-8"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15 19l-7-7 7-7"
-              />
-            </svg>
-          </button>
+        {onExpedition && (
+          <div className="mx-2 mb-3 rounded-xl border border-amber-400/40 bg-amber-500/10 px-3 py-2">
+            <p className="text-xs font-semibold text-amber-100">
+              🧭 Жаба в походе
+            </p>
+            <p className="mt-0.5 text-2xs leading-snug text-amber-200/90">
+              {EXPEDITION_TOAD_BUSY_REASON}
+            </p>
+          </div>
+        )}
 
+        <div className="w-full">
           {/* --- MAIN CONTENT COLUMN --- */}
-          <div className="flex flex-col w-full px-2 ">
+          <div className="flex w-full flex-col px-2">
             {/* STATS GRID */}
             <div className="grid grid-cols-2 gap-2 mb-3 ">
               <StatCard
@@ -766,6 +840,10 @@ export const ToadInfo = () => {
                     label: "Ускорить",
                     handler: () => handleAccelerate("growth"),
                     timeLeft: growth.timeLeft,
+                    disabled: onExpedition,
+                    disabledReason: onExpedition
+                      ? EXPEDITION_TOAD_BUSY_REASON
+                      : undefined,
                   }}
                 />
                 {growth.hungry && (
@@ -796,6 +874,10 @@ export const ToadInfo = () => {
                   label: "Ускорить",
                   handler: () => handleAccelerate("pregnancy"),
                   timeLeft: pregnancy.timeLeft,
+                  disabled: onExpedition,
+                  disabledReason: onExpedition
+                    ? EXPEDITION_TOAD_BUSY_REASON
+                    : undefined,
                 }}
               />
             )}
@@ -804,18 +886,27 @@ export const ToadInfo = () => {
             <div className="bg-color-main rounded-xl p-2 border border-slate-600/50 mt-1 grid grid-cols-2 gap-2">
               <button
                 onClick={() => {
+                  if (onExpedition) {
+                    warnExpeditionBusy();
+                    return;
+                  }
+
                   playCrunchShort();
                   handleFeedToads([toad.id]);
                   completeAchivement("feed-one");
                 }}
-                className="bg-green-600/30 hover:bg-green-600/40 rounded-lg py-2 text-xs flex justify-center gap-2"
+                disabled={onExpedition}
+                title={onExpedition ? EXPEDITION_TOAD_BUSY_REASON : undefined}
+                className="bg-green-600/30 hover:bg-green-600/40 rounded-lg py-2 text-xs flex justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-green-600/30"
               >
                 <span>🍎</span> Накормить
               </button>
               <div className="relative">
                 <button
                   onClick={() => toggleTooltip("scenes")}
-                  className="rounded-lg border border-cyan-400/30 bg-cyan-500/15 py-2 text-xs text-cyan-100 transition-colors hover:bg-cyan-500/25 w-full flex justify-center gap-2"
+                  disabled={onExpedition}
+                  title={onExpedition ? EXPEDITION_TOAD_BUSY_REASON : undefined}
+                  className="rounded-lg border border-cyan-400/30 bg-cyan-500/15 py-2 text-xs text-cyan-100 transition-colors hover:bg-cyan-500/25 w-full flex justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-cyan-500/15"
                 >
                   <span>🏠</span> Переместить
                 </button>
@@ -848,12 +939,15 @@ export const ToadInfo = () => {
               {typeof toad.scene_id === "string" && (
                 <button
                   onClick={handleSendHome}
+                  disabled={onExpedition}
                   title={
-                    toadScene
-                      ? `Вернуть жабу в «${toadScene.name}»`
-                      : "Вернуть жабу в её биопод"
+                    onExpedition
+                      ? EXPEDITION_TOAD_BUSY_REASON
+                      : toadScene
+                        ? `Вернуть жабу в «${toadScene.name}»`
+                        : "Вернуть жабу в её биопод"
                   }
-                  className="col-span-2 bg-cyan-600/30 hover:bg-cyan-600/40 rounded-lg py-2 text-xs flex justify-center gap-2"
+                  className="col-span-2 bg-cyan-600/30 hover:bg-cyan-600/40 rounded-lg py-2 text-xs flex justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-cyan-600/30"
                 >
                   <span>🏠</span> Домой
                 </button>
@@ -868,9 +962,8 @@ export const ToadInfo = () => {
                 }
                 disabled={cannotDissolve}
                 title={
-                  cannotDissolve
-                    ? "Жаба находится в инкубаторе — разбор недоступен"
-                    : "Переработать жабу в биомассу навсегда"
+                  dissolveBlockedReason ??
+                  "Переработать жабу в биомассу навсегда"
                 }
                 className="col-span-2 bg-amber-600/30 hover:bg-amber-600/40 rounded-lg py-2 text-xs flex justify-center items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -883,26 +976,6 @@ export const ToadInfo = () => {
 
             <Colors toad={toad} />
           </div>
-
-          {/* Navigation Right */}
-          <button
-            onClick={() => handleNav("next")}
-            className="text-slate-300 hover:text-white p-1"
-          >
-            <svg
-              className="w-8 h-8"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 5l7 7-7 7"
-              />
-            </svg>
-          </button>
         </div>
       </Modal>
 

@@ -13,6 +13,7 @@ import {
 } from "../models/expedition";
 import { Toad, ToadStatus } from "../models/Toad";
 import { ToadTypes } from "../models/Toad/toad-species";
+import { getDiseaseIndex } from "../models/disease";
 import { Items } from "../models/user";
 import { createToads, updateToadById, updateUser } from "../backend";
 import { getGameState, updateGameState } from "../backend/localStorage";
@@ -36,6 +37,7 @@ import {
   EXPEDITION_DANGER_CHANCE_PENALTY,
   EXPEDITION_EVENT_PROGRESS_STEP,
   EXPEDITION_GOOD_FINISH_LOOT,
+  EXPEDITION_MAX_COMPANIONS,
   EXPEDITION_MAX_EVENTS_PER_TICK,
   EXPEDITION_MIN_RETURN_HOURS,
   EXPEDITION_RETURN_RATIO,
@@ -62,6 +64,7 @@ import {
   getToadHp,
   getToadMaxHp,
   isToadDown,
+  rollExpeditionDisease,
   rollExpeditionLuck,
 } from "./expedition-config";
 import {
@@ -148,6 +151,25 @@ export const isToadOnExpedition = (
   toadId: number,
   expeditions: Expedition[] = getExpeditions(),
 ): boolean => Boolean(getToadExpedition(toadId, expeditions));
+
+/**
+ * Почему жаба в походе недоступна для обычных действий — одна подпись на весь интерфейс.
+ * Жабы возвращаются в колонию не по прибытии, а после разбора добычи (`finishExpedition`),
+ * поэтому до этого момента карточка, магазин, Медотсек и карта должны её не трогать.
+ */
+export const EXPEDITION_TOAD_BUSY_REASON =
+  "Жаба в походе: действия станут доступны после её возвращения и разбора добычи.";
+
+/**
+ * Жаба занята походом: она либо ещё в пути (`status: "out"`), либо уже вернулась,
+ * но команда ждёт разбора добычи (статус снят, а запись похода ещё держит её в команде).
+ * Для всех действий «вне похода» проверяем именно это, а не только статус.
+ */
+export const isToadBusyOnExpedition = (
+  toad: Pick<Toad, "id" | "status">,
+  expeditions: Expedition[] = getExpeditions(),
+): boolean =>
+  toad.status === "out" || isToadOnExpedition(toad.id, expeditions);
 
 /** Сколько команд может быть одновременно (Диспетчерская) */
 export const getTeamLimit = (): number =>
@@ -543,6 +565,10 @@ export const extractExpedition = (
   id: string,
   addNotification?: (notification: any) => void,
 ): ExpeditionActionResult => {
+  // Перед маяком «догоняем» поход: в рюкзаке и логе должно быть всё, что команда
+  // успела добыть к этому моменту, — иначе маяк забирал бы её с устаревшей добычей.
+  processExpeditions(addNotification);
+
   const state = getGameState();
   const expedition = getExpeditionById(id);
 
@@ -551,8 +577,8 @@ export const extractExpedition = (
   }
   if (expedition.phase === "completed") {
     return {
-      success: false,
-      message: "Поход уже завершён — заберите добычу на вкладке «Походы»",
+      success: true,
+      message: "Команда уже дома — добыча ждёт разбора на вкладке «Походы»",
     };
   }
 
@@ -798,6 +824,21 @@ const buildEventContext = (
     return toad ? (getToadDisease(toad)?.name ?? "кибер-болезнь") : null;
   };
 
+  /**
+   * Попутчик из события: пока просто копится в походе. Жабу нельзя поселить
+   * сразу — команда в пути, а место в биоподе проверяется только на возврате
+   * (`completeArrival`).
+   */
+  const join = (toad: Partial<Toad>): boolean => {
+    const companions = expedition.companions ?? [];
+    if (companions.length >= EXPEDITION_MAX_COMPANIONS) {
+      return false;
+    }
+
+    expedition.companions = [...companions, toad];
+    return true;
+  };
+
   /** Шанс успеха = база + сила роли − опасность сектора, с поправкой на раны */
   const check = (
     member: ExpeditionEventMember,
@@ -834,6 +875,7 @@ const buildEventContext = (
     heal,
     loot,
     infect,
+    join,
     log: (entry) => pushLog(expedition, entry),
     rng,
   };
@@ -855,7 +897,7 @@ const runExpeditionStep = (
     Math.random,
     onDowned,
   );
-  pickExpeditionEvent().run(ctx);
+  pickExpeditionEvent(Math.random, ctx).run(ctx);
   return ctx;
 };
 
@@ -961,6 +1003,9 @@ export const processExpeditions = (
 
         if (arrived) {
           expedition.progress = 1;
+          // Только дошедшая до сектора команда имеет шанс на удачу: если её
+          // отозвали или вытащили маяком с середины пути, поход уже не успешный.
+          expedition.reachedSector = true;
           // Поход идёт по часам, а не по тикам: если игрок был оффлайн, команда
           // развернулась в момент прибытия в сектор, а не в момент, когда игра
           // «догнала» поход. Иначе обратный путь стартовал бы только после входа
@@ -1078,7 +1123,9 @@ interface ArrivalLoot {
 
 /**
  * Считает итог похода: удачу, добычу с множителями и плату за эвакуацию.
- * Ничего не записывает в сохранение — вызывающий сам решает, когда выдавать лут.
+ * `instant` (экстренный маяк) отключает множитель удачи и добор до нормы:
+ * команда забирает ровно то, что уже добыла. Ничего не записывает в сохранение —
+ * вызывающий сам решает, когда выдавать лут.
  */
 const buildArrivalLoot = (
   expedition: Expedition,
@@ -1088,15 +1135,34 @@ const buildArrivalLoot = (
   const sector = getSectorById(expedition.sectorId);
   const forced = Boolean(expedition.forced);
   const lossFactor = forced ? FORCED_LOOT_LOSS : 0;
+  const instant = Boolean(options.instant);
+  /**
+   * Успех возможен только после того, как команда дошла до сектора и начала
+   * обратный путь. `reachedSector` появился позже старых сейвов: для них
+   * смотрим, начался ли возврат уже после прибытия в сектор.
+   */
+  const reachedSector =
+    expedition.reachedSector ??
+    (expedition.phase === "returning" &&
+      Boolean(expedition.returnStartedAt) &&
+      (expedition.returnStartedAt ?? 0) - expedition.startedAt >=
+        sector.durationHours * HOUR_MS);
 
   // 0. Удачное завершение (Часть 5.4): каждая роль команды дала шанс, бросок — за нас.
   // Удача умножает добычу и добавляет шансы на образец и Астро-кваксы.
+  // Успех невозможен без прибытия в сектор; маяк же не пересчитывает добычу,
+  // поэтому даже при удачном броске множитель к ней не применяется.
   const successChance = expedition.successChance ?? 0;
-  const success = !forced && Math.random() < Math.min(1, successChance);
-  const finishFactor = success ? EXPEDITION_GOOD_FINISH_LOOT : 1;
+  const success =
+    !forced &&
+    reachedSector &&
+    Math.random() < Math.min(1, successChance);
+  const finishFactor =
+    !instant && success ? EXPEDITION_GOOD_FINISH_LOOT : 1;
 
   // 0.1 Норма «поход выгоднее фермы»: считаем, сколько те же жабы наработали бы
   // дома за время отсутствия (путь туда + обратно) и добираем добычу до нормы.
+  // При немедленном завершении добора нет: игрок забирает только добытое.
   const awayHours =
     (Date.now() - expedition.startedAt) / HOUR_MS +
     (expedition.returnHours ?? 0);
@@ -1109,7 +1175,9 @@ const buildArrivalLoot = (
     getExpeditionSendCost(sector, expedition.team.length),
   );
   const lootValue = getLootValue(expedition.loot);
-  const floorTopUp = Math.max(0, profitFloor - lootValue * finishFactor);
+  const floorTopUp = instant
+    ? 0
+    : Math.max(0, profitFloor - lootValue * finishFactor);
 
   // 1. Добыча: при экстренной эвакуации половина остаётся в секторе
   const biomass = Math.max(
@@ -1180,6 +1248,14 @@ const completeArrival = (
   const samplesCount = arrival.loot.samples;
   /** Пропуска КОНТУРа начисляем сразу при возврате команды, а не при разборе добычи */
   const contourPasses = getContourPassReward(sector);
+  /**
+   * Попутчики, присоединившиеся в пути. Дома их ждёт биопод: если места нет,
+   * жаба не создаётся (склада жаб нет), а отчёт честно скажет об этом.
+   */
+  const pendingCompanions = expedition.companions ?? [];
+  const companionPlacement = assignToadsToScenes(pendingCompanions);
+  const companions = companionPlacement.assigned;
+  expedition.companions = [];
 
   expedition.loot = arrival.loot;
   expedition.success = arrival.success;
@@ -1201,6 +1277,17 @@ const completeArrival = (
   let downedNow = 0;
   const fresh = getGameState();
   const teamIds = new Set(expedition.team.map((member) => member.toadId));
+  /**
+   * Базовый риск похода: даже без события с плесенью команда может принести
+   * болезнь домой. Бросок делается один раз на возврат, среди живых и здоровых
+   * участников (`rollExpeditionDisease`).
+   */
+  const returningDisease = rollExpeditionDisease(
+    fresh.toads.filter((toad) => teamIds.has(toad.id)),
+  );
+  const diseaseUntil = returningDisease
+    ? Date.now() + returningDisease.disease.durationHours * HOUR_MS
+    : 0;
   const toads = fresh.toads.map((toad) => {
     if (!teamIds.has(toad.id)) {
       return toad;
@@ -1212,6 +1299,20 @@ const completeArrival = (
 
     if (hp <= 0) {
       downedNow += 1;
+    }
+
+    if (returningDisease?.toad.id === toad.id) {
+      return {
+        ...toad,
+        hp,
+        maxHp,
+        status,
+        state: {
+          ...toad.state,
+          diseaseId: getDiseaseIndex(returningDisease.disease.id),
+          diseaseUntil,
+        },
+      };
     }
 
     return { ...toad, hp, maxHp, status };
@@ -1241,17 +1342,21 @@ const completeArrival = (
     items: arrival.loot.items,
     sample: samplesCount,
   });
-  let summary = arrival.success
-    ? `Удачный поход в «${sector.name}»: ${lootText || "пусто, зато живые"}`
-    : forced
-      ? `Команда выбита в «${sector.name}» и вернулась на маяке: ${
+  let summary = forced
+    ? `Команда выбита в «${sector.name}» и вернулась на маяке: ${
+        lootText || "пусто, зато живые"
+      }`
+    : options.instant
+      ? `Экстренный маяк забрал команду из «${sector.name}»: ${
           lootText || "пусто, зато живые"
         }`
-      : `Поход в «${sector.name}» сложился неудачно: ${
-          lootText || "пусто, зато живые"
-        }`;
+      : arrival.success
+        ? `Удачный поход в «${sector.name}»: ${lootText || "пусто, зато живые"}`
+        : `Поход в «${sector.name}» сложился неудачно: ${
+            lootText || "пусто, зато живые"
+          }`;
 
-  if (arrival.success) {
+  if (arrival.success && !options.instant) {
     pushLog(expedition, {
       role: "system",
       kind: "good",
@@ -1281,8 +1386,27 @@ const completeArrival = (
   if (downedNow > 0) {
     summary += `. Выбитых жаб: ${downedNow} — ждут лечения за Кваксы`;
   }
+  if (returningDisease) {
+    const { toad, disease } = returningDisease;
+    pushLog(expedition, {
+      role: "system",
+      kind: "bad",
+      text: `🦠 на обратном пути ${toad.name} подхватила «${disease.name}» — лечить дома, в Медотсеке или курсом за Кваксы`,
+    });
+    summary += `. 🦠 ${toad.name} принесла из похода «${disease.name}»`;
+  }
   if (samplesCount > 0) {
     summary += `. В рюкзаке ${samplesCount} образц(ов) — при разборе добычи они поселятся в биоподах`;
+  }
+  if (pendingCompanions.length > 0) {
+    if (companions.length > 0) {
+      summary += `. 🐸 Попутчик(и) уже в биоподе: ${companions
+        .map((toad) => `«${toad.name}»`)
+        .join(", ")}`;
+    }
+    if (companionPlacement.rejected > 0) {
+      summary += `. 🐸 ${companionPlacement.rejected} попутчик(ов) не поместилось в биопод — постройте новый`;
+    }
   }
   summary += `. Пропуск(ов) КОНТУРа на складе: +${contourPasses} 🎫`;
   summary += `. Добыча ждёт разбора на вкладке «Походы»`;
@@ -1318,6 +1442,12 @@ const completeArrival = (
     },
     true,
   );
+
+  // Попутчиков создаём после записи статусов команды: `createToads` сам
+  // разложит их по биоподам и запишет в сохранение, не затирая команду.
+  if (companions.length > 0) {
+    createToads(companions, true);
+  }
 
   return summary;
 };

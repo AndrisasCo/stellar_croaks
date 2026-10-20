@@ -25,7 +25,14 @@ import { dissolveToads } from "../../../utils/dissolve-manager";
 import { getHousingInfo } from "../../../utils/housing";
 import { getRoomUpgrades } from "../../../backend/colony";
 import { useColony } from "../../../hooks/use-colony";
+import { useGameState } from "../../../hooks/use-game-state";
 import { useRoomPowerTab } from "../../../hooks/use-room-power-tab";
+import { isToadAwayFromEnclosure } from "../../../utils/toad-location";
+import {
+  EXPEDITION_TOAD_BUSY_REASON,
+  isToadBusyOnExpedition,
+} from "../../../utils/expedition-manager";
+import { ToadAvatar } from "../../shared/ToadAvatar";
 import { SceneStatsTab } from "./SceneStatsTab";
 import ModalTabs, { ModalTabItem } from "../../shared/ModalTabs";
 import { RoomConfig } from "../../HexMap/rooms-config";
@@ -64,11 +71,12 @@ const ToadListModal: React.FC<{
   /** Гекс карты, из которого открыли список: по нему появляется таб «Данные сектора» */
   room?: RoomConfig;
 }> = ({ sceneId, room }) => {
-  const { openModal, modals } = useModal();
+  const { openModal } = useModal();
   const { playCrunchShort, playClick } = useSoundEffects();
   const { handleFeedToads, ownedScenes, selectToad, allToads, selectedToad } =
     useToads();
   const { addNotification } = useNotifications();
+  const { expeditions = [] } = useGameState();
   const { rooms, powerGrid } = useColony();
   /**
    * Обесточенный биопод открывается на данных сектора, но список жаб остаётся живым:
@@ -132,9 +140,32 @@ const ToadListModal: React.FC<{
   const toads = React.useMemo(
     () =>
       allToads
-        .filter((toad) => toad.scene_id === scene?.id)
+        .filter(
+          (toad) =>
+            toad.scene_id === scene?.id &&
+            !isToadBusyOnExpedition(toad, expeditions),
+        )
         .sort((a, b) => b.genes.rarity - a.genes.rarity),
-    [allToads, scene?.id],
+    [allToads, scene?.id, expeditions],
+  );
+
+  /**
+   * Свои жабы в походе: место в биоподе они освободили (`scene_id`), но дом (`homeId`)
+   * помнят. Показываем их отдельной плашкой, чтобы они не пропадали из меню своего
+   * биопода до возвращения. Вместимость и кормление считаются только по жильцам (`toads`).
+   */
+  const awayToads = React.useMemo(
+    () =>
+      allToads
+        .filter((toad) =>
+          isToadAwayFromEnclosure(
+            toad,
+            scene?.id,
+            isToadBusyOnExpedition(toad, expeditions),
+          ),
+        )
+        .sort((a, b) => b.genes.rarity - a.genes.rarity),
+    [allToads, scene?.id, expeditions],
   );
 
   const {
@@ -262,8 +293,19 @@ const ToadListModal: React.FC<{
   const feedSelected = () => {
     if (selectedToads.size === 0) return;
 
+    const feedIds = Array.from(selectedToads).filter((id) => {
+      const toad = allToads.find((item) => item.id === id);
+      return Boolean(toad && !isToadBusyOnExpedition(toad, expeditions));
+    });
+
+    if (feedIds.length !== selectedToads.size) {
+      addNotification({ type: "warn", content: EXPEDITION_TOAD_BUSY_REASON });
+      setSelectedToads(new Set(feedIds));
+      return;
+    }
+
     playCrunchShort();
-    handleFeedToads(Array.from(selectedToads));
+    handleFeedToads(feedIds);
     completeAchivement("feed-one");
     setSelectedToads(new Set());
   };
@@ -275,19 +317,32 @@ const ToadListModal: React.FC<{
     if (selectedToads.size === 0) return;
 
     const state = getGameState();
+    const currentExpeditions = state.expeditions ?? [];
+    // Жабу могли отправить в поход, пока список был открыт: перенос ждёт возвращения
+    const movingIds = Array.from(selectedToads).filter((id) => {
+      const toad = state.toads.find((item) => item.id === id);
+      return Boolean(toad && !isToadBusyOnExpedition(toad, currentExpeditions));
+    });
+
+    if (movingIds.length !== selectedToads.size) {
+      addNotification({ type: "warn", content: EXPEDITION_TOAD_BUSY_REASON });
+      setSelectedToads(new Set(movingIds));
+      return;
+    }
+
     const nextScene = state.scenes.find((s) => s.id === sceneId);
     // Жильцы биопода без самих переезжающих: они как раз уходят из своих биоподов
     const residents =
       state.toads.filter(
         (t) => t.scene_id === sceneId && !selectedToads.has(t.id),
-      ).length + selectedToads.size;
+      ).length + movingIds.length;
 
     if (!nextScene || nextScene.capacity < residents) {
       addNotification({ type: "warn", content: "Данный биопод переполнен!" });
       return;
     }
 
-    updateToadsByIds(Array.from(selectedToads), {
+    updateToadsByIds(movingIds, {
       scene_id: sceneId,
       homeId: sceneId,
     });
@@ -380,11 +435,16 @@ const ToadListModal: React.FC<{
 
       {/* Сколько жаб внутри и листание биоподов: строка нужна всем вкладкам, поэтому
           остаётся над телом и не зависит от выбранного таба. */}
-      <div className="px-1 pb-3 pt-3 flex items-center gap-2">
+      <div className="px-1 pb-3 flex items-center gap-2">
         <div className="flex items-center gap-1">
           <span className="text-xs font-medium text-slate-300 [-webkit-text-fill-color:currentColor]">
             {toads.length} / {scene?.capacity ?? 0} жаб
           </span>
+          {awayToads.length > 0 && (
+            <span className="text-2xs font-medium text-amber-300 [-webkit-text-fill-color:currentColor]">
+              · 🧭 {awayToads.length} в походе
+            </span>
+          )}
         </div>
 
         <div className="flex items-center justify-center gap-2 ml-auto">
@@ -415,6 +475,36 @@ const ToadListModal: React.FC<{
                 Биопод обесточен: жабы остаются доступны, но биомассу он не
                 вырабатывает. Подключите сектор к ядру или энергосектору ⚡.
               </p>
+            </div>
+          )}
+
+          {/* Свои жабы в походе: в списке жильцов их нет (место освобождено), но дом
+              остался этим биоподом — игрок должен видеть, кто вернётся после похода. */}
+          {awayToads.length > 0 && (
+            <div className="mx-1 mb-3 rounded-xl border border-amber-500/40 bg-amber-950/25 p-2">
+              <p className="text-xs font-bold text-amber-200">
+                🧭 В походе: {awayToads.length}
+              </p>
+              <p className="mt-0.5 text-2xs leading-snug text-amber-100/70">
+                Убедитесь, что жабам будет куда вернуться
+              </p>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {awayToads.map((toad) => (
+                  <button
+                    key={toad.id}
+                    type="button"
+                    onClick={() => handleToadClick(toad)}
+                    className="flex items-center gap-1.5 rounded-lg border border-amber-400/30 bg-amber-500/10 px-1.5 py-1 text-left transition-colors hover:bg-amber-500/20"
+                    title={`${toad.name ?? "Жаба"} — в походе`}
+                  >
+                    <ToadAvatar toad={toad} size={6} />
+                    <span className="max-w-[110px] truncate text-2xs font-medium text-amber-100">
+                      {toad.name ?? "Без имени"}
+                    </span>
+                    <span className="text-2xs text-amber-300">🧭</span>
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 
@@ -536,12 +626,16 @@ const ToadListModal: React.FC<{
                 <div className="text-slate-300 text-4xl mb-3">🐸</div>
                 <p className="text-slate-300 text-sm">
                   {toads.length === 0
-                    ? "Пока нет жаб в коллекции"
+                    ? awayToads.length > 0
+                      ? "В биоподе сейчас никого нет"
+                      : "Пока нет жаб в коллекции"
                     : "Жабы не найдены"}
                 </p>
                 <p className="text-slate-500 text-xs mt-1">
                   {toads.length === 0
-                    ? "Приобретите жаб на рынке"
+                    ? awayToads.length > 0
+                      ? "Жабы этого биопода в походе — они вернутся после разбора добычи"
+                      : "Приобретите жаб на рынке"
                     : "Измените фильтры для отображения"}
                 </p>
               </div>

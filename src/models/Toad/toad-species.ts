@@ -50,6 +50,24 @@ export const toadTypeMap: Record<ToadTypes, string> = {
   [ToadTypes.diamond]: "Алмазная",
 };
 
+/**
+ * Жабы, которых можно красить пигментами: обычная (hybrid, в интерфейсе —
+ * «Смешанная») и пятнистая (camouflage). У остальных видов окрас зашит в
+ * спрайт, поэтому genes.colors на них не влияет — им нельзя менять цвет и
+ * нельзя выдавать заказы на окрас.
+ */
+export const COLORABLE_TOAD_TYPES: readonly ToadTypes[] = [
+  ToadTypes.hybrid,
+  ToadTypes.camouflage,
+];
+
+export const isColorableToadType = (
+  type: ToadTypes | null | undefined,
+): boolean =>
+  type !== null &&
+  type !== undefined &&
+  COLORABLE_TOAD_TYPES.includes(type);
+
 // Тип для способа получения
 export type ToadObtainedBy =
   | "start" // Начальная жаба

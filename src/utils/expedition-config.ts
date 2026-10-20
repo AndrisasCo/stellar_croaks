@@ -1,4 +1,5 @@
 import { Expedition, ExpeditionRole, SectorDef } from "../models/expedition";
+import { DISEASES, DiseaseDef, isToadSick } from "../models/disease";
 import { getPersonalityMultipliers, Toad } from "../models/Toad";
 import { Items } from "../models/user";
 import {
@@ -19,6 +20,12 @@ import { getToadHomeId } from "./toad-location";
 
 /** Сколько жаб влезает в команду (5 ролей) */
 export const EXPEDITION_TEAM_SIZE = 5;
+/**
+ * Сколько случайных жаб может присоединиться к команде за один поход.
+ * Событие «попутчик» не должно превращать рейд в бесконечный набор жабы:
+ * один поход — один новый житель колонии.
+ */
+export const EXPEDITION_MAX_COMPANIONS = 1;
 /** Максимум команд (1 стартовая + постройка «Диспетчерская») */
 export const EXPEDITION_MAX_TEAMS = 3;
 /** Стоимость постройки «Диспетчерская» за уровень (2-я и 3-я команды), Кваксы */
@@ -125,6 +132,22 @@ export const EXPEDITION_HP_PER_RARITY = 3;
 export const HP_REGEN_PER_HOUR = 1;
 /** Минимум урона за одно провалившееся событие */
 export const EXPEDITION_MIN_DAMAGE = 6;
+/**
+ * Глобальный множитель урона событий похода.
+ *
+ * Опасность сектора (`SectorDef.dangerMultiplier`) задаёт относительную сложность,
+ * а этот коэффициент — общий тон походов: после балансировки рейды стали заметно
+ * агрессивнее, поэтому весь урон событий поднят на 20%.
+ */
+export const EXPEDITION_DAMAGE_MULTIPLIER = 1.2;
+/**
+ * Базовый шанс, что по возвращении один живой участник принесёт кибер-болезнь.
+ *
+ * Это именно «принести с собой»: событие «кратер с плесенью» может заразить жабу
+ * прямо в рейде, но даже без него команда возвращается с риском 20%. Болезнь
+ * выбирается из таблицы `DISEASES`, а лечится дома, в Медотсеке или курсом.
+ */
+export const EXPEDITION_BASE_DISEASE_CHANCE = 0.2;
 /** Максимальный HP (страховка от абсурдных значений) */
 export const HP_SOFT_CAP = 400;
 
@@ -156,6 +179,43 @@ export const getToadHp = (toad: Toad): number => {
     return maxHp;
   }
   return Math.max(0, Math.min(maxHp, toad.hp));
+};
+
+/** Кого и чем наградил поход на обратном пути */
+export interface ExpeditionReturnDisease {
+  toad: Toad;
+  disease: DiseaseDef;
+}
+
+/**
+ * Бросок базовой болезни на возврате команды.
+ *
+ * Берём только живых и ещё не болеющих жаб: поход не должен перезаписывать
+ * активную болезнь или заражать выбитую жабу. Сначала бросается общий шанс
+ * `EXPEDITION_BASE_DISEASE_CHANCE`, затем равновероятно выбираются жаба и болезнь.
+ * Принимает `rng`/`now` для проверок — в игре используются `Math.random`/`Date.now`.
+ */
+export const rollExpeditionDisease = (
+  team: Toad[],
+  rng: () => number = Math.random,
+  now = Date.now(),
+): ExpeditionReturnDisease | null => {
+  if (rng() >= EXPEDITION_BASE_DISEASE_CHANCE) {
+    return null;
+  }
+
+  const candidates = team.filter(
+    (toad) => getToadHp(toad) > 0 && !isToadSick(toad, now),
+  );
+
+  if (candidates.length === 0) {
+    return null;
+  }
+
+  return {
+    toad: candidates[Math.floor(rng() * candidates.length)],
+    disease: DISEASES[Math.floor(rng() * DISEASES.length)],
+  };
 };
 
 /** Жаба выбыла из игры: не производит, не размножается, не идёт в поход */
@@ -230,6 +290,23 @@ export const TANK_DAMAGE_REDIRECT = 0.6;
 export const getSectorLootFactor = (sector: SectorDef): number =>
   sector.lootMultiplier * (1 + (sector.depth - 1) * 0.08);
 
+/** Итоговый множитель урона событий: опасность сектора × общий тон походов */
+export const getSectorDamageMultiplier = (sector: SectorDef): number =>
+  sector.dangerMultiplier * EXPEDITION_DAMAGE_MULTIPLIER;
+
+/**
+ * Сколько Астро-кваксов приносит одна находка в хорошем событии.
+ *
+ * База — 1 💎, и ещё +1 💎 за каждые `EXPEDITION_ASTRO_DEPTH_STEP` уровней глубины:
+ * ближний Периметр платит 1, середина (s4–s6) — 2, дальние секторы (s7–s8) — 3.
+ * Так походы остаются основным «честным» источником астро: награда растёт вместе
+ * с риском и временем пути, а не с одной только удачей на витрине заказов.
+ */
+export const EXPEDITION_ASTRO_DEPTH_STEP = 3;
+
+export const getExpeditionAstroDrop = (sector: SectorDef): number =>
+  1 + Math.floor((Math.max(1, sector.depth) - 1) / EXPEDITION_ASTRO_DEPTH_STEP);
+
 /**
  * Сколько пропусков КОНТУРа приносит завершённый поход в сектор.
  *
@@ -268,6 +345,15 @@ export const EXPEDITION_PROFIT_MARGIN = 1.5;
 export const EXPEDITION_ITEM_VALUE = 6;
 /** Оценка образца (живой жабы из сектора) в Кваксах-эквиваленте */
 export const EXPEDITION_SAMPLE_VALUE = 40;
+/**
+ * Оценка Астро-квакса в Кваксах-эквиваленте.
+ *
+ * Раньше астро оценивался как половина образца (20 🔷), из-за чего каждая находка
+ * 💎 почти целиком вычиталась из добора добычи до нормы и поход «за астро» платил
+ * меньше Кваксов. Астро — премиальная валюта, но не в 20 раз дороже Квакса:
+ * лутбокс стоит 10 💎, поэтому для нормы достаточно курса 1 💎 ≈ 5 🔷.
+ */
+export const EXPEDITION_ASTRO_VALUE = 5;
 
 /** Вклад роли в «юнитах»: 1 юнит = +20% к шансу удачного завершения */
 export const getRoleSuccessUnits = (power: number): number =>
@@ -331,7 +417,7 @@ export const getLootValue = (loot: {
   return (
     Math.max(0, loot.biomass || 0) * 0.5 +
     Math.max(0, loot.tokens || 0) +
-    (Math.max(0, loot.astro_quax || 0) * EXPEDITION_SAMPLE_VALUE) / 2 +
+    Math.max(0, loot.astro_quax || 0) * EXPEDITION_ASTRO_VALUE +
     items * EXPEDITION_ITEM_VALUE +
     Math.max(0, loot.samples || 0) * EXPEDITION_SAMPLE_VALUE
   );
@@ -474,8 +560,14 @@ export const FORCED_EXTRACTION_FEE_PER_TOAD = 6;
 export const FORCED_LOOT_LOSS = 0.5;
 /** Шанс найти образец в хорошем событии */
 export const EXPEDITION_SAMPLE_CHANCE = 0.08;
-/** Шанс найти Астро-кваксы в хорошем событии */
-export const EXPEDITION_ASTRO_CHANCE = 0.12;
+/**
+ * Шанс найти Астро-кваксы в хорошем событии.
+ *
+ * 18% против прежних 12%: вместе с ростом находки по глубине поход даёт
+ * в среднем ~0,7 💎 в ближних секторах и ~2 💎 в дальних. Иначе витрина элитных
+ * заказов остаётся единственным источником астро и обесценивает разведку.
+ */
+export const EXPEDITION_ASTRO_CHANCE = 0.18;
 
 // === UI-хелперы ===
 

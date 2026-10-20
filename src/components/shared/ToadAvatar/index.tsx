@@ -1,5 +1,8 @@
 import { Toad } from "../../../models/Toad";
-import { ToadTypes } from "../../../models/Toad/toad-species";
+import {
+  ToadTypes,
+  isColorableToadType,
+} from "../../../models/Toad/toad-species";
 import { makeColorWhiter } from "../../ToadCanvas/utils";
 
 export const ToadAvatar = (props: {
@@ -12,7 +15,7 @@ export const ToadAvatar = (props: {
     ? toad.type
     : ToadTypes.hybrid;
 
-  const isColoredToad = [ToadTypes.hybrid, ToadTypes.camouflage].includes(type);
+  const isColoredToad = isColorableToadType(type);
   const imageSrc = isColoredToad ? `/bg/${type}.webp` : `/sprites/${type}.webp`;
 
   return (

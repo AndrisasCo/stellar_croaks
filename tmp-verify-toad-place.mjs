@@ -14,6 +14,8 @@
  *      у него есть (`createToads`), а новая жаба в биоподе получает дом по месту;
  *   6) миграция старых сейвов: `scene_id` становится домом (`homeId`), жабы в секторах
  *      освобождают биоподы, «складские» жабы расселяются по биоподам.
+ *   7) жаба в походе (`status: "out"`) не жилец биопода, но если `homeId` указывает на
+ *      него, меню биопода показывает её отдельной плашкой «В походе».
  *
  * Запуск: node tmp-verify-toad-place.mjs
  */
@@ -170,7 +172,7 @@ const colony = bundle("src/backend/colony.ts", "colony");
 const housing = bundle("src/utils/housing.ts", "housing");
 const place = bundle("src/utils/toad-location.ts", "toad-location");
 const colonyBuild = bundle("src/components/HexMap/colony-build.ts", "colony-build");
-const constants = bundle("src/utils/constants.ts", "constants");
+const constants = bundle("src/utils/constants.tsx", "constants");
 const toadLists = bundle("src/components/HexMap/room-toad-lists.ts", "room-toad-lists");
 
 const NEST = constants.NEST_ROOM_ID;
@@ -411,6 +413,37 @@ check(
   "после миграции репродуктор показывает свою жабу",
   lists()[NEST].map((item) => item.id).join(","),
   "2",
+);
+
+console.log("\n[8] Жабы в походе остаются в меню своего биопода");
+console.log("─".repeat(60));
+const awayToad = (over = {}) =>
+  toad({ scene_id: null, homeId: 1, status: "out", ...over });
+check(
+  "своя жаба в походе видна в биоподе",
+  place.isToadAwayFromEnclosure(awayToad({ id: 10 }), 1),
+  true,
+);
+check(
+  "старый сейв: место в походе ещё указывает на биопод",
+  place.isToadAwayFromEnclosure(
+    awayToad({ id: 11, scene_id: 1, homeId: undefined }),
+    1,
+  ),
+  true,
+);
+check(
+  "чужая жаба в походе не попадает в этот биопод",
+  place.isToadAwayFromEnclosure(awayToad({ id: 12, homeId: 2 }), 1),
+  false,
+);
+check(
+  "жаба дома — не «в походе»",
+  place.isToadAwayFromEnclosure(
+    toad({ id: 13, scene_id: 1, homeId: 1, status: "ok" }),
+    1,
+  ),
+  false,
 );
 
 console.log("\n" + "=".repeat(60));

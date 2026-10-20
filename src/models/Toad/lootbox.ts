@@ -281,8 +281,8 @@ const LOOTBOX_ROLL_ORDER: LootboxRarity[] = [
 ];
 
 /** Редкость по базовым шансам, без учёта гарантий */
-const rollLootboxRarity = (): LootboxRarity => {
-  const percent = Math.random() * 100; // [0, 100)
+const rollLootboxRarity = (rng: () => number = Math.random): LootboxRarity => {
+  const percent = rng() * 100; // [0, 100)
   let cumulative = 0;
 
   for (const rarity of LOOTBOX_ROLL_ORDER) {
@@ -333,11 +333,64 @@ const TIER_GENE_RARITY: Record<LootboxRarity, number> = {
   [LootboxRarity.legendary]: 15,
 };
 
-const findToadTemplate = (rarity: LootboxRarity) => {
+const findToadTemplate = (
+  rarity: LootboxRarity,
+  rng: () => number = Math.random,
+) => {
   const group = UNIQUE_TOADS_BY_RARITY[rarity];
-  const roll = Math.floor(Math.random() * group.length);
+  const roll = Math.floor(rng() * group.length);
 
   return group[roll];
+};
+
+/** Собирает жабу выбранной редкости по шаблону лутбокса */
+const buildLootboxToad = (
+  rarity: LootboxRarity,
+  sceneId: number,
+  rng: () => number,
+): Toad => {
+  const template = findToadTemplate(rarity, rng);
+
+  // Генерация уникального ID
+  const id = Date.now() + Math.floor(rng() * 1000);
+
+  // Случайный пол
+  const sex = rng() > 0.5 ? "male" : "female";
+
+  return {
+    id,
+    name:
+      template.name || `Таинственная жаба ${Math.floor(rng() * 1000)}`,
+    type: template.type as ToadTypes,
+    generation: 1,
+    sex,
+    stage: "adult",
+    scene_id: sceneId,
+    homeId: sceneId,
+    created_at: new Date().toISOString(),
+    parents: null,
+    state: {
+      hunger: 30 + Math.floor(rng() * 20),
+      genetic_fault: 0,
+    },
+    pregnancy: null,
+    genes: {
+      colors: template.genes?.colors
+        ? [
+            varyColor(template.genes?.colors[0]),
+            varyColor(template.genes?.colors[1]),
+          ]
+        : ["#5D8C59", "#6B8C42"],
+      pattern: template.genes?.pattern || "smooth",
+      weight: template.genes?.weight || 18 + Math.floor(rng() * 8),
+      speed: template.genes?.speed || 0.3 + rng() * 0.4,
+      rarity:
+        Math.round(TIER_GENE_RARITY[rarity] * (0.9 + rng() * 0.2) * 10) / 10,
+      hungerRate: template.genes?.hungerRate || 0.8 + rng() * 0.6,
+      fertility: template.genes?.fertility || 0.8 + rng() * 0.8,
+      personality: template.genes?.personality || null,
+    },
+  };
 };
 
 // Основная функция генерации жабы из лутбокса
@@ -353,51 +406,31 @@ export const generateLootboxToad = (
   rarity: LootboxRarity;
 } => {
   const rarity = getToadRarity();
-  const template = findToadTemplate(rarity);
 
-  // Генерация уникального ID
-  const id = Date.now() + Math.floor(Math.random() * 1000);
-
-  // Случайный пол
-  const sex = Math.random() > 0.5 ? "male" : "female";
-
-  // Базовые характеристики
-  const baseToad: Toad = {
-    id,
-    name:
-      template.name || `Таинственная жаба ${Math.floor(Math.random() * 1000)}`,
-    type: template.type as ToadTypes,
-    generation: 1,
-    sex,
-    stage: "adult",
-    scene_id: sceneId,
-    homeId: sceneId,
-    created_at: new Date().toISOString(),
-    parents: null,
-    state: {
-      hunger: 30 + Math.floor(Math.random() * 20),
-      genetic_fault: 0,
-    },
-    pregnancy: null,
-    genes: {
-      colors: template.genes?.colors
-        ? [
-            varyColor(template.genes?.colors[0]),
-            varyColor(template.genes?.colors[1]),
-          ]
-        : ["#5D8C59", "#6B8C42"],
-      pattern: template.genes?.pattern || "smooth",
-      weight: template.genes?.weight || 18 + Math.floor(Math.random() * 8),
-      speed: template.genes?.speed || 0.3 + Math.random() * 0.4,
-      rarity:
-        Math.round(
-          TIER_GENE_RARITY[rarity] * (0.9 + Math.random() * 0.2) * 10,
-        ) / 10,
-      hungerRate: template.genes?.hungerRate || 0.8 + Math.random() * 0.6,
-      fertility: template.genes?.fertility || 0.8 + Math.random() * 0.8,
-      personality: template.genes?.personality || null,
-    },
+  return {
+    baseToad: buildLootboxToad(rarity, sceneId, Math.random),
+    rarity,
   };
+};
 
-  return { baseToad, rarity };
+/**
+ * Случайная жаба «из лутбокса» для событий вроде попутчика в походе.
+ *
+ * Редкость бросается по базовым шансам, БЕЗ счётчика гарантий: случайная находка
+ * не должна тратить pity игрока и приближать его гарантированную редкую жабу.
+ * `rng` можно подменить в проверках; в игре используется `Math.random`.
+ */
+export const generateRandomLootboxToad = (
+  sceneId = 1,
+  rng: () => number = Math.random,
+): {
+  baseToad: Toad;
+  rarity: LootboxRarity;
+} => {
+  const rarity = rollLootboxRarity(rng);
+
+  return {
+    baseToad: buildLootboxToad(rarity, sceneId, rng),
+    rarity,
+  };
 };

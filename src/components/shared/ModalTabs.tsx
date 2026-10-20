@@ -36,7 +36,7 @@ export function ModalTabs<T extends string>({
   const { playClick } = useSoundEffects();
 
   return (
-    <div className="flex border-b border-slate-700/60">
+    <div className="mb-4 flex border-b border-slate-700/60">
       {tabs.map((tab) => {
         const disabled = tab.disabled === true;
 

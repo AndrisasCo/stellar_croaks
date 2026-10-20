@@ -1,14 +1,18 @@
 import { Expedition, ExpeditionRole, SectorDef } from "../models/expedition";
-import { Toad } from "../models/Toad";
+import { Toad, getToadTypeLabel } from "../models/Toad";
+import { generateRandomLootboxToad } from "../models/Toad/lootbox";
 import { Items } from "../models/user";
 import {
   EXPEDITION_ASTRO_CHANCE,
+  EXPEDITION_MAX_COMPANIONS,
   EXPEDITION_MIN_DAMAGE,
   EXPEDITION_SAMPLE_CHANCE,
   EXPEDITION_STEP_BIOMASS,
   EXPEDITION_STEP_TOKENS,
   ROLE_CONFIG,
+  getExpeditionAstroDrop,
   getRolePower,
+  getSectorDamageMultiplier,
   getSectorLootFactor,
 } from "./expedition-config";
 
@@ -56,6 +60,12 @@ export interface ExpeditionEventContext {
   loot: (delta: ExpeditionLootDelta) => void;
   /** Заразить жабу кибер-болезнью (возвращает название болезни) */
   infect: (member: ExpeditionEventMember) => string | null;
+  /**
+   * Присоединить случайную жабу к походу. Жаба ещё не в команде ролей: она идёт
+   * следом, а дома Manager поселит её в свободный биопод. `false` — попутчик
+   * уже есть (лимит `EXPEDITION_MAX_COMPANIONS`).
+   */
+  join: (toad: Partial<Toad>) => boolean;
   /** Строка в чат похода */
   log: (entry: {
     role?: ExpeditionRole | "system";
@@ -72,17 +82,22 @@ export interface ExpeditionEventDef {
   id: string;
   /** Роль, без которой событие не выпадает (не задано — общее событие) */
   role?: ExpeditionRole;
+  /**
+   * Условие попадания в пул. Нужно событиям, которые нельзя повторять в одном
+   * походе (например, попутчик: второй такой жабы за рейд не будет).
+   */
+  available?: (ctx: ExpeditionEventContext) => boolean;
   run: (ctx: ExpeditionEventContext) => void;
 }
 
-/** Урон события с учётом опасности сектора */
+/** Урон события с учётом опасности сектора и общего множителя походов */
 export const scaleDamage = (
   ctx: ExpeditionEventContext,
   base: number,
 ): number =>
   Math.max(
     EXPEDITION_MIN_DAMAGE,
-    Math.round(base * ctx.sector.dangerMultiplier),
+    Math.round(base * getSectorDamageMultiplier(ctx.sector)),
   );
 
 /** Базовая добыча «за шаг пути»: биомасса и Кваксы с разбросом */
@@ -135,7 +150,9 @@ export const randomPigment = (rng: () => number): Items | undefined => {
 export const rareLoot = (ctx: ExpeditionEventContext): ExpeditionLootDelta => {
   const delta: ExpeditionLootDelta = {};
   if (ctx.rng() < EXPEDITION_ASTRO_CHANCE) {
-    delta.astro_quax = 1;
+    // Дальние секторы платят больше: находка масштабируется глубиной, а не
+    // одинаковой единицей для стартового шлюза и «Дальнего Периметра».
+    delta.astro_quax = getExpeditionAstroDrop(ctx.sector);
   }
   if (ctx.rng() < EXPEDITION_SAMPLE_CHANCE) {
     delta.sample = 1;
@@ -205,6 +222,31 @@ export const EXPEDITION_EVENTS: ExpeditionEventDef[] = [
       if (ctx.rng() < 0.4) {
         ctx.loot({ biomass: Math.round(2 * getSectorLootFactor(ctx.sector)) });
       }
+    },
+  },
+  {
+    id: "stowaway_toad",
+    available: (ctx) =>
+      (ctx.expedition.companions?.length ?? 0) < EXPEDITION_MAX_COMPANIONS,
+    run: (ctx) => {
+      const { baseToad } = generateRandomLootboxToad(
+        ctx.sector.id,
+        ctx.rng,
+      );
+      // id выдаст `createToads` на возврате: у события нет своего места в сейве,
+      // а сгенерированный id мог бы совпасть у двух завершившихся походов.
+      const { id: _generatedId, ...companion } = baseToad;
+
+      if (!ctx.join(companion)) {
+        return;
+      }
+
+      ctx.log({
+        kind: "good",
+        text: `к команде прибилась случайная жаба: ${getToadTypeLabel(
+          baseToad.type,
+        ).toLowerCase()} «${baseToad.name}» — вылезла из вентиляции и увязалась следом. Дома поселим её в биопод`,
+      });
     },
   },
   {
@@ -609,9 +651,19 @@ export const EXPEDITION_EVENTS: ExpeditionEventDef[] = [
  * Случайное событие из пула. Состав команды пул не фильтрует: событие роли, которую
  * никто не занял (или её жабу уже выбили), всё равно выпадает — и всегда проваливается
  * уроном случайной жабе (`failMissingRole`). Так пустые роли стоят команде дороже.
+ * Если передан `ctx`, из пула убираются события с невыполненным `available`
+ * (например, второй попутчик за поход).
  */
 export const pickExpeditionEvent = (
   rng: () => number = Math.random,
+  ctx?: ExpeditionEventContext,
 ): ExpeditionEventDef => {
-  return EXPEDITION_EVENTS[Math.floor(rng() * EXPEDITION_EVENTS.length)];
+  const pool = ctx
+    ? EXPEDITION_EVENTS.filter((event) => event.available?.(ctx) ?? true)
+    : EXPEDITION_EVENTS;
+
+  return (
+    pool[Math.floor(rng() * pool.length)] ??
+    EXPEDITION_EVENTS[Math.floor(rng() * EXPEDITION_EVENTS.length)]
+  );
 };
