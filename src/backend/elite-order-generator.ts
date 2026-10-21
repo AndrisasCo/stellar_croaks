@@ -290,7 +290,7 @@ const buildColorOrder = (
     // «Приблизительно» — часть условия: игрок должен понимать, что ищется не
     // конкретный HEX, а группа оттенков. Красить можно только обычную и
     // пятнистую жабу, поэтому заказ не должен приниматься за другие виды.
-    description: `Основной окрас — ${config.label.toLowerCase()} (приблизительная группа оттенков; только у обычной (смешанной) или пятнистой жабы)`,
+    description: `Основной окрас — ${config.label.toLowerCase()} `,
     requirement: (toad) =>
       isColorableToadType(toad.type) && toadMatchesColorGroup(toad, group),
     reward,

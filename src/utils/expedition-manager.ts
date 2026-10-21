@@ -5,9 +5,11 @@ import {
   ExpeditionRole,
   ExpeditionStats,
   SectorDef,
-  SECTORS,
   createEmptyLoot,
+  getPreviousSector,
   getSectorById,
+  isPreviousSectorUnlocked,
+  isSectorCompleted,
   isSectorUnlocked,
   normalizeExpeditionStats,
 } from "../models/expedition";
@@ -23,6 +25,17 @@ import {
 } from "../backend/achivements-manager";
 import { getIncubatingToadIds } from "./dissolve-manager";
 import { getToadDisease, infectToad } from "./disease-manager";
+import {
+  getActiveExpeditions,
+  getExpeditionById,
+  getExpeditions,
+  getRoomExpeditions,
+  getToadExpedition,
+  isExpeditionActive,
+  isExpeditionFromRoom,
+  isToadBusyOnExpedition,
+  isToadOnExpedition,
+} from "./expedition-status";
 import { generateRandomHexColor } from "./randomize-toad-characteristics";
 import { assignToadsToScenes } from "./housing";
 import {
@@ -31,8 +44,24 @@ import {
   getStorageCapacityInfo,
 } from "./storage";
 import { getToadHomeId } from "./toad-location";
+
+// Статус походов живёт в отдельном модуле без побочных эффектов, чтобы карта колонии
+// могла проверять занятость жаб, не импортируя менеджер походов (и не замыкая цикл
+// модулей через `utils/storage.ts`). Реэкспорт сохраняет прежний API менеджера.
+export {
+  getActiveExpeditions,
+  getExpeditionById,
+  getExpeditions,
+  getRoomExpeditions,
+  getToadExpedition,
+  isExpeditionActive,
+  isExpeditionFromRoom,
+  isToadBusyOnExpedition,
+  isToadOnExpedition,
+} from "./expedition-status";
 import {
   EXTRACTION_ASTRO_COST,
+  EXPEDITION_ARCHIVE_LIMIT,
   EXPEDITION_BASE_EVENT_CHANCE,
   EXPEDITION_DANGER_CHANCE_PENALTY,
   EXPEDITION_EVENT_PROGRESS_STEP,
@@ -117,62 +146,8 @@ const clamp = (value: number, min: number, max: number): number =>
 
 // === Чтение состояния ===
 
-export const getExpeditions = (): Expedition[] =>
-  getGameState().expeditions ?? [];
-
-/**
- * Поход ещё в работе. Завершённый (`completed`) поход ждёт разбора добычи на вкладке
- * «Походы»: команда уже дома, но жабы ещё заняты и новую команду не ограничивают.
- */
-export const isExpeditionActive = (expedition: Expedition): boolean =>
-  expedition.phase !== "completed";
-
-/** Активные походы: только они считаются лимитом «Диспетчерской» */
-export const getActiveExpeditions = (): Expedition[] =>
-  getExpeditions().filter(isExpeditionActive);
-
 export const getExpeditionStats = (): ExpeditionStats =>
   normalizeExpeditionStats(getGameState().expeditionStats);
-
-export const getExpeditionById = (id: string): Expedition | undefined =>
-  getExpeditions().find((expedition) => expedition.id === id);
-
-/**
- * Поход ушёл из этой «Разведки»?
- *
- * Сравниваем id гекса, канонический id постройки и старый числовой `Scene.id`:
- * разные сейвы помнят контур по-разному. Сводка «Все походы» использует это, чтобы
- * открыть модалку именно того контура, из которого ушла команда.
- */
-export const isExpeditionFromRoom = (
-  expedition: Expedition,
-  room: { id: string; slotId?: string; sceneId?: number | null },
-): boolean => {
-  const origin = expedition.originRoomId;
-
-  if (origin == null) {
-    return false;
-  }
-
-  return (
-    origin === room.id || origin === room.slotId || origin === room.sceneId
-  );
-};
-
-/** Поход, в котором участвует жаба (или undefined) */
-export const getToadExpedition = (
-  toadId: number,
-  expeditions: Expedition[] = getExpeditions(),
-): Expedition | undefined =>
-  expeditions.find((expedition) =>
-    expedition.team.some((member) => member.toadId === toadId),
-  );
-
-/** Жаба сейчас в походе */
-export const isToadOnExpedition = (
-  toadId: number,
-  expeditions: Expedition[] = getExpeditions(),
-): boolean => Boolean(getToadExpedition(toadId, expeditions));
 
 /**
  * Почему жаба в походе недоступна для обычных действий — одна подпись на весь интерфейс.
@@ -181,17 +156,6 @@ export const isToadOnExpedition = (
  */
 export const EXPEDITION_TOAD_BUSY_REASON =
   "Жаба в походе: действия станут доступны после её возвращения и разбора добычи.";
-
-/**
- * Жаба занята походом: она либо ещё в пути (`status: "out"`), либо уже вернулась,
- * но команда ждёт разбора добычи (статус снят, а запись похода ещё держит её в команде).
- * Для всех действий «вне похода» проверяем именно это, а не только статус.
- */
-export const isToadBusyOnExpedition = (
-  toad: Pick<Toad, "id" | "status">,
-  expeditions: Expedition[] = getExpeditions(),
-): boolean =>
-  toad.status === "out" || isToadOnExpedition(toad.id, expeditions);
 
 /** Сколько команд может быть одновременно (Диспетчерская) */
 export const getTeamLimit = (): number =>
@@ -256,13 +220,21 @@ export const unlockSector = (sectorId: number): ExpeditionActionResult => {
 
   // КОНТУР открывается по порядку: нельзя перепрыгнуть закрытый сектор,
   // даже если пропусков хватает на несколько уровней вперёд.
-  const sectorIndex = SECTORS.findIndex((item) => item.id === sector.id);
-  const previous = sectorIndex > 0 ? SECTORS[sectorIndex - 1] : undefined;
+  const previous = getPreviousSector(sector);
 
-  if (previous && !isSectorUnlocked(previous, stats)) {
+  if (!isPreviousSectorUnlocked(sector, stats)) {
     return {
       success: false,
-      message: `Сначала откройте «${previous.name}»`,
+      message: `Сначала откройте «${previous?.name ?? "предыдущий сектор"}»`,
+    };
+  }
+
+  // Открыть недостаточно: предыдущую глубину нужно ещё и пройти хотя бы раз.
+  // Иначе покупка пропусков превращалась бы в перепрыгивание уровней.
+  if (previous && !isSectorCompleted(previous, stats)) {
+    return {
+      success: false,
+      message: `Сначала пройдите «${previous.name}»: отправьте команду и дождитесь возвращения`,
     };
   }
 
@@ -306,7 +278,8 @@ export const unlockSector = (sectorId: number): ExpeditionActionResult => {
  * похода. Уходя, жаба освобождает место в секторе (`scene_id` снова становится
  * биоподом): она в походе, а не в ⚡-секторе или «Разведке» — двух мест сразу не бывает.
  * После разбора добычи жаба возвращается в «Разведку», откуда ушла команда
- * (`originRoomId`).
+ * (`originRoomId`). Пока из этого контура уже есть поход (в пути или ждёт разбора),
+ * новую команду не отправляем; поход из другой «Разведки» этому не мешает.
  */
 export const startExpedition = (
   sectorId: number,
@@ -337,16 +310,44 @@ export const startExpedition = (
   }
 
   const expeditions = getExpeditions();
-  const limit = getTeamLimit();
-  const activeCount = expeditions.filter(isExpeditionActive).length;
-  if (activeCount >= limit) {
-    return {
-      success: false,
-      message:
-        limit === 1
-          ? "Команда уже в походе. Постройте «Диспетчерскую» для второй."
-          : `Все ${limit} команды уже в походах`,
-    };
+  /**
+   * Лимит походов считается по контуру: пока из этой «Разведки» никто не ушёл,
+   * команду можно отправить, даже если поход из другой «Разведки» уже в пути.
+   * Завершённый поход тоже держит контур: его команда ещё не разобрана.
+   */
+  if (originRoomId != null && originRoomId !== "") {
+    const numericOrigin =
+      typeof originRoomId === "number" ? originRoomId : Number(originRoomId);
+    const originExpeditions = getRoomExpeditions(expeditions, {
+      id: String(originRoomId),
+      sceneId: Number.isFinite(numericOrigin) ? numericOrigin : undefined,
+    });
+
+    if (originExpeditions.length > 0) {
+      const hasCompleted = originExpeditions.some(
+        (expedition) => expedition.phase === "completed",
+      );
+
+      return {
+        success: false,
+        message: hasCompleted
+          ? "В этом КОНТУРе ждёт разбора добыча: завершите поход, чтобы отправить новую команду."
+          : "Из этого КОНТУРа уже ушёл поход: дождитесь возврата и разбора добычи.",
+      };
+    }
+  } else {
+    const limit = getTeamLimit();
+    const activeCount = expeditions.filter(isExpeditionActive).length;
+
+    if (activeCount >= limit) {
+      return {
+        success: false,
+        message:
+          limit === 1
+            ? "Команда уже в походе. Постройте «Диспетчерскую» для второй."
+            : `Все ${limit} команды уже в походах`,
+      };
+    }
   }
 
   const seen = new Set<number>();
@@ -1149,6 +1150,24 @@ interface ArrivalLoot {
 }
 
 /**
+ * Дошла ли команда до сектора. `reachedSector` появился позже старых сейвов:
+ * для них смотрим, начался ли возврат уже после прибытия в сектор. От этого
+ * зависят и удача, и зачёт сектора как пройденного: отзыв с середины пути
+ * или маяк до прибытия глубину не проходят.
+ */
+const hasReachedSector = (expedition: Expedition): boolean => {
+  const sector = getSectorById(expedition.sectorId);
+
+  return (
+    expedition.reachedSector ??
+    (expedition.phase === "returning" &&
+      Boolean(expedition.returnStartedAt) &&
+      (expedition.returnStartedAt ?? 0) - expedition.startedAt >=
+        sector.durationHours * HOUR_MS)
+  );
+};
+
+/**
  * Считает итог похода: удачу, добычу с множителями и плату за эвакуацию.
  * `instant` (экстренный маяк) отключает множитель удачи и добор до нормы:
  * команда забирает ровно то, что уже добыла. Ничего не записывает в сохранение —
@@ -1163,17 +1182,8 @@ const buildArrivalLoot = (
   const forced = Boolean(expedition.forced);
   const lossFactor = forced ? FORCED_LOOT_LOSS : 0;
   const instant = Boolean(options.instant);
-  /**
-   * Успех возможен только после того, как команда дошла до сектора и начала
-   * обратный путь. `reachedSector` появился позже старых сейвов: для них
-   * смотрим, начался ли возврат уже после прибытия в сектор.
-   */
-  const reachedSector =
-    expedition.reachedSector ??
-    (expedition.phase === "returning" &&
-      Boolean(expedition.returnStartedAt) &&
-      (expedition.returnStartedAt ?? 0) - expedition.startedAt >=
-        sector.durationHours * HOUR_MS);
+  /** Успех возможен только после того, как команда дошла до сектора */
+  const reachedSector = hasReachedSector(expedition);
 
   // 0. Удачное завершение (Часть 5.4): каждая роль команды дала шанс, бросок — за нас.
   // Удача умножает добычу и добавляет шансы на образец и Астро-кваксы.
@@ -1269,12 +1279,21 @@ const completeArrival = (
   const state = getGameState();
   const sector = getSectorById(expedition.sectorId);
   const forced = Boolean(expedition.forced);
+  /** Считаем до смены фазы: отзыв с пути сектор не засчитывает */
+  const reachedSector = hasReachedSector(expedition);
   const rawBiomass = expedition.loot.biomass;
   const rawTokens = expedition.loot.tokens;
   const arrival = buildArrivalLoot(expedition, state, options);
   const samplesCount = arrival.loot.samples;
-  /** Пропуска КОНТУРа начисляем сразу при возврате команды, а не при разборе добычи */
-  const contourPasses = getContourPassReward(sector);
+  /**
+   * Пропуска КОНТУРа начисляем сразу при возврате команды, а не при разборе
+   * добычи. Только за удачный поход: провал не должен оплачиваться пропусками,
+   * иначе следующую глубину можно было бы открывать, вообще не доводя дело
+   * до конца.
+   */
+  const contourPasses = arrival.success
+    ? getContourPassReward(sector)
+    : 0;
   /**
    * Попутчики, присоединившиеся в пути. Дома их ждёт биопод: если места нет,
    * жаба не создаётся (склада жаб нет), а отчёт честно скажет об этом.
@@ -1435,7 +1454,9 @@ const completeArrival = (
       summary += `. 🐸 ${companionPlacement.rejected} попутчик(ов) не поместилось в биопод — постройте новый`;
     }
   }
-  summary += `. Пропуск(ов) КОНТУРа на складе: +${contourPasses} 🎫`;
+  summary += arrival.success
+    ? `. Пропуск(ов) КОНТУРа на складе: +${contourPasses} 🎫`
+    : `. Пропуск КОНТУРа не начислен: поход сложился неудачно`;
   summary += `. Добыча ждёт разбора на вкладке «Походы»`;
 
   pushLog(expedition, {
@@ -1448,6 +1469,14 @@ const completeArrival = (
     0,
     Math.floor(fresh.user.storage?.[Items.contourPass] ?? 0),
   );
+  /**
+   * Сектор засчитывается пройденным, только если команда действительно дошла
+   * до него и вернулась. Отзыв с середины пути и маяк до прибытия не в счёт:
+   * иначе следующую глубину можно было бы открыть, даже не увидев текущую.
+   */
+  const completedSectors = reachedSector
+    ? Array.from(new Set([...(stats.completedSectors ?? []), sector.id]))
+    : (stats.completedSectors ?? []);
 
   updateGameState(
     {
@@ -1457,6 +1486,7 @@ const completeArrival = (
         completed: stats.completed + 1,
         bestDepth: Math.max(stats.bestDepth, sector.depth),
         downed: stats.downed + downedNow,
+        completedSectors,
       },
       expeditions,
       user: {
@@ -1680,7 +1710,15 @@ export const finishExpedition = (
   const remaining = getExpeditions().filter(
     (item) => item.id !== expedition.id,
   );
-  updateGameState({ expeditions: remaining }, true);
+  /**
+   * Разобранный поход уходит в архив: карточка больше не блокирует отправку
+   * новой команды, но журнал и итоговая добыча остаются доступны в «Все походы».
+   */
+  const expeditionArchive = [
+    expedition,
+    ...(state.expeditionArchive ?? []),
+  ].slice(0, EXPEDITION_ARCHIVE_LIMIT);
+  updateGameState({ expeditions: remaining, expeditionArchive }, true);
 
   if (returned.rejoined > 0) {
     message += `. Жабы вернулись в «Разведку»: ${returned.rejoined}`;

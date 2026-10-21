@@ -131,6 +131,13 @@ export interface ExpeditionStats {
   /** Сколько жаб выбили из строя события походов */
   downed: number;
   /**
+   * Секторы, которые команда прошла хотя бы раз: дошла до них и вернулась.
+   * Нужны для правила «следующую глубину открывают только после пройденной
+   * предыдущей». В старых сейвах поля нет — `normalizeExpeditionStats`
+   * выводит его из `bestDepth`, чтобы прогресс не потерялся.
+   */
+  completedSectors?: number[];
+  /**
    * Явно открытые секторы КОНТУРа. Раньше сектор открывался сам по числу
    * завершённых походов; теперь игрок тратит на него пропуска со склада.
    * В старых сейвах поля нет — `normalizeExpeditionStats` выводит открытые
@@ -143,6 +150,7 @@ export const DEFAULT_EXPEDITION_STATS: ExpeditionStats = {
   completed: 0,
   bestDepth: 0,
   downed: 0,
+  completedSectors: [],
   unlockedSectors: [],
 };
 
@@ -152,6 +160,11 @@ export interface SectorDef {
   name: string;
   icon: string;
   description: string;
+  /**
+   * Иллюстрация для карусели секторов: webp из `public/bg/sectors`.
+   * Необязательна — у сектора без арта остаётся прежняя текстовая карточка.
+   */
+  image?: string;
   /** Глубина: влияет на добычу, урон и порядок открытия */
   depth: number;
   /** Длительность пути в одну сторону, часы */
@@ -171,7 +184,9 @@ export const SECTORS: SectorDef[] = [
     id: 1,
     name: "Ржавый шлюз",
     icon: "🚪",
-    description: "Первый контур Периметра: сыро, грязно, но почти безопасно.",
+    description:
+      "Внешний контур Периметра и первая точка доступа для рейдовых групп. Инфраструктура частично разрушена, атмосфера влажная и коррозийная. Угроза минимальна: патрули автоматики редки, ценных образцов почти нет.",
+    image: "/bg/sectors/contur1.webp",
     depth: 1,
     durationHours: 1.5,
     lootMultiplier: 1,
@@ -183,7 +198,9 @@ export const SECTORS: SectorDef[] = [
     id: 2,
     name: "Затопленный бункер",
     icon: "🌊",
-    description: "Полузатопленный склад: образцы ещё держатся, турели — тоже.",
+    description:
+      "Складской уровень, затопленный после отказа дренажных систем. Значительная часть грузов испорчена, однако в герметичных контейнерах сохранились рабочие образцы. Передвижение затруднено, возможны обрушения конструкций и контакт с подводной автоматикой.",
+    image: "/bg/sectors/contur2.webp",
     depth: 2,
     durationHours: 3,
     lootMultiplier: 1.4,
@@ -194,7 +211,9 @@ export const SECTORS: SectorDef[] = [
     id: 3,
     name: "Станция «Периметр-3»",
     icon: "🏚️",
-    description: "Мёртвая станция с рабочими сейфами и голодными дронами.",
+    description:
+      "Выведенная из эксплуатации станция наблюдения. Персонал эвакуирован, системы охраны переведены в автономный режим. Сейфы и терминалы частично функциональны, периметр патрулируется дронами с истёкшим сроком обслуживания. Уровень угрозы умеренный.",
+    image: "/bg/sectors/contur3.webp",
     depth: 3,
     durationHours: 5,
     lootMultiplier: 1.8,
@@ -206,7 +225,8 @@ export const SECTORS: SectorDef[] = [
     name: "Орбитальный обломок",
     icon: "🛰️",
     description:
-      "Кусок орбитальной лаборатории. Данные уцелели, гравитация — нет.",
+      "Фрагмент орбитальной лаборатории, потерявший гравитационную стабилизацию. Архивы данных уцелели и представляют высокую ценность, однако перемещение внутри сектора требует постоянного контроля ориентации. Риск травм и потери снаряжения повышен.",
+    image: "/bg/sectors/contur4.webp",
     depth: 4,
     durationHours: 7,
     lootMultiplier: 2.3,
@@ -217,7 +237,9 @@ export const SECTORS: SectorDef[] = [
     id: 5,
     name: "Репродуктор дронов",
     icon: "🐝",
-    description: "Роевой улей автоматики: жалит больно, но деталей — горы.",
+    description:
+      "Автоматизированный сборочный улей роевой автоматики. Конвейеры продолжают выпуск дронов по устаревшей программе, несмотря на отсутствие операторов. Рой агрессивен и скоординирован, однако насыщенность узлами, приводами и редкими компонентами делает сектор приоритетной целью для рейда.",
+    image: "/bg/sectors/contur5.webp",
     depth: 5,
     durationHours: 9,
     lootMultiplier: 2.8,
@@ -226,10 +248,11 @@ export const SECTORS: SectorDef[] = [
   },
   {
     id: 6,
-    name: "Реактор «Квак-7»",
+    name: "Гелиос-крематорий",
     icon: "☢️",
     description:
-      "Течёт охлаждайка, светится биомасса. Идеальное место для рейда.",
+      "Солнечный коллектор и система термообработки отходов станции. Температурный режим нестабилен, броня деградирует быстро, однако силовые ячейки и теплоносители сохранили ресурс. Работать рекомендуется короткими циклами.",
+    image: "/bg/sectors/contur6.webp",
     depth: 6,
     durationHours: 12,
     lootMultiplier: 3.4,
@@ -238,25 +261,29 @@ export const SECTORS: SectorDef[] = [
   },
   {
     id: 7,
-    name: "Архив мёртвых генов",
-    icon: "🧬",
-    description: "Банк геномов до-Кваковой эпохи. Образцы тут — на вес астро.",
-    depth: 7,
-    durationHours: 15,
-    lootMultiplier: 4,
-    dangerMultiplier: 2.3,
-    unlockCost: 21,
-  },
-  {
-    id: 8,
-    name: "Дальний Периметр",
+    name: "Гидропонная станция",
     icon: "🕳️",
-    description: "За этой чертой лаборатория не отвечает за сохранность жаб.",
-    depth: 8,
+    description:
+      "Растения разрослись и вплелись корнями в обшивку сектора, напряжение непостоянно, а из темноты доносится подозрительное жужжание. ",
+    image: "/bg/sectors/contur7.webp",
+    depth: 7,
     durationHours: 20,
     lootMultiplier: 5,
     dangerMultiplier: 2.7,
     unlockCost: 28,
+  },
+  {
+    id: 8,
+    name: "Центр станции",
+    icon: "☣️",
+    description:
+      "Центральный управляющий комплекс станции. Из глубины сектора регистрируется периодический сигнал неустановленного происхождения: структура передачи не совпадает с протоколами автоматики и не может быть объяснена остаточной активностью оборудования. Это даёт основание предполагать, что не вся разумная жизнь на станции уничтожена — либо что-то научилось имитировать её достаточно убедительно. Здесь сосредоточены ключевые архивы, силовые установки и центральный контур управления. Автономные протоколы защиты приведены в боевой режим, уровень угрозы максимальный. Возврат из сектора не гарантирован, но ценность добычи и потенциальной информации оправдывает риск.",
+    image: "/bg/sectors/contur8.webp",
+    depth: 8,
+    durationHours: 60,
+    lootMultiplier: 14.5,
+    dangerMultiplier: 5.8,
+    unlockCost: 40,
   },
 ];
 
@@ -303,31 +330,40 @@ export const getLegacyUnlockedSectors = (completed: number): number[] =>
   }).map((sector) => sector.id);
 
 /**
+ * Секторы, которые старый сейв успел пройти. Отдельного списка в нём не было,
+ * поэтому считаем пройденными все глубины не больше `bestDepth` — команда
+ * возвращалась из самой глубокой, значит предыдущие уже были ей по силам.
+ */
+const getLegacyCompletedSectors = (bestDepth: number): number[] =>
+  SECTORS.filter((sector) => sector.depth <= bestDepth).map(
+    (sector) => sector.id,
+  );
+
+/**
  * Приводит статистику из сейва к полному виду.
  *
  * Если `unlockedSectors` в сейве нет (старая версия игры), открытые секторы
  * восстанавливаются по прежним порогам `completed`. Пустой массив — это уже
  * новый сейв: игрок просто ещё ничего не открывал, и подставлять ему секторы
  * за завершённые походы нельзя.
+ *
+ * `completedSectors` появился вместе с правилом «следующая глубина — после
+ * пройденной предыдущей». В старых сейвах его нет: выводим пройденные глубины
+ * из `bestDepth`, чтобы игрок не потерял уже достигнутый прогресс.
  */
 export const normalizeExpeditionStats = (
   stats?: Partial<ExpeditionStats>,
 ): ExpeditionStats => {
   const merged = { ...DEFAULT_EXPEDITION_STATS, ...(stats ?? {}) };
 
-  if (Array.isArray(stats?.unlockedSectors)) {
-    return {
-      ...merged,
-      unlockedSectors: Array.from(
-        new Set(stats.unlockedSectors.filter(Number.isInteger)),
-      ),
-    };
-  }
+  const completedSectors = Array.isArray(stats?.completedSectors)
+    ? Array.from(new Set(stats.completedSectors.filter(Number.isInteger)))
+    : getLegacyCompletedSectors(merged.bestDepth);
+  const unlockedSectors = Array.isArray(stats?.unlockedSectors)
+    ? Array.from(new Set(stats.unlockedSectors.filter(Number.isInteger)))
+    : getLegacyUnlockedSectors(merged.completed);
 
-  return {
-    ...merged,
-    unlockedSectors: getLegacyUnlockedSectors(merged.completed),
-  };
+  return { ...merged, completedSectors, unlockedSectors };
 };
 
 /** Открыт ли сектор: стартовый — всегда, остальные — если игрок их открыл */
@@ -339,3 +375,45 @@ export const isSectorUnlocked = (
   (stats.unlockedSectors ?? getLegacyUnlockedSectors(stats.completed)).includes(
     sector.id,
   );
+
+/**
+ * Предыдущий сектор КОНТУРа — тот, что идёт перед этим по порядку глубин.
+ * Именно его нужно сначала открыть и пройти: пропусков может хватить сразу
+ * на несколько секторов вперёд, но перепрыгнуть непройденную глубину нельзя.
+ */
+export const getPreviousSector = (
+  sector: SectorDef,
+): SectorDef | undefined => {
+  const index = SECTORS.findIndex((item) => item.id === sector.id);
+
+  return index > 0 ? SECTORS[index - 1] : undefined;
+};
+
+/** Сектор пройден: команда хотя бы раз дошла до него и вернулась домой */
+export const isSectorCompleted = (
+  sector: SectorDef,
+  stats: ExpeditionStats = DEFAULT_EXPEDITION_STATS,
+): boolean =>
+  (
+    stats.completedSectors ?? getLegacyCompletedSectors(stats.bestDepth)
+  ).includes(sector.id);
+
+/** Предыдущая глубина уже открыта (у стартового сектора предыдущей нет) */
+export const isPreviousSectorUnlocked = (
+  sector: SectorDef,
+  stats: ExpeditionStats = DEFAULT_EXPEDITION_STATS,
+): boolean => {
+  const previous = getPreviousSector(sector);
+
+  return !previous || isSectorUnlocked(previous, stats);
+};
+
+/** Предыдущая глубина уже пройдена хотя бы один раз */
+export const isPreviousSectorCompleted = (
+  sector: SectorDef,
+  stats: ExpeditionStats = DEFAULT_EXPEDITION_STATS,
+): boolean => {
+  const previous = getPreviousSector(sector);
+
+  return !previous || isSectorCompleted(previous, stats);
+};

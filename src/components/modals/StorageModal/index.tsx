@@ -39,7 +39,7 @@ import { RoomConfig } from "../../HexMap/rooms-config";
  * построить новый биопод.
  *
  * Вместимость полок растёт постройками «Склад» на карте колонии: каждая постройка
- * даёт `STORAGE_CAPACITY_PER_ROOM` единиц (см. `utils/storage.ts`).
+ * под током даёт `STORAGE_CAPACITY_PER_ROOM` единиц (см. `utils/storage.ts`).
  *
  * Тело модалки — табы (`shared/ModalTabs`): полки предметов и, если модалку открыл гекс
  * склада (`room`), «Данные сектора» — тот же таб, что и у остальных секторов карты.
@@ -400,9 +400,16 @@ const StorageModal: React.FC<{ room?: RoomConfig }> = ({ room }) => {
               />
             </div>
             <p className="mt-2 text-2xs leading-snug text-slate-300">
-              Складов в колонии: {capacity.rooms} — каждый даёт +
-              {STORAGE_CAPACITY_PER_ROOM} к вместимости. Новый склад — гекс «📦
-              Склад» на карте.
+              Складов в колонии: {capacity.rooms} · под током{" "}
+              {capacity.poweredRooms} — каждый даёт +{STORAGE_CAPACITY_PER_ROOM}{" "}
+              к вместимости. Новый склад — гекс «📦 Склад» на карте.
+              {capacity.unpoweredRooms > 0 && (
+                <span className="mt-1 block text-amber-200">
+                  Обесточено складов: {capacity.unpoweredRooms} — без тока они
+                  не дают полок. Подведите к ним ток от ядра или
+                  энергосектора ⚡.
+                </span>
+              )}
             </p>
           </div>
 

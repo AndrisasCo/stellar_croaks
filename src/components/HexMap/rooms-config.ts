@@ -2,7 +2,7 @@ import { ColonyRoomKind, ColonyRoomState } from "../../models/colony";
 import { Expedition } from "../../models/expedition";
 import { INITIAL_CAPACITY } from "../../models/scene";
 import { Toad } from "../../models/Toad";
-import { isToadBusyOnExpedition } from "../../utils/expedition-manager";
+import { isToadBusyOnExpedition } from "../../utils/expedition-status";
 import {
   AVIARY_ROOM_ID,
   CORE_ROOM_ID,
@@ -233,7 +233,7 @@ export const ROOM_BLUEPRINTS: Record<ColonyRoomKind, RoomBlueprint> = {
     subtitle: "Ток для соседей",
     icon: "⚡",
     description:
-      "Шесть жаб в колесе — и шесть сторон сектора под напряжением. Кормить обязательно: голодная жаба не вырабатывает энергию",
+      "Каждый организм питает один из шести энергоконутов, позволяя эффективно записать целый сектор. ",
     palette: PALETTES.power,
     unique: false,
     baseCost: 160,
@@ -245,7 +245,7 @@ export const ROOM_BLUEPRINTS: Record<ColonyRoomKind, RoomBlueprint> = {
     title: "Биопод",
     subtitle: "Вольер для жаб",
     icon: "🐸",
-    description: `Строит ещё один биопод: +${INITIAL_CAPACITY} мест для жаб.`,
+    description: `Биопод является основным местом содержания организмов, обеспечивает стабильные условия для выработки ценной биомассы`,
     palette: PALETTES.aviary,
     unique: false,
     baseCost: 120,
@@ -261,7 +261,8 @@ export const ROOM_BLUEPRINTS: Record<ColonyRoomKind, RoomBlueprint> = {
     title: "Репродуктор",
     subtitle: "Размножение",
     icon: "🥚",
-    description: "Здесь выбираются лучшие представители для селекции",
+    description:
+      "Репродукция новых организмов проводится здесь с максимальным контролем",
     palette: PALETTES.breeding,
     unique: false,
     baseCost: 150,
@@ -274,7 +275,7 @@ export const ROOM_BLUEPRINTS: Record<ColonyRoomKind, RoomBlueprint> = {
     subtitle: "Смешивание генов",
     icon: "🧬",
     description:
-      "Смешивает гены организмов: гибрид как правило получается лучше чем родители, но могут быть и неудачи.",
+      "Смешивает гены организмов: гибрид как правило получается лучше чем родители, но могут быть и неудачи. Чем больше использовано генов, тем выше будет качество результата. ",
     palette: PALETTES.collider,
     unique: true,
     baseCost: 600,
@@ -287,7 +288,7 @@ export const ROOM_BLUEPRINTS: Record<ColonyRoomKind, RoomBlueprint> = {
     subtitle: "КОНтроль Территории УРовня",
     icon: "🧭",
     description:
-      "Диспетчерская колонии: команды уходят в походы по секторам Периметра в поисках добычи и ответов на вопросы.",
+      "КОНтроль Территории УРовня. Диспетчерская колонии: команды уходят в походы по секторам Периметра в поисках добычи и ответов на вопросы.",
     palette: PALETTES.scout,
     unique: false,
     baseCost: 25,
@@ -297,10 +298,10 @@ export const ROOM_BLUEPRINTS: Record<ColonyRoomKind, RoomBlueprint> = {
   storage: {
     kind: "storage",
     title: "Склад",
-    subtitle: "+300 к вместимости",
+    subtitle: "+300 к вместимости под током",
     icon: "📦",
     description:
-      "Каждый склад добавляет 300 единиц к полкам: корм, батарейки, пигменты, пыль и лутбоксы.",
+      "Каждый склад под током добавляет 300 единиц к хранению. Обесточенный склад полок не даёт: подведите к нему ток от ядра или энергосектора ⚡.",
     palette: PALETTES.storage,
     unique: false,
     baseCost: 25,
@@ -312,7 +313,8 @@ export const ROOM_BLUEPRINTS: Record<ColonyRoomKind, RoomBlueprint> = {
     title: "Торговая капсула",
     subtitle: "Торговля",
     icon: "🛒",
-    description: "Покупка и продажа жаб, элитные заказы за Астро-кваксы. ",
+    description:
+      "Торговая капсула осуществляет связь с внешним миром, редкие гены и биомасса ценяется на космическом рынке. ",
     palette: PALETTES.shop,
     unique: true,
     baseCost: 0,
@@ -325,7 +327,7 @@ export const ROOM_BLUEPRINTS: Record<ColonyRoomKind, RoomBlueprint> = {
     subtitle: "6 коек, быстрое лечение",
     icon: "🩹",
     description:
-      "Место для шести жаб: здесь здоровье восстанавливается намного эффективнее, болезнь проходит втрое быстрее и не передаётся соседям.",
+      "Место для шести организмов: здесь здоровье восстанавливается намного эффективнее, а инфекции эффективно сдерживаются от распостранения.",
     palette: PALETTES.hospital,
     unique: false,
     baseCost: 95,
@@ -337,7 +339,7 @@ export const ROOM_BLUEPRINTS: Record<ColonyRoomKind, RoomBlueprint> = {
     title: "Диссоциатор",
     subtitle: "Расщепление генов",
     icon: "🧪",
-    description: "Здесь можно расщепить организмы на биомассу",
+    description: "Здесь производится расщепление организмов на биомассу",
     palette: PALETTES.dissociator,
     unique: true,
     baseCost: 400,
@@ -626,10 +628,8 @@ export const isToadRoom = (room: RoomConfig) =>
  * до разбора добычи и не должна появляться на карте раньше времени.
  * Страховка на случай сейва, где жаба уже в походе, но место ещё старое.
  */
-export const isToadVisibleInRoom = (
-  toad: Toad,
-  expeditions?: Expedition[],
-) => !isToadBusyOnExpedition(toad, expeditions);
+export const isToadVisibleInRoom = (toad: Toad, expeditions?: Expedition[]) =>
+  !isToadBusyOnExpedition(toad, expeditions);
 
 /** Кольцо, в котором стоит сектор (0 — ядро, дальше — кольца слотов вокруг него). */
 export const getRoomRing = (room: RoomConfig) =>

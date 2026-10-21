@@ -8,8 +8,9 @@
  *   2) старый сейв без `unlockedSectors` получает секторы по прежним порогам
  *      завершённых походов, а новый сейв — нет;
  *   3) открытие списывает пропуска со склада и сохраняет сектор открытым;
- *   4) КОНТУР проходится по порядку: закрытый предыдущий сектор не перепрыгнуть;
- *   5) завершённый поход сразу начисляет пропуск на склад;
+ *   4) КОНТУР проходится по порядку: предыдущий сектор должен быть открыт
+ *      и пройден хотя бы раз;
+ *   5) только удачный завершённый поход начисляет пропуск на склад;
  *   6) пропуска лежат на складе, но не занимают полки и не вытесняют добычу.
  *
  * Запуск: node tmp-verify-contour-pass.mjs
@@ -94,6 +95,7 @@ const makeState = (patch = {}) => ({
     completed: 0,
     bestDepth: 0,
     downed: 0,
+    completedSectors: [],
     unlockedSectors: [],
   },
   lastSaved: "",
@@ -147,7 +149,7 @@ console.log("─".repeat(60));
 check(
   "цены открытия",
   models.SECTORS.map((sector) => sector.unlockCost),
-  [0, 1, 3, 6, 10, 15, 21, 28],
+  [0, 1, 3, 6, 10, 15, 28, 40],
 );
 check(
   "пропусков за поход",
@@ -164,13 +166,32 @@ check(
   [2, 3, 4],
 );
 check(
-  "новый сейв: пустой список не заполняется за походы",
+  "старый сейв: пройденные глубины выводятся из bestDepth",
+  models.normalizeExpeditionStats({
+    completed: 7,
+    bestDepth: 4,
+    downed: 0,
+  }).completedSectors,
+  [1, 2, 3, 4],
+);
+check(
+  "новый сейв: пустой список открытых не заполняется за походы",
   models.normalizeExpeditionStats({
     completed: 7,
     bestDepth: 4,
     downed: 0,
     unlockedSectors: [],
   }).unlockedSectors,
+  [],
+);
+check(
+  "новый сейв: пустой список пройденных не заполняется за походы",
+  models.normalizeExpeditionStats({
+    completed: 7,
+    bestDepth: 4,
+    downed: 0,
+    completedSectors: [],
+  }).completedSectors,
   [],
 );
 check(
@@ -183,6 +204,59 @@ check(
   models.isSectorUnlocked(models.SECTORS[1], models.DEFAULT_EXPEDITION_STATS),
   false,
 );
+check(
+  "предыдущий сектор для третьего — второй",
+  models.getPreviousSector(models.SECTORS[2])?.id,
+  2,
+);
+check(
+  "второй сектор открывается от стартового",
+  models.isPreviousSectorUnlocked(
+    models.SECTORS[1],
+    models.DEFAULT_EXPEDITION_STATS,
+  ),
+  true,
+);
+check(
+  "третий сектор не открыть без второго",
+  models.isPreviousSectorUnlocked(
+    models.SECTORS[2],
+    models.DEFAULT_EXPEDITION_STATS,
+  ),
+  false,
+);
+check(
+  "стартовый сектор в новом сейве ещё не пройден",
+  models.isSectorCompleted(
+    models.SECTORS[0],
+    models.DEFAULT_EXPEDITION_STATS,
+  ),
+  false,
+);
+check(
+  "второй сектор требует прохождения первого",
+  models.isPreviousSectorCompleted(
+    models.SECTORS[1],
+    models.DEFAULT_EXPEDITION_STATS,
+  ),
+  false,
+);
+check(
+  "первый сектор можно пройти",
+  models.isSectorCompleted(models.SECTORS[0], {
+    ...models.DEFAULT_EXPEDITION_STATS,
+    completedSectors: [1],
+  }),
+  true,
+);
+check(
+  "второй сектор открывается после прохождения первого",
+  models.isPreviousSectorCompleted(models.SECTORS[1], {
+    ...models.DEFAULT_EXPEDITION_STATS,
+    completedSectors: [1],
+  }),
+  true,
+);
 reset(
   makeState({
     expeditionStats: { completed: 7, bestDepth: 4, downed: 0 },
@@ -193,14 +267,51 @@ check(
   manager.getExpeditionStats().unlockedSectors,
   [2, 3, 4],
 );
+check(
+  "старый сейв на диске помнит пройденные глубины",
+  manager.getExpeditionStats().completedSectors,
+  [1, 2, 3, 4],
+);
 
 console.log("\n[3] Покупка секторов за пропуска");
 console.log("─".repeat(60));
-reset(
+/** Сейв для покупки: 10 пропусков и заданная статистика */
+const purchaseState = (stats = {}) =>
   makeState({
     user: { ...makeState().user, storage: { food: 0, contourPass: 10 } },
-  }),
+    expeditionStats: {
+      completed: 0,
+      bestDepth: 0,
+      downed: 0,
+      completedSectors: [],
+      unlockedSectors: [],
+      ...stats,
+    },
+  });
+
+reset(purchaseState());
+
+check("сектор 3 до сектора 2 не открыть", manager.unlockSector(3), {
+  success: false,
+  message: "Сначала откройте «Затопленный бункер»",
+});
+check(
+  "пропуска не списались за прыжок через один сектор",
+  saved().user.storage.contourPass,
+  10,
 );
+check("сектор 2 без прохождения первого не открыть", manager.unlockSector(2), {
+  success: false,
+  message:
+    "Сначала пройдите «Ржавый шлюз»: отправьте команду и дождитесь возвращения",
+});
+check(
+  "пропуска не списались за непройденный первый сектор",
+  saved().user.storage.contourPass,
+  10,
+);
+
+reset(purchaseState({ completed: 1, bestDepth: 1, completedSectors: [1] }));
 
 check("открытие сектора 2", manager.unlockSector(2), {
   success: true,
@@ -212,7 +323,43 @@ check(
   saved().expeditionStats.unlockedSectors,
   [2],
 );
+check(
+  "после открытия второй сектор ещё не пройден",
+  models.isSectorCompleted(
+    models.SECTORS[1],
+    models.normalizeExpeditionStats(saved().expeditionStats),
+  ),
+  false,
+);
+check("сектор 3 без прохождения второго не открыть", manager.unlockSector(3), {
+  success: false,
+  message:
+    "Сначала пройдите «Затопленный бункер»: отправьте команду и дождитесь возвращения",
+});
+check(
+  "пропуска не списались за непройденный второй сектор",
+  saved().user.storage.contourPass,
+  9,
+);
 
+/** Второй сектор пройден: возвращаемся с похода, как в настоящей игре */
+const afterSecond = saved();
+afterSecond.expeditionStats = {
+  ...afterSecond.expeditionStats,
+  completed: 2,
+  bestDepth: 2,
+  completedSectors: [1, 2],
+};
+reset(afterSecond);
+
+check(
+  "после прохождения второго третья глубина доступна",
+  models.isPreviousSectorCompleted(
+    models.SECTORS[2],
+    models.normalizeExpeditionStats(saved().expeditionStats),
+  ),
+  true,
+);
 check("открытие сектора 3", manager.unlockSector(3), {
   success: true,
   message: "Сектор «Станция «Периметр-3»» открыт за 3 🎫",
@@ -226,7 +373,7 @@ check(
 
 check("прыжок через закрытый сектор запрещён", manager.unlockSector(8), {
   success: false,
-  message: "Сначала откройте «Архив мёртвых генов»",
+  message: "Сначала откройте «Гидропонная станция»",
 });
 check("пропуска не списались за прыжок", saved().user.storage.contourPass, 6);
 
@@ -234,6 +381,27 @@ check("повторное открытие сектора 2", manager.unlockSect
   success: false,
   message: "Сектор «Затопленный бункер» уже открыт",
 });
+check("сектор 4 без прохождения третьего не открыть", manager.unlockSector(4), {
+  success: false,
+  message:
+    "Сначала пройдите «Станция «Периметр-3»»: отправьте команду и дождитесь возвращения",
+});
+check(
+  "пропуска не списались за непройденный третий сектор",
+  saved().user.storage.contourPass,
+  6,
+);
+
+/** Третий сектор пройден: открываем четвёртую глубину */
+const afterThird = saved();
+afterThird.expeditionStats = {
+  ...afterThird.expeditionStats,
+  completed: 3,
+  bestDepth: 3,
+  completedSectors: [1, 2, 3],
+};
+reset(afterThird);
+
 check("открытие сектора 4", manager.unlockSector(4), {
   success: true,
   message: "Сектор «Орбитальный обломок» открыт за 6 🎫",
@@ -244,6 +412,17 @@ check(
   saved().expeditionStats.unlockedSectors,
   [2, 3, 4],
 );
+
+/** Четвёртый сектор пройден: теперь мешают только пропуска */
+const afterFourth = saved();
+afterFourth.expeditionStats = {
+  ...afterFourth.expeditionStats,
+  completed: 4,
+  bestDepth: 4,
+  completedSectors: [1, 2, 3, 4],
+};
+reset(afterFourth);
+
 check("пропусков не хватает на сектор 5", manager.unlockSector(5), {
   success: false,
   message: "Для открытия нужно 10 🎫 пропуск(ов) КОНТУРа (сейчас 0)",
@@ -296,9 +475,111 @@ check(
 );
 check("поход засчитан", saved().expeditionStats.completed, 1);
 check(
+  "первый сектор засчитан пройденным",
+  saved().expeditionStats.completedSectors,
+  [1],
+);
+check(
   "сектор 2 после награды всё ещё закрыт",
   saved().expeditionStats.unlockedSectors,
   [],
+);
+
+/** Провал: до сектора дошли, но бросок удачи не сложился — пропуска не будет */
+reset(
+  makeState({
+    expeditions: [
+      {
+        id: "e-fail",
+        sectorId: 1,
+        team: [{ toadId: 1, role: "scout" }],
+        startedAt,
+        phase: "returning",
+        progress: 1,
+        reachedSector: true,
+        resolvedSteps: 9,
+        returnStartedAt: Date.now() - HOUR_MS,
+        returnHours: 0.25,
+        successChance: 0,
+        loot: {
+          biomass: 10,
+          tokens: 5,
+          astro_quax: 0,
+          items: {},
+          samples: 0,
+        },
+        log: [],
+      },
+    ],
+  }),
+);
+
+check("тик провального похода", manager.processExpeditions().arrivals, 1);
+check(
+  "провал не начисляет пропуск",
+  saved().user.storage.contourPass,
+  0,
+);
+check(
+  "провал всё равно засчитывает поход и сектор",
+  {
+    completed: saved().expeditionStats.completed,
+    completedSectors: saved().expeditionStats.completedSectors,
+    success: saved().expeditions[0].success,
+  },
+  { completed: 1, completedSectors: [1], success: false },
+);
+
+reset(
+  makeState({
+    user: {
+      ...makeState().user,
+      astro_quax: 10,
+      storage: { food: 0, contourPass: 0 },
+    },
+    expeditionStats: {
+      completed: 1,
+      bestDepth: 1,
+      downed: 0,
+      completedSectors: [1],
+      unlockedSectors: [2],
+    },
+    expeditions: [
+      {
+        id: "e2",
+        sectorId: 2,
+        team: [{ toadId: 1, role: "scout" }],
+        startedAt: Date.now() - 0.1 * HOUR_MS,
+        phase: "outbound",
+        progress: 0,
+        resolvedSteps: 0,
+        successChance: 0,
+        loot: {
+          biomass: 0,
+          tokens: 0,
+          astro_quax: 0,
+          items: {},
+          samples: 0,
+        },
+        log: [],
+      },
+    ],
+  }),
+);
+
+check("маяк до прибытия в сектор", manager.extractExpedition("e2"), {
+  success: true,
+  message: "Команда эвакуирована маяком — добыча ждёт разбора в «Походах»",
+});
+check(
+  "маяк до прибытия не засчитывает сектор пройденным",
+  saved().expeditionStats.completedSectors,
+  [1],
+);
+check(
+  "маяк до прибытия не начисляет пропуск",
+  saved().user.storage.contourPass,
+  0,
 );
 
 console.log("\n[5] Пропуска не занимают полки склада");

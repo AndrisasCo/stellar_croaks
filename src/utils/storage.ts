@@ -1,4 +1,10 @@
 import { getGameState } from "../backend/localStorage";
+import {
+  getPowerGrid,
+  resolveColonyRooms,
+} from "../components/HexMap/colony-build";
+import { getRoomToadLists } from "../components/HexMap/room-toad-lists";
+import { EMPTY_COLONY } from "../models/colony";
 import { Items } from "../models/user";
 
 /**
@@ -8,11 +14,13 @@ import { Items } from "../models/user";
  *
  * Вместимость склада растёт постройками «Склад» на гексагональной карте колонии:
  * каждая даёт `STORAGE_CAPACITY_PER_ROOM` единиц сверх базовой вместимости колонии.
+ * Бонус даёт только склад под током: обесточенная постройка остаётся на карте, но полок
+ * не добавляет (энергосеть считается теми же формулами, что и карта, — `colony-build.ts`).
  */
 
 /** Базовая вместимость склада — есть у колонии с самого начала игры */
 export const BASE_STORAGE_CAPACITY = 100;
-/** Прибавка к вместимости за каждую построенный сектор «Склад» */
+/** Прибавка к вместимости за каждый построенный сектор «Склад» под током */
 export const STORAGE_CAPACITY_PER_ROOM = 300;
 
 /**
@@ -33,6 +41,10 @@ export interface StorageCapacity {
   free: number;
   /** Сколько секторов «Склад» построено в колонии */
   rooms: number;
+  /** Сколько из них под током — только эти склады дают полки */
+  poweredRooms: number;
+  /** Сколько складов обесточено и бонуса к хранению не даёт */
+  unpoweredRooms: number;
 }
 
 /** Сколько секторов «Склад» построено на карте колонии */
@@ -40,10 +52,35 @@ export const getStorageRoomCount = (): number =>
   (getGameState().colony?.rooms ?? []).filter((room) => room.kind === "storage")
     .length;
 
-/** Полная вместимость склада: базовая плюс полки построенных складов */
+/**
+ * Сколько складов реально дают полки: постройка стоит и под током.
+ *
+ * Энергосеть собираем теми же чистыми формулами, что и карта колонии
+ * (`colony-build.ts` → `resolveColonyRooms`, `getPowerGrid`), поэтому бонус к хранению
+ * сходится с тем, что игрок видит на гексах: обесточенный склад не работает.
+ */
+export const getPoweredStorageRoomCount = (): number => {
+  const state = getGameState();
+  const colony = state.colony?.rooms ? state.colony : EMPTY_COLONY;
+
+  // Складов нет — энергосеть не собираем: это самый частый случай в начале игры.
+  if (!colony.rooms.some((room) => room.kind === "storage")) {
+    return 0;
+  }
+
+  const rooms = resolveColonyRooms(colony, state.scenes);
+  const toadsByRoom = getRoomToadLists(rooms, state.toads);
+  const powerGrid = getPowerGrid(rooms, toadsByRoom, state.expeditions ?? []);
+
+  return rooms.filter(
+    (room) => room.kind === "storage" && powerGrid.powered[room.id] === true,
+  ).length;
+};
+
+/** Полная вместимость склада: базовая плюс полки складов под током */
 export const getStorageCapacity = (): number =>
   BASE_STORAGE_CAPACITY +
-  getStorageRoomCount() * STORAGE_CAPACITY_PER_ROOM;
+  getPoweredStorageRoomCount() * STORAGE_CAPACITY_PER_ROOM;
 
 /** Сколько единиц предметов лежит на складе (цифровые пропуска полки не занимают) */
 export const getStorageUsed = (
@@ -57,18 +94,26 @@ export const getStorageUsed = (
     0,
   );
 
-/** Шкала склада: занято, вместимость, свободно и число построенных складов */
+/**
+ * Шкала склада: занято, вместимость, свободно, а также сколько складов построено,
+ * сколько из них под током и сколько обесточено.
+ */
 export const getStorageCapacityInfo = (
   storage: Partial<Record<Items, number>> = getGameState().user.storage,
 ): StorageCapacity => {
-  const capacity = getStorageCapacity();
+  const rooms = getStorageRoomCount();
+  const poweredRooms = getPoweredStorageRoomCount();
+  const capacity =
+    BASE_STORAGE_CAPACITY + poweredRooms * STORAGE_CAPACITY_PER_ROOM;
   const used = getStorageUsed(storage);
 
   return {
     used,
     capacity,
     free: Math.max(0, capacity - used),
-    rooms: getStorageRoomCount(),
+    rooms,
+    poweredRooms,
+    unpoweredRooms: Math.max(0, rooms - poweredRooms),
   };
 };
 

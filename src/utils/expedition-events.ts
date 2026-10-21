@@ -3,6 +3,7 @@ import { Toad, getToadTypeLabel } from "../models/Toad";
 import { generateRandomLootboxToad } from "../models/Toad/lootbox";
 import { Items } from "../models/user";
 import {
+  EXPEDITION_ASTRO_BONUS_CHANCE,
   EXPEDITION_ASTRO_CHANCE,
   EXPEDITION_MAX_COMPANIONS,
   EXPEDITION_MIN_DAMAGE,
@@ -125,28 +126,14 @@ export const ITEM_ICONS: Partial<Record<Items, string>> = {
   [Items.battery]: "🔋",
   [Items.worms]: "🪱",
   [Items.sparkleFlys]: "✨",
+  // Пигменты больше не выпадают в походах, но иконки нужны для старых сейвов.
   [Items.pigmentGreen]: "🟢",
   [Items.pigmentRed]: "🔴",
   [Items.pigmentBlue]: "🔵",
   [Items.pigmentUnstable]: "🌈",
 };
 
-/** Случайный «бытовой» лут склада */
-export const randomPigment = (rng: () => number): Items | undefined => {
-  const roll = rng();
-  if (roll < 0.5) {
-    return Items.pigmentGreen;
-  }
-  if (roll < 0.75) {
-    return Items.pigmentRed;
-  }
-  if (roll < 0.95) {
-    return Items.pigmentBlue;
-  }
-  return Items.pigmentUnstable;
-};
-
-/** Редкая примесь к хорошему событию: астро, образец, пигмент */
+/** Редкая примесь к хорошему событию: астро-кваксы и образец */
 export const rareLoot = (ctx: ExpeditionEventContext): ExpeditionLootDelta => {
   const delta: ExpeditionLootDelta = {};
   if (ctx.rng() < EXPEDITION_ASTRO_CHANCE) {
@@ -157,9 +144,11 @@ export const rareLoot = (ctx: ExpeditionEventContext): ExpeditionLootDelta => {
   if (ctx.rng() < EXPEDITION_SAMPLE_CHANCE) {
     delta.sample = 1;
   }
-  const pigment = ctx.rng() < 0.35 ? randomPigment(ctx.rng) : undefined;
-  if (pigment) {
-    delta.items = { [pigment]: 1 };
+  // Прежний бросок пигмента (35%) теперь отдаёт Астро-кваксы. Оба броска
+  // независимы: за одно хорошее событие может прилететь две находки.
+  if (ctx.rng() < EXPEDITION_ASTRO_BONUS_CHANCE) {
+    delta.astro_quax =
+      (delta.astro_quax || 0) + getExpeditionAstroDrop(ctx.sector);
   }
   return delta;
 };

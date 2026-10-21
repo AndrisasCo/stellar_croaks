@@ -711,7 +711,7 @@ export const RARITY_CONFIG = {
       " from-green-500/10 to-emerald-500/10 border border-green-500/30 hover:border-green-400/50 ",
     borderColor: "border-green-500/50",
     priceMultiplier: 1.0,
-    icon: "🌿",
+    icon: "🟢",
     treshold: RARITY_GROUPS_TRESHOLD.common,
   },
   uncommon: {
@@ -721,7 +721,7 @@ export const RARITY_CONFIG = {
       "from-blue-500/10 to-cyan-500/10 border border-blue-500/30 hover:border-blue-400/50",
     borderColor: "border-blue-500/50",
     priceMultiplier: 2.0,
-    icon: "🦋",
+    icon: "🔵",
     treshold: RARITY_GROUPS_TRESHOLD.uncommon,
   },
   rare: {
@@ -732,7 +732,7 @@ export const RARITY_CONFIG = {
 
     borderColor: "border-purple-500/50",
     priceMultiplier: 5.0,
-    icon: "⭐",
+    icon: "🟣",
     treshold: RARITY_GROUPS_TRESHOLD.rare,
   },
   epic: {
@@ -742,7 +742,7 @@ export const RARITY_CONFIG = {
       "from-orange-500/10 to-red-500/10 border border-orange-500/30 hover:border-orange-400/50",
     borderColor: "border-orange-500/50",
     priceMultiplier: 15.0,
-    icon: "☄️",
+    icon: "🟠",
     treshold: RARITY_GROUPS_TRESHOLD.epic,
   },
   legendary: {
@@ -752,7 +752,7 @@ export const RARITY_CONFIG = {
       "from-yellow-500/10 to-orange-500/10 border-yellow-500/30 hover:border-yellow-400/50",
     borderColor: "border-yellow-500/50",
     priceMultiplier: 50.0,
-    icon: "👑",
+    icon: "🟡",
     treshold: RARITY_GROUPS_TRESHOLD.legendary,
   },
 };

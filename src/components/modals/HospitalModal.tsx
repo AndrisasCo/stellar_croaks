@@ -3,7 +3,7 @@ import ModalTabs, { ModalTabItem } from "../shared/ModalTabs";
 import { ClickButton } from "../shared/ClickButton";
 import { CurrencyIcon } from "../shared/CurrencyIcon";
 import { ToadListCard } from "../shared/ToadListCard";
-import { ToadPicker } from "../shared/ToadPicker";
+import { ToadSlotGrid } from "../shared/ToadSlotGrid";
 import { useGameState } from "../../hooks/use-game-state";
 import { useColony } from "../../hooks/use-colony";
 import { useNotifications } from "../../hooks/use-notification";
@@ -46,8 +46,8 @@ import { ToadInfo } from "./ToadInfoModal";
  * Раньше Медотсек жил табом в модалке походов: клик по гексу Медотсека открывал «Разведку»
  * с выбранной вкладкой. Теперь у сектора свои табы (`shared/ModalTabs`):
  *
- *  - «Койки» — основной: кто лежит в этом Медотсеке и подсадка жаб на лечение из общего
- *    списка (`shared/ToadPicker` знает те же правила переноса, что и карта);
+ *  - «Койки» — основной: кто лежит в этом Медотсеке и подсадка жаб на лечение общей
+ *    сеткой слотов (`shared/ToadSlotGrid` знает те же правила переноса, что и карта);
  *  - «Пациенты» — все раненые и больные колонии: отсюда жабу быстро отправляют на койку
  *    (в любой Медотсек, где есть место) или лечат мгновенно за деньги;
  *  - «Данные сектора» — описание, статистика и улучшения сектора (`RoomDataTab`).
@@ -119,6 +119,16 @@ export default function HospitalModal({ room }: HospitalModalProps) {
   /** Сколько коек в колонии: в каждом Медотсеке по шесть */
   const hospitalCapacity = hospitalIds.length * HOSPITAL_ROOM_TOAD_SLOTS;
   const freeSlots = Math.max(0, HOSPITAL_ROOM_TOAD_SLOTS - roomToads.length);
+
+  /** Койки Медотсека: жаба на койке или пустой слот с «+» — как в репродукторе */
+  const bedSlots = Array.from(
+    { length: HOSPITAL_ROOM_TOAD_SLOTS },
+    (_, index) => ({
+      toad: roomToads[index] ?? null,
+      label: `Койка ${index + 1}`,
+      icon: "🛏️",
+    }),
+  );
 
   /** Раненые и больные в походе: ими займёмся, когда команда вернётся */
   const awayWounded = awayToads.filter((toad) =>
@@ -409,43 +419,20 @@ export default function HospitalModal({ room }: HospitalModalProps) {
         {/* ВКЛАДКА «Койки»: кто лежит в этом Медотсеке и подсадка жаб на лечение */}
         {tab === "beds" && (
           <>
-            <div className="flex items-center justify-between">
-              <p className="text-2xs font-bold uppercase tracking-wide text-amber-200">
-                🛏️ В «{room.name}» ({roomToads.length}/
-                {HOSPITAL_ROOM_TOAD_SLOTS})
-              </p>
-              <span className="text-2xs text-slate-500">
-                свободно мест: {freeSlots}
-              </span>
-            </div>
-
-            {roomToads.length === 0 && (
-              <p className="text-2xs leading-snug text-slate-500">
-                Койки свободны: возьмите жабу из списка ниже — сюда можно
-                положить любую, а поправляется она на койке в разы быстрее.
-              </p>
-            )}
-
-            {roomToads.map((toad) => renderCareCard(toad))}
-
-            {/* Подсадка жаб: общий список колонии, а кладём на койку этого Медотсека */}
-            <div className="mt-1">
-              <ToadPicker
-                icon="🛏️"
-                label={room.name}
-                caption={room.name}
-                placeholder={
-                  freeSlots > 0
-                    ? `＋ Положить жабу на лечение (свободно мест: ${freeSlots})`
-                    : `Все ${HOSPITAL_ROOM_TOAD_SLOTS} коек заняты`
-                }
-                disabled={freeSlots <= 0}
-                groups={[
+            {/* Койки — та же сетка слотов, что у репродуктора и коллайдера */}
+            <ToadSlotGrid
+              slots={bedSlots}
+              columns={6}
+              title={`🛏️ В «${room.name}» (${roomToads.length}/${HOSPITAL_ROOM_TOAD_SLOTS})`}
+              headerRight={`свободно мест: ${freeSlots}`}
+              pickerFor={() => ({
+                groups: [
                   {
                     label: `Можно взять (${candidates.available.length})`,
                     // Порядок строк уже задан: раненые и больные — сверху
-                    items: candidates.available.map(({ toad }) => ({
+                    items: candidates.available.map(({ toad, rank }) => ({
                       toad,
+                      rank,
                       note: needsHospitalCare(toad)
                         ? `нужна помощь${
                             isToadInHospital(toad, hospitalIds)
@@ -455,17 +442,23 @@ export default function HospitalModal({ room }: HospitalModalProps) {
                         : "здорова — койка ускорит дела лишь косвенно",
                     })),
                   },
-                ]}
-                rejected={{
+                ],
+                rejected: {
                   label: TOAD_PICKER_REJECTED_GROUP,
                   items: candidates.rejected,
-                }}
-                hint="Сверху — жабы, которым нужна помощь. На койку берут взрослых жаб колонии, не в походе; за ток сектора отвечает энергосеть."
-                emptyText="Свободных жаб нет: остальные в походе или уже лежат в Медотсеке."
-                locationOf={locationOf}
-                onPick={(toad) => handleAdmit(toad, room)}
-              />
-            </div>
+                },
+                hint: "Сверху — жабы, которым нужна помощь. На койку берут взрослых жаб колонии, не в походе; за ток сектора отвечает энергосеть.",
+                emptyText:
+                  "Свободных жаб нет: остальные в походе или уже лежат в Медотсеке.",
+                locationOf,
+              })}
+              onPick={(toad) => handleAdmit(toad, room)}
+              onOpen={(toad) => openToadCard(toad)}
+              onRemove={(toad) => handleDischarge(toad)}
+              removeLabel="Выписать в биопод"
+            />
+
+            {roomToads.map((toad) => renderCareCard(toad))}
           </>
         )}
 

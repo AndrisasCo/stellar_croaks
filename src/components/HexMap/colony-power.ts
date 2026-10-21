@@ -1,6 +1,6 @@
 import { Expedition } from "../../models/expedition";
 import { Toad } from "../../models/Toad";
-import { isToadBusyOnExpedition } from "../../utils/expedition-manager";
+import { isToadBusyOnExpedition } from "../../utils/expedition-status";
 import {
   AxialCoord,
   hexCoordKey,

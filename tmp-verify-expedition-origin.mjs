@@ -13,7 +13,11 @@
  *   3) `isExpeditionFromRoom` узнаёт контур по id гекса, id постройки и старому
  *      числовому `Scene.id`, а чужой контур и пустой origin — нет;
  *   4) после разбора добычи команда возвращается в исходный контур, даже если
- *      в колонии несколько «Разведок» и исходная не первая в списке.
+ *      в колонии несколько «Разведок» и исходная не первая в списке;
+ *   5) первая вкладка показывает поход только в своём контуре, а миграция привязывает
+ *      старые походы без контура к первой «Разведке», оставляя вторую свободной;
+ *   6) из второй «Разведки» уходит вторая команда без Диспетчерской, а повторный
+ *      поход из уже занятого контура не отправляется.
  *
  * Запуск: node tmp-verify-expedition-origin.mjs
  */
@@ -131,6 +135,7 @@ globalThis.CustomEvent = class {
 
 const models = bundle("src/models/expedition.ts", "models-expedition");
 const manager = bundle("src/utils/expedition-manager.ts", "expedition-manager");
+const gameStorage = bundle("src/backend/localStorage.ts", "game-storage");
 
 const failures = [];
 const check = (label, actual, expected) => {
@@ -213,6 +218,42 @@ check(
   false,
 );
 
+console.log("\n[2b] Первая вкладка показывает только поход своего контура");
+console.log("─".repeat(60));
+const legacyExpedition = { ...expedition, id: "legacy", originRoomId: undefined };
+const otherRoomExpedition = { ...expedition, id: "foreign", originRoomId: "scout_2" };
+
+check(
+  "свой контур видит только свой поход",
+  manager
+    .getRoomExpeditions(
+      [expedition, legacyExpedition, otherRoomExpedition],
+      { id: "scout_1", slotId: "slot-a" },
+    )
+    .map((item) => item.id),
+  [expedition.id],
+);
+check(
+  "другая «Разведка» видит только свой поход",
+  manager
+    .getRoomExpeditions(
+      [expedition, legacyExpedition, otherRoomExpedition],
+      { id: "scout_2", slotId: "slot-b" },
+    )
+    .map((item) => item.id),
+  [otherRoomExpedition.id],
+);
+check(
+  "поход без контура не показывается в чужой «Разведке»",
+  manager
+    .getRoomExpeditions(
+      [expedition, legacyExpedition, otherRoomExpedition],
+      { id: "scout_3" },
+    )
+    .map((item) => item.id),
+  [],
+);
+
 console.log("\n[3] Разбор добычи возвращает команду в исходный контур");
 console.log("─".repeat(60));
 const expeditionId = expedition.id;
@@ -255,6 +296,127 @@ const legacyId = savedExpedition().id;
 manager.extractExpedition(legacyId);
 manager.finishExpedition(legacyId, "biomass");
 check("жаба вернулась по Scene.id", savedToad().scene_id, "slot-a");
+check("разобранный поход ушёл в архив", saved().expeditionArchive?.length, 1);
+check(
+  "в архиве сохранился журнал похода",
+  saved().expeditionArchive?.[0].id === legacyId &&
+    saved().expeditionArchive?.[0].log.length > 0,
+  true,
+);
+
+console.log("\n[5] Миграция привязывает старый поход к первой «Разведке»");
+console.log("─".repeat(60));
+reset(
+  makeState({
+    colony: {
+      rooms: [
+        { id: "scout_1", slotId: "slot-a", kind: "scout", builtAt: "" },
+      ],
+    },
+    expeditions: [{ ...legacyExpedition, id: "legacy-one" }],
+  }),
+);
+const migrated = gameStorage.getGameState();
+check("старый поход получил контур", migrated.expeditions[0].originRoomId, "scout_1");
+check(
+  "привязка сохранилась в сейв",
+  saved().expeditions[0].originRoomId,
+  "scout_1",
+);
+
+reset(
+  makeState({
+    expeditions: [{ ...legacyExpedition, id: "legacy-many" }],
+  }),
+);
+const notMigrated = gameStorage.getGameState();
+check(
+  "при двух «Разведках» старый поход уходит в первую",
+  notMigrated.expeditions[0].originRoomId,
+  "scout_2",
+);
+check(
+  "вторая «Разведка» свободна от старого похода",
+  manager
+    .getRoomExpeditions(notMigrated.expeditions, {
+      id: "scout_1",
+      slotId: "slot-a",
+    })
+    .map((item) => item.id),
+  [],
+);
+
+console.log("\n[6] Из второй «Разведки» можно отправить ещё одну команду");
+console.log("─".repeat(60));
+const twoTeamsBase = makeState();
+reset({
+  ...twoTeamsBase,
+  toads: [
+    toad(1),
+    { ...toad(2), scene_id: "slot-b" },
+    { ...toad(3), scene_id: "slot-a" },
+  ],
+});
+
+const firstTeam = manager.startExpedition(
+  SECTOR.id,
+  [{ toadId: 1, role: "scout" }],
+  "scout_1",
+);
+const secondTeam = manager.startExpedition(
+  SECTOR.id,
+  [{ toadId: 2, role: "scout" }],
+  "scout_2",
+);
+check("первая команда ушла из scout_1", firstTeam.success, true);
+check("вторая команда ушла из scout_2", secondTeam.success, true);
+check(
+  "в «Разведках» два разных похода",
+  manager
+    .getRoomExpeditions(saved().expeditions, { id: "scout_1" })
+    .map((item) => item.originRoomId),
+  ["scout_1"],
+);
+check(
+  "вторая «Разведка» не видит первый поход",
+  manager
+    .getRoomExpeditions(saved().expeditions, { id: "scout_2" })
+    .map((item) => item.originRoomId),
+  ["scout_2"],
+);
+
+const duplicateTeam = manager.startExpedition(
+  SECTOR.id,
+  [{ toadId: 3, role: "scout" }],
+  "scout_1",
+);
+check(
+  "из занятого контура второй поход не уходит",
+  duplicateTeam.success,
+  false,
+);
+
+console.log("\n[6b] Завершённый поход тоже держит контур");
+console.log("─".repeat(60));
+const completedState = saved();
+reset({
+  ...completedState,
+  expeditions: completedState.expeditions.map((expedition) =>
+    expedition.originRoomId === "scout_1"
+      ? { ...expedition, phase: "completed" }
+      : expedition,
+  ),
+});
+const afterCompleted = manager.startExpedition(
+  SECTOR.id,
+  [{ toadId: 3, role: "scout" }],
+  "scout_1",
+);
+check(
+  "после завершения похода нужен разбор добычи",
+  afterCompleted.success,
+  false,
+);
 
 Math.random = realRandom;
 

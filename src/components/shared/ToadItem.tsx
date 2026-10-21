@@ -45,9 +45,6 @@ const ToadHpRow = ({ toad }: { toad: Toad }) => {
           style={{ width: `${Math.max(0, Math.min(1, ratio)) * 100}%` }}
         />
       </div>
-      <span className="text-2xs text-slate-400 whitespace-nowrap">
-        {getToadHpStatusLabel(toad)}
-      </span>
     </div>
   );
 };

@@ -13,6 +13,12 @@ export interface GameState {
   toads: Toad[];
   colony?: ColonyState;
   expeditions?: Expedition[];
+  /**
+   * Разобранные походы: последние завершённые задания с журналами.
+   * Держим отдельно от `expeditions`, чтобы карточки не блокировали отправку
+   * новой команды, но игрок мог перечитать логи прошедшего похода.
+   */
+  expeditionArchive?: Expedition[];
   expeditionStats?: ExpeditionStats;
   lastSaved: string;
   createdAt: string;
@@ -54,8 +60,10 @@ export const getDefaultGameState = (): GameState => {
     toads: DEFAULT_TOADS,
     colony: EMPTY_COLONY,
     expeditions: [],
+    expeditionArchive: [],
     expeditionStats: {
       ...DEFAULT_EXPEDITION_STATS,
+      completedSectors: [],
       unlockedSectors: [],
     },
     lastSaved: new Date().toISOString(),
@@ -233,6 +241,32 @@ function migrateGameState(state: GameState): GameState {
     if (homed > 0) {
       console.info(`Дом восстановлен: ${homed} жаб в секторах`);
     }
+  }
+
+  // 5. Старые походы не помнили «Разведку»: раньше вместо id гекса передавался
+  //    `sceneId`, а у «Разведки» его нет. Привязываем такие походы к первой
+  //    «Разведке», чтобы карточка жила только в одном контуре и не блокировала
+  //    отправку второй команды из другой «Разведки». Если контуров несколько,
+  //    точный исходник уже не восстановить — берём первую «Разведку» в списке.
+  const expeditions = state.expeditions ?? [];
+  const scoutRooms =
+    state.colony?.rooms?.filter((room) => room.kind === "scout") ?? [];
+
+  if (
+    scoutRooms.length > 0 &&
+    expeditions.some((expedition) => expedition.originRoomId == null)
+  ) {
+    const originRoomId = scoutRooms[0].id;
+
+    return {
+      ...state,
+      toads,
+      expeditions: expeditions.map((expedition) =>
+        expedition.originRoomId == null
+          ? { ...expedition, originRoomId }
+          : expedition,
+      ),
+    };
   }
 
   return changed ? { ...state, toads } : state;

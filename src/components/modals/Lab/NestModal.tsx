@@ -48,7 +48,7 @@ import { ClickButton } from "../../shared/ClickButton";
 import Modal from "../../shared/Header";
 import ModalTabs, { ModalTabItem } from "../../shared/ModalTabs";
 import { ToadListCard } from "../../shared/ToadListCard";
-import { ToadPicker } from "../../shared/ToadPicker";
+import { ToadSlotGrid } from "../../shared/ToadSlotGrid";
 import { RoomConfig } from "../../HexMap/rooms-config";
 import { useModal } from "../../ModalContext";
 import RoomDataTab, { ROOM_DATA_TAB, RoomDataTabId } from "../RoomDataTab";
@@ -64,9 +64,10 @@ import { ProgressBar } from "../ToadInfoModal/ProgressBar";
  * Модалка репродуктора (Часть 3.2).
  *
  * Репродуктор — сектор на пару, и у пары места разные: первый слот занимает самка,
- * второй — самец. Слот — выпадающий список жаб **своего пола** (`shared/ToadPicker`):
- * тап по строке слота открывает всех, кого можно позвать, — взрослых, не в походе,
- * не выбитых, не больных и без беременности (`breeding-manager.ts` → `getNestSlotCandidates`).
+ * второй — самец. Слоты — общая сетка жабыных мест (`shared/ToadSlotGrid`): квадрат с «+»
+ * открывает модалку выбора (`shared/ToadPicker` → `ToadPickerList`), куда слот зовёт всех
+ * **своего пола** — взрослых, не в походе, не выбитых, не больных и без беременности
+ * (`breeding-manager.ts` → `getNestSlotCandidates`).
  * У жабы в списке видно её краткую сводку (пол, стадия, силы ⚡, сытость 🍽, Качество)
  * и где она живёт сейчас, а жаб, которых слот не берёт, можно посмотреть с причиной отказа
  * (переключатель «Не подходят») — чтобы не искать ответ, почему жабы нет в списке.
@@ -122,7 +123,7 @@ const readinessNote = (toad: Toad): string => {
   return "ухаживание доступно";
 };
 
-/** Что слот ищет — подсказка вверху раскрытого списка жаб */
+/** Что слот ищет — подсказка вверху списка жаб */
 const slotHint = (slotIndex: number): string => {
   const sex = getNestSlotSex(slotIndex);
   const who = sex === "female" ? "самку" : "самца";
@@ -135,8 +136,8 @@ const slotHint = (slotIndex: number): string => {
 /** Что сказать, когда слот никого не может позвать */
 const slotEmptyText = (slotIndex: number): string =>
   getNestSlotSex(slotIndex) === "female"
-    ? "Свободных самок нет: у остальных есть причина отказа — раскройте список ниже."
-    : "Свободных самцов нет: у остальных есть причина отказа — раскройте список ниже.";
+    ? "Свободных самок нет: у остальных есть причина отказа — откройте «Не подходят»."
+    : "Свободных самцов нет: у остальных есть причина отказа — откройте «Не подходят».";
 
 interface NestModalProps {
   /** id гекса-репродуктора, из которого открыли модалку: репродукторов в колонии может быть несколько */
@@ -200,8 +201,7 @@ export default function NestModal({
 
   /** Жабы, которые физически стоят в этом репродукторе: их и показывают слоты */
   const nestToads = allToads.filter(
-    (toad) =>
-      toad.scene_id === roomId && !isToadBusyOnExpedition(toad),
+    (toad) => toad.scene_id === roomId && !isToadBusyOnExpedition(toad),
   );
   /** Взрослые занимают места репродуктора… */
   const nestAdults = nestToads.filter((toad) => toad.stage === "adult");
@@ -471,96 +471,84 @@ export default function NestModal({
               </span>
             </div>
 
-            {/* Слоты пары: каждый слот — выпадающий список жаб своего пола */}
+            {/* Слоты пары: квадраты с «+», выбор жабы — модалкой своего пола */}
             <div className="bg-color-main rounded-xl px-3 py-2 border border-purple-500/40 flex flex-col gap-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-purple-200 font-semibold">
-                  Слоты репродуктора
-                </span>
-                <span className="text-2xs text-slate-400">{nestRoomTitle}</span>
-              </div>
+              <ToadSlotGrid
+                slots={slots.map((toad, index) => ({
+                  toad,
+                  label: getNestSlotLabel(index),
+                  icon: getToadSexIcon(NEST_SLOT_SEXES[index]),
+                }))}
+                columns={2}
+                title="Слоты репродуктора"
+                headerRight={nestRoomTitle}
+                pickerFor={(index) => {
+                  const picker = getSlotPicker(index);
 
-              {slots.map((toad, index) => {
-                const picker = getSlotPicker(index);
+                  return {
+                    groups: [
+                      {
+                        label: `Можно взять (${picker.available.length})`,
+                        items: picker.available,
+                      },
+                    ],
+                    rejected: {
+                      label: TOAD_PICKER_REJECTED_GROUP,
+                      items: picker.rejected,
+                    },
+                    hint: slotHint(index),
+                    emptyText: slotEmptyText(index),
+                    locationOf: roomLabelOf,
+                  };
+                }}
+                onPick={(toad) => handlePlace(toad)}
+                onOpen={(toad) => openToadCard(toad)}
+                onRemove={(toad) => handleRelease(toad)}
+                removeLabel="Вернуть в биопод"
+              />
 
-                return (
-                  <div
-                    key={`nest-slot-${index}`}
-                    className={`rounded-lg p-2 bg-black/20 border flex flex-col gap-1.5 ${
-                      toad
-                        ? "border-purple-500/30"
-                        : "border-dashed border-emerald-500/40"
-                    }`}
-                  >
-                    {/*
-                     * Слот — выпадающий список жаб своего пола: тап по строке открывает всех,
-                     * кого слот возьмёт, а жаба в слоте меняется выбором из того же списка.
-                     */}
-                    <ToadPicker
-                      icon={getToadSexIcon(NEST_SLOT_SEXES[index])}
-                      caption={getNestSlotLabel(index)}
-                      label={getNestSlotLabel(index)}
-                      picked={toad}
-                      hidePickedDetails={Boolean(toad)}
-                      placeholder="＋ назначить"
-                      groups={[
-                        {
-                          label: `Можно взять (${picker.available.length})`,
-                          items: picker.available,
-                        },
-                      ]}
-                      rejected={{
-                        label: TOAD_PICKER_REJECTED_GROUP,
-                        items: picker.rejected,
-                      }}
-                      hint={slotHint(index)}
-                      emptyText={slotEmptyText(index)}
-                      locationOf={roomLabelOf}
-                      onPick={handlePlace}
-                    />
-
-                    {toad && (
-                      <ToadListCard
-                        toad={toad}
-                        onOpen={() => openToadCard(toad)}
-                        variant="full"
-                        showHunger={false}
-                        showHp={false}
-                        showEnergy
-                        status={{
-                          icon: toad.mating
-                            ? "🫧"
-                            : toad.pregnancy?.isPregnant
-                              ? "🤰"
-                              : "⏳",
-                          label: toadStatus(toad).trim(),
-                          className:
-                            toad.mating || toad.pregnancy?.isPregnant
-                              ? "text-pink-300"
-                              : "text-slate-300",
-                        }}
-                        actions={
-                          !toad.mating ? (
-                            <ClickButton
-                              onClick={() => handleRelease(toad)}
-                              className="rounded-md border border-slate-500/50 bg-color-main px-2 py-1 text-2xs text-slate-200"
-                            >
-                              Вернуть в биопод
-                            </ClickButton>
-                          ) : (
-                            <ClickButton
-                              onClick={() => handleAbortMating(toad)}
-                              className="rounded-md border border-amber-500/50 bg-color-main px-2 py-1 text-2xs text-amber-200"
-                            >
-                              Прервать
-                            </ClickButton>
-                          )
-                        }
-                      />
-                    )}
-                  </div>
-                );
-              })}
+              {slots.map((toad, index) =>
+                toad ? (
+                  <ToadListCard
+                    key={`nest-slot-card-${index}`}
+                    toad={toad}
+                    onOpen={() => openToadCard(toad)}
+                    variant="full"
+                    showHunger={false}
+                    showHp={false}
+                    showEnergy
+                    status={{
+                      icon: toad.mating
+                        ? "🫧"
+                        : toad.pregnancy?.isPregnant
+                          ? "🤰"
+                          : "⏳",
+                      label: toadStatus(toad).trim(),
+                      className:
+                        toad.mating || toad.pregnancy?.isPregnant
+                          ? "text-pink-300"
+                          : "text-slate-300",
+                    }}
+                    actions={
+                      !toad.mating ? (
+                        <ClickButton
+                          onClick={() => handleRelease(toad)}
+                          className="rounded-md border border-slate-500/50 bg-color-main px-2 py-1 text-2xs text-slate-200"
+                        >
+                          Вернуть в биопод
+                        </ClickButton>
+                      ) : (
+                        <ClickButton
+                          onClick={() => handleAbortMating(toad)}
+                          className="rounded-md border border-amber-500/50 bg-color-main px-2 py-1 text-2xs text-amber-200"
+                        >
+                          Прервать
+                        </ClickButton>
+                      )
+                    }
+                  />
+                ) : null,
+              )}
 
               {/* Показываем их отдельно — жаба не пропадает с экрана */}
               {extraNestAdults.length > 0 && (

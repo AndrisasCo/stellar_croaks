@@ -125,7 +125,7 @@ const ToadMeter = ({
 
   return (
     <div className="flex items-center gap-2" title={title}>
-      <span className="shrink-0 text-2xs text-slate-400">{label}</span>
+      <span className="shrink-0 text-2xs text-slate-400 w-20">{label}</span>
       <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-700/70">
         <div
           className={`h-full rounded-full transition-all duration-500 ${barClassName}`}
@@ -339,7 +339,6 @@ export const ToadListCard = ({
         </div>
 
         <div className="flex shrink-0 items-start gap-1.5">
-          <RarityBadge toad={toad} />
           {actions && (
             <div
               className="flex items-center gap-1"

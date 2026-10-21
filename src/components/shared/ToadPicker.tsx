@@ -8,13 +8,15 @@ import {
 import { ClickButton } from "./ClickButton";
 
 /**
- * Общий выпадающий список жаб: строка слота и раскрытая панель со всеми доступными жабами.
+ * Общий список жаб и выпадающая панель со всеми доступными жабами.
  *
- * Жабу сажают в слот в трёх местах — репродуктор (`NestModal`), энергосектор ⚡
- * (`PowerRoomModal`) и роль в походе (`ExpeditionModal`). Раньше у каждого места был свой
- * список: где-то кнопка с панелью, где-то цветные карточки. Теперь место описывает только
- * **свои правила** (кого вообще можно взять и почему нет), а вид строки, сортировка, краткая
- * информация и поведение списка — здесь, одни на всех.
+ * Жабу сажают в слот в нескольких местах: репродуктор (`NestModal`), коллайдер
+ * (`ToadColliderModal`) и Медотсек (`HospitalModal`) открывают список модалкой
+ * (`shared/ToadSlotGrid` → `ToadPickerList`), а энергосектор ⚡ (`PowerRoomModal`) и роль
+ * в походе (`ExpeditionModal`) — выпадающей панелью (`ToadPicker`). Раньше у каждого места
+ * был свой список: где-то кнопка с панелью, где-то цветные карточки. Теперь место описывает
+ * только **свои правила** (кого вообще можно взять и почему нет), а вид строки, сортировка,
+ * краткая информация и поведение списка — здесь, одни на всех.
  *
  * Строка слота — кнопка: жаба в слоте (имя, Качество, `pickedSummary`) или приглашение; тап
  * раскрывает панель. В строке списка у каждой жабы одна и та же краткая информация
@@ -146,6 +148,135 @@ const ToadPickerRow: React.FC<{
   );
 };
 
+/** Содержимое панели списка: общее для выпадающего `ToadPicker` и модалки слота */
+export interface ToadPickerListProps {
+  /** Название слота — идёт в подсказку строки */
+  label: string;
+  /** Группы жаб, которых можно взять (пустые группы не рисуются) */
+  groups: ToadPickerGroup[];
+  /** Жабы, которых взять нельзя: за переключателем, у каждой — причина отказа */
+  rejected?: ToadPickerGroup;
+  /** Подсказка вверху списка: правила слота */
+  hint?: React.ReactNode;
+  /** Что сказать, когда взять некого */
+  emptyText?: string;
+  /** Пункт «убрать жабу из слота» (показывается, когда жаба выбрана) */
+  clear?: { label: string; onClear: () => void };
+  /** Где жаба живёт сейчас — строкой списка (нет функции — места не видно) */
+  locationOf?: (toad: Toad) => string | null;
+  /** Куда сообщить выбор жабы */
+  onPick: (toad: Toad) => void;
+}
+
+/**
+ * Список жаб с группами и причинами отказа — без оболочки панели.
+ *
+ * Его используют и выпадающий `ToadPicker` (внутри панели под строкой слота),
+ * и модалка выбора из `ToadSlotGrid`: строки, сортировка и «Не подходят»
+ * у всех одни и те же.
+ */
+export const ToadPickerList: React.FC<ToadPickerListProps> = ({
+  label,
+  groups,
+  rejected,
+  hint,
+  emptyText = "Свободных жаб нет.",
+  clear,
+  locationOf,
+  onPick,
+}) => {
+  /** Отсеянные жабы спрятаны: список открывается теми, кого можно взять */
+  const [showRejected, setShowRejected] = useState(false);
+
+  const sortedGroups = useMemo(
+    () =>
+      groups
+        .map((group) => ({ ...group, items: sortItems(group.items) }))
+        .filter((group) => group.items.length > 0),
+    [groups],
+  );
+
+  const rejectedItems = useMemo(
+    () =>
+      sortItems(rejected?.items ?? []).filter((item) => Boolean(item.reason)),
+    [rejected],
+  );
+
+  const availableCount = sortedGroups.reduce(
+    (sum, group) => sum + group.items.length,
+    0,
+  );
+
+  return (
+    <>
+      {hint && (
+        <p className="sticky top-0 z-10 bg-slate-900/95 px-2 py-1.5 text-2xs leading-snug text-slate-400">
+          {hint}
+        </p>
+      )}
+
+      {clear && (
+        <ClickButton
+          type="button"
+          onClick={clear.onClear}
+          className="w-full border-b border-slate-700/40 px-2 py-1.5 text-left text-2xs text-slate-400 transition-colors duration-300 hover:bg-slate-700/60"
+        >
+          ✕ {clear.label}
+        </ClickButton>
+      )}
+
+      {availableCount === 0 && (
+        <p className="px-2 py-3 text-2xs leading-snug text-slate-400">
+          {emptyText}
+        </p>
+      )}
+
+      {sortedGroups.map((group) => (
+        <div key={group.label}>
+          <p className="bg-slate-800/80 px-2 py-1 text-2xs uppercase tracking-wide text-amber-200/80">
+            {group.label}
+          </p>
+          {group.items.map((item) => (
+            <ToadPickerRow
+              key={item.toad.id}
+              item={item}
+              label={label}
+              locationOf={locationOf}
+              onPick={onPick}
+            />
+          ))}
+        </div>
+      ))}
+
+      {rejectedItems.length > 0 && (
+        <div className="border-t border-slate-700/40">
+          <ClickButton
+            type="button"
+            onClick={() => setShowRejected((prev) => !prev)}
+            className={`w-full px-2 py-1.5 text-left text-2xs transition-colors duration-300 hover:bg-slate-700/60 ${
+              showRejected ? "text-slate-300" : "text-slate-400"
+            }`}
+          >
+            {showRejected ? "▾" : "▸"} {rejected?.label ?? "Не подходят"}:{" "}
+            {rejectedItems.length}
+          </ClickButton>
+
+          {showRejected &&
+            rejectedItems.map((item) => (
+              <ToadPickerRow
+                key={`rejected-${item.toad.id}`}
+                item={item}
+                label={label}
+                locationOf={locationOf}
+                onPick={onPick}
+              />
+            ))}
+        </div>
+      )}
+    </>
+  );
+};
+
 export interface ToadPickerProps {
   /** Значок слота (♀, ♂, 🥷) — стоит перед подписью, как на карте */
   icon?: string;
@@ -205,8 +336,6 @@ export const ToadPicker: React.FC<ToadPickerProps> = ({
   const [open, setOpen] = useState(false);
   /** Не хватает места снизу — список раскрывается вверх: иначе он уходит за край экрана */
   const [dropUp, setDropUp] = useState(false);
-  /** Отсеянные жабы спрятаны: список открывается теми, кого можно взять */
-  const [showRejected, setShowRejected] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -253,35 +382,14 @@ export const ToadPicker: React.FC<ToadPickerProps> = ({
     };
   }, [open]);
 
-  /** Панель закрывается — вместе с ней прячем и «не подходящих» */
   const toggleOpen = () => {
     setOpen((prev) => !prev);
-    setShowRejected(false);
   };
-
-  const sortedGroups = useMemo(
-    () =>
-      groups
-        .map((group) => ({ ...group, items: sortItems(group.items) }))
-        .filter((group) => group.items.length > 0),
-    [groups],
-  );
-
-  const rejectedItems = useMemo(
-    () =>
-      sortItems(rejected?.items ?? []).filter((item) => Boolean(item.reason)),
-    [rejected],
-  );
 
   const pick = (toad: Toad) => {
     onPick(toad);
     setOpen(false);
   };
-
-  const availableCount = sortedGroups.reduce(
-    (sum, group) => sum + group.items.length,
-    0,
-  );
 
   return (
     <div ref={rootRef} className={`relative min-w-0 flex-1 ${className ?? ""}`}>
@@ -342,73 +450,26 @@ export const ToadPicker: React.FC<ToadPickerProps> = ({
             dropUp ? "bottom-full mb-1" : "top-full mt-1"
           }`}
         >
-          {hint && (
-            <p className="sticky top-0 z-10 bg-slate-900/95 px-2 py-1.5 text-2xs leading-snug text-slate-400">
-              {hint}
-            </p>
-          )}
-
-          {clear && picked && (
-            <ClickButton
-              type="button"
-              onClick={() => {
-                clear.onClear();
-                setOpen(false);
-              }}
-              className="w-full border-b border-slate-700/40 px-2 py-1.5 text-left text-2xs text-slate-400 transition-colors duration-300 hover:bg-slate-700/60"
-            >
-              ✕ {clear.label}
-            </ClickButton>
-          )}
-
-          {availableCount === 0 && (
-            <p className="px-2 py-3 text-2xs leading-snug text-slate-400">
-              {emptyText}
-            </p>
-          )}
-
-          {sortedGroups.map((group) => (
-            <div key={group.label}>
-              <p className="bg-slate-800/80 px-2 py-1 text-2xs uppercase tracking-wide text-amber-200/80">
-                {group.label}
-              </p>
-              {group.items.map((item) => (
-                <ToadPickerRow
-                  key={item.toad.id}
-                  item={item}
-                  label={label}
-                  locationOf={locationOf}
-                  onPick={pick}
-                />
-              ))}
-            </div>
-          ))}
-
-          {rejectedItems.length > 0 && (
-            <div className="border-t border-slate-700/40">
-              <ClickButton
-                type="button"
-                onClick={() => setShowRejected((prev) => !prev)}
-                className={`w-full px-2 py-1.5 text-left text-2xs transition-colors duration-300 hover:bg-slate-700/60 ${
-                  showRejected ? "text-slate-300" : "text-slate-400"
-                }`}
-              >
-                {showRejected ? "▾" : "▸"} {rejected?.label ?? "Не подходят"}:{" "}
-                {rejectedItems.length}
-              </ClickButton>
-
-              {showRejected &&
-                rejectedItems.map((item) => (
-                  <ToadPickerRow
-                    key={`rejected-${item.toad.id}`}
-                    item={item}
-                    label={label}
-                    locationOf={locationOf}
-                    onPick={pick}
-                  />
-                ))}
-            </div>
-          )}
+          <ToadPickerList
+            label={label}
+            groups={groups}
+            rejected={rejected}
+            hint={hint}
+            emptyText={emptyText}
+            clear={
+              clear && picked
+                ? {
+                    label: clear.label,
+                    onClear: () => {
+                      clear.onClear();
+                      setOpen(false);
+                    },
+                  }
+                : undefined
+            }
+            locationOf={locationOf}
+            onPick={pick}
+          />
         </div>
       )}
     </div>

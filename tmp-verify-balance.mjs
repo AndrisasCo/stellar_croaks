@@ -5,7 +5,8 @@
  * проверяются те же формулы, что работают в игре, а не их копия:
  *   1) поход: «каждая роль +20%», примеры 45% / 120%, сложность сектора и удача;
  *   2) поход всегда выгоднее фермы (норма добычи против фермы за время отсутствия);
- *   3) склад предметов: вместимость от построек «Склад», обрезка пачки по месту;
+ *   3) склад предметов: вместимость от построек «Склад» под током, обрезка пачки по месту
+ *      и отсутствие бонуса у обесточенного склада;
  *   4) жильё жаб: расселение по вольерам без склада жаб (лишние остаются без места);
  *   5) цены построек и награды элитных заказов (нет инверсии «награда ↔ сложность»).
  *
@@ -105,6 +106,7 @@ globalThis.window.localStorage = globalThis.localStorage;
 
 const cfg = bundle("src/utils/expedition-config.ts", "expedition-config");
 const models = bundle("src/models/expedition.ts", "models-expedition");
+const events = bundle("src/utils/expedition-events.ts", "expedition-events");
 const storage = bundle("src/utils/storage.ts", "storage");
 const housing = bundle("src/utils/housing.ts", "housing");
 const rooms = bundle("src/components/HexMap/rooms-config.ts", "rooms-config");
@@ -178,7 +180,7 @@ check(
   1.2,
 );
 console.log(
-  `ℹ️  «Дальний Периметр» (глубина 8): множитель ${cfg
+  `ℹ️  «Центр станции» (глубина 8): множитель ${cfg
     .getSectorSuccessFactor(deep)
     .toFixed(3)}, те же 3 роли по 200% → ${Math.round(
     cfg.getExpeditionSuccessChance(team200, deep) * 100,
@@ -205,7 +207,32 @@ check(
   3,
 );
 check("шанс астро-находки в хорошем событии", cfg.EXPEDITION_ASTRO_CHANCE, 0.18);
+check(
+  "шанс бонусной астро-находки вместо пигмента",
+  cfg.EXPEDITION_ASTRO_BONUS_CHANCE,
+  0.35,
+);
 check("курс астро в норме добычи (1 💎 = 5 🔷)", cfg.EXPEDITION_ASTRO_VALUE, 5);
+
+const fixedRng = (values) => {
+  let index = 0;
+  return () => values[Math.min(index++, values.length - 1)];
+};
+const lootCtx = (sector, values) => ({ sector, rng: fixedRng(values) });
+
+const bonusAstro = events.rareLoot(lootCtx(starter, [0.99, 0.99, 0]));
+check("вместо пигмента выпадают астро-кваксы", bonusAstro.astro_quax, 1);
+check("пигменты больше не попадают в добычу", bonusAstro.items, undefined);
+check(
+  "оба астро-броска складываются на глубине",
+  events.rareLoot(lootCtx(deep, [0, 0.99, 0])).astro_quax,
+  6,
+);
+check(
+  "без срабатывания астро-бросков добычи нет",
+  JSON.stringify(events.rareLoot(lootCtx(starter, [0.99, 0.99, 0.99]))),
+  "{}",
+);
 
 console.log("\n[2] Поход против фермы");
 console.log("─".repeat(60));
@@ -244,6 +271,45 @@ check(
   storage.canFitInStorage(stubState().user.storage, { food: 306 }),
   false,
 );
+
+// Обесточенный склад остаётся на карте, но полок не даёт: бонус считают только
+// склады, до которых доходит ток энергосети (`utils/storage.ts`).
+raw = JSON.stringify(
+  stubState({
+    colony: {
+      rooms: [
+        // рядом с ядром — под током
+        { id: "slot-north", kind: "storage", builtAt: "" },
+        // второе кольцо, источников рядом нет — обесточен
+        { id: "outpost-0", kind: "storage", builtAt: "" },
+      ],
+    },
+  }),
+);
+const mixedStorage = storage.getStorageCapacityInfo(stubState().user.storage);
+check("построено складов", mixedStorage.rooms, 2);
+check("складов под током", mixedStorage.poweredRooms, 1);
+check("обесточенных складов", mixedStorage.unpoweredRooms, 1);
+check(
+  "обесточенный склад не добавляет полок",
+  mixedStorage.capacity,
+  400,
+);
+
+raw = JSON.stringify(
+  stubState({
+    colony: {
+      rooms: [{ id: "outpost-0", kind: "storage", builtAt: "" }],
+    },
+  }),
+);
+check("склад без тока: только базовая вместимость", storage.getStorageCapacity(), 100);
+check(
+  "склад без тока: пачка обрезается по базовым полкам",
+  storage.fitItemsInStorage(stubState().user.storage, { food: 300 }).food,
+  5,
+);
+raw = JSON.stringify(stubState());
 
 console.log("\n[4] Жильё жаб (склада жаб нет)");
 console.log("─".repeat(60));

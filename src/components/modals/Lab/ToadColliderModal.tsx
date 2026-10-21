@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ColliderIcons, PregnancyIcon } from "../../../assets/icons";
+import { ColliderIcons } from "../../../assets/icons";
 import { deleteToadsByIds } from "../../../backend";
 import { hasIncubatingChild } from "../../../backend/collider-manager";
 import { useColony } from "../../../hooks/use-colony";
@@ -23,11 +23,15 @@ import {
   EXPEDITION_TOAD_BUSY_REASON,
   isToadBusyOnExpedition,
 } from "../../../utils/expedition-manager";
+import { TOAD_PICKER_REJECTED_GROUP } from "../../../utils/toad-picker";
 import { ClickButton } from "../../shared/ClickButton";
 import Modal from "../../shared/Header";
 import { ToadAvatar } from "../../shared/ToadAvatar";
 import { ToadGender } from "../../shared/ToadGender";
+import { ToadSlotGrid } from "../../shared/ToadSlotGrid";
 import { useToads } from "../../ToadContext";
+import { useModal } from "../../ModalContext";
+import { ToadInfo } from "../ToadInfoModal";
 import { MixingInProgress } from "./MixingInProgress";
 import IncubatorTab from "./IncubatorTab";
 import ModalTabs, { ModalTabItem } from "../../shared/ModalTabs";
@@ -51,11 +55,6 @@ const getRarityColor = (rarity: number): string => {
 // Функция для определения бейджа редкости
 const getRarityBadge = (rarity: number): string => {
   return getRarityConfig(rarity).icon;
-};
-
-// Функция для определения фона редкости
-const getRarityBackground = (rarity: number): string => {
-  return getRarityConfig(rarity).bgColor;
 };
 
 // Склонение слова «жаба» для предупреждения о безвозвратной потере
@@ -86,8 +85,10 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
   // после явного подтверждения.
   const [showWarning, setShowWarning] = useState(false);
 
-  const { startBreeding, updateBreeding, allToads, colliderState } = useToads();
+  const { startBreeding, updateBreeding, allToads, colliderState, selectToad } =
+    useToads();
   const { addNotification } = useNotifications();
+  const { openModal } = useModal();
   const { powerGrid } = useColony();
   /** Состояние сектора: смешивание жаб (по умолчанию), инкубатор или данные сектора */
   const {
@@ -139,33 +140,19 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
 
   const isDisabled = currentToads.length < 2;
 
-  const handleSelectToad = (toad: Toad) => {
+  const handlePickToad = (toad: Toad, slotIndex: number) => {
     if (isToadBusyOnExpedition(toad)) {
       addNotification({ type: "warn", content: EXPEDITION_TOAD_BUSY_REASON });
       return;
     }
 
-    const currentToadIndex = selectedToads.findIndex(
-      (t) => t && t.id === toad.id,
+    // Одна жаба — одна колба: если её взяли в другой слот, старый слот освобождается
+    const newSlots = selectedToads.map((item) =>
+      item && item.id === toad.id ? null : item,
     );
-
-    if (currentToadIndex !== -1) {
-      const newSlots = [...selectedToads];
-      newSlots[currentToadIndex] = null;
-      setSelectedToads(newSlots);
-      playBubble2();
-      return;
-    }
-
-    if (currentToads.length < 5) {
-      const emptySlotIndex = selectedToads.findIndex((slot) => slot === null);
-      if (emptySlotIndex !== -1) {
-        const newSlots = [...selectedToads];
-        newSlots[emptySlotIndex] = toad;
-        setSelectedToads(newSlots);
-        playBubble2();
-      }
-    }
+    newSlots[slotIndex] = toad;
+    setSelectedToads(newSlots);
+    playBubble2();
   };
 
   const handleRemoveToad = (index: number) => {
@@ -173,6 +160,55 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
     newToads[index] = null;
     setSelectedToads(newToads);
     playBubble2();
+  };
+
+  /**
+   * Кого берёт пустая колба: взрослых жаб колонии не в походе и ещё не выбранных
+   * в другие колбы. Остальные видны в «Не подходят» с причиной отказа.
+   */
+  const getPickerFor = () => {
+    const selectedIds = new Set(currentToads.map((toad) => toad.id));
+
+    return {
+      groups: [
+        {
+          label: `Можно взять (${availableToads.filter((toad) => !selectedIds.has(toad.id)).length})`,
+          items: availableToads
+            .filter((toad) => !selectedIds.has(toad.id))
+            .map((toad) => ({
+              toad,
+              rank: toad.genes.rarity,
+              note: toad.state?.genetic_fault
+                ? `генетическая поломка: ${toad.state.genetic_fault}%`
+                : undefined,
+            })),
+        },
+      ],
+      rejected: {
+        label: TOAD_PICKER_REJECTED_GROUP,
+        items: allToads
+          .map((toad) => ({
+            toad,
+            rank: toad.genes.rarity,
+            reason: selectedIds.has(toad.id)
+              ? "уже в коллайдере"
+              : toad.stage !== "adult"
+                ? "в коллайдер берут только взрослых жаб"
+                : isToadBusyOnExpedition(toad)
+                  ? EXPEDITION_TOAD_BUSY_REASON
+                  : null,
+          }))
+          .filter((item) => Boolean(item.reason)),
+      },
+      hint: "Сверху — самые редкие. В коллайдер берут взрослых жаб колонии: не в походе и не занятых в другой колбе.",
+      emptyText:
+        "Свободных жаб нет: все взрослые жабы колонии уже в коллайдере.",
+    };
+  };
+
+  const openToadCard = (toad: Toad) => {
+    selectToad(toad.id);
+    openModal(() => <ToadInfo />);
   };
 
   const handleBreed = async () => {
@@ -291,14 +327,12 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
           {!breedingResult ? (
             incubatorBusy ? (
               <div className="rounded-xl border border-amber-400/40 bg-amber-500/10 p-5 text-center">
-                <div className="text-3xl">🧫</div>
                 <h3 className="mt-2 text-lg font-bold text-amber-200">
                   Коллайдер заблокирован
                 </h3>
                 <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-slate-200">
-                  В инкубаторе уже дозревает гибрид
-                  {incubatingChild ? ` «${incubatingChild.name}»` : ""}. Заберите
-                  его в биопод — после этого можно снова смешивать жаб.
+                  Инкубатор занят
+                  {incubatingChild ? ` «${incubatingChild.name}»` : ""}.
                 </p>
                 <button
                   type="button"
@@ -310,212 +344,109 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
               </div>
             ) : (
               <>
-              <div className="bg-color-second  rounded-lg p-3 mb-4  border border-slate-600">
-                <div className="text-xs sm:text-sm text-white font-medium mb-2  text-center flex items-center justify-center gap-2">
-                  <span className="text-yellow-400">⭐</span>
-                  Бонусы редкости
-                  <span className="text-yellow-400">⭐</span>
-                </div>
-                <div className="grid grid-cols-4 gap-2 text-xs">
-                  {[
-                    {
-                      count: 2,
-                      colors: "from-green-400 to-green-600",
-                      shadow: "shadow-green-500/40",
-                    },
-                    {
-                      count: 3,
-                      colors: "from-blue-400 to-blue-600",
-                      shadow: "shadow-blue-500/40",
-                    },
-                    {
-                      count: 4,
-                      colors: "from-purple-500 to-pink-500",
-                      shadow: "shadow-purple-500/40",
-                    },
-                    {
-                      count: 5,
-                      colors: "from-yellow-400 to-red-500",
-                      shadow: "shadow-yellow-500/40",
-                    },
-                  ].map(({ count, colors, shadow }) => (
-                    <div
-                      key={count}
-                      className={`text-center p-1 sm:p-2 rounded-xl transition-all duration-500 transform ${
-                        currentToads.length >= count
-                          ? `bg-gradient-to-br ${colors} text-white shadow-lg ${shadow} scale-105 border-2 border-white border-opacity-30 animate-gradient-x`
-                          : "bg-color-main text-slate-300 border-2 border-transparent "
-                      }`}
-                    >
-                      <div className="text-1xs font-bold">{count} жаб</div>
+                <div className="bg-color-second  rounded-lg p-3 mb-4  border border-slate-600">
+                  <div className="text-xs sm:text-sm text-white font-medium mb-2  text-center flex items-center justify-center gap-2">
+                    <span className="text-yellow-400">⭐</span>
+                    Бонусы редкости
+                    <span className="text-yellow-400">⭐</span>
+                  </div>
+                  <div className="grid grid-cols-4 gap-2 text-xs">
+                    {[
+                      {
+                        count: 2,
+                        colors: "from-green-400 to-green-600",
+                        shadow: "shadow-green-500/40",
+                      },
+                      {
+                        count: 3,
+                        colors: "from-blue-400 to-blue-600",
+                        shadow: "shadow-blue-500/40",
+                      },
+                      {
+                        count: 4,
+                        colors: "from-purple-500 to-pink-500",
+                        shadow: "shadow-purple-500/40",
+                      },
+                      {
+                        count: 5,
+                        colors: "from-yellow-400 to-red-500",
+                        shadow: "shadow-yellow-500/40",
+                      },
+                    ].map(({ count, colors, shadow }) => (
                       <div
-                        className={`mt-1 text-2xs font-bold ${
+                        key={count}
+                        className={`text-center p-1 sm:p-2 rounded-xl transition-all duration-500 transform ${
                           currentToads.length >= count
-                            ? "text-yellow-300"
-                            : "text-slate-200"
+                            ? `bg-gradient-to-br ${colors} text-white shadow-lg ${shadow} scale-105 border-2 border-white border-opacity-30 animate-gradient-x`
+                            : "bg-color-main text-slate-300 border-2 border-transparent "
                         }`}
                       >
-                        +{calculateRarityBonus(count)}%
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              {/* Слоты-колбы для жаб */}
-              <div className="flex flex-wrap justify-center gap-2 sm:gap-3 mb-3">
-                {[0, 1, 2, 3, 4].map((slot: number) => (
-                  <div
-                    key={slot}
-                    className={`relative w-14 h-16 sm:w-16 sm:h-20 md:w-18 md:h-22 border-2 rounded-xl flex flex-col items-center justify-center transition-all ${
-                      selectedToads[slot]
-                        ? "border-green-400 bg-green-900/30"
-                        : "border-green-400/50 border-dashed bg-green-900/10"
-                    }`}
-                  >
-                    {selectedToads[slot] ? (
-                      <>
-                        <ToadAvatar size={8} toad={selectedToads[slot]} />
-                        <p className="text-white text-2xs  text-center px-1 truncate w-full">
-                          {selectedToads[slot]!.name}
-                        </p>
-
-                        {!isMixing && (
-                          <button
-                            onClick={() => handleRemoveToad(slot)}
-                            className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-400 text-white rounded-full w-4 h-4 flex items-center justify-center transition-colors"
-                          >
-                            {ColliderIcons.close}
-                          </button>
-                        )}
-                      </>
-                    ) : (
-                      <div className="text-green-400/70 text-xl ">+</div>
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              {/* Стрелка между слотами */}
-              <div className="flex justify-center mb-4">
-                <div className="text-green-400">{ColliderIcons.arrow}</div>
-              </div>
-
-              {/* Кнопка скрещивания */}
-              {isMixing && (
-                <div className="pb-4 my-auto h-full">
-                  <MixingInProgress />
-                </div>
-              )}
-
-              {/* Единственное предупреждение о необратимости — финальное
-                  подтверждение после нажатия «Смешать» (см. showWarning ниже) */}
-              {!isMixing && (
-                <div className="text-center mb-6 h-full">
-                  <button
-                    onClick={() => setShowWarning(true)}
-                    disabled={isDisabled}
-                    className="ui-button-primary px-4 py-2"
-                  >
-                    <div className="flex items-center justify-center gap-2 px-6">
-                      {ColliderIcons.mix}
-                      <span>Смешать</span>
-                    </div>
-                  </button>
-                </div>
-              )}
-
-              {/* Список доступных жаб */}
-              {!isMixing && (
-                <div className="mb-4 h-full">
-                  <p className="text-slate-200 text-xs sm:text-sm mb-2 text-center">
-                    Нажмите на жаб, чтобы добавить в колбы:
-                  </p>
-                  <div>
-                    <div className="flex flex-wrap gap-1 sm:gap-2 justify-center">
-                      {availableToads.length === 0 && (
-                        <div className="text-slate-500 text-sm py-4">
-                          Нет доступных жаб
+                        <div className="text-1xs font-bold">{count} жаб</div>
+                        <div
+                          className={`mt-1 text-2xs font-bold ${
+                            currentToads.length >= count
+                              ? "text-yellow-300"
+                              : "text-slate-200"
+                          }`}
+                        >
+                          +{calculateRarityBonus(count)}%
                         </div>
-                      )}
-                      {availableToads.map((toad) => {
-                        const geneticFaultConfig = getGeneticFaultConfig(
-                          toad.state?.genetic_fault,
-                        );
-
-                        return (
-                          <button
-                            key={toad.id}
-                            onClick={() => handleSelectToad(toad)}
-                            className={`p-2 relative rounded-lg text-xs text-center transition-all flex flex-col items-center w-[100px] max-w-[100px] border ${
-                              currentToads.find((t) => t.id === toad.id)
-                                ? "bg-purple-600/50 text-white cursor-not-allowed border-purple-500/50"
-                                : `text-slate-200 cursor-pointer ${getRarityBackground(
-                                    toad.genes.rarity,
-                                  )} hover:bg-slate-600/30`
-                            }`}
-                          >
-                            <ToadAvatar size={6} toad={toad} />
-
-                            {toad.pregnancy && (
-                              <span className="absolute -top-1 -right-1">
-                                <PregnancyIcon />
-                              </span>
-                            )}
-
-                            {toad.mating && (
-                              <span
-                                className="absolute -top-1 -left-1 text-xs"
-                                title="Ухаживает в репродукторе: беременность стартует через 15–30 мин"
-                              >
-                                🫧
-                              </span>
-                            )}
-
-                            <div className="flex items-center gap-1 mb-1 w-full justify-center min-h-[20px]">
-                              <ToadGender gender={toad.sex} />
-                              <span className="truncate font-medium text-1xs">
-                                {toad.name}
-                              </span>
-                            </div>
-
-                            {/* Качество */}
-                            <div
-                              className={`text-xs font-bold ${getRarityColor(
-                                toad.genes.rarity,
-                              )} flex items-center gap-1 mb-1`}
-                            >
-                              <span className="text-2xs">
-                                {getRarityBadge(toad.genes.rarity)}
-                              </span>
-                              <span>{toad.genes.rarity.toFixed(1)}</span>
-                            </div>
-
-                            {/* Генетическая поломка */}
-                            <div
-                              className={`w-full rounded border px-1 py-0.5 text-2xs font-medium ${geneticFaultConfig.bgColor} ${geneticFaultConfig.borderColor} ${geneticFaultConfig.color}`}
-                            >
-                              <div className="flex items-center justify-center gap-1">
-                                <span>{geneticFaultConfig.icon}</span>
-                                <span>{toad.state?.genetic_fault || 0}%</span>
-                              </div>
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
-              )}
+                {/* Колбы: квадраты с «+», выбор жабы — модалкой */}
+                <ToadSlotGrid
+                  slots={selectedToads.map((toad, index) => ({
+                    toad,
+                    label: `Колба ${index + 1}`,
+                    icon: "🧪",
+                  }))}
+                  columns={5}
+                  title="Колбы коллайдера"
+                  headerRight={`${currentToads.length}/5`}
+                  pickerFor={getPickerFor}
+                  onPick={handlePickToad}
+                  onOpen={(toad) => openToadCard(toad)}
+                  onRemove={(_toad, index) => handleRemoveToad(index)}
+                  removeLabel="Убрать из колбы"
+                  disabled={isMixing}
+                  className="mb-3"
+                />
 
-              {/* Кнопки управления */}
+                {/* Кнопка скрещивания */}
+                {isMixing && (
+                  <div className="pb-4 my-auto h-full">
+                    <MixingInProgress />
+                  </div>
+                )}
 
-              <ClickButton
-                className="w-full mt-auto bg-color-second hover:bg-slate-600 text-slate-200 py-3 rounded-xl "
-                onClick={handleReset}
-                disabled={isMixing}
-              >
-                Очистить
-              </ClickButton>
+                {/* Единственное предупреждение о необратимости — финальное
+                  подтверждение после нажатия «Смешать» (см. showWarning ниже) */}
+                {!isMixing && (
+                  <div className="text-center mb-6 h-full">
+                    <button
+                      onClick={() => setShowWarning(true)}
+                      disabled={isDisabled}
+                      className="ui-button-primary px-4 py-2"
+                    >
+                      <div className="flex items-center justify-center gap-2 px-6">
+                        {ColliderIcons.mix}
+                        <span>Смешать</span>
+                      </div>
+                    </button>
+                  </div>
+                )}
+
+                {/* Кнопки управления */}
+
+                <ClickButton
+                  className="w-full mt-auto bg-color-second hover:bg-slate-600 text-slate-200 py-3 rounded-xl "
+                  onClick={handleReset}
+                  disabled={isMixing}
+                >
+                  Очистить
+                </ClickButton>
               </>
             )
           ) : (
