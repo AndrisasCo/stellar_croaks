@@ -334,13 +334,13 @@ checkTrue(
   moveRules.canMoveToadToRoom(toad({ id: 1, hp: 40 }), hospitalRoom, atRoom()).ok,
 );
 checkTrue(
-  "выбитую жабу в лазарет несут (правило «сначала подлечите» не мешает)",
+  "выбитую жабу в лазарет несут (правило «жаба выбита» не мешает)",
   moveRules.canMoveToadToRoom(toad({ id: 2, hp: 0 }), hospitalRoom, atRoom()).ok,
 );
 check(
   "выбитую жабу в вольер не вернуть",
   moveRules.canMoveToadToRoom(toad({ id: 3, hp: 0 }), aviaryRoom, atRoom()).reason,
-  "Жаба выбита из строя — сначала подлечите её.",
+  "Жаба выбита, переместите ее в медотсек для лечения.",
 );
 
 const sixBeds = Array.from({ length: 6 }, (_item, index) =>
@@ -387,7 +387,7 @@ checkTrue(
 check(
   "а вне лазарета выбитую жабу не тащат",
   moveRules.getToadMoveIssue(toad({ id: 8, hp: 0 })),
-  "Жаба выбита из строя — сначала подлечите её.",
+  "Жаба выбита, переместите ее в медотсек для лечения.",
 );
 check(
   "жаба в походе не выписывается и не переносится",

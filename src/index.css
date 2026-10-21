@@ -331,6 +331,32 @@ body {
   .ui-button-danger {
     @apply inline-flex items-center justify-center gap-2 rounded-xl border border-rose-300/40 bg-gradient-to-r from-rose-600 to-red-600 px-3 py-2 text-sm font-bold text-white shadow-lg shadow-rose-950/30 transition-colors duration-300 hover:from-rose-500 hover:to-red-500 disabled:cursor-not-allowed disabled:opacity-50;
   }
+
+  /* ----- ClickButton: единое disabled-состояние -----
+     Приглушаем цвета (обесцвечивание + прозрачность) и полностью гасим
+     hover/active: без масштаба, подсветки, тени и анимации. Селекторы с
+     :hover/:active специфичнее утилит hover:… и active:…, поэтому эффекты
+     из className конкретной кнопки disabled-элемент не перебивают.
+     pointer-events не отключаем — иначе пропадут title-подсказки
+     и курсор not-allowed. */
+  .click-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+    filter: grayscale(0.85) brightness(0.85);
+    transform: none;
+    box-shadow: none;
+    transition: none;
+  }
+
+  .click-button:disabled:hover,
+  .click-button:disabled:active {
+    cursor: not-allowed;
+    opacity: 0.5;
+    filter: grayscale(0.85) brightness(0.85);
+    transform: none;
+    box-shadow: none;
+    transition: none;
+  }
 }
 
 /* Глобальные скроллбары для всего приложения */

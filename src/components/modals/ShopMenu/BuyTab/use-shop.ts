@@ -230,12 +230,6 @@ export const useShop = () => {
         completeAchivement("buy-food");
       }
 
-      addNotification({
-        content: "Предмет куплен!",
-        type: "success",
-        timeout: 3000,
-      });
-
       if (noAmount) {
         return;
       }
@@ -268,7 +262,6 @@ export const useShop = () => {
     const newShopState = refreshShop();
     setShopState(newShopState);
     saveShopState(newShopState);
-    addNotification({ content: "Рынок обновлен!", type: "success" });
   };
 
   const refreshShop = (cooldownMs = REFRESH_COOLDOWN): ShopState => {
@@ -309,10 +302,6 @@ export const useShop = () => {
     const newShopState = refreshShop(INSTANT_REFRESH_COOLDOWN);
     setShopState(newShopState);
     saveShopState(newShopState);
-    addNotification({
-      content: "Рынок мгновенно обновлен!",
-      type: "success",
-    });
   };
 
   const canRefresh = Date.now() >= shopState.nextRefresh;

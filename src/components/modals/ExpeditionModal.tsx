@@ -10,7 +10,7 @@ import { ToadInfo } from "./ToadInfoModal";
 import { ExpeditionLootGrid } from "./ExpeditionLootGrid";
 import { ExpeditionLogList, formatExpeditionDate } from "./ExpeditionLogList";
 import { ExpeditionLogModal } from "./ExpeditionLogModal";
-import { SwipeSlides } from "../shared/SwipeSlides";
+import { SlidePager } from "../shared/SlidePager";
 import { useNotifications } from "../../hooks/use-notification";
 import { useGameState } from "../../hooks/use-game-state";
 import { useColony } from "../../hooks/use-colony";
@@ -35,13 +35,16 @@ import { Items } from "../../models/user";
 import {
   EXPEDITION_BASE_DISEASE_CHANCE,
   EXPEDITION_RETURN_RATIO,
+  EXPEDITION_SAMPLE_TOAD_CHANCE,
   EXPEDITION_TEAM_SIZE,
   EXTRACTION_ASTRO_COST,
   ExpeditionTeamMember,
   canToadAffordExpedition,
   getContourPassReward,
   getDispatchOfficeCost,
+  getEvacuationCost,
   getExpeditionProfitFloor,
+  getExpeditionSampleReward,
   getExpeditionSendCost,
   getExpeditionEnergyCost,
   getExpeditionSuccessChance,
@@ -54,11 +57,14 @@ import {
   getToadHpStatusLabel,
   getToadMaxHp,
   HP_REGEN_PER_HOUR,
+  isAwaitingEvacuation,
   ROLE_CONFIG,
 } from "../../utils/expedition-config";
 import {
+  EXPEDITION_TOAD_BUSY_REASON,
   buyDispatchOffice,
   canSendToad,
+  evacuateExpedition,
   extractExpedition,
   finishExpedition,
   getExpeditionBiomassValue,
@@ -71,6 +77,7 @@ import {
   getRoomExpeditions,
   getSectorUnlockStatus,
   isExpeditionFromRoom,
+  isToadBusyOnExpedition,
   isToadOnExpedition,
   processExpeditions,
   speedUpReturn,
@@ -137,7 +144,7 @@ const ToadVitals: React.FC<{
   /** Силы на поход в выбранный сектор */
   energyCost: number;
   className?: string;
-}> = ({ toad, energyCost, className }) => {
+}> = ({ toad, energyCost }) => {
   const energy = Math.round(getToadEnergy(toad));
   const hunger = Math.round(toad.state?.hunger ?? 0);
   const hungerColor =
@@ -158,7 +165,7 @@ const ToadVitals: React.FC<{
         ⚡{energy}
       </span>
       <span
-        className={hungerColor}
+        className={`ml-2 ${hungerColor}`}
         title={`Сытость: ${hunger} %. Ниже ${PRODUCTION_MIN_HUNGER} % жаба вырабатывает лишь ${Math.round(
           PRODUCTION_HUNGRY_FACTOR * 100,
         )} % биомассы`}
@@ -353,7 +360,7 @@ const ExpeditionModal: React.FC<{
   const astro = state.user.astro_quax || 0;
 
   // Сектора и жаб по секторам берём из колонии теми же вычислениями, что и карта.
-  const { rooms, toadsByRoom, powerGrid } = useColony();
+  const { rooms, toadsByRoom, powerGrid, releaseToad } = useColony();
   const room = rooms.find((r) => r.id === roomId);
 
   /**
@@ -561,8 +568,7 @@ const ExpeditionModal: React.FC<{
           <b className="text-slate-300">
             {config.icon} {config.label}
           </b>{" "}
-          · {config.statLabel}. {config.description} Сверху — жабы «Разведки»,
-          ниже — колонии: сильнее по роли выше.
+          · {config.statLabel}. {config.description}
         </span>
       ),
       emptyText:
@@ -589,21 +595,12 @@ const ExpeditionModal: React.FC<{
    * глубина сектора режет вклад, удача гуляет ±10%.
    */
   const successChance = getExpeditionSuccessChance(team, selectedSector);
-  const sectorSuccessFactor = getSectorSuccessFactor(selectedSector);
-  /** Поход всегда выгоднее фермы: норма добычи за путь туда-обратно + снаряжение */
-  const awayHours =
-    selectedSector.durationHours * (1 + EXPEDITION_RETURN_RATIO);
-  const profitNorm = getExpeditionProfitFloor(
-    team.map((member) => member.toad),
-    awayHours,
-    sendCost,
-  );
 
-  const notify = (result: { success: boolean; message: string }) =>
-    addNotification({
-      type: result.success ? "success" : "warn",
-      content: result.message,
-    });
+  const notify = (result: { success: boolean; message: string }) => {
+    if (!result.success) {
+      addNotification({ type: "warn", content: result.message });
+    }
+  };
 
   const handleSend = () => {
     const result = startExpedition(sectorId, members, crewRoom?.id);
@@ -627,8 +624,64 @@ const ExpeditionModal: React.FC<{
 
   const handleWithdraw = (id: string) => notify(withdrawExpedition(id));
   const handleSpeedUp = (id: string) => notify(speedUpReturn(id));
+  const handleEvacuate = (id: string) => notify(evacuateExpedition(id));
   const handleExtract = (id: string) =>
     notify(extractExpedition(id, addNotification));
+
+  /**
+   * Вернуть жабу из «Разведки» в её биопод — та же кнопка, что в других секторах.
+   * Место проверяет сам биопод: пока жаба была в походе или в секторе, его могли занять.
+   */
+  const handleSendHome = (toad: Toad) => {
+    if (isToadBusyOnExpedition(toad, expeditions)) {
+      addNotification({ type: "warn", content: EXPEDITION_TOAD_BUSY_REASON });
+      return;
+    }
+
+    const result = releaseToad(toad.id);
+
+    if (!result.ok) {
+      addNotification({
+        type: "warn",
+        content:
+          result.reason === "no-space"
+            ? `${toad.name}: в биоподе «${result.scene?.name}» нет места — постройте биопод или переселите её в другой («🏠 Переместить» в карточке жабы).`
+            : `${toad.name}: биопод, в котором она жила, не найден — переселите её в другой («🏠 Переместить» в карточке жабы).`,
+        timeout: 9000,
+      });
+      return;
+    }
+  };
+
+  /** Клик по карточке открывает карточку жабы, но не мешает кнопкам действий */
+  const handleCrewCardClick = (
+    event: React.MouseEvent<HTMLDivElement>,
+    toad: Toad,
+  ) => {
+    if (
+      (event.target as HTMLElement).closest(
+        "button, a, input, select, textarea, [data-toad-card-stop]",
+      )
+    ) {
+      return;
+    }
+
+    openToadCard(toad);
+  };
+
+  const handleCrewCardKeyDown = (
+    event: React.KeyboardEvent<HTMLDivElement>,
+    toad: Toad,
+  ) => {
+    if (event.target !== event.currentTarget) {
+      return;
+    }
+
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      openToadCard(toad);
+    }
+  };
 
   /**
    * Строка экипажа сектора: кто живёт в «Разведке» и что с ним можно сделать.
@@ -638,6 +691,7 @@ const ExpeditionModal: React.FC<{
   const renderCrewCard = (toad: Toad, readOnly = false) => {
     const assigned = getAssignedRole(slots, toad.id);
     const check = canSendToad(toad, expeditions);
+    const busy = isToadBusyOnExpedition(toad, expeditions);
     // Подсказка — та же роль, куда жабу поставит тап, чтобы кнопка не обещала другого
     const role = assigned ?? getCrewTapRole(slots, toad);
     const config = ROLE_CONFIG[role];
@@ -651,12 +705,17 @@ const ExpeditionModal: React.FC<{
     return (
       <div
         key={toad.id}
-        className={`rounded-xl px-2 py-1.5 border flex items-center gap-2 ${
+        role="button"
+        tabIndex={0}
+        onClick={(event) => handleCrewCardClick(event, toad)}
+        onKeyDown={(event) => handleCrewCardKeyDown(event, toad)}
+        title={`Открыть карточку: ${toad.name}`}
+        className={`rounded-xl px-2 py-1.5 border flex items-center gap-2 text-left cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60 ${
           !assigned
-            ? "bg-slate-800/40 border-slate-600/30"
+            ? "bg-slate-800/40 border-slate-600/30 hover:border-cyan-400/50"
             : offRole
-              ? "bg-amber-950/30 border-amber-500/40"
-              : "bg-emerald-950/30 border-emerald-500/40"
+              ? "bg-amber-950/30 border-amber-500/40 hover:border-cyan-400/50"
+              : "bg-emerald-950/30 border-emerald-500/40 hover:border-cyan-400/50"
         }`}
       >
         <div className="min-w-0 flex-1">
@@ -689,28 +748,48 @@ const ExpeditionModal: React.FC<{
           />
         </div>
 
-        {!readOnly && (
+        <div
+          className="flex shrink-0 flex-col items-stretch gap-1"
+          data-toad-card-stop
+        >
+          {!readOnly && (
+            <ClickButton
+              onClick={() => handleCrewTap(toad)}
+              disabled={!assigned && !check.ok}
+              title={
+                assigned
+                  ? `Убрать из команды (${config.label})`
+                  : check.ok
+                    ? `В команду: ${config.label}`
+                    : check.reason
+              }
+              className={`py-1.5 px-2 rounded-lg text-xs font-bold border transition-colors duration-300 ${
+                assigned
+                  ? "bg-cyan-900/50 border-cyan-400/60 text-cyan-100 hover:bg-cyan-800/60"
+                  : check.ok
+                    ? "bg-slate-800/60 border-slate-500/50 text-slate-200 hover:bg-slate-700/70"
+                    : "bg-slate-800/40 border-slate-700/40 text-slate-500"
+              }`}
+            >
+              {assigned ? "✓ В команде" : "→ В команду"}
+            </ClickButton>
+          )}
+
           <ClickButton
-            onClick={() => handleCrewTap(toad)}
-            disabled={!assigned && !check.ok}
+            onClick={() => handleSendHome(toad)}
+            disabled={busy}
             title={
-              assigned
-                ? `Убрать из команды (${config.label})`
-                : check.ok
-                  ? `В команду: ${config.label}`
-                  : check.reason
+              busy ? EXPEDITION_TOAD_BUSY_REASON : "Вернуть жабу в её биопод"
             }
-            className={`shrink-0 py-1.5 px-2 rounded-lg text-xs font-bold border transition-colors duration-300 ${
-              assigned
-                ? "bg-cyan-900/50 border-cyan-400/60 text-cyan-100 hover:bg-cyan-800/60"
-                : check.ok
-                  ? "bg-slate-800/60 border-slate-500/50 text-slate-200 hover:bg-slate-700/70"
-                  : "bg-slate-800/40 border-slate-700/40 text-slate-500"
+            className={`rounded-lg border px-2 py-1 text-2xs transition-colors ${
+              busy
+                ? "cursor-not-allowed border-slate-700/60 text-slate-500"
+                : "border-slate-600/60 text-slate-300 hover:border-rose-400 hover:text-rose-200"
             }`}
           >
-            {assigned ? "✓ В команде" : "→ В команду"}
+            В биопод
           </ClickButton>
-        )}
+        </div>
       </div>
     );
   };
@@ -745,18 +824,10 @@ const ExpeditionModal: React.FC<{
     ).length;
 
     if (filled === 0) {
-      addNotification({
-        type: "info",
-        content: "Все роли команды заняты: свободных мест нет.",
-      });
       return;
     }
 
     setSlots(next);
-    addNotification({
-      type: "success",
-      content: `В команду из «Разведки» встали ${filled} жаб(ы) 🧭`,
-    });
   };
 
   /**
@@ -848,19 +919,9 @@ const ExpeditionModal: React.FC<{
   const sectorSlides = SECTORS.map((item) => {
     const unlocked = isSectorUnlocked(item, stats);
     const selected = item.id === selectedSector.id;
-    /**
-     * Предыдущий сектор КОНТУРа: следующую глубину открывают только после него.
-     * Пропусков может хватить сразу на несколько секторов вперёд, но порядок
-     * не обойти — это же правило проверяет `unlockSector` на бэкенде.
-     */
-    const previousSector = getPreviousSector(item);
-    const previousUnlocked = isPreviousSectorUnlocked(item, stats);
-    const previousCompleted = isPreviousSectorCompleted(item, stats);
-    const sectorCost = getExpeditionSendCost(item, Math.max(1, members.length));
-    /** Силы на поход в этот сектор: их тратит каждая жаба команды */
-    const sectorEnergy = getExpeditionToadEnergyCost(item);
-    const backHours =
-      Math.round(item.durationHours * EXPEDITION_RETURN_RATIO * 10) / 10;
+
+    /** Жаба из лутбокса, закреплённая за глубиной: 10% при успешном походе */
+    const sampleReward = getExpeditionSampleReward(item);
 
     return (
       <div
@@ -890,22 +951,22 @@ const ExpeditionModal: React.FC<{
 
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <p className="text-sm font-bold">
+            <p className="text-sm font-bold flex mb-1">
               {item.icon} {item.name}
+              <span
+                className={`shrink-0 ml-auto rounded-lg px-2 py-1 text-2xs font-bold ${
+                  !unlocked
+                    ? "bg-slate-900/60 text-slate-400"
+                    : selected
+                      ? "bg-cyan-400/20 text-cyan-100"
+                      : "bg-slate-900/50 text-slate-300"
+                }`}
+              >
+                {!unlocked ? "🔒 закрыт" : "открыт"}
+              </span>
             </p>
             <p className="text-2xs text-slate-400">{item.description}</p>
           </div>
-          <span
-            className={`shrink-0 rounded-lg px-2 py-1 text-2xs font-bold ${
-              !unlocked
-                ? "bg-slate-900/60 text-slate-400"
-                : selected
-                  ? "bg-cyan-400/20 text-cyan-100"
-                  : "bg-slate-900/50 text-slate-300"
-            }`}
-          >
-            {!unlocked ? "🔒 закрыт" : selected ? "✓ выбран" : "открыт"}
-          </span>
         </div>
 
         <div className="grid grid-cols-3 gap-1.5 text-center text-2xs">
@@ -914,43 +975,120 @@ const ExpeditionModal: React.FC<{
             <p className="font-bold">{item.durationHours} ч</p>
           </div>
           <div className="rounded-lg bg-slate-900/40 px-1 py-1">
-            <p className="text-slate-400">Добыча</p>
-            <p className="font-bold">×{item.lootMultiplier}</p>
+            <p className="text-slate-400">Добыча / Сложность</p>
+            <p className="font-bold">
+              ×{item.lootMultiplier} / ×
+              {Math.round(getSectorDamageMultiplier(item) * 100) / 100}
+            </p>
           </div>
           <div className="rounded-lg bg-slate-900/40 px-1 py-1">
-            <p className="text-slate-400">Урон</p>
+            <p className="text-slate-400">Снаряжение</p>
+            <p className="font-bold">{sendCost} 🧪</p>
+          </div>
+          <div className="rounded-lg bg-slate-900/40 px-1 py-1">
+            <p className="text-slate-400">Силы необходимо</p>
+            <p className="font-bold">{energyCostPerToad} ⚡</p>
+          </div>
+          <div className="rounded-lg bg-slate-900/40 px-1 py-1">
+            <p className="text-slate-400">Потенциальная добыча</p>
+            <div
+              className="flex flex-wrap items-center justify-center gap-1 font-bold"
+              title={`${Math.round(
+                EXPEDITION_SAMPLE_TOAD_CHANCE * 100,
+              )}% за удачный поход: «${sampleReward.template.name}»`}
+            >
+              <span>{getContourPassReward(item)} 🎫</span>
+              <span className="flex items-center gap-0.5 rounded-md bg-slate-950/60 px-1 py-0.5">
+                <ToadAvatar toad={sampleReward.template as Toad} size={4} />
+                <span className="text-3xs font-semibold text-slate-300">
+                  {Math.round(EXPEDITION_SAMPLE_TOAD_CHANCE * 100)}%
+                </span>
+              </span>
+            </div>
+          </div>
+          <div className="rounded-lg bg-slate-900/40 px-1 py-1">
+            <p className="text-slate-400">Шанс удачного возврата</p>
             <p className="font-bold">
-              ×{Math.round(getSectorDamageMultiplier(item) * 100) / 100}
+              <span
+                className={` ${
+                  successChance >= 1 ? "text-emerald-300" : "text-amber-200"
+                }`}
+              >
+                {Math.round(successChance * 100)}%
+                {successChance >= 1 ? " (гарантия)" : ""}
+              </span>{" "}
             </p>
           </div>
         </div>
 
-        <p className="text-2xs text-slate-400">
-          Глубина {item.depth} · обратно ~{backHours} ч · снаряжение{" "}
-          {sectorCost} 🧪 на команду из {Math.max(1, members.length)} жаб · силы{" "}
-          {sectorEnergy} ⚡ на жабу · награда {getContourPassReward(item)} 🎫 за
-          удачный поход
-        </p>
+        {/* Итог отправки */}
+        {((members.length > 0 && biomass < sendCost) ||
+          tiredMembers.length > 0) && (
+          <div className="bg-color-main rounded-xl px-3 py-2 border border-slate-600/30 flex flex-col gap-2">
+            {members.length > 0 && biomass < sendCost && (
+              <p className="text-2xs text-red-300">
+                Не хватает биомассы на снаряжение.
+              </p>
+            )}
+            {tiredMembers.length > 0 && (
+              <p className="text-2xs text-red-300">
+                Не хватает сил на поход ({energyCostPerToad} ⚡ на жабу):{" "}
+                {tiredMembers
+                  .map(
+                    (toad) =>
+                      `${toad.name} — ${Math.round(getToadEnergy(toad))} ⚡`,
+                  )
+                  .join(", ")}
+              </p>
+            )}
+          </div>
+        )}
 
-        <p
-          className={`mt-auto text-2xs leading-snug ${
-            !unlocked
-              ? "text-amber-200/90"
-              : selected
-                ? "text-lime-300"
-                : "text-slate-500"
-          }`}
-        >
-          {!unlocked
-            ? !previousUnlocked && previousSector
-              ? `🔒 Сначала откройте «${previousSector.name}»: КОНТУР проходят по порядку глубин.`
-              : previousSector && !previousCompleted
-                ? `🔒 Сначала пройдите «${previousSector.name}»: отправьте команду и дождитесь возвращения.`
-                : `🎫 Открытие: ${item.unlockCost} 🎫 КОНТУРа (на складе ${contourPasses}). Разглядывать можно — отправить нет.`
-            : selected
-              ? "Команда полетит отсюда: соберём её в слотах ролей ниже."
-              : "Листайте вправо-влево — на странице один поход."}
-        </p>
+        {!sectorUnlocked && (
+          <div className="rounded-xl border border-amber-500/40 bg-amber-950/30 px-3 py-2 flex flex-col gap-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-bold text-amber-100">
+                🔒 «{selectedSector.name}» закрыт
+              </span>
+              <span className="shrink-0 text-2xs font-bold text-amber-200">
+                {contourPasses} / {unlockStatus.required} 🎫
+              </span>
+            </div>
+            <p className="text-2xs leading-snug text-slate-300">
+              {!previousSectorUnlocked
+                ? `Сначала необходимо пройти «${
+                    previousSelectedSector?.name ?? "предыдущий сектор"
+                  }».`
+                : !previousSectorCompleted
+                  ? `Сначала пройдите «${
+                      previousSelectedSector?.name ?? "предыдущий сектор"
+                    }» хотя бы раз: отправьте команду и дождитесь её возвращения.`
+                  : `Пропуск КОНТУРа — расходуемый ресурс склада. Его приносят завершённые походы, а тратится он на открытие следующего сектора.`}
+            </p>
+            <ClickButton
+              onClick={handleUnlockSector}
+              disabled={!canUnlockSector}
+              className={`w-full py-2 rounded-xl text-xs font-bold border transition-colors duration-300 ${
+                canUnlockSector
+                  ? "bg-amber-800/60 border-amber-400/70 text-amber-50 hover:bg-amber-700/70"
+                  : "bg-slate-800/40 border-slate-700/40 text-slate-500"
+              }`}
+            >
+              🎫 Открыть за {unlockStatus.required} 🎫
+            </ClickButton>
+          </div>
+        )}
+        {sectorUnlocked && (
+          <ClickButton
+            onClick={handleSend}
+            disabled={!canSend}
+            className={`w-full mt-auto ${
+              canSend ? "ui-button-primary" : "ui-button-secondary"
+            }`}
+          >
+            Отправить в «{selectedSector.name}»
+          </ClickButton>
+        )}
       </div>
     );
   });
@@ -1016,7 +1154,10 @@ const ExpeditionModal: React.FC<{
                     </span>
                   </div>
                   <TeamStatusList expedition={expedition} />
-                  <ExpeditionLootGrid loot={expedition.loot} />
+                  <ExpeditionLootGrid
+                    loot={expedition.loot}
+                    sampleToad={getExpeditionSampleReward(sectorDef).template}
+                  />
 
                   <ClickButton
                     onClick={() => openExpeditionLog(expedition)}
@@ -1059,12 +1200,17 @@ const ExpeditionModal: React.FC<{
 
             {shownActiveExpeditions.map((expedition) => {
               const sectorDef = getSectorById(expedition.sectorId);
+              const stranded = isAwaitingEvacuation(expedition);
               const returning = expedition.phase === "returning";
-              const progress = returning
-                ? getReturnProgress(expedition)
-                : getExpeditionProgress(expedition);
+              const progress = stranded
+                ? Math.max(0, Math.min(1, expedition.progress))
+                : returning
+                  ? getReturnProgress(expedition)
+                  : getExpeditionProgress(expedition);
               const eta = getExpeditionEtaMs(expedition);
               const speedUpCost = getSpeedUpReturnCost(expedition);
+              const evacuationCost = getEvacuationCost(sectorDef);
+              const canAffordEvacuation = Math.floor(tokens) >= evacuationCost;
 
               return (
                 <div
@@ -1079,7 +1225,7 @@ const ExpeditionModal: React.FC<{
                       <p className="text-2xs text-slate-400">
                         глубина {sectorDef.depth} • команда из{" "}
                         {expedition.team.length} жаб
-                        {expedition.forced && (
+                        {expedition.forced && !stranded && (
                           <span className="text-red-400"> • выбиты</span>
                         )}
                       </p>
@@ -1091,31 +1237,54 @@ const ExpeditionModal: React.FC<{
                     </div>
                     <span
                       className={`text-2xs font-bold px-2 py-1 rounded-lg ${
-                        returning
-                          ? "bg-blue-900/50 text-blue-200"
-                          : "bg-amber-900/50 text-amber-200"
+                        stranded
+                          ? "bg-red-900/60 text-red-100"
+                          : returning
+                            ? "bg-blue-900/50 text-blue-200"
+                            : "bg-amber-900/50 text-amber-200"
                       }`}
                     >
-                      {returning ? "🏠 возврат" : "🧭 в пути"}
+                      {stranded
+                        ? "🚨 выбиты"
+                        : returning
+                          ? "🏠 возврат"
+                          : "🧭 в пути"}
                     </span>
                   </div>
 
                   <div>
                     <div className="flex justify-between text-2xs text-slate-400 mb-1">
                       <span>
-                        {returning
-                          ? "Путь домой"
-                          : `Прогресс ${Math.round(progress * 100)}%`}
+                        {stranded
+                          ? `Выбиты на ${Math.round(progress * 100)}% пути`
+                          : returning
+                            ? "Путь домой"
+                            : `Прогресс ${Math.round(progress * 100)}%`}
                       </span>
                       <span>
-                        {returning ? "домой через " : "сектор через "}
-                        {formatDuration(eta)}
+                        {stranded ? (
+                          <>
+                            эвакуация: {evacuationCost}{" "}
+                            <CurrencyIcon
+                              currency="tokens"
+                              className="h-3 w-3"
+                            />
+                          </>
+                        ) : returning ? (
+                          <>домой через {formatDuration(eta)}</>
+                        ) : (
+                          <>сектор через {formatDuration(eta)}</>
+                        )}
                       </span>
                     </div>
                     <div className="h-1.5 w-full bg-slate-700 rounded-full overflow-hidden">
                       <div
                         className={`h-full rounded-full transition-all duration-500 ${
-                          returning ? "bg-blue-400" : "bg-amber-400"
+                          stranded
+                            ? "bg-red-500"
+                            : returning
+                              ? "bg-blue-400"
+                              : "bg-amber-400"
                         }`}
                         style={{ width: `${progress * 100}%` }}
                       />
@@ -1160,16 +1329,38 @@ const ExpeditionModal: React.FC<{
                         ⏪ Отозвать
                       </ClickButton>
                     )}
-                    {returning && speedUpCost > 0 && (
+                    {stranded ? (
                       <ClickButton
-                        onClick={() => handleSpeedUp(expedition.id)}
-                        className="flex-1 py-2 rounded-xl bg-emerald-900/50 hover:bg-emerald-800/60 text-emerald-100 text-xs font-bold border border-emerald-500/40"
+                        onClick={() => handleEvacuate(expedition.id)}
+                        disabled={!canAffordEvacuation}
+                        title={
+                          canAffordEvacuation
+                            ? `Эвакуировать выбитую команду за ${evacuationCost} Кваксов`
+                            : `Не хватает ${evacuationCost - Math.floor(tokens)} Кваксов`
+                        }
+                        className={`flex-1 py-2 rounded-xl text-xs font-bold border ${
+                          canAffordEvacuation
+                            ? "bg-red-800/60 hover:bg-red-700/70 text-red-50 border-red-500/40"
+                            : "bg-slate-700/60 text-slate-400 border-slate-600/40 cursor-not-allowed"
+                        }`}
                       >
-                        ⚡ Ускорить ({speedUpCost} 🧪)
+                        Эвакуировать ({evacuationCost}{" "}
+                        <CurrencyIcon currency="tokens" className="h-3 w-3" />)
                       </ClickButton>
+                    ) : (
+                      returning &&
+                      speedUpCost > 0 && (
+                        <ClickButton
+                          onClick={() => handleSpeedUp(expedition.id)}
+                          className="flex-1 py-2 rounded-xl bg-emerald-900/50 hover:bg-emerald-800/60 text-emerald-100 text-xs font-bold border border-emerald-500/40"
+                        >
+                          ⚡ Ускорить ({speedUpCost} 🧪)
+                        </ClickButton>
+                      )
                     )}
                     <ClickButton
                       onClick={() => handleExtract(expedition.id)}
+                      disabled={stranded}
                       title={
                         returning
                           ? "Забрать команду домой сразу: добыча останется той, что уже лежит в рюкзаке"
@@ -1191,9 +1382,9 @@ const ExpeditionModal: React.FC<{
         {/* ВКЛАДКА: сборы новой команды — только если из контура ещё никто не ушёл */}
         {tab === "main" && ownActiveExpeditions.length === 0 && (
           <div className="flex flex-col gap-3">
-            {/* Секторы: горизонтальный слайдер — одна страница на один поход.
-                Страница выбирает сектор, поэтому свайп вправо-влево = выбор похода. */}
-            <SwipeSlides
+            {/* Секторы: постраничный слайдер — одна страница на один поход.
+                Страница выбирает сектор: стрелки ‹ › и точки внизу = выбор похода. */}
+            <SlidePager
               index={sectorIndex}
               onIndexChange={(page) => setSectorId(SECTORS[page].id)}
               labels={SECTORS.map(
@@ -1202,50 +1393,8 @@ const ExpeditionModal: React.FC<{
                     isSectorUnlocked(item, stats) ? "" : " (закрыт)"
                   }`,
               )}
-              hint={
-                <p className="text-2xs text-slate-400">
-                  🗺️ Секторы Периметра: открыто {unlockedSectors} из{" "}
-                  {SECTORS.length}. На странице один поход — листайте
-                  вправо-влево.
-                </p>
-              }
               slides={sectorSlides}
             />
-
-            {!sectorUnlocked && (
-              <div className="rounded-xl border border-amber-500/40 bg-amber-950/30 px-3 py-2 flex flex-col gap-2">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-bold text-amber-100">
-                    🔒 «{selectedSector.name}» закрыт
-                  </span>
-                  <span className="shrink-0 text-2xs font-bold text-amber-200">
-                    {contourPasses} / {unlockStatus.required} 🎫
-                  </span>
-                </div>
-                <p className="text-2xs leading-snug text-slate-300">
-                  {!previousSectorUnlocked
-                    ? `Сначала откройте «${
-                        previousSelectedSector?.name ?? "предыдущий сектор"
-                      }»: КОНТУР проходят по порядку.`
-                    : !previousSectorCompleted
-                      ? `Сначала пройдите «${
-                          previousSelectedSector?.name ?? "предыдущий сектор"
-                        }» хотя бы раз: отправьте команду и дождитесь её возвращения.`
-                      : `Пропуск КОНТУРа — расходуемый ресурс склада. Его приносят завершённые походы, а тратится он на открытие следующего сектора.`}
-                </p>
-                <ClickButton
-                  onClick={handleUnlockSector}
-                  disabled={!canUnlockSector}
-                  className={`w-full py-2 rounded-xl text-xs font-bold border transition-colors duration-300 ${
-                    canUnlockSector
-                      ? "bg-amber-800/60 border-amber-400/70 text-amber-50 hover:bg-amber-700/70"
-                      : "bg-slate-800/40 border-slate-700/40 text-slate-500"
-                  }`}
-                >
-                  🎫 Открыть за {unlockStatus.required} 🎫
-                </ClickButton>
-              </div>
-            )}
 
             {/* Слоты ролей команды: та же сетка с «+», что у репродуктора, коллайдера и Медотсека */}
             <ToadSlotGrid
@@ -1269,7 +1418,7 @@ const ExpeditionModal: React.FC<{
                 };
               })}
               columns={5}
-              title="👥 Места команды"
+              title="Собрать команду"
               headerRight={`собрано ${members.length} из ${EXPEDITION_TEAM_SIZE}`}
               pickerFor={(index) => getRolePicker(EXPEDITION_ROLE_ORDER[index])}
               onPick={(toad, index) =>
@@ -1280,181 +1429,12 @@ const ExpeditionModal: React.FC<{
                 handleRolePick(EXPEDITION_ROLE_ORDER[index], "")
               }
               removeLabel="Снять жабу с роли"
-              footer={
-                <div className="flex flex-col gap-1">
-                  <ClickButton
-                    type="button"
-                    aria-expanded={rolesInfoOpen}
-                    onClick={() => setRolesInfoOpen((open) => !open)}
-                    className="flex w-full items-center justify-between gap-2 rounded-lg border border-slate-600/40 bg-slate-800/70 px-2 py-1 text-left transition-colors hover:bg-slate-700/70"
-                  >
-                    <span className="text-2xs font-semibold text-slate-200">
-                      Подробнее о ролях
-                    </span>
-                    <span
-                      className={`shrink-0 text-3xs text-slate-400 transition-transform duration-300 ${
-                        rolesInfoOpen ? "rotate-180" : ""
-                      }`}
-                    >
-                      ▼
-                    </span>
-                  </ClickButton>
-
-                  {rolesInfoOpen && (
-                    <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
-                      {EXPEDITION_ROLE_ORDER.map((role) => {
-                        const config = ROLE_CONFIG[role];
-                        const pickedId = slots[role];
-                        const picked =
-                          pickedId === ""
-                            ? null
-                            : (availableToads.find(
-                                (toad) => toad.id === pickedId,
-                              ) ?? null);
-                        const percent = picked
-                          ? getRolePowerPercent(picked, role)
-                          : 0;
-
-                        return (
-                          <div
-                            key={role}
-                            className="rounded-lg border border-slate-600/30 bg-black/20 px-2 py-1"
-                          >
-                            <div className="flex items-center justify-between gap-2">
-                              <span className="text-2xs font-semibold text-slate-200">
-                                {config.icon} {config.label}
-                              </span>
-                              {picked && (
-                                <span className="shrink-0 text-2xs font-bold text-amber-200">
-                                  {percent}%
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-3xs leading-snug text-slate-400">
-                              {config.description}
-                            </p>
-
-                            {picked && (
-                              <div className="mt-1 flex items-center gap-2 text-3xs">
-                                <span className="flex shrink-0 items-center gap-1">
-                                  <ToadVitals
-                                    toad={picked}
-                                    energyCost={energyCostPerToad}
-                                  />
-                                </span>
-                                <span className="shrink-0 text-red-300">
-                                  ❤ {Math.round(getToadHp(picked))}/
-                                  {getToadMaxHp(picked)}
-                                </span>
-                                <HpBar
-                                  hp={getToadHp(picked)}
-                                  maxHp={getToadMaxHp(picked)}
-                                  className="flex-1"
-                                />
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              }
             />
-
-            {/* Итог отправки */}
-            <div className="bg-color-main rounded-xl px-3 py-2 border border-slate-600/30 flex flex-col gap-2">
-              <div className="flex items-center justify-between text-2xs text-slate-300">
-                <span>Снаряжение: {sendCost} 🧪 </span>
-              </div>
-              {/* Силы платит каждая жаба: их видно у жаб в списках и в значках ⚡ напротив имён */}
-              <div className="flex items-center justify-between text-2xs text-slate-300">
-                <span>Силы необходимо: −{energyCostPerToad} ⚡</span>
-              </div>
-              <p className="text-2xs text-slate-400">
-                {selectedSector.icon} {selectedSector.name}: путь туда{" "}
-                {selectedSector.durationHours} ч, обратно ~
-                {Math.round(
-                  selectedSector.durationHours * EXPEDITION_RETURN_RATIO * 10,
-                ) / 10}{" "}
-                ч
-              </p>
-
-              {/* Итог по ролям: шанс удачного возврата и норма добычи против фермы */}
-              <div className="flex items-center justify-between rounded-lg bg-slate-800/50 px-2 py-1.5 text-2xs">
-                <span className="text-slate-300">
-                  🎯 Шанс удачного возврата
-                </span>
-                <span
-                  className={`font-bold ${
-                    successChance >= 1 ? "text-emerald-300" : "text-amber-200"
-                  }`}
-                >
-                  {Math.round(successChance * 100)}%
-                  {successChance >= 1 ? " (гарантия)" : ""}
-                </span>
-              </div>
-
-              {shownCompletedExpeditions.length > 0 && (
-                <p className="text-2xs text-amber-300">
-                  В этом КОНТУРе ждёт разбора добыча: завершите поход, чтобы
-                  отправить новую команду.
-                </p>
-              )}
-              {members.length > 0 && biomass < sendCost && (
-                <p className="text-2xs text-red-300">
-                  Не хватает биомассы на снаряжение.
-                </p>
-              )}
-              {tiredMembers.length > 0 && (
-                <p className="text-2xs text-red-300">
-                  Не хватает сил на поход ({energyCostPerToad} ⚡ на жабу):{" "}
-                  {tiredMembers
-                    .map(
-                      (toad) =>
-                        `${toad.name} — ${Math.round(getToadEnergy(toad))} ⚡`,
-                    )
-                    .join(", ")}
-                </p>
-              )}
-              {!sectorUnlocked && (
-                <p className="text-2xs text-amber-300">
-                  {!previousSectorUnlocked ? (
-                    <>
-                      🔒 «{selectedSector.name}» закрыт: сначала откройте «
-                      {previousSelectedSector?.name ?? "предыдущий сектор"}».
-                    </>
-                  ) : !previousSectorCompleted ? (
-                    <>
-                      🔒 «{selectedSector.name}» закрыт: сначала пройдите «
-                      {previousSelectedSector?.name ?? "предыдущий сектор"}»
-                      хотя бы раз.
-                    </>
-                  ) : (
-                    <>
-                      🔒 «{selectedSector.name}» закрыт: нужно{" "}
-                      {selectedSector.unlockCost} 🎫 КОНТУРа (на складе{" "}
-                      {contourPasses}). Отправить можно с открытой страницы.
-                    </>
-                  )}
-                </p>
-              )}
-
-              <ClickButton
-                onClick={handleSend}
-                disabled={!canSend}
-                className={`w-full ${
-                  canSend ? "ui-button-primary" : "ui-button-secondary"
-                }`}
-              >
-                🚀 Отправить в «{selectedSector.name}»
-              </ClickButton>
-            </div>
           </div>
         )}
 
         {/* Экипаж «Разведки» — внизу вкладки: и при сборах, и когда команда уже в походе */}
-        {tab === "main" && ownActiveExpeditions.length === 0 && crewRoom && (
+        {tab === "main" && crewRoom && (
           <div className="bg-color-main flex flex-col gap-2 rounded-xl border border-slate-600/30 px-3 py-2">
             <div className="flex items-center justify-between gap-2">
               <p className="text-xs font-bold text-white">
@@ -1492,7 +1472,6 @@ const ExpeditionModal: React.FC<{
           <div className="flex flex-col gap-3">
             <p className="text-2xs leading-snug text-slate-400">
               Все походы колонии: активные команды и добыча, ждущая разбора.
-              Нажмите на карточку — откроется контур, из которого ушёл поход.
             </p>
 
             {expeditions.length === 0 && (
@@ -1508,11 +1487,15 @@ const ExpeditionModal: React.FC<{
                 </p>
                 {activeExpeditions.map((expedition) => {
                   const sectorDef = getSectorById(expedition.sectorId);
+                  const stranded = isAwaitingEvacuation(expedition);
                   const returning = expedition.phase === "returning";
-                  const progress = returning
-                    ? getReturnProgress(expedition)
-                    : getExpeditionProgress(expedition);
+                  const progress = stranded
+                    ? Math.max(0, Math.min(1, expedition.progress))
+                    : returning
+                      ? getReturnProgress(expedition)
+                      : getExpeditionProgress(expedition);
                   const eta = getExpeditionEtaMs(expedition);
+                  const evacuationCost = getEvacuationCost(sectorDef);
                   const originRoom = findExpeditionRoom(expedition);
 
                   return (
@@ -1538,12 +1521,18 @@ const ExpeditionModal: React.FC<{
                         </p>
                         <span
                           className={`shrink-0 rounded-lg px-2 py-1 text-2xs font-bold ${
-                            returning
-                              ? "bg-blue-900/50 text-blue-200"
-                              : "bg-amber-900/50 text-amber-200"
+                            stranded
+                              ? "bg-red-900/60 text-red-100"
+                              : returning
+                                ? "bg-blue-900/50 text-blue-200"
+                                : "bg-amber-900/50 text-amber-200"
                           }`}
                         >
-                          {returning ? "🏠 возврат" : "🧭 в пути"}
+                          {stranded
+                            ? "🚨 выбиты"
+                            : returning
+                              ? "🏠 возврат"
+                              : "🧭 в пути"}
                         </span>
                       </div>
                       <p className="mt-0.5 truncate text-2xs text-slate-400">
@@ -1553,20 +1542,37 @@ const ExpeditionModal: React.FC<{
                       <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-700">
                         <div
                           className={`h-full rounded-full transition-all duration-500 ${
-                            returning ? "bg-blue-400" : "bg-amber-400"
+                            stranded
+                              ? "bg-red-500"
+                              : returning
+                                ? "bg-blue-400"
+                                : "bg-amber-400"
                           }`}
                           style={{ width: `${progress * 100}%` }}
                         />
                       </div>
                       <div className="mt-1 flex justify-between text-2xs text-slate-400">
                         <span>
-                          {returning
-                            ? "путь домой"
-                            : `прогресс ${Math.round(progress * 100)}%`}
+                          {stranded
+                            ? `выбиты на ${Math.round(progress * 100)}% пути`
+                            : returning
+                              ? "путь домой"
+                              : `прогресс ${Math.round(progress * 100)}%`}
                         </span>
                         <span>
-                          {returning ? "домой через " : "сектор через "}
-                          {formatDuration(eta)}
+                          {stranded ? (
+                            <>
+                              эвакуация {evacuationCost}{" "}
+                              <CurrencyIcon
+                                currency="tokens"
+                                className="h-3 w-3"
+                              />
+                            </>
+                          ) : returning ? (
+                            <>домой через {formatDuration(eta)}</>
+                          ) : (
+                            <>сектор через {formatDuration(eta)}</>
+                          )}
                         </span>
                       </div>
                     </div>
@@ -1614,7 +1620,6 @@ const ExpeditionModal: React.FC<{
                         {expedition.team.length} жаб
                       </p>
                       <p className="mt-1 text-2xs text-slate-300">
-                        🎒{" "}
                         <CurrencyText
                           text={getExpeditionLootSummary(expedition)}
                           iconClassName="h-3 w-3"

@@ -7,7 +7,8 @@
  *   2) пару заводит кнопка «Начать ухаживание»: без готовой пары она не срабатывает и
  *      объясняет причину, а с парой — вешает ухаживание обоим (без кнопки пара просто ждёт);
  *   3) тик `processBreeding` пару сам не заводит, но доводит начатое ухаживание до
- *      беременности с уведомлением, а уход в поход/выбывание срывает пару;
+ *      беременности без всплывающих уведомлений (успехи в тостах не показываем),
+ *      а уход в поход/выбывание срывает пару;
  *   4) слоты гнезда заняты ухаживанием и беременностью;
  *   5) гнездо как комната: 2 взрослые жабы, обесточенная комната жаб не принимает,
  *      ухаживающую жабу с карты не унести, а каждый гекс-вольер показывает своих жильцов
@@ -283,7 +284,7 @@ check("кнопка готова: пара в гнезде", pairCheck.ready, tr
 checkText("подсказка про срок", pairCheck.message, /ухаживание 15–30 мин/);
 const breed = breeding.startNestCourtship(constants.NEST_ROOM_ID, collect);
 check("кнопка начала ухаживание", breed.started, true);
-checkText("уведомление про ухаживание", notes.at(-1)?.content, /ухаживание началось/);
+check("старт ухаживания без тоста", notes.length, 0);
 const matingFemale = findToad(2);
 const matingMale = findToad(1);
 check("самка ухаживает", Boolean(matingFemale.mating), true);
@@ -336,16 +337,7 @@ check("беременность без ухаживания", born.mating, null)
 check("самка осталась в гнезде", born.scene_id, constants.NEST_ROOM_ID);
 check("самец перестал ухаживать", findToad(1).mating, null);
 check("самец остался в гнезде", findToad(1).scene_id, constants.NEST_ROOM_ID);
-check(
-  "уведомление о беременности",
-  notes.some((item) => /беременность началась/.test(item.content)),
-  true
-);
-check(
-  "уведомление с ожидаемым сроком",
-  notes.some((item) => /Роды примерно через/.test(item.content)),
-  true
-);
+check("беременность без тоста об успехе", notes.length, 0);
 check("беременность заняла репродуктор", breeding.checkNestCourtship(constants.NEST_ROOM_ID).ready, false);
 
 console.log("\n[4] Срыв и отмена ухаживания");
@@ -591,11 +583,7 @@ const bornInNest = gameState().toads.filter(
   (item) => item.stage === "toadpole" && item.scene_id === constants.NEST_ROOM_ID
 );
 check("головастики родились в репродукторе", bornInNest.length > 0, true);
-checkText(
-  "уведомление о родах в репродукторе",
-  notes.map((item) => item.content).join(" "),
-  /родила головастиков в репродукторе/
-);
+check("роды в репродукторе без тоста", notes.length, 0);
 check("мать осталась в репродукторе", findToad(2).scene_id, constants.NEST_ROOM_ID);
 check("мать больше не беременна", Boolean(findToad(2).pregnancy), false);
 
@@ -616,11 +604,7 @@ notes.length = 0;
 breeding.processBreeding(0, collect);
 await new Promise((resolve) => setTimeout(resolve, 30));
 check("мать из вольера осталась в своём биоподе", findToad(2).scene_id, 1);
-checkText(
-  "уведомление о родах в вольере",
-  notes.map((item) => item.content).join(" "),
-  /родила головастиков/
-);
+check("роды в вольере без тоста", notes.length, 0);
 check(
   "головастики вольера остались в биоподах",
   gameState().toads.filter(

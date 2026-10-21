@@ -67,6 +67,11 @@ import { DissolveConfirm } from "../../shared/DissolveConfirm";
 import { DissolveBlockedModal } from "../../shared/DissolveBlockedModal";
 import { useDissociator } from "../../../hooks/use-dissociator";
 import { ClickButton } from "../../shared/ClickButton";
+import { useColony } from "../../../hooks/use-colony";
+import {
+  getToadDestinationGroups,
+  type ToadDestination,
+} from "../../HexMap/toad-move-destinations";
 import {
   canDissolveToad,
   dissolveToads,
@@ -98,6 +103,9 @@ export const ToadInfo = () => {
     useSoundEffects();
   const { addNotification } = useNotifications();
   const { closeModal } = useModal();
+  // Секторы карты и сеть нужны, чтобы меню «Переместить» знало все места,
+  // которые принимают жаб, а не только биоподы.
+  const { rooms, powerGrid, toadsByRoom, placeToad } = useColony();
 
   /**
    * Жабы для листания карточки стрелками: вся колония, самые редкие — первыми.
@@ -125,10 +133,39 @@ export const ToadInfo = () => {
   // Диссоциатор принимает жаб, только когда его сектор построен и под током
   const { ready: dissociatorReady, built: dissociatorBuilt } = useDissociator();
 
-  if (!toad) return null;
-
   /** Жаба в походе (в пути или ждёт разбора добычи): обычные действия с ней запрещены */
-  const onExpedition = isToadBusyOnExpedition(toad);
+  const onExpedition = toad ? isToadBusyOnExpedition(toad) : false;
+
+  /**
+   * Куда жабу можно переместить: биоподы и секторы, которые её принимают
+   * (Медотсек, КОНТУР, энергосектор, репродуктор). Проверки — те же, что при
+   * переносе жабы по карте: места, ток, возраст и занятость в походе.
+   */
+  const destinationGroups = useMemo(
+    () =>
+      toad
+        ? getToadDestinationGroups({
+            toad,
+            scenes: ownedScenes,
+            rooms,
+            toads: allToads,
+            toadsByRoom,
+            powerGrid,
+            onExpedition,
+          })
+        : [],
+    [
+      toad,
+      ownedScenes,
+      rooms,
+      allToads,
+      toadsByRoom,
+      powerGrid,
+      onExpedition,
+    ],
+  );
+
+  if (!toad) return null;
 
   // Derived Data
   const rarityConfig = getRarityConfig(toad.genes?.rarity || 1);
@@ -240,7 +277,6 @@ export const ToadInfo = () => {
       updateUserStorage({ [resource]: account.storage[resource] - 1 });
       if (type === "growth") {
         updateToadById(toad.id, { stage: "adult" });
-        addNotification({ type: "success", content: "Успех!" });
       } else {
         updateToadById(toad.id, { stage: "adult" }); // Ensure adult before birth?
         endPregnancy(toad, addNotification);
@@ -282,11 +318,42 @@ export const ToadInfo = () => {
     // характеристики, а не перелистывается на следующую (раньше это выглядело как
     // «нажала Переместить — открылась другая жаба»).
     setTooltips({});
-    addNotification({
-      type: "success",
-      content: `${toad.name} переехала в биопод «${result.scene.name}» 🏠`,
-      timeout: 3000,
-    });
+  };
+
+  /**
+   * Перемещение из меню: биопод — переезд с новым домом (`moveToadToAviary`),
+   * сектор — посадка на гекс (`placeToadInRoom`). Доступность уже проверил
+   * `getToadDestinationGroups` — теми же правилами, что и перенос по карте.
+   */
+  const handleMoveToDestination = (destination: ToadDestination) => {
+    if (onExpedition) {
+      setTooltips({});
+      warnExpeditionBusy();
+      return;
+    }
+
+    if (!destination.check.ok) {
+      playError();
+      addNotification({
+        type: "warn",
+        content: destination.check.reason ?? "Жабу нельзя переместить сюда.",
+      });
+      return;
+    }
+
+    // Биопод: он становится местом и новым домом жабы
+    if (destination.sceneId != null) {
+      handleMove(destination.sceneId);
+      return;
+    }
+
+    if (!destination.roomId) {
+      return;
+    }
+
+    placeToad(toad.id, destination.roomId);
+    setTooltips({});
+    playSuccess();
   };
 
   /**
@@ -315,11 +382,6 @@ export const ToadInfo = () => {
     }
 
     playSuccess();
-    addNotification({
-      type: "success",
-      content: `${toad.name} вернулась в биопод «${result.scene.name}» 🏠`,
-      timeout: 4000,
-    });
   };
 
   /** Разбор жабы в биомассу: жаба исчезает навсегда */
@@ -916,20 +978,63 @@ export const ToadInfo = () => {
                     title="Куда"
                     isOpen
                     onClose={() => toggleTooltip("scenes")}
+                    className="right-0 w-[min(18rem,calc(100vw-4rem))]"
                   >
-                    {/* Склада жаб больше нет: у каждой жабы есть биопод, и он — её дом
-                      (`homeId`): жаба в секторе колонии дома не занимает, но помнит его */}
-                    {ownedScenes
-                      .filter((s) => s.id !== getToadHomeId(toad))
-                      .map((s) => (
-                        <button
-                          key={s.id}
-                          onClick={() => handleMove(s.id)}
-                          className="w-full text-left p-2 hover:bg-slate-600 rounded text-xs"
-                        >
-                          {s.name}
-                        </button>
-                      ))}
+                    <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
+                      {destinationGroups.map((group) =>
+                        group.destinations.length === 0 ? null : (
+                          <div key={group.kind}>
+                            <p className="px-2 pb-1 text-3xs font-semibold uppercase tracking-wide text-slate-400">
+                              {group.icon} {group.label}
+                            </p>
+                            <div className="space-y-0.5">
+                              {group.destinations.map((destination) => (
+                                <button
+                                  key={destination.key}
+                                  onClick={() =>
+                                    handleMoveToDestination(destination)
+                                  }
+                                  disabled={!destination.check.ok}
+                                  title={
+                                    destination.check.ok
+                                      ? `Переместить в «${destination.name}»`
+                                      : destination.check.reason
+                                  }
+                                  className={`w-full rounded-lg px-2 py-1.5 text-left text-xs transition-colors ${
+                                    destination.check.ok
+                                      ? "hover:bg-slate-600"
+                                      : "cursor-not-allowed opacity-50"
+                                  }`}
+                                >
+                                  <span className="block truncate text-slate-100">
+                                    {destination.icon} {destination.name}
+                                  </span>
+                                  <span
+                                    className={`block truncate text-3xs ${
+                                      destination.check.ok
+                                        ? "text-slate-400"
+                                        : "text-amber-300"
+                                    }`}
+                                  >
+                                    {destination.check.ok
+                                      ? destination.hint
+                                      : destination.check.reason}
+                                  </span>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        ),
+                      )}
+
+                      {destinationGroups.every(
+                        (group) => group.destinations.length === 0,
+                      ) && (
+                        <p className="px-2 py-1 text-2xs text-slate-400">
+                          Нет доступных мест для переноса.
+                        </p>
+                      )}
+                    </div>
                   </Tooltip>
                 )}
               </div>

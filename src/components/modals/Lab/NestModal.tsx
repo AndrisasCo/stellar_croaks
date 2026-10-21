@@ -415,23 +415,26 @@ export default function NestModal({
 
     // Ухаживание прервано — это предупреждение, а не успех: оставляем нейтральный «ok»
     wasCourting ? playOk() : playSuccess();
-    addNotification({
-      type: wasCourting ? "warn" : "success",
-      content: wasCourting
-        ? `${toad.name} в биоподе: ухаживание прервано`
-        : `${toad.name} вернулась в биопод`,
-      timeout: 4000,
-    });
+
+    if (wasCourting) {
+      addNotification({
+        type: "warn",
+        content: `${toad.name} в биоподе: ухаживание прервано`,
+        timeout: 4000,
+      });
+    }
+
     setTick((t) => t + 1);
   };
 
   /** Сброс отдыха жабы после спаривания (астро-кваксы) */
   const handleResetCooldown = (toad: Toad) => {
     const result = resetBreedCooldown(toad.id);
-    addNotification({
-      type: result.success ? "success" : "warn",
-      content: result.message,
-    });
+
+    if (!result.success) {
+      addNotification({ type: "warn", content: result.message });
+    }
+
     result.success ? playSuccess() : playError();
     setTick((t) => t + 1);
   };
@@ -439,10 +442,11 @@ export default function NestModal({
   /** Прервать ухаживание: жабы перестают ухаживать, но остаются в репродукторе */
   const handleAbortMating = (toad: Toad) => {
     const result = abortMating(toad.id);
-    addNotification({
-      type: result.success ? "success" : "warn",
-      content: result.message,
-    });
+
+    if (!result.success) {
+      addNotification({ type: "warn", content: result.message });
+    }
+
     result.success ? playSuccess() : playError();
     setTick((t) => t + 1);
   };

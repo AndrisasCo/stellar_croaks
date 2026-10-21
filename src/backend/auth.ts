@@ -1,5 +1,6 @@
 import { platform } from "../platform";
 import { clearGameState } from "./localStorage";
+import { clearOfflineEvents } from "../utils/offline-events";
 import { isCloudSyncEnabled, supabase } from "./supabase";
 
 /**
@@ -339,6 +340,8 @@ export const signOutAccount = async (): Promise<SignOutResult> => {
 
   setAccount(null);
   clearGameState();
+  // Журнал отсутствия принадлежит аккаунту: следующий игрок не должен видеть чужие события
+  clearOfflineEvents();
   window.location.reload();
 
   return { ok: true, message: "Вы вышли" };

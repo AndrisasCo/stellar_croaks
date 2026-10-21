@@ -343,31 +343,28 @@ const findToadTemplate = (
   return group[roll];
 };
 
-/** Собирает жабу выбранной редкости по шаблону лутбокса */
-const buildLootboxToad = (
+/**
+ * Собирает жабу по конкретному шаблону и тиру лутбокса.
+ *
+ * Нужна там, где редкость и вид известны заранее (образец за пройденный сектор
+ * КОНТУРа): розыгрыш коробки в этом случае не нужен. Место в биоподе не ставим —
+ * его назначит `assignToadsToScenes`, поэтому возвращаем `Partial<Toad>`.
+ */
+export const buildLootboxToadFromTemplate = (
+  template: Partial<Toad>,
   rarity: LootboxRarity,
-  sceneId: number,
-  rng: () => number,
-): Toad => {
-  const template = findToadTemplate(rarity, rng);
-
-  // Генерация уникального ID
-  const id = Date.now() + Math.floor(rng() * 1000);
-
+  rng: () => number = Math.random,
+): Partial<Toad> => {
   // Случайный пол
   const sex = rng() > 0.5 ? "male" : "female";
 
   return {
-    id,
     name:
       template.name || `Таинственная жаба ${Math.floor(rng() * 1000)}`,
     type: template.type as ToadTypes,
     generation: 1,
     sex,
     stage: "adult",
-    scene_id: sceneId,
-    homeId: sceneId,
-    created_at: new Date().toISOString(),
     parents: null,
     state: {
       hunger: 30 + Math.floor(rng() * 20),
@@ -391,6 +388,26 @@ const buildLootboxToad = (
       personality: template.genes?.personality || null,
     },
   };
+};
+
+/** Собирает жабу выбранной редкости по шаблону лутбокса */
+const buildLootboxToad = (
+  rarity: LootboxRarity,
+  sceneId: number,
+  rng: () => number,
+): Toad => {
+  const template = findToadTemplate(rarity, rng);
+
+  // Генерация уникального ID
+  const id = Date.now() + Math.floor(rng() * 1000);
+
+  return {
+    id,
+    scene_id: sceneId,
+    homeId: sceneId,
+    created_at: new Date().toISOString(),
+    ...buildLootboxToadFromTemplate(template, rarity, rng),
+  } as Toad;
 };
 
 // Основная функция генерации жабы из лутбокса

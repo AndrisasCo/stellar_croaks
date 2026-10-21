@@ -1,6 +1,7 @@
 import { Expedition, ExpeditionRole, SectorDef } from "../models/expedition";
 import { DISEASES, DiseaseDef, isToadSick } from "../models/disease";
 import { getPersonalityMultipliers, Toad } from "../models/Toad";
+import { LootboxRarity, UNIQUE_TOADS_BY_RARITY } from "../models/Toad/lootbox";
 import { Items } from "../models/user";
 import {
   BIOMASS_TO_TOKENS_RATE,
@@ -137,7 +138,7 @@ export const EXPEDITION_HP_PER_RARITY = 3;
  */
 export const HP_REGEN_PER_HOUR = 1;
 /** Минимум урона за одно провалившееся событие */
-export const EXPEDITION_MIN_DAMAGE = 6;
+export const EXPEDITION_MIN_DAMAGE = 10;
 /**
  * Глобальный множитель урона событий похода.
  *
@@ -145,7 +146,7 @@ export const EXPEDITION_MIN_DAMAGE = 6;
  * а этот коэффициент — общий тон походов: после балансировки рейды стали заметно
  * агрессивнее, поэтому весь урон событий поднят на 20%.
  */
-export const EXPEDITION_DAMAGE_MULTIPLIER = 1.2;
+export const EXPEDITION_DAMAGE_MULTIPLIER = 2;
 /**
  * Базовый шанс, что по возвращении один живой участник принесёт кибер-болезнь.
  *
@@ -353,6 +354,12 @@ export const EXPEDITION_ITEM_VALUE = 6;
 /** Оценка образца (живой жабы из сектора) в Кваксах-эквиваленте */
 export const EXPEDITION_SAMPLE_VALUE = 40;
 /**
+ * Оценка особого образца — жабы из лутбокса, закреплённой за глубиной.
+ * Втрое дороже обычного образца: это именная жаба редкого тира, которую нельзя
+ * найти в событии, а можно только вынести из конкретного сектора.
+ */
+export const EXPEDITION_LOOTBOX_SAMPLE_VALUE = 120;
+/**
  * Оценка Астро-квакса в Кваксах-эквиваленте.
  *
  * Раньше астро оценивался как половина образца (20 🔷), из-за чего каждая находка
@@ -415,6 +422,7 @@ export const getLootValue = (loot: {
   astro_quax?: number;
   items?: Partial<Record<Items, number>>;
   samples?: number;
+  lootboxSamples?: number;
 }): number => {
   const items = Object.values(loot.items ?? {}).reduce(
     (sum, amount) => sum + Math.max(0, amount || 0),
@@ -426,7 +434,8 @@ export const getLootValue = (loot: {
     Math.max(0, loot.tokens || 0) +
     Math.max(0, loot.astro_quax || 0) * EXPEDITION_ASTRO_VALUE +
     items * EXPEDITION_ITEM_VALUE +
-    Math.max(0, loot.samples || 0) * EXPEDITION_SAMPLE_VALUE
+    Math.max(0, loot.samples || 0) * EXPEDITION_SAMPLE_VALUE +
+    Math.max(0, loot.lootboxSamples || 0) * EXPEDITION_LOOTBOX_SAMPLE_VALUE
   );
 };
 
@@ -443,6 +452,7 @@ export const getLootBiomassValue = (loot: {
   astro_quax?: number;
   items?: Partial<Record<Items, number>>;
   samples?: number;
+  lootboxSamples?: number;
 }): number =>
   Math.max(
     0,
@@ -528,6 +538,9 @@ export const getReturnRemainingHours = (
   expedition: Expedition,
   now = Date.now(),
 ): number => {
+  if (isAwaitingEvacuation(expedition)) {
+    return 0;
+  }
   if (
     expedition.phase !== "returning" ||
     !expedition.returnStartedAt ||
@@ -561,6 +574,23 @@ export const getSpeedUpReturnCost = (
 
 /** Цена «Экстренного маяка»: моментальная эвакуация команды, Астро-кваксы */
 export const EXTRACTION_ASTRO_COST = 3;
+/**
+ * Эвакуация выбитой команды: Кваксы за каждую глубину сектора.
+ * Пока команда выбита, обратный отсчёт стоит — домой её вытаскивает только
+ * платная эвакуация (или «Экстренный маяк» за Астро-кваксы).
+ */
+export const EVACUATION_TOKEN_COST_PER_DEPTH = 100;
+
+/** Сколько Кваксов стоит эвакуация выбитой команды из сектора */
+export const getEvacuationCost = (sector: SectorDef): number =>
+  EVACUATION_TOKEN_COST_PER_DEPTH * Math.max(1, sector.depth);
+
+/**
+ * Команда выбита и ждёт эвакуации: таймер возврата не идёт.
+ * У старых сейвов поля нет — такие походы возвращаются по таймеру, как раньше.
+ */
+export const isAwaitingEvacuation = (expedition: Expedition): boolean =>
+  Boolean(expedition.forced && expedition.awaitingEvacuation);
 /** Плата за принудительную эвакуацию выбитой команды (биомасса за жабу) */
 export const FORCED_EXTRACTION_FEE_PER_TOAD = 6;
 /** Доля утерянной добычи при принудительном возврате */
@@ -583,6 +613,87 @@ export const EXPEDITION_ASTRO_CHANCE = 0.18;
  * что и у обычной находки (1–3 💎 в зависимости от глубины сектора).
  */
 export const EXPEDITION_ASTRO_BONUS_CHANCE = 0.35;
+
+// === Особый образец за прохождение сектора ===
+
+/**
+ * Шанс, что удачный поход принесёт особый образец — жабу из лутбокса,
+ * закреплённую за глубиной сектора.
+ *
+ * Обычные образцы (8% в хорошем событии) можно найти в любом секторе, а этот —
+ * только за конкретную глубину и только при успешном завершении. Так именных
+ * жаб из Жаббокса можно получить и через разведку, а не только за лутбоксы.
+ */
+export const EXPEDITION_SAMPLE_TOAD_CHANCE = 0.1;
+
+export interface ExpeditionSampleReward {
+  /** Тир лутбокса: от обычного на входе до легендарного в центре станции */
+  rarity: LootboxRarity;
+  /** Конкретная жаба, которая может достаться за прохождение глубины */
+  template: Partial<Toad>;
+}
+
+/** Шаблон жабы по имени внутри тира (фолбэк — первая жаба тира) */
+const getLootboxTemplate = (
+  rarity: LootboxRarity,
+  name: string,
+): Partial<Toad> =>
+  UNIQUE_TOADS_BY_RARITY[rarity].find((toad) => toad.name === name) ??
+  UNIQUE_TOADS_BY_RARITY[rarity][0];
+
+/**
+ * Награда за глубину: от обычных жаб на входе до легендарной в центре станции.
+ *
+ * Редкость растёт вместе с уровнем, поэтому глубокий рейд ценнее не только
+ * добычей, но и шансом на уникальную жабу. Вид привязан к тематике сектора:
+ * ржавый шлюз — лесной странник, крематорий — кристаллический призрак и т.д.
+ */
+export const EXPEDITION_SAMPLE_TOADS: Record<number, ExpeditionSampleReward> = {
+  1: {
+    rarity: LootboxRarity.common,
+    template: getLootboxTemplate(LootboxRarity.common, "Лесной странник"),
+  },
+  2: {
+    rarity: LootboxRarity.common,
+    template: getLootboxTemplate(LootboxRarity.common, "Болотный житель"),
+  },
+  3: {
+    rarity: LootboxRarity.uncommon,
+    template: getLootboxTemplate(LootboxRarity.uncommon, "Изумрудный прыгун"),
+  },
+  4: {
+    rarity: LootboxRarity.uncommon,
+    template: getLootboxTemplate(LootboxRarity.uncommon, "Золотистый охотник"),
+  },
+  5: {
+    rarity: LootboxRarity.rare,
+    template: getLootboxTemplate(LootboxRarity.rare, "Камнелап"),
+  },
+  6: {
+    rarity: LootboxRarity.rare,
+    template: getLootboxTemplate(LootboxRarity.rare, "Сапфировый призрак"),
+  },
+  7: {
+    rarity: LootboxRarity.epic,
+    template: getLootboxTemplate(LootboxRarity.epic, "Кваккон"),
+  },
+  8: {
+    rarity: LootboxRarity.legendary,
+    template: getLootboxTemplate(LootboxRarity.legendary, "Галактрон"),
+  },
+};
+
+/** Самая глубокая награда — фолбэк для секторов вне таблицы */
+const MAX_SAMPLE_DEPTH = Math.max(
+  ...Object.keys(EXPEDITION_SAMPLE_TOADS).map(Number),
+);
+
+/** Жаба из лутбокса, закреплённая за глубиной сектора */
+export const getExpeditionSampleReward = (
+  sector: SectorDef,
+): ExpeditionSampleReward =>
+  EXPEDITION_SAMPLE_TOADS[sector.depth] ??
+  EXPEDITION_SAMPLE_TOADS[MAX_SAMPLE_DEPTH];
 
 // === UI-хелперы ===
 

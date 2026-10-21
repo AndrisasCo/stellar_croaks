@@ -254,10 +254,6 @@ export default function HospitalModal({ room }: HospitalModalProps) {
     }
 
     placeToad(toad.id, hospital.id);
-    addNotification({
-      type: "success",
-      content: `${toad.name} на койке в «${hospital.name}» — здесь жабы поправляются быстро 🛏️`,
-    });
   };
 
   /**
@@ -281,11 +277,6 @@ export default function HospitalModal({ room }: HospitalModalProps) {
       });
       return;
     }
-
-    addNotification({
-      type: "success",
-      content: `${toad.name} выписана из Медотсека в биопод`,
-    });
   };
 
   /** Карточка жабы в списках Медотсека: кратко — имя, редкость, HP и болезнь. */
@@ -300,7 +291,7 @@ export default function HospitalModal({ room }: HospitalModalProps) {
     const inBed = isToadInHospital(toad, hospitalIds);
     const admission = inBed ? null : getAdmission(toad);
     // Выписывают в биопод по любым причинам, поэтому выбитого пациента тоже отпускаем:
-    // правило «сначала подлечите» здесь не мешает (allowDown) — это же Медотсек
+    // правило «жаба выбита» здесь не мешает (allowDown) — это же Медотсек
     const dischargeIssue = inBed
       ? getToadMoveIssue(toad, { allowDown: true, expeditions })
       : null;

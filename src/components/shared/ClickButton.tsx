@@ -1,14 +1,28 @@
 import { ButtonHTMLAttributes } from "react";
 import { useSoundEffects } from "../../hooks/use-sound-effects";
 
-export const ClickButton = (props: ButtonHTMLAttributes<{}>) => {
+export const ClickButton = ({
+  className = "",
+  onClick,
+  disabled,
+  ...props
+}: ButtonHTMLAttributes<{}>) => {
   const { playClick } = useSoundEffects();
-  const onClick = (e: any) => {
-    props?.onClick?.(e);
-    if (props.disabled) {
+  const handleClick = (e: any) => {
+    onClick?.(e);
+    if (disabled) {
       return;
     }
     playClick();
   };
-  return <button {...props} onClick={onClick} />;
+  // click-button — единое disabled-состояние для всех кнопок игры
+  // (приглушённые цвета, без hover/active-эффектов, см. src/index.css).
+  return (
+    <button
+      {...props}
+      disabled={disabled}
+      onClick={handleClick}
+      className={`click-button ${className}`.trim()}
+    />
+  );
 };

@@ -84,10 +84,6 @@ export const EliteTab: React.FC = () => {
     const newShopState = refreshShop(INSTANT_REFRESH_ELITE_COOLDOWN);
     setShopState(newShopState);
     saveShopState(newShopState);
-    addNotification({
-      content: "Элитные заказы обновлены!",
-      type: "success",
-    });
   };
 
   const handleSubmitEliteOrder = (order: string) => (toad: Toad) => {
@@ -149,7 +145,6 @@ export const EliteTab: React.FC = () => {
     const newShopState = refreshShop();
     setShopState(newShopState);
     saveShopState(newShopState);
-    addNotification({ content: "Элитные заказы обновлены!", type: "success" });
   };
 
   const availableOrders = getAvailableOrders();

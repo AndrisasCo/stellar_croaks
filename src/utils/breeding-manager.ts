@@ -200,15 +200,6 @@ const MATING_LEAD_SEX = "female";
 const clearMating = (toad: Toad) =>
   updateToadById(toad.id, { mating: null }, true);
 
-/** «2 ч 15 мин» из длительности беременности в часах */
-const formatPregnancyEta = (hours: number): string => {
-  const totalMinutes = Math.max(1, Math.round(hours * 60));
-  const hh = Math.floor(totalMinutes / 60);
-  const mm = totalMinutes % 60;
-
-  return hh > 0 ? `${hh} ч ${mm} мин` : `${mm} мин`;
-};
-
 /** Почему пара распалась — текст для уведомления */
 const getMatingBreakReason = (toad: Toad, partner: Toad | null): string => {
   if (!partner) {
@@ -266,21 +257,13 @@ const startMating = (
 };
 
 /** Время вышло: у самки стартует беременность, пара остаётся жить в репродукторе */
-const finishMating = (female: Toad, male: Toad, addNotification: any) => {
+const finishMating = (female: Toad, male: Toad) => {
   const mother: Toad = { ...female, mating: null };
 
   // startPregnancy пишет мать синхронно; `scene_id` у обоих не трогаем: из репродуктора
   // жабу выносит игрок, сама она никуда не уходит
   void startPregnancy(mother, male);
   clearMating(male);
-
-  addNotification?.({
-    type: "success",
-    content: `♥ ${male.name ?? "Самец"} ♥ ${female.name ?? "Самка"}: ухаживание удалось, беременность началась! Роды примерно через ${formatPregnancyEta(
-      mother.pregnancy?.pregnancyDuration ?? 0,
-    )}.`,
-    timeout: 9000,
-  });
 };
 
 /**
@@ -344,7 +327,7 @@ const processMating = (
     return;
   }
 
-  finishMating(toad, partner, addNotification);
+  finishMating(toad, partner);
 };
 
 export const startPregnancy = async (toad: Toad, father: Toad) => {
@@ -413,12 +396,6 @@ export const endPregnancy = async (toad: Toad, addNotification: any) => {
 
     createToads(born, true);
 
-    addNotification({
-      type: "success",
-      content: `${toad.name} родила головастиков в репродукторе: ${born.length}. Перенесите их в биопод.`,
-      timeout: 9000,
-    });
-
     completeAchivement("first-offspring");
     finishBirth();
     return;
@@ -441,11 +418,6 @@ export const endPregnancy = async (toad: Toad, addNotification: any) => {
     addNotification({
       type: "warn",
       content: `${toad.name} родила ${assigned.length} головастиков, ещё ${rejected} не поместились: постройте биопод на карте колонии. Покормите новорождённых — кормление запустит рост.`,
-    });
-  } else {
-    addNotification({
-      type: "success",
-      content: `${toad.name} родила головастиков: ${assigned.length}. Покормите их, чтобы запустить рост.`,
     });
   }
 
@@ -784,12 +756,6 @@ export const startNestCourtship = (
   const { minutes } = startMating(updatedFemale, updatedMale, roomId);
 
   completeAchivement("first-manual-breed");
-
-  addNotification?.({
-    type: "success",
-    content: `♥ ${updatedMale.name} ♥ ${updatedFemale.name}: ухаживание началось — беременность через ~${minutes} мин.`,
-    timeout: 8000,
-  });
 
   return {
     started: true,

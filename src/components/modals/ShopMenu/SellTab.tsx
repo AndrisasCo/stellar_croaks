@@ -60,12 +60,6 @@ const SellTab: React.FC = () => {
     if (result.success) {
       playCell();
       setBiomassChoice(null);
-      addNotification({
-        type: "success",
-        content: `Обменяно ${formatBiomass(
-          result.biomassSpent
-        )} 🧪 на ${result.tokensGained} Кваксов`,
-      });
     } else {
       addNotification({
         type: "warn",

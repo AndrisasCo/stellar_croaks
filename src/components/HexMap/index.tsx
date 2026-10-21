@@ -5,10 +5,8 @@ import { useGameState } from "../../hooks/use-game-state";
 import { useNotifications } from "../../hooks/use-notification";
 import { useSoundEffects } from "../../hooks/use-sound-effects";
 import { Toad } from "../../models/Toad";
-import { checkNestCourtship } from "../../utils/breeding-manager";
 import { getSceneProductionRate } from "../../utils/production-manager";
 import { getHousingInfo } from "../../utils/housing";
-import { getToadHomeId } from "../../utils/toad-location";
 import {
   EXPEDITION_TOAD_BUSY_REASON,
   isToadBusyOnExpedition,
@@ -23,6 +21,7 @@ import ColonyModal from "../modals/ColonyModal";
 import { ToadInfo } from "../modals/ToadInfoModal";
 import { ClickButton } from "../shared/ClickButton";
 import { CurrencyIcon } from "../shared/CurrencyIcon";
+import { OfflineEventsButton } from "../shared/OfflineEventsButton";
 import { canBuildOnSlot, getUnpoweredAviarySceneIds } from "./colony-build";
 import HexMapCanvas from "./HexMapCanvas";
 import { openRoomModal } from "./open-room-modal";
@@ -373,10 +372,6 @@ export default function HexMapScreen() {
       if (room.kind === "power") {
         placeToad(toad.id, room.id);
         playCroakSmall();
-        addNotification({
-          type: "success",
-          content: `${toad.name ?? "Жаба"} теперь работает в энергосекторе ⚡`,
-        });
         return;
       }
 
@@ -384,10 +379,6 @@ export default function HexMapScreen() {
       if (room.kind === "scout") {
         placeToad(toad.id, room.id);
         playCroakSmall();
-        addNotification({
-          type: "success",
-          content: `${toad.name ?? "Жаба"} встала в команду в «Разведке» 🧭`,
-        });
         return;
       }
 
@@ -396,8 +387,6 @@ export default function HexMapScreen() {
       }
 
       if (room.kind === "aviary") {
-        const movedToOtherAviary =
-          room.sceneId != null && room.sceneId !== getToadHomeId(toad);
         const result = releaseToad(toad.id, room.sceneId ?? null);
 
         if (!result.ok) {
@@ -412,13 +401,6 @@ export default function HexMapScreen() {
         }
 
         playCroakSmall();
-        addNotification({
-          type: "success",
-          content: movedToOtherAviary
-            ? `${toad.name ?? "Жаба"} переехала в ${result.scene.name} 🏠`
-            : `${toad.name ?? "Жаба"} вернулась в биопод 🐸`,
-          timeout: 4000,
-        });
         return;
       }
 
@@ -426,17 +408,6 @@ export default function HexMapScreen() {
       if (room.kind === "breeding") {
         placeToad(toad.id, room.id);
         playCroakSmall();
-
-        // Пара собралась — подсказываем про кнопку в модалке репродуктора. Пока пары нет
-        // (посадили одну жабу), молчим: кого не хватает, скажет модалка репродуктора.
-        if (checkNestCourtship(room.id).ready) {
-          addNotification({
-            type: "success",
-            content:
-              "Пара в репродукторе ♥ Откройте репродуктор и нажмите «Начать ухаживание»",
-            timeout: 6000,
-          });
-        }
       }
     },
     [
@@ -503,26 +474,31 @@ export default function HexMapScreen() {
       {/* HUD: панель колонии, меню и ресурсы поверх карты */}
       <header className="pointer-events-none absolute inset-x-0 top-0 z-20 flex flex-col gap-2 p-3">
         <div className="flex items-start justify-between gap-2">
-          {/* Панель колонии — только сводка: у биоподов больше нет общего «текущего»,
-              поэтому про сам биопод рассказывает его гекс (тап по биоподу → список жаб) */}
-          <div className="pointer-events-auto min-w-0 rounded-2xl border border-cyan-400/25 bg-slate-950/65 px-3 py-2 text-left shadow-lg backdrop-blur-md">
-            <span className="brand-text block text-xl leading-none">
-              Stellar Croak
-            </span>
-            <span className="mt-1 block text-2xs leading-tight text-cyan-200/80">
-              День {colonyDay} · {clock} · Колония
-            </span>
-            <span className="block text-2xs leading-tight text-cyan-200/60">
-              {allToads.length} жаб ·{" "}
-              <span
-                className={
-                  sceneFarmRate >= 0 ? "text-lime-300/90" : "text-rose-300/90"
-                }
-              >
-                {sceneFarmRate > 0 ? "+" : ""}
-                {sceneFarmRate.toFixed(1)} 🧪/ч
+          <div className="flex min-w-0 items-start gap-2">
+            {/* Панель колонии — только сводка: у биоподов больше нет общего «текущего»,
+                поэтому про сам биопод рассказывает его гекс (тап по биоподу → список жаб) */}
+            <div className="pointer-events-auto min-w-0 rounded-2xl border border-cyan-400/25 bg-slate-950/65 px-3 py-2 text-left shadow-lg backdrop-blur-md">
+              <span className="brand-text block text-xl leading-none">
+                Stellar Croak
               </span>
-            </span>
+              <span className="mt-1 block text-2xs leading-tight text-cyan-200/80">
+                День {colonyDay} · {clock} · Колония
+              </span>
+              <span className="block text-2xs leading-tight text-cyan-200/60">
+                {allToads.length} жаб ·{" "}
+                <span
+                  className={
+                    sceneFarmRate >= 0 ? "text-lime-300/90" : "text-rose-300/90"
+                  }
+                >
+                  {sceneFarmRate > 0 ? "+" : ""}
+                  {sceneFarmRate.toFixed(1)} 🧪/ч
+                </span>
+              </span>
+            </div>
+
+            {/* (!) — журнал событий отсутствия; акцентная, пока есть непрочитанные */}
+            <OfflineEventsButton />
           </div>
 
           <ClickButton

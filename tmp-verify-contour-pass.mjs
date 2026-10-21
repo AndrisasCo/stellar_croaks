@@ -156,6 +156,41 @@ check(
   models.SECTORS.map((sector) => config.getContourPassReward(sector)),
   [1, 2, 2, 3, 3, 4, 4, 5],
 );
+check(
+  "шанс особого образца за успех",
+  config.EXPEDITION_SAMPLE_TOAD_CHANCE,
+  0.1,
+);
+check(
+  "редкость образца растёт с глубиной",
+  models.SECTORS.map((sector) => config.getExpeditionSampleReward(sector).rarity),
+  [
+    "common",
+    "common",
+    "uncommon",
+    "uncommon",
+    "rare",
+    "rare",
+    "epic",
+    "legendary",
+  ],
+);
+check(
+  "жаба-образец закреплена за уровнем",
+  models.SECTORS.map(
+    (sector) => config.getExpeditionSampleReward(sector).template.name,
+  ),
+  [
+    "Лесной странник",
+    "Болотный житель",
+    "Изумрудный прыгун",
+    "Золотистый охотник",
+    "Камнелап",
+    "Сапфировый призрак",
+    "Кваккон",
+    "Галактрон",
+  ],
+);
 
 console.log("\n[2] Совместимость со старыми сейвами");
 console.log("─".repeat(60));
@@ -529,6 +564,11 @@ check(
   },
   { completed: 1, completedSectors: [1], success: false },
 );
+check(
+  "провал не приносит особый образец",
+  saved().expeditions[0].loot.lootboxSamples ?? 0,
+  0,
+);
 
 reset(
   makeState({
@@ -581,6 +621,11 @@ check(
   saved().user.storage.contourPass,
   0,
 );
+check(
+  "маяк не приносит особый образец",
+  saved().expeditions[0].loot.lootboxSamples ?? 0,
+  0,
+);
 
 console.log("\n[5] Пропуска не занимают полки склада");
 console.log("─".repeat(60));
@@ -606,6 +651,74 @@ check(
   "обычный предмет на переполненный склад не влезает",
   storage.canFitInStorage({ food: 100 }, { worms: 1 }),
   false,
+);
+
+console.log("\n[6] Особый образец за успешное прохождение");
+console.log("─".repeat(60));
+reset(
+  makeState({
+    expeditions: [
+      {
+        id: "e-sample",
+        sectorId: 1,
+        team: [{ toadId: 1, role: "scout" }],
+        startedAt,
+        phase: "returning",
+        progress: 1,
+        reachedSector: true,
+        resolvedSteps: 9,
+        returnStartedAt: Date.now() - HOUR_MS,
+        returnHours: 0.25,
+        successChance: 1,
+        loot: {
+          biomass: 0,
+          tokens: 0,
+          astro_quax: 0,
+          items: {},
+          samples: 0,
+        },
+        log: [],
+      },
+    ],
+  }),
+);
+
+// Первый бросок — успех похода, второй — выпадение образца.
+const realRandom = Math.random;
+Math.random = () => 0;
+manager.processExpeditions();
+Math.random = realRandom;
+
+check(
+  "успех сохранил особый образец в рюкзак",
+  saved().expeditions[0].loot.lootboxSamples,
+  1,
+);
+
+const sampleFinish = manager.finishExpedition("e-sample", "storage");
+const sampleToad = saved().toads.find(
+  (item) => item.name === "Лесной странник",
+);
+
+check(
+  "образец стал именной жабой из лутбокса",
+  {
+    success: sampleFinish.success,
+    type: sampleToad?.type,
+    generation: sampleToad?.generation,
+    scene_id: sampleToad?.scene_id,
+  },
+  {
+    success: true,
+    type: "camouflage",
+    generation: 1,
+    scene_id: 1,
+  },
+);
+check(
+  "отчёт называет жабу из образца",
+  sampleFinish.message.includes("Лесной странник"),
+  true,
 );
 
 console.log("\n" + "─".repeat(60));

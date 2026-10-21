@@ -126,11 +126,6 @@ export const ITEM_ICONS: Partial<Record<Items, string>> = {
   [Items.battery]: "🔋",
   [Items.worms]: "🪱",
   [Items.sparkleFlys]: "✨",
-  // Пигменты больше не выпадают в походах, но иконки нужны для старых сейвов.
-  [Items.pigmentGreen]: "🟢",
-  [Items.pigmentRed]: "🔴",
-  [Items.pigmentBlue]: "🔵",
-  [Items.pigmentUnstable]: "🌈",
 };
 
 /** Редкая примесь к хорошему событию: астро-кваксы и образец */
@@ -218,10 +213,7 @@ export const EXPEDITION_EVENTS: ExpeditionEventDef[] = [
     available: (ctx) =>
       (ctx.expedition.companions?.length ?? 0) < EXPEDITION_MAX_COMPANIONS,
     run: (ctx) => {
-      const { baseToad } = generateRandomLootboxToad(
-        ctx.sector.id,
-        ctx.rng,
-      );
+      const { baseToad } = generateRandomLootboxToad(ctx.sector.id, ctx.rng);
       // id выдаст `createToads` на возврате: у события нет своего места в сейве,
       // а сгенерированный id мог бы совпасть у двух завершившихся походов.
       const { id: _generatedId, ...companion } = baseToad;
@@ -234,7 +226,7 @@ export const EXPEDITION_EVENTS: ExpeditionEventDef[] = [
         kind: "good",
         text: `к команде прибилась случайная жаба: ${getToadTypeLabel(
           baseToad.type,
-        ).toLowerCase()} «${baseToad.name}» — вылезла из вентиляции и увязалась следом. Дома поселим её в биопод`,
+        ).toLowerCase()} «${baseToad.name}» — вылезла из вентиляции и увязалась следом. `,
       });
     },
   },
@@ -305,7 +297,7 @@ export const EXPEDITION_EVENTS: ExpeditionEventDef[] = [
         ctx.log({
           member: tank,
           kind: "bad",
-          text: `словил весь залп сетки (−${dealt} HP), но остальных прикрыл`,
+          text: `словил весь залп турели (−${dealt} HP), но остальных прикрыл`,
         });
       }
     },
@@ -371,7 +363,7 @@ export const EXPEDITION_EVENTS: ExpeditionEventDef[] = [
         ctx.log({
           member: biologist,
           kind: "good",
-          text: `уговорила плесень расступиться: ${describeLoot(delta)}`,
+          text: `убедил${biologist.toad.sex === "female" ? "а" : ""} плесень расступиться: ${describeLoot(delta)}`,
         });
       } else {
         const victim = ctx.randomMember() ?? biologist;
@@ -387,7 +379,7 @@ export const EXPEDITION_EVENTS: ExpeditionEventDef[] = [
           ctx.log({
             member: victim,
             kind: "bad",
-            text: `распылила споры в шлем ${victim.toad.name} (−${dealt} HP)`,
+            text: `споры распылились на ${victim.toad.name} (−${dealt} HP)`,
           });
         }
       }
@@ -416,10 +408,7 @@ export const EXPEDITION_EVENTS: ExpeditionEventDef[] = [
       ctx.log({
         member: medic,
         kind: "good",
-        text:
-          healedTotal > 0
-            ? `раскопал нано-ремонтный отсек: команда подлатана на ${healedTotal} HP`
-            : "нашёл нано-ремонтный отсек, но все и так целы",
+        text: `раскопал${medic.toad.sex === "female" ? "а" : ""} нано-ремонтный отсек: команда подлатана на ${healedTotal} HP`,
       });
     },
   },
@@ -496,7 +485,7 @@ export const EXPEDITION_EVENTS: ExpeditionEventDef[] = [
       ctx.loot(delta);
       ctx.log({
         kind: "good",
-        text: `под ногами чавкнула биомассовая отмель — зачерпнули горстями: ${describeLoot(
+        text: `под ногами чавкнули неизвестные водоросли - взяли с собой, они сгодятся как источник биомассы: ${describeLoot(
           delta,
         )}`,
       });
@@ -512,7 +501,7 @@ export const EXPEDITION_EVENTS: ExpeditionEventDef[] = [
           ctx,
           14,
           (victim, dealt) =>
-            `клапан охлаждайки сорвало, струя достала ${victim.toad.name} (−${dealt} HP): щитоносца в команде нет`,
+            `паровой клапан сорвало, струя попала в ${victim.toad.name} (−${dealt} HP): щитоносца в команде нет`,
         );
         return;
       }
@@ -533,7 +522,7 @@ export const EXPEDITION_EVENTS: ExpeditionEventDef[] = [
         ctx.log({
           member: tank,
           kind: "bad",
-          text: `сорвал клапан охлаждайки — команда сварилась на ${total} HP`,
+          text: `паровой клапан сорвало, струя пара окатила команду  (-${total} HP)`,
         });
       }
     },
@@ -548,7 +537,7 @@ export const EXPEDITION_EVENTS: ExpeditionEventDef[] = [
           ctx,
           12,
           (victim, dealt) =>
-            `сканер дрона вцепился в ${victim.toad.name} (−${dealt} HP): разведчика в команде не было`,
+            ` дрон-шмель атаковал ${victim.toad.name} (−${dealt} HP): разведчика в команде не было`,
         );
         return;
       }
@@ -556,14 +545,14 @@ export const EXPEDITION_EVENTS: ExpeditionEventDef[] = [
         ctx.log({
           member: scout,
           kind: "good",
-          text: "провела команду по рельсам под самым носом дронов-патрульных",
+          text: `провел команду по рельсам под самым носом дронов-патрульных`,
         });
       } else {
         const dealt = ctx.damage(scout, scaleDamage(ctx, 12));
         ctx.log({
           member: scout,
           kind: "bad",
-          text: `подставилась под сканер дрона (−${dealt} HP)`,
+          text: `подставился под сканер дрона (−${dealt} HP)`,
         });
       }
     },
@@ -606,7 +595,7 @@ export const EXPEDITION_EVENTS: ExpeditionEventDef[] = [
           ctx,
           10,
           (victim, dealt) =>
-            `генбассейн принял ${victim.toad.name} с головой (−${dealt} HP): договариваться было некому`,
+            `генбассейн поглотил ${victim.toad.name} с головой (−${dealt} HP): договариваться было некому`,
         );
         return;
       }

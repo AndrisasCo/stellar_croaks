@@ -28,7 +28,9 @@ import {
 } from "../../backend/db";
 import { useTelegram } from "../../hooks/use-tg";
 import { useNotifications } from "../../hooks/use-notification";
+import { useOfflineEvents } from "../../hooks/use-offline-events";
 import { getGameState, saveGameState } from "../../backend/localStorage";
+import type { OfflineEventType } from "../../utils/offline-events";
 import { preloadImages } from "../../utils/ui";
 
 // Конфиг обновлений для уведомлений
@@ -82,6 +84,7 @@ export default function ToadGame() {
   const { account, allToads } = useToads();
   const { isLoading: isLoadingTg } = useTelegram();
   const { addNotification } = useNotifications();
+  const { addOfflineEvents } = useOfflineEvents();
   const [isLoading, setIsLoading] = useState(true);
 
   const showLoadingScreen = isLoading || !account || !allToads || isLoadingTg;
@@ -110,11 +113,25 @@ export default function ToadGame() {
       const timeManager = new TimeManager();
       const offlineHours = timeManager.getTimePassed();
 
-      // Отложенный запуск уведомлений о размножении
-      const delayNotification = (props: any) =>
-        setTimeout(() => addNotification(props), 2000);
+      /**
+       * События оффлайн-догона не показываем обычными тостами внизу: игрок мог
+       * отсутствовать часами, и они бы просто исчезли. Складываем их в журнал
+       * `OfflineEventsProvider`, который открывается кнопкой (!) в HUD.
+       */
+      const collectOfflineEvent = (notification: {
+        type?: OfflineEventType;
+        content?: string;
+      }) => {
+        if (!notification?.content) {
+          return;
+        }
 
-      processBreeding(offlineHours, delayNotification);
+        addOfflineEvents([
+          { type: notification.type, content: notification.content },
+        ]);
+      };
+
+      processBreeding(offlineHours, collectOfflineEvent);
 
       if (offlineHours > 0.09) {
         runHungerTick(offlineHours);
@@ -123,12 +140,12 @@ export default function ToadGame() {
         processEnergyRegen(offlineHours);
         // Кибер-риски оффлайна (Часть 3.6)
         processDiseases(offlineHours);
-        processCyberEvents(offlineHours, delayNotification);
+        processCyberEvents(offlineHours, collectOfflineEvent);
       }
 
       // Разведка (Часть 5): походы идут по реальному времени, команды возвращаются,
       // а жабы дома восстанавливают HP
-      processExpeditions(delayNotification);
+      processExpeditions(collectOfflineEvent);
       processHpRegen(offlineHours);
 
       updateLeaderbord();

@@ -3,10 +3,7 @@ import Modal from "../shared/Header";
 import { CurrencyText } from "../shared/CurrencyIcon";
 import { Expedition, getSectorById } from "../../models/expedition";
 import { getExpeditionLootSummary } from "../../utils/expedition-manager";
-import {
-  ExpeditionLogList,
-  formatExpeditionDate,
-} from "./ExpeditionLogList";
+import { ExpeditionLogList, formatExpeditionDate } from "./ExpeditionLogList";
 
 /**
  * Отдельное окно с полным журналом завершённого похода.
@@ -61,7 +58,7 @@ export const ExpeditionLogModal: React.FC<{ expedition: Expedition }> = ({
           </div>
 
           <p className="relative mt-2 text-2xs text-slate-300">
-            🎒 Добыча:{" "}
+            Добыча:{" "}
             <CurrencyText
               text={getExpeditionLootSummary(expedition)}
               iconClassName="h-3 w-3"

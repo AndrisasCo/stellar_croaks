@@ -1,7 +1,9 @@
 import React from "react";
 import { ExpeditionLoot } from "../../models/expedition";
+import { Toad } from "../../models/Toad";
 import { Items, itemsFull } from "../../models/user";
 import { CurrencyIcon } from "../shared/CurrencyIcon";
+import { ToadAvatar } from "../shared/ToadAvatar";
 
 interface LootTile {
   id: string;
@@ -35,10 +37,15 @@ const formatAmount = (amount: number): string =>
  */
 export const ExpeditionLootGrid: React.FC<{
   loot: ExpeditionLoot;
+  /**
+   * Именная жаба из лутбокса, закреплённая за глубиной сектора. Нужна, чтобы
+   * особый образец показывался своим спрайтом, а не общей иконкой 🧬.
+   */
+  sampleToad?: Partial<Toad>;
   /** Подпись над сеткой */
   title?: string;
   className?: string;
-}> = ({ loot, title = "Добыча похода", className = "" }) => {
+}> = ({ loot, sampleToad, title = "Добыча похода", className = "" }) => {
   const tiles: LootTile[] = [];
 
   if (loot.biomass > 0) {
@@ -82,6 +89,21 @@ export const ExpeditionLootGrid: React.FC<{
       icon: <span className="text-xl leading-none">🧬</span>,
       tone: "border-pink-400/50 ",
       hint: "Живые образцы",
+    });
+  }
+
+  if ((loot.lootboxSamples ?? 0) > 0) {
+    tiles.push({
+      id: "lootbox-samples",
+      name: sampleToad?.name ?? "Особый образец",
+      amount: loot.lootboxSamples ?? 0,
+      icon: sampleToad ? (
+        <ToadAvatar toad={sampleToad as Toad} size={6} />
+      ) : (
+        <span className="text-xl leading-none">🐸</span>
+      ),
+      tone: "border-amber-300/60",
+      hint: "Жаба из лутбокса: при разборе добычи поселится в биопод",
     });
   }
 

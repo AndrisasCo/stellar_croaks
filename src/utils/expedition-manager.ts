@@ -14,6 +14,7 @@ import {
   normalizeExpeditionStats,
 } from "../models/expedition";
 import { Toad, ToadStatus } from "../models/Toad";
+import { buildLootboxToadFromTemplate } from "../models/Toad/lootbox";
 import { ToadTypes } from "../models/Toad/toad-species";
 import { getDiseaseIndex } from "../models/disease";
 import { Items } from "../models/user";
@@ -71,14 +72,17 @@ import {
   EXPEDITION_MIN_RETURN_HOURS,
   EXPEDITION_RETURN_RATIO,
   EXPEDITION_ROLE_CHANCE_BONUS,
+  EXPEDITION_SAMPLE_TOAD_CHANCE,
   EXPEDITION_TEAM_SIZE,
   FORCED_EXTRACTION_FEE_PER_TOAD,
   FORCED_LOOT_LOSS,
   TANK_DAMAGE_REDIRECT,
   getDispatchOfficeCost,
+  getEvacuationCost,
   getAwayToadUpdate,
   getContourPassReward,
   getExpeditionProfitFloor,
+  getExpeditionSampleReward,
   getExpeditionSendCost,
   getExpeditionSuccessChance,
   getExpeditionToadEnergyCost,
@@ -92,6 +96,7 @@ import {
   getSpeedUpReturnCost,
   getToadHp,
   getToadMaxHp,
+  isAwaitingEvacuation,
   isToadDown,
   rollExpeditionDisease,
   rollExpeditionLuck,
@@ -103,10 +108,7 @@ import {
   describeLoot,
   pickExpeditionEvent,
 } from "./expedition-events";
-import {
-  ExpeditionTeamMember,
-  getSectorSuccessFactor,
-} from "./expedition-config";
+import { ExpeditionTeamMember } from "./expedition-config";
 import { getToadEnergy } from "./gamification-config";
 import { getHpRegenPerHour, getHospitalRoomIds } from "./hospital";
 
@@ -435,8 +437,6 @@ export const startExpedition = (
     phase: "outbound",
     progress: 0,
     resolvedSteps: 0,
-    // Шанс удачного завершения считаем на старте (роли, сложность сектора и удача):
-    // каждая занятая роль даёт +20%, сила роли и глубина сектора множат вклад.
     successChance: getExpeditionSuccessChance(
       successMembers,
       sector,
@@ -450,17 +450,7 @@ export const startExpedition = (
   pushLog(expedition, {
     role: "system",
     kind: "info",
-    text: `команда из ${team.length} жаб ушла в «${sector.name}» − снаряжение ${cost} 🧪, силы −${energyCost} ⚡ на жабу`,
-  });
-
-  pushLog(expedition, {
-    role: "system",
-    kind: "info",
-    text: `шанс вернуться с удачей: ${Math.round(
-      (expedition.successChance ?? 0) * 100,
-    )}% (каждая роль даёт +20%, сложность сектора ×${getSectorSuccessFactor(
-      sector,
-    ).toFixed(2)})`,
+    text: `команда из ${team.length} жаб начала путь в «${sector.name}» `,
   });
 
   updateGameState({ expeditions: [...expeditions, expedition] }, true);
@@ -486,22 +476,40 @@ const startReturn = (
     expedition.progress,
     getExpeditionProgress(expedition, now),
   );
-  const traveledHours = Math.max(0.05, progress * sector.durationHours);
 
   expedition.progress = progress;
   expedition.phase = "returning";
-  expedition.returnStartedAt = now;
-  expedition.returnHours = Math.max(
-    EXPEDITION_MIN_RETURN_HOURS,
-    Math.round(traveledHours * EXPEDITION_RETURN_RATIO * 100) / 100,
-  );
   expedition.forced = forced;
+
+  if (forced) {
+    // Выбитую команду вести домой некому: обратный отсчёт стоит, пока игрок
+    // не оплатит эвакуацию (`evacuateExpedition`). Маршрут домой не стартует,
+    // поэтому `returnStartedAt`/`returnHours` не пишем — по ним поход считался
+    // бы возвращающимся по таймеру.
+    expedition.awaitingEvacuation = true;
+    expedition.returnStartedAt = undefined;
+    expedition.returnHours = undefined;
+    // Если к моменту вайпа команда уже дошла до сектора, засчитываем прибытие
+    // явно: без `returnStartedAt` старое определение «дошла ли» уже не сработает.
+    if (now - expedition.startedAt >= sector.durationHours * HOUR_MS) {
+      expedition.reachedSector = true;
+    }
+  } else {
+    const traveledHours = Math.max(0.05, progress * sector.durationHours);
+
+    expedition.awaitingEvacuation = false;
+    expedition.returnStartedAt = now;
+    expedition.returnHours = Math.max(
+      EXPEDITION_MIN_RETURN_HOURS,
+      Math.round(traveledHours * EXPEDITION_RETURN_RATIO * 100) / 100,
+    );
+  }
 
   pushLog(expedition, {
     role: "system",
     kind: forced ? "bad" : "info",
     text: forced
-      ? `вся команда выбита — экстренная эвакуация, назад ${expedition.returnHours} ч`
+      ? `вся команда выбита — нужна эвакуация за ${getEvacuationCost(sector)} 🔷`
       : `развернулись к дому: назад ${expedition.returnHours} ч`,
   });
 };
@@ -518,6 +526,14 @@ export const withdrawExpedition = (id: string): ExpeditionActionResult => {
     return {
       success: false,
       message: "Поход уже завершён — заберите добычу на вкладке «Походы»",
+    };
+  }
+  if (isAwaitingEvacuation(expedition)) {
+    return {
+      success: false,
+      message: `Команда выбита — её нужно эвакуировать за ${getEvacuationCost(
+        getSectorById(expedition.sectorId),
+      )} 🔷`,
     };
   }
   if (expedition.phase === "returning") {
@@ -547,6 +563,12 @@ export const speedUpReturn = (id: string): ExpeditionActionResult => {
 
   if (!expedition) {
     return { success: false, message: "Поход не найден" };
+  }
+  if (isAwaitingEvacuation(expedition)) {
+    return {
+      success: false,
+      message: "Команда выбита — возврат не идёт, нужна эвакуация",
+    };
   }
   if (expedition.phase !== "returning") {
     return { success: false, message: "Команда ещё идёт вглубь сектора" };
@@ -588,6 +610,66 @@ export const speedUpReturn = (id: string): ExpeditionActionResult => {
   };
 };
 
+/**
+ * Эвакуация выбитой команды за Кваксы: 100 🔷 за каждую глубину сектора.
+ *
+ * Пока вся команда выбита, обратный отсчёт стоит — домой её вытаскивает только
+ * эта кнопка (или «Экстренный маяк» за Астро-кваксы). Добыча приходит с теми же
+ * потерями, что и при принудительном возврате: половина осталась в секторе.
+ */
+export const evacuateExpedition = (id: string): ExpeditionActionResult => {
+  // Сначала «догоняем» поход, как у маяка: события, наступившие по часам,
+  // должны попасть в журнал и рюкзак до эвакуации.
+  processExpeditions();
+
+  const state = getGameState();
+  const expedition = getExpeditionById(id);
+
+  if (!expedition) {
+    return { success: false, message: "Поход не найден" };
+  }
+  if (expedition.phase === "completed") {
+    return {
+      success: true,
+      message: "Команда уже дома — добыча ждёт разбора на вкладке «Походы»",
+    };
+  }
+  if (!isAwaitingEvacuation(expedition)) {
+    return {
+      success: false,
+      message: "Эвакуация нужна только выбитой команде",
+    };
+  }
+
+  const sector = getSectorById(expedition.sectorId);
+  const cost = getEvacuationCost(sector);
+  const tokens = Math.floor(state.user.tokens || 0);
+  if (tokens < cost) {
+    return {
+      success: false,
+      message: `Эвакуация стоит ${cost} 🔷 (сейчас ${tokens})`,
+    };
+  }
+
+  updateUser({ tokens: tokens - cost });
+
+  expedition.awaitingEvacuation = false;
+  pushLog(expedition, {
+    role: "system",
+    kind: "info",
+    text: `команду эвакуировали из «${sector.name}» за ${cost} 🔷`,
+  });
+
+  // Возврат мгновенный: удачу не бросаем и до нормы фермы не добираем —
+  // команда забирает только то, что уже в рюкзаке (с потерей половины).
+  completeArrival(expedition, { instant: true });
+
+  return {
+    success: true,
+    message: `Команда эвакуирована за ${cost} 🔷 — добыча ждёт разбора в «Походах»`,
+  };
+};
+
 /** «Экстренный маяк»: моментально вытащить команду за Астро-кваксы */
 export const extractExpedition = (
   id: string,
@@ -619,12 +701,9 @@ export const extractExpedition = (
   }
 
   updateUser({ astro_quax: astro - EXTRACTION_ASTRO_COST });
-  const summary = completeArrival(expedition, { instant: true });
-
-  addNotification?.({
-    type: "success",
-    content: `🚁 Экстренный маяк: команда дома. ${summary}`,
-  });
+  // Маяк забирает и выбитую команду: после этого она уже не «ждёт эвакуации».
+  expedition.awaitingEvacuation = false;
+  completeArrival(expedition, { instant: true });
 
   return {
     success: true,
@@ -676,7 +755,7 @@ export const buyDispatchOffice = (): ExpeditionActionResult => {
 
   return {
     success: true,
-    message: `Диспетчерская построена: команд в разведке ${getTeamLimit()}`,
+    message: `Диспетчерская построена: команд в КОНТУР ${getTeamLimit()}`,
   };
 };
 
@@ -764,7 +843,8 @@ const buildEventContext = (
   /** Урон конкретной жабе; на нуле — жаба выбита до конца похода */
   const damage = (member: ExpeditionEventMember, amount: number): number => {
     const current = runtime.hp.get(member.toadId) ?? 0;
-    const dealt = Math.min(Math.max(0, Math.round(amount)), current);
+    const randomAmount = amount + amount * (Math.random() * 0.3 - 0.15);
+    const dealt = Math.min(Math.max(0, Math.round(randomAmount)), current);
     const next = current - dealt;
 
     runtime.hp.set(member.toadId, next);
@@ -786,7 +866,11 @@ const buildEventContext = (
   const heal = (member: ExpeditionEventMember, amount: number): number => {
     const current = runtime.hp.get(member.toadId) ?? 0;
     const maxHp = runtime.maxHp.get(member.toadId) ?? 0;
-    const next = Math.min(maxHp, current + Math.max(0, Math.round(amount)));
+    const randomAmount = amount + amount * (Math.random() * 0.3 - 0.15);
+    const next = Math.min(
+      maxHp,
+      current + Math.max(0, Math.round(randomAmount)),
+    );
     const healed = Math.round((next - current) * 100) / 100;
 
     if (healed > 0) {
@@ -1008,7 +1092,9 @@ export const processExpeditions = (
           startReturn(expedition, sector, now, true);
           addNotification?.({
             type: "danger",
-            content: `🚨 Команда в «${sector.name}» выбита — экстренная эвакуация`,
+            content: `🚨 Команда в «${sector.name}» выбита — нужна эвакуация за ${getEvacuationCost(
+              sector,
+            )} 🔷`,
           });
           break;
         }
@@ -1031,13 +1117,8 @@ export const processExpeditions = (
 
         if (arrived) {
           expedition.progress = 1;
-          // Только дошедшая до сектора команда имеет шанс на удачу: если её
-          // отозвали или вытащили маяком с середины пути, поход уже не успешный.
           expedition.reachedSector = true;
-          // Поход идёт по часам, а не по тикам: если игрок был оффлайн, команда
-          // развернулась в момент прибытия в сектор, а не в момент, когда игра
-          // «догнала» поход. Иначе обратный путь стартовал бы только после входа
-          // в игру и всё оффлайн-время сгорало бы.
+
           const arrivedAt =
             expedition.startedAt + sector.durationHours * HOUR_MS;
           startReturn(expedition, sector, Math.min(now, arrivedAt), false);
@@ -1046,16 +1127,15 @@ export const processExpeditions = (
       }
     }
 
-    if (expedition.phase === "returning") {
+    if (expedition.phase === "returning" && !isAwaitingEvacuation(expedition)) {
       const eta =
         (expedition.returnStartedAt || now) +
         (expedition.returnHours || 0) * HOUR_MS;
 
       if (now >= eta) {
-        const summary = completeArrival(expedition);
+        completeArrival(expedition);
         result.arrivals += 1;
         dirty = true;
-        addNotification?.({ type: "success", content: `🏠 ${summary}` });
         remaining.push(expedition);
         return;
       }
@@ -1135,6 +1215,39 @@ const createSampleToads = (count: number, sector: SectorDef): Toad[] => {
 };
 
 /**
+ * Особый образец сектора: именная жаба из лутбокса, закреплённая за глубиной.
+ *
+ * Создаётся отдельно от обычных образцов (`createSampleToads`), чтобы у игрока
+ * выросла именно та жаба, которую обещала карточка «Потенциальная добыча».
+ * Сначала занимаем биопод под неё: она ценнее случайных образцов.
+ */
+const createExpeditionSampleToads = (
+  count: number,
+  sector: SectorDef,
+): Toad[] => {
+  const total = Math.max(0, Math.floor(count));
+  if (total === 0) {
+    return [];
+  }
+
+  const reward = getExpeditionSampleReward(sector);
+  const data = Array.from({ length: total }, () =>
+    buildLootboxToadFromTemplate(reward.template, reward.rarity),
+  );
+
+  // Склада жаб больше нет: образец живёт только в биоподе.
+  const { assigned, rejected } = assignToadsToScenes(data);
+
+  if (rejected > 0) {
+    console.info(
+      `Особый образец из «${sector.name}»: ${rejected} остался в секторе — нет мест`,
+    );
+  }
+
+  return assigned.length > 0 ? createToads(assigned, true) : [];
+};
+
+/**
  * Итоговая добыча завершённого похода и его исход. Чистый расчёт: состояние
  * игрока не меняется — валюту/предметы выдаёт только `finishExpedition`.
  */
@@ -1191,11 +1304,16 @@ const buildArrivalLoot = (
   // поэтому даже при удачном броске множитель к ней не применяется.
   const successChance = expedition.successChance ?? 0;
   const success =
-    !forced &&
-    reachedSector &&
-    Math.random() < Math.min(1, successChance);
-  const finishFactor =
-    !instant && success ? EXPEDITION_GOOD_FINISH_LOOT : 1;
+    !forced && reachedSector && Math.random() < Math.min(1, successChance);
+  const finishFactor = !instant && success ? EXPEDITION_GOOD_FINISH_LOOT : 1;
+  /**
+   * Особый образец за глубину: 10% при успешном завершении. Бросок делается
+   * один раз здесь и сохраняется в рюкзаке похода, иначе при каждом открытии
+   * карточки «Потенциальная добыча» могла бы появиться заново.
+   * Маяк после прибытия тоже считается успехом — как и с пропусками КОНТУРа.
+   */
+  const lootboxSamples =
+    success && Math.random() < EXPEDITION_SAMPLE_TOAD_CHANCE ? 1 : 0;
 
   // 0.1 Норма «поход выгоднее фермы»: считаем, сколько те же жабы наработали бы
   // дома за время отсутствия (путь туда + обратно) и добираем добычу до нормы.
@@ -1260,6 +1378,8 @@ const buildArrivalLoot = (
       astro_quax: astro,
       items,
       samples: Math.max(0, Math.floor(expedition.loot.samples || 0)),
+      // Ноль не пишем: старые походы и маяк остаются ровно такими же по форме
+      ...(lootboxSamples > 0 ? { lootboxSamples } : {}),
     },
     floorTopUp,
     paidFee: Math.round((walletFee + lootFee) * 100) / 100,
@@ -1285,15 +1405,20 @@ const completeArrival = (
   const rawTokens = expedition.loot.tokens;
   const arrival = buildArrivalLoot(expedition, state, options);
   const samplesCount = arrival.loot.samples;
+  /** Особый образец глубины: именная жаба из лутбокса (10% за успех) */
+  const lootboxSamplesCount = Math.max(
+    0,
+    Math.floor(arrival.loot.lootboxSamples ?? 0),
+  );
+  const lootboxSampleReward =
+    lootboxSamplesCount > 0 ? getExpeditionSampleReward(sector) : null;
   /**
    * Пропуска КОНТУРа начисляем сразу при возврате команды, а не при разборе
    * добычи. Только за удачный поход: провал не должен оплачиваться пропусками,
    * иначе следующую глубину можно было бы открывать, вообще не доводя дело
    * до конца.
    */
-  const contourPasses = arrival.success
-    ? getContourPassReward(sector)
-    : 0;
+  const contourPasses = arrival.success ? getContourPassReward(sector) : 0;
   /**
    * Попутчики, присоединившиеся в пути. Дома их ждёт биопод: если места нет,
    * жаба не создаётся (склада жаб нет), а отчёт честно скажет об этом.
@@ -1386,10 +1511,10 @@ const completeArrival = (
     tokens: arrival.loot.tokens,
     astro_quax: arrival.loot.astro_quax,
     items: arrival.loot.items,
-    sample: samplesCount,
+    sample: samplesCount + lootboxSamplesCount,
   });
   let summary = forced
-    ? `Команда выбита в «${sector.name}» и вернулась на маяке: ${
+    ? `Команда выбита в «${sector.name}» и эвакуирована: ${
         lootText || "пусто, зато живые"
       }`
     : options.instant
@@ -1443,6 +1568,14 @@ const completeArrival = (
   }
   if (samplesCount > 0) {
     summary += `. В рюкзаке ${samplesCount} образц(ов) — при разборе добычи они поселятся в биоподах`;
+  }
+  if (lootboxSampleReward) {
+    pushLog(expedition, {
+      role: "system",
+      kind: "good",
+      text: `🐸 в секторе найден особый образец — «${lootboxSampleReward.template.name}» (${lootboxSampleReward.rarity}); при разборе добычи жаба поселится в биопод`,
+    });
+    summary += `. 🐸 Особый образец: «${lootboxSampleReward.template.name}» — при разборе добычи поселится в биопод`;
   }
   if (pendingCompanions.length > 0) {
     if (companions.length > 0) {
@@ -1666,6 +1799,18 @@ export const finishExpedition = (
       acceptedCount += amount || 0;
     });
 
+    /**
+     * Особый образец селим первым: он ценнее обычных находок, и последний
+     * свободный биопод должен достаться именно именной жабе из лутбокса.
+     */
+    const requestedLootboxSamples = Math.min(
+      Math.max(0, Math.floor(expedition.loot.lootboxSamples ?? 0)),
+      1,
+    );
+    const lootboxSamples =
+      requestedLootboxSamples > 0
+        ? createExpeditionSampleToads(requestedLootboxSamples, sector)
+        : [];
     const requestedSamples = Math.min(expedition.loot.samples, 3);
     const samples =
       requestedSamples > 0 ? createSampleToads(requestedSamples, sector) : [];
@@ -1685,12 +1830,19 @@ export const finishExpedition = (
       tokens: expedition.loot.tokens,
       astro_quax: expedition.loot.astro_quax,
       items: accepted,
-      sample: samples.length,
+      sample: samples.length + lootboxSamples.length,
     });
     message = `Добыча со склада: ${lootText || "пусто, зато живые"}`;
 
     if (acceptedCount < check.needed) {
       message += `. ${check.needed - acceptedCount} предмет(ов) не влезли на склад`;
+    }
+    if (lootboxSamples.length > 0) {
+      message += `. 🐸 В биопод поселилась «${lootboxSamples[0].name}»`;
+    } else if (requestedLootboxSamples > 0) {
+      message += `. Особый образец «${
+        getExpeditionSampleReward(sector).template.name
+      }» остался в секторе — нет мест в биоподах`;
     }
     if (samples.length < requestedSamples) {
       message += `. ${requestedSamples - samples.length} образц(ов) осталось в секторе — нет мест в биоподах`;
@@ -1799,7 +1951,9 @@ export const getExpeditionProgress = (
   }
 
   if (expedition.phase === "returning") {
-    return 1;
+    return isAwaitingEvacuation(expedition)
+      ? clamp(expedition.progress, 0, 1)
+      : 1;
   }
 
   const sector = getSectorById(expedition.sectorId);
@@ -1816,6 +1970,11 @@ export const getExpeditionEtaMs = (
   now = Date.now(),
 ): number => {
   if (expedition.phase === "completed") {
+    return 0;
+  }
+
+  // Выбитая команда стоит на месте: отсчёта до дома у неё нет.
+  if (isAwaitingEvacuation(expedition)) {
     return 0;
   }
 
@@ -1836,7 +1995,11 @@ export const getReturnProgress = (
   expedition: Expedition,
   now = Date.now(),
 ): number => {
-  if (expedition.phase !== "returning" || !expedition.returnHours) {
+  if (
+    expedition.phase !== "returning" ||
+    !expedition.returnHours ||
+    isAwaitingEvacuation(expedition)
+  ) {
     return 0;
   }
 
@@ -1888,5 +2051,6 @@ export const getExpeditionLootSummary = (expedition: Expedition): string =>
     tokens: expedition.loot.tokens,
     astro_quax: expedition.loot.astro_quax,
     items: expedition.loot.items,
-    sample: expedition.loot.samples,
+    sample:
+      (expedition.loot.samples || 0) + (expedition.loot.lootboxSamples || 0),
   }) || "пока пусто";

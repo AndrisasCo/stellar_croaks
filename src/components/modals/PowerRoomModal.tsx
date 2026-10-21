@@ -177,10 +177,6 @@ export default function PowerRoomModal({ room }: { room: RoomConfig }) {
 
     placeToad(toad.id, room.id);
     playCroakSmall();
-    addNotification({
-      type: "success",
-      content: `${toad.name ?? "Жаба"} теперь работает в энергосекторе ⚡`,
-    });
   };
 
   /** Вернуть жабу домой — в биопод, который она помнит (`homeId`) */
@@ -208,10 +204,6 @@ export default function PowerRoomModal({ room }: { room: RoomConfig }) {
     }
 
     playSuccess();
-    addNotification({
-      type: "info",
-      content: `${toad.name ?? "Жаба"} вернулась в биопод.`,
-    });
   };
 
   return (
