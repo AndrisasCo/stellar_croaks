@@ -41,11 +41,48 @@ let currentAccount: Account | null = null;
 /** Общий in-flight промис: параллельные вызовы не создают несколько сессий. */
 let pendingAccount: Promise<Account | null> | null = null;
 
+/**
+ * Сколько раз пробуем войти через Telegram за один запуск.
+ *
+ * Вебвью Telegram на старте бывает «холодным»: первый запрос к Edge Function может
+ * уйти в никуда (нет сети, функция ещё поднимается). Раньше такой сбой молча
+ * превращался в `signInAnonymously()`, и каждое новое устройство получало СВОЙ
+ * аккаунт — на лидерборде появлялись «Алиса Павлова» и «Алиса Павлова 1».
+ */
+const TELEGRAM_AUTH_ATTEMPTS = 3;
+
+/** Пауза перед повтором: 0.4 с, затем 0.8 с — сеть успевает очнуться. */
+const TELEGRAM_AUTH_RETRY_MS = 400;
+
+/**
+ * Пауза между неудачными попытками входа целиком (`initAuth`).
+ *
+ * Если сервер недоступен, игрок продолжает играть локально, а вход повторяется не
+ * на каждое сохранение, а раз в 15 секунд — иначе каждая операция с облаком била бы
+ * в недоступную функцию.
+ */
+const AUTH_RETRY_COOLDOWN_MS = 15_000;
+
+/** До какого времени вход не повторяем (после неудачной попытки). */
+let nextAuthAttemptAt = 0;
+
+const delay = (ms: number): Promise<void> =>
+  new Promise((resolve) => setTimeout(resolve, ms));
+
 const readNumber = (value: unknown): number | null =>
   typeof value === "number" && Number.isFinite(value) ? value : null;
 
 const readString = (value: unknown): string | null =>
   typeof value === "string" && value.trim() ? value.trim() : null;
+
+/**
+ * Постоянный ли аккаунт: почта/пароль или любая другая подтверждённая личность.
+ * У анонимной сессии почты нет, а `is_anonymous` в свежих GoTrue равен `true`.
+ * Отсутствие флага считаем анонимностью только при пустой почте — так старые
+ * сессии без поля `is_anonymous` не мешают входу через Telegram.
+ */
+const isPermanentAccount = (user: SessionUser): boolean =>
+  user.is_anonymous === false || Boolean(user.email);
 
 /**
  * Аккаунт из пользователя сессии. `tg_id` и имя записаны Edge Function в
@@ -70,6 +107,24 @@ const setAccount = (account: Account | null): void => {
 let authListenerAttached = false;
 
 /**
+ * Аккаунт для интерфейса и синка из пользователя сессии.
+ *
+ * В Telegram анонимную сессию не отдаём: настоящий аккаунт там выдаёт
+ * `telegram-auth` по подписи. Иначе событие `INITIAL_SESSION` со старым анонимным
+ * uuid снова сделало бы его текущим — и `ensureAccount` вернул бы «дубль», даже
+ * когда вход через Telegram не удался.
+ */
+const accountFromSession = (user: SessionUser | undefined): Account | null => {
+  if (!user) {
+    return null;
+  }
+
+  const account = toAccount(user);
+
+  return account.isAnonymous && platform.identity().initData ? null : account;
+};
+
+/**
  * Один раз подписываемся на события Supabase Auth: токен обновляется сам, а наш
  * `currentAccount` должен следовать за сессией (иначе после refresh останется
  * протухший аккаунт).
@@ -81,48 +136,77 @@ const attachAuthListener = (): void => {
 
   authListenerAttached = true;
   supabase.auth.onAuthStateChange((_event, session) => {
-    setAccount(session?.user ? toAccount(session.user as SessionUser) : null);
+    setAccount(accountFromSession(session?.user as SessionUser | undefined));
   });
+};
+
+/**
+ * Одноразовый `token_hash` от Edge Function `telegram-auth`.
+ *
+ * `null` означает «попытка не удалась» — вызывающий решает, повторять ли её. Сеть
+ * вебвью может порвать запрос уже после отправки, поэтому ловим и исключения.
+ */
+const requestTelegramToken = async (initData: string): Promise<string | null> => {
+  try {
+    const { data, error } = await supabase.functions.invoke<{
+      token_hash?: string;
+    }>("telegram-auth", { body: { initData } });
+
+    if (!error && data?.token_hash) {
+      return data.token_hash;
+    }
+
+    console.warn(
+      "[auth] Telegram-вход недоступен (Edge Function telegram-auth):",
+      error ?? "сервер не вернул token_hash"
+    );
+  } catch (error) {
+    console.warn("[auth] Telegram-вход не дошёл до сервера:", error);
+  }
+
+  return null;
 };
 
 /**
  * Вход через Telegram: `initData` уходит на сервер, где проверяется подписью бота.
  * Возвращённый одноразовый `token_hash` меняем на сессию — и только после этого у
  * аккаунта появляется доверенный `tg_id`.
+ *
+ * Попыток несколько: сбой сети в вебвью не должен стоить игроку отдельного аккаунта.
+ * Токен при каждом повторе выдаётся заново — прошлый мог сгореть вместе с запросом.
  */
 const signInWithTelegram = async (initData: string): Promise<Account | null> => {
-  const { data, error } = await supabase.functions.invoke<{
-    token_hash?: string;
-  }>("telegram-auth", { body: { initData } });
+  for (let attempt = 1; attempt <= TELEGRAM_AUTH_ATTEMPTS; attempt += 1) {
+    const tokenHash = await requestTelegramToken(initData);
 
-  if (error || !data?.token_hash) {
-    console.warn(
-      "[auth] Telegram-вход недоступен (Edge Function telegram-auth):",
-      error ?? "сервер не вернул token_hash"
-    );
-    return null;
+    if (tokenHash) {
+      const { data: verified, error: verifyError } = await supabase.auth.verifyOtp({
+        type: "magiclink",
+        token_hash: tokenHash,
+      });
+
+      if (!verifyError && verified.session?.user) {
+        const account = toAccount(verified.session.user as SessionUser);
+        setAccount(account);
+        console.info(
+          `[auth] Вход через Telegram подтверждён: tg_id=${account.tgId ?? "?"}`
+        );
+
+        return account;
+      }
+
+      console.warn(
+        "[auth] не удалось обменять token_hash на сессию:",
+        verifyError?.message ?? "сессия не создана"
+      );
+    }
+
+    if (attempt < TELEGRAM_AUTH_ATTEMPTS) {
+      await delay(TELEGRAM_AUTH_RETRY_MS * attempt);
+    }
   }
 
-  const { data: verified, error: verifyError } = await supabase.auth.verifyOtp({
-    type: "magiclink",
-    token_hash: data.token_hash,
-  });
-
-  if (verifyError || !verified.session?.user) {
-    console.warn(
-      "[auth] не удалось обменять token_hash на сессию:",
-      verifyError?.message ?? "сессия не создана"
-    );
-    return null;
-  }
-
-  const account = toAccount(verified.session.user as SessionUser);
-  setAccount(account);
-  console.info(
-    `[auth] Вход через Telegram подтверждён: tg_id=${account.tgId ?? "?"}`
-  );
-
-  return account;
+  return null;
 };
 
 const initAuth = async (): Promise<Account | null> => {
@@ -140,30 +224,43 @@ const initAuth = async (): Promise<Account | null> => {
   const { initData } = platform.identity();
 
   const stored = sessionData?.session?.user;
-  if (stored) {
+
+  // Постоянный аккаунт (почта) не трогаем: игрок сам выбрал его в вебе, и смена
+  // uuid в Telegram забрала бы у него колонию. Анонимную сессию — наоборот,
+  // обмениваем на подтверждённую личность.
+  if (stored && isPermanentAccount(stored as SessionUser)) {
     const account = toAccount(stored as SessionUser);
-
-    // Анонимная сессия могла остаться от веб-версии (тот же origin). В Telegram
-    // её нужно обменять на подтверждённую личность, иначе tg_id так и не появится.
-    if (initData && account.isAnonymous) {
-      const viaTelegram = await signInWithTelegram(initData);
-      if (viaTelegram) {
-        return viaTelegram;
-      }
-    }
-
     setAccount(account);
     return account;
   }
 
   if (initData) {
     const viaTelegram = await signInWithTelegram(initData);
+
     if (viaTelegram) {
       return viaTelegram;
     }
+
+    // Анонимную сессию здесь НЕ создаём: именно она превращалась в дубль
+    // («Алиса Павлова 1») на каждом новом устройстве, потому что ключ аккаунта —
+    // uuid сессии, а не tg_id. Игрок продолжит играть локально, а вход повторим
+    // при следующем обращении к облаку — уже с тем же uuid, что и на других
+    // устройствах (его выдаёт `telegram-auth` по `tg_id`).
+    console.warn(
+      "[auth] Telegram-вход не удался — играем локально, повторим без анонимного дубля"
+    );
+    nextAuthAttemptAt = Date.now() + AUTH_RETRY_COOLDOWN_MS;
+
+    return null;
   }
 
-  // Веб-версия (и Telegram, если вход через бота не удался): анонимная сессия.
+  if (stored) {
+    const account = toAccount(stored as SessionUser);
+    setAccount(account);
+    return account;
+  }
+
+  // Веб-версия (и Telegram, если игра открыта не как мини-апп): анонимная сессия.
   // Уникальный uuid всё равно лучше, чем «никто»: синк и лидерборд работают.
   const { data, error } = await supabase.auth.signInAnonymously();
 
@@ -172,6 +269,8 @@ const initAuth = async (): Promise<Account | null> => {
       "[auth] анонимный вход недоступен — игра идёт офлайн:",
       error?.message ?? "пользователь не создан"
     );
+    nextAuthAttemptAt = Date.now() + AUTH_RETRY_COOLDOWN_MS;
+
     return null;
   }
 
@@ -186,6 +285,9 @@ const initAuth = async (): Promise<Account | null> => {
  * Гарантирует наличие аккаунта. Пока идёт вход, все вызовы ждут один и тот же
  * промис, поэтому «двойной вход» на старте игры невозможен.
  *
+ * После неудачи вход не повторяется на каждый запрос: `AUTH_RETRY_COOLDOWN_MS`
+ * даёт серверу паузу, а игрок всё это время спокойно играет локально.
+ *
  * @returns аккаунт или `null`, если облако не настроено/недоступно
  */
 export const ensureAccount = async (): Promise<Account | null> => {
@@ -195,6 +297,10 @@ export const ensureAccount = async (): Promise<Account | null> => {
 
   if (currentAccount) {
     return currentAccount;
+  }
+
+  if (Date.now() < nextAuthAttemptAt) {
+    return null;
   }
 
   if (!pendingAccount) {
@@ -304,7 +410,7 @@ export const subscribeAccount = (
   }
 
   const { data } = supabase.auth.onAuthStateChange((_event, session) => {
-    const account = session?.user ? toAccount(session.user as SessionUser) : null;
+    const account = accountFromSession(session?.user as SessionUser | undefined);
     setAccount(account);
     listener(account);
   });

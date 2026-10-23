@@ -18,7 +18,13 @@
  *      сессия сбрасывается, и регистрация проходит обычным signUp, а не падает;
  *   8) выход гасит сессию, УБИРАЕТ локальный сейв прошлого игрока и перезапускает
  *      игру, а неудачный выход не врёт об успехе и не трогает сейв;
- *   9) без настроенного Supabase вход отключён и ничего не падает.
+ *   9) без настроенного Supabase вход отключён и ничего не падает;
+ *  10) в Telegram сбой первого запроса к `telegram-auth` повторяется, а не
+ *      превращается в анонимный «дубль» на этом устройстве;
+ *  11) сохранённая анонимная сессия в Telegram обменивается на аккаунт по подписи;
+ *  12) если Edge Function недоступна, анонимный аккаунт НЕ создаётся: игра идёт
+ *      локально, повтор откладывается, старая анонимная сессия не подменяет вход;
+ *  13) в обычном браузере (без Telegram) анонимная сессия по-прежнему создаётся.
  *
  * Запуск: node tmp-verify-auth.mjs
  */
@@ -434,6 +440,144 @@ check(
 
 unsubscribeAnon();
 listener("SIGNED_OUT", null);
+// ---------------------------------------------------------------------------
+// ВХОД ЧЕРЕЗ TELEGRAM: сбой вебвью не должен создавать «дубль» аккаунта
+//
+// Прод-сценарий: второй девайс открыл мини-апп, запрос к Edge Function не дошёл,
+// ошибка молча превращалась в signInAnonymously() — и на лидерборде появлялись
+// «Алиса Павлова» и «Алиса Павлова 1» с разными uuid.
+// ---------------------------------------------------------------------------
+const tgUser = makeUser({
+  id: "211bdfe0-0d46-4f20-8976-563668a76365",
+  email: "tg-857360604@telegram.local",
+  is_anonymous: false,
+  user_metadata: { tg_id: 857360604, username: "Алиса Павлова" },
+});
+
+/** Заглушки Supabase + Telegram WebApp для отдельной копии модуля auth. */
+const makeTelegramBundle = async (name, initData) => {
+  const bundle = await bundleAuth(name, CLOUD_ENV);
+  const state = {
+    calls: [],
+    invokes: 0,
+    session: { data: { session: null }, error: null },
+    anonymous: { data: { user: null }, error: null },
+    verify: { data: { user: tgUser, session: { user: tgUser } }, error: null },
+    invoke: () => ({ data: { token_hash: "token" }, error: null }),
+  };
+
+  window.Telegram = {
+    WebApp: {
+      initData,
+      initDataUnsafe: {
+        user: { id: 857360604, first_name: "Алиса", last_name: "Павлова" },
+      },
+      platform: "ios",
+    },
+  };
+
+  bundle.supabase.auth.onAuthStateChange = (callback) => {
+    state.listener = callback;
+    return { data: { subscription: { unsubscribe: () => {} } } };
+  };
+  bundle.supabase.auth.getSession = async () => state.session;
+  bundle.supabase.auth.signInAnonymously = async () => {
+    state.calls.push("anonymously");
+    return state.anonymous;
+  };
+  bundle.supabase.auth.verifyOtp = async (params) => {
+    state.calls.push("verifyOtp");
+    return state.verify;
+  };
+  // `functions` в SupabaseClient — геттер, который каждый раз создаёт новый клиент,
+  // поэтому подменяем свойство целиком (своё поле перекрывает геттер прототипа).
+  Object.defineProperty(bundle.supabase, "functions", {
+    configurable: true,
+    value: {
+      invoke: async () => {
+        state.invokes += 1;
+        state.calls.push("invoke");
+        return state.invoke(state.invokes);
+      },
+    },
+  });
+
+  return { bundle, state };
+};
+
+// 9. Первая попытка упала (сеть/холодный старт функции), вторая удалась:
+//    вход всё равно через Telegram — без анонимного аккаунта.
+const retryBundle = await makeTelegramBundle("auth-tg-retry", "query_id=1&hash=ok");
+retryBundle.state.invoke = (attempt) =>
+  attempt === 1
+    ? { data: null, error: { message: "Failed to fetch" } }
+    : { data: { token_hash: "token-2" }, error: null };
+
+const retried = await retryBundle.bundle.ensureAccount();
+check("Telegram: сбой первой попытки не создаёт анонима", retryBundle.state.calls.includes("anonymously"), false);
+check("Telegram: повтор вернул аккаунт из Telegram", retried?.id, tgUser.id);
+check("Telegram: аккаунт не анонимный", retried?.isAnonymous, false);
+check("Telegram: tg_id пришёл из метаданных", retried?.tgId, 857360604);
+check("Telegram: запросов к функции было два", retryBundle.state.invokes, 2);
+
+// 10. Анонимная сессия уже лежит на устройстве (второй запуск): её меняем на
+//     Telegram-аккаунт, а не тянем дальше как «дубль».
+const storedBundle = await makeTelegramBundle("auth-tg-stored", "query_id=2&hash=ok");
+storedBundle.state.session = { data: { session: { user: anonUser } }, error: null };
+
+const upgraded = await storedBundle.bundle.ensureAccount();
+check("Telegram: анонимная сессия обменяна на аккаунт", upgraded?.id, tgUser.id);
+check("Telegram: старый uuid не сохранён", upgraded?.id === anonId, false);
+
+// 11. Сервер недоступен: анонимный дубль НЕ создаётся, игра идёт локально, а
+//     повтор откладывается (иначе каждый синк бил бы в мёртвую функцию).
+const downBundle = await makeTelegramBundle("auth-tg-down", "query_id=3&hash=ok");
+downBundle.state.invoke = () => ({ data: null, error: { message: "Failed to fetch" } });
+
+const down = await downBundle.bundle.ensureAccount();
+check("Telegram недоступен: анонимный дубль не создан", downBundle.state.calls.includes("anonymously"), false);
+check("Telegram недоступен: аккаунта нет (игра локальная)", down, null);
+check("Telegram недоступен: все три попытки сделаны", downBundle.state.invokes, 3);
+
+const downAgain = await downBundle.bundle.ensureAccount();
+check("Telegram недоступен: повтор отложен по таймауту", downBundle.state.invokes, 3);
+check("Telegram недоступен: повтор тоже без анонима", downBundle.state.calls.includes("anonymously"), false);
+check("Telegram недоступен: повтор вернул null", downAgain, null);
+
+// Событие INITIAL_SESSION со старой анонимной сессией не должно «оживить» дубль:
+// иначе ensureAccount() вернул бы её как обычный аккаунт, и синк снова пошёл бы
+// в отдельный uuid на каждом устройстве.
+downBundle.state.listener("INITIAL_SESSION", { user: anonUser });
+check(
+  "Telegram недоступен: старая анонимная сессия не стала аккаунтом",
+  downBundle.bundle.getAccount(),
+  null
+);
+
+// 12. Веб без Telegram: анонимная сессия по-прежнему создаётся — там дубля нет,
+//     ключ аккаунта и есть это устройство.
+delete window.Telegram;
+const webBundle = await bundleAuth("auth-web-anon", CLOUD_ENV);
+const webAnon = makeUser({
+  id: "b3f1c0de-0000-4000-8000-000000000009",
+  email: null,
+  is_anonymous: true,
+});
+const webCalls = [];
+webBundle.supabase.auth.onAuthStateChange = () => ({
+  data: { subscription: { unsubscribe: () => {} } },
+});
+webBundle.supabase.auth.getSession = async () => ({ data: { session: null }, error: null });
+webBundle.supabase.auth.signInAnonymously = async () => {
+  webCalls.push("anonymously");
+  return { data: { user: webAnon }, error: null };
+};
+
+const webAccount = await webBundle.ensureAccount();
+check("Веб: анонимная сессия создана", webCalls.length, 1);
+check("Веб: аккаунт анонимный", webAccount?.isAnonymous, true);
+
+
 
 // 7. Выход: сессия погашена, сейв прошлого игрока убран, игра перезапущена
 // Ключ тот же, что пишет `backend/localStorage.ts` (LS_KEY).

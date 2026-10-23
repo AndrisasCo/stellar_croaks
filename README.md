@@ -7,6 +7,9 @@
 - Локально: `npm run dev` (Vite подскажет адрес, обычно http://localhost:5173)
 - Сборка: `npm run build`, предпросмотр: `npm run preview`
 - Бот: `npm run bot` (нужны `BOT_TOKEN` и `APP_URL`, см. `.env.example`)
+- Если у части игроков внизу чата осталась старая кнопка со ссылкой на прежний
+  домен: `npm run bot:reset-keyboards` (снимает «залипшую» reply-клавиатуру у всех
+  известных игроков; `-- --dry-run` — только посмотреть список).
 - Бот на Vercel: webhook `/api/telegram`; настройка —
   [`supabase/README.md`](supabase/README.md), раздел «Бот на Vercel».
 - Всё на одном сервере/VPS: `npm run build && npm run start:all` (сайт + бот;

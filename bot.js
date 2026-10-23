@@ -101,13 +101,37 @@ const GREETING =
   "🐸 Stellar Croak — колония жаб на орбите.\n\n" +
   "Разводите жаб, стройте сектора, отправляйтесь в разведку";
 
-const sendGreeting = (ctx) => ctx.reply(GREETING, playKeyboard());
+/**
+ * Reply-клавиатура — это состояние клиента, а не сообщение в истории. Ранняя
+ * версия бота присылала нижнюю кнопку с жёстко зашитым
+ * `https://stellar-croak.netlify.app`; у игроков, которые тогда нажимали
+ * «Старт», она так и висит внизу чата и ведёт на мёртвый домен. Новые сообщения
+ * её не заменяют: Telegram показывает последнюю установленную клавиатуру, пока
+ * бот явно не пришлёт `remove_keyboard`. Поэтому перед приветствием снимаем её
+ * служебным сообщением и сразу удаляем его, чтобы в чате не было мусора.
+ */
+const dropStaleKeyboard = async (ctx) => {
+  try {
+    const sent = await ctx.reply("Обновляю кнопки…", Markup.removeKeyboard());
+    await ctx.deleteMessage(sent.message_id);
+  } catch (error) {
+    // Нет прав на удаление или чат недоступен — приветствие всё равно важнее.
+    console.warn(`[bot] не удалось сбросить старую клавиатуру: ${error.message}`);
+  }
+};
+
+const sendGreeting = async (ctx) => {
+  await dropStaleKeyboard(ctx);
+  return ctx.reply(GREETING, playKeyboard());
+};
 
 bot.start(sendGreeting);
 bot.command("play", sendGreeting);
 
-bot.command("help", (ctx) =>
-  ctx.reply(
+bot.command("help", async (ctx) => {
+  await dropStaleKeyboard(ctx);
+
+  return ctx.reply(
     [
       "Что умеет бот:",
       "/play — открыть игру",
@@ -116,8 +140,8 @@ bot.command("help", (ctx) =>
       "Кваксы начисляются сами при следующем входе в игру.",
     ].join("\n"),
     playKeyboard(),
-  ),
-);
+  );
+});
 
 /** Торговая Капсула звёзд. Пакеты — из bot/stars.js (один прайс на бота и на тесты). */
 const shopKeyboard = () =>
@@ -127,12 +151,14 @@ const shopKeyboard = () =>
     ]),
   );
 
-bot.command("buy", (ctx) =>
-  ctx.reply(
+bot.command("buy", async (ctx) => {
+  await dropStaleKeyboard(ctx);
+
+  return ctx.reply(
     "скажи спасибо разработчику за Telegram Stars ⭐  - получи набор Кваксов",
     shopKeyboard(),
-  ),
-);
+  );
+});
 
 /**
  * Покупка набора: считаем инвойс только по id набора из наших данных (см. bot/stars.js).
