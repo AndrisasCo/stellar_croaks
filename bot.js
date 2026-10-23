@@ -223,7 +223,12 @@ bot.catch((error, ctx) => {
   console.error(`[bot] ошибка на апдейте "${ctx.updateType}":`, error);
 });
 
-bot.launch().then(() => console.log("🐸 Stellar Croak bot запущен"));
+bot.launch()
+  .then(() => console.log("🐸 Stellar Croak bot запущен"))
+  .catch((error) => {
+    console.error(`[bot] не удалось запустить polling: ${error.message}`);
+    process.exit(1);
+  });
 
 // Корректно останавливаем бота по сигналам завершения, чтобы не оставлять висящий polling.
 process.once("SIGINT", () => bot.stop("SIGINT"));
