@@ -171,6 +171,14 @@ check("без Telegram платформа — web", detectPlatformName(), "web")
 check("getPlatform() отдаёт веб-реализацию", getPlatform().name, "web");
 
 const app = makeWebApp();
+browser.window.Telegram = { WebApp: makeWebApp({ initData: "" }) };
+
+check(
+  "WebApp с пустым initData — всё ещё браузер",
+  detectPlatformName(),
+  "web"
+);
+
 browser.window.Telegram = { WebApp: app };
 
 check("Telegram появился — платформа переключилась", getPlatform().name, "telegram");

@@ -18,10 +18,19 @@ export * from "./types";
 export { createTelegramPlatform, createWebPlatform };
 export type { TelegramWebApp };
 
-/** Есть ли в окружении объект Telegram WebApp. */
+/**
+ * Есть ли в окружении объект Telegram WebApp.
+ *
+ * Важно: `telegram-web-app.js` создаёт `window.Telegram.WebApp` и в обычном
+ * браузере — с пустым `initData`. Если считать такой объект Telegram-ом, веб-игрок
+ * теряет пункт «Аккаунт» (он показывается только в браузере), а `platform.identity()`
+ * пытается «войти» без подписи. Настоящий Mini App всегда присылает непустой
+ * `initData`; только тогда платформа — telegram.
+ */
 export const detectTelegramWebApp = (): TelegramWebApp | null => {
   try {
-    return window.Telegram?.WebApp ?? null;
+    const app = window.Telegram?.WebApp;
+    return app && app.initData ? app : null;
   } catch {
     // window.Telegram недоступен — например, игра открыта не в Telegram
     return null;
