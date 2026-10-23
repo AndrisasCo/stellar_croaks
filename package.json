@@ -10,6 +10,7 @@
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0 --port 4173",
     "start": "vite preview",
+    "db:push": "node --env-file-if-exists=.env scripts/db-push.mjs",
     "optimize:images": "node scripts/optimize-images.mjs",
     "verify:init-data": "node tmp-verify-init-data.mjs",
     "verify:stars": "node tmp-verify-stars.mjs",

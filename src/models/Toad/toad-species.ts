@@ -64,15 +64,13 @@ export const COLORABLE_TOAD_TYPES: readonly ToadTypes[] = [
 export const isColorableToadType = (
   type: ToadTypes | null | undefined,
 ): boolean =>
-  type !== null &&
-  type !== undefined &&
-  COLORABLE_TOAD_TYPES.includes(type);
+  type !== null && type !== undefined && COLORABLE_TOAD_TYPES.includes(type);
 
 // Тип для способа получения
 export type ToadObtainedBy =
   | "start" // Начальная жаба
   | "tutorial" // Туториал/первая ачивка
-  | "shop" // Магазин
+  | "shop" // Торговая Капсула
   | "lootbox" // Лутбокс (общий)
   | "achievement" // Ачивка
   | "collider" // Случайно из коллайдера
@@ -140,7 +138,7 @@ export const TOAD_SPECIES_CONFIG: ToadSpeciesConfig[] = [
     obtainedBy: "shop",
   },
 
-  // --- RARE (Магазин / Лутбоксы / Средние ачивки) ---
+  // --- RARE (Торговая Капсула / Лутбоксы / Средние ачивки) ---
   {
     id: "toad_turtle",
     type: ToadTypes.turtle,

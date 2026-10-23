@@ -9,6 +9,9 @@
  */
 interface ImportMetaEnv {
   readonly VITE_SUPABASE_URL?: string;
+  /** Новое имя публичного ключа Supabase (`sb_publishable_...`). */
+  readonly VITE_SUPABASE_PUBLISHABLE_KEY?: string;
+  /** Старое имя того же публичного ключа (`anon`) — поддерживается для совместимости. */
   readonly VITE_SUPABASE_ANON_KEY?: string;
 }
 

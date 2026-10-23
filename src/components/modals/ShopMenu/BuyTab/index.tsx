@@ -34,7 +34,7 @@ const BuyTab: React.FC = () => {
 
   return (
     <div className="space-y-4 pb-4">
-      {/* Управление магазином */}
+      {/* Управление Торговая Капсулаом */}
       <div className="bg-color-main rounded-2xl py-4 px-2 border border-slate-700">
         <div className="flex flex-col gap-3">
           <div className="flex justify-between items-center">
@@ -98,8 +98,8 @@ const BuyTab: React.FC = () => {
             <div className="bg-color-main rounded-2xl p-6 border border-slate-700 text-center">
               <p className="text-slate-300 text-lg">Все жабы раскуплены!</p>
               <p className="text-slate-500 text-sm mt-1">
-                Дождитесь обновления магазина или обновите его сейчас за
-                астрокваксы
+                Дождитесь обновления Торговая Капсулаа или обновите его сейчас
+                за астрокваксы
               </p>
             </div>
           ) : (

@@ -128,7 +128,7 @@ const getHintText = (item: GallerySlot): string => {
         ? getLootboxHint(item.lootboxChanceLevel)
         : "Лутбокс";
     case "shop":
-      return "Продается в магазине";
+      return "Продается в Торговая Капсулае";
     case "achievement":
       return "Награда за достижение";
     case "collider":

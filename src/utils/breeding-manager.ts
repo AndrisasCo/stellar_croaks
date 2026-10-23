@@ -146,7 +146,7 @@ const processSceneBreeding = async (
 
     if (growth.notStarted) {
       if (!growth.hungry) {
-        // Старый сейв или головастик из магазина: он уже сыт, можно запускать таймер.
+        // Старый сейв или головастик из Торговая Капсулаа: он уже сыт, можно запускать таймер.
         startedToadpoles.push(t.id);
       } else if (getHoursFromNow(t.created_at) >= HOURS_TO_GROW_UP) {
         warnStarvingToadpole(t, addNotification);

@@ -8,7 +8,7 @@ import { getBuiltRoomKind, ROOM_BLUEPRINTS, RoomConfig } from "./rooms-config";
  * складов, — и без номера игроку их не различить: «посадите жабу в репродуктор» ничего не
  * говорит, если репродукторов два. Поэтому у вида, который строится много раз,
  * имя — это название вида плюс номер экземпляра, а у единственного сектора (коллайдер,
- * магазин, диссоциатор) номера нет: второй такой в колонии не появится, и «Коллайдер #1»
+ * Торговая Капсула, диссоциатор) номера нет: второй такой в колонии не появится, и «Коллайдер #1»
  * только путал бы. У ядра номера тоже нет — оно одно с начала игры.
  *
  * Номер считается по текущему составу колонии: базовые гексы занимают первые номера
@@ -33,7 +33,10 @@ export const isUniqueRoomKind = (kind: ColonyRoomKind): boolean =>
  * Имя сектора: название вида плюс номер экземпляра — «Репродуктор #2».
  * Единственные секторы номера не носят: «Коллайдер».
  */
-export const formatRoomName = (kind: ColonyRoomKind, instance: number): string =>
+export const formatRoomName = (
+  kind: ColonyRoomKind,
+  instance: number,
+): string =>
   isUniqueRoomKind(kind)
     ? getRoomKindTitle(kind)
     : `${getRoomKindTitle(kind)} #${instance}`;

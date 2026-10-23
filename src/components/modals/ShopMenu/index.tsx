@@ -27,7 +27,7 @@ export default function ShopMenu({ room }: { room?: RoomConfig }) {
 
   /**
    * Гекс рынка для таба «Данные сектора» и проверки тока: карта передаёт его пропом,
-   * а бургер-меню — нет. Магазин в колонии единственный (`unique`), поэтому находим его
+   * а бургер-меню — нет. Торговая Капсула в колонии единственный (`unique`), поэтому находим его
    * среди построенных секторов. Без такого гекса данные сектора показать не для чего.
    */
   const shopRoom = room ?? rooms.find((item) => item.kind === "shop");
@@ -36,7 +36,11 @@ export default function ShopMenu({ room }: { room?: RoomConfig }) {
     tab: activeTab,
     setTab: setActiveTab,
     issue: powerIssue,
-  } = useRoomPowerTab<TabType>({ room: shopRoom, powerGrid, defaultTab: "buy" });
+  } = useRoomPowerTab<TabType>({
+    room: shopRoom,
+    powerGrid,
+    defaultTab: "buy",
+  });
 
   const { tokens = 0, astro_quax = 0 } = account || {};
 

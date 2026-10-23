@@ -19,7 +19,7 @@ create table if not exists public.game_state (
   content jsonb not null default '{}'::jsonb,
   achievements jsonb not null default '{}'::jsonb,
   collider jsonb not null default '{}'::jsonb,
-  -- Магазин синхронизировался только в коде: без колонки update/insert падали.
+  -- Торговая Капсула синхронизировался только в коде: без колонки update/insert падали.
   shop jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -178,3 +178,9 @@ alter table public.game_state add column if not exists tg_id bigint;
 alter table public.game_state add column if not exists user_id uuid;
 alter table public.leaderboard add column if not exists tg_id bigint;
 alter table public.leaderboard add column if not exists user_id uuid;
+
+-- ---------------------------------------------------------------------------
+-- 8. PostgREST кэширует схему. После DDL просим перечитать её, иначе REST может
+-- ещё какое-то время отвечать «Could not find the table ... in the schema cache».
+-- ---------------------------------------------------------------------------
+notify pgrst, 'reload schema';

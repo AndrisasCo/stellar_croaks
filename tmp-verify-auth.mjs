@@ -91,14 +91,26 @@ const bundleAuth = (name, defines) => {
 
 /** Настроенное облако (как в проде: значения Vite инлайнит из .env) */
 const CLOUD_ENV = [
-  '--define:import.meta.env.VITE_SUPABASE_URL="https://example.supabase.co"',
-  '--define:import.meta.env.VITE_SUPABASE_ANON_KEY="anon-key"',
+  `--define:import.meta.env=${JSON.stringify({
+    VITE_SUPABASE_URL: "https://example.supabase.co",
+    // Новое имя публичного ключа Supabase — основное для клиента.
+    VITE_SUPABASE_PUBLISHABLE_KEY: "publishable-key",
+  })}`,
+];
+
+/** Старое имя ключа (`anon`) должно продолжать работать — это путь миграции. */
+const LEGACY_ENV = [
+  `--define:import.meta.env=${JSON.stringify({
+    VITE_SUPABASE_URL: "https://example.supabase.co",
+    VITE_SUPABASE_ANON_KEY: "anon-key",
+  })}`,
 ];
 
 /** Облако не настроено: env пустой — вход должен быть выключен */
 const OFFLINE_ENV = ["--define:import.meta.env={}"];
 
 const auth = await bundleAuth("auth-online", CLOUD_ENV);
+const legacy = await bundleAuth("auth-legacy", LEGACY_ENV);
 const offline = await bundleAuth("auth-offline", OFFLINE_ENV);
 
 const failures = [];
@@ -264,6 +276,12 @@ check(
 
 // 8. Облако не настроено: вход выключен, но ничего не падает
 check("без env облако выключено", offline.isCloudSyncEnabled, false);
+check("новое имя ключа (publishable) включает облако", auth.isCloudSyncEnabled, true);
+check(
+  "старое имя ключа (anon) тоже включает облако",
+  legacy.isCloudSyncEnabled,
+  true
+);
 
 const noCloud = await offline.signInWithEmail("alice@example.com", "secret1");
 check("без env вход не проходит", noCloud.ok, false);

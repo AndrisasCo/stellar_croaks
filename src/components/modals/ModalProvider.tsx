@@ -65,7 +65,7 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({
         return [...updatedModals, newModal];
       });
     },
-    [defaultOptions]
+    [defaultOptions],
   );
 
   const closeModal = useCallback(() => {
@@ -106,7 +106,7 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({
   useEffect(() => {
     const activeModal = modals[modals.length - 1];
     const lockScroll = Boolean(
-      activeModal?.isOpen && activeModal.options?.disableScroll
+      activeModal?.isOpen && activeModal.options?.disableScroll,
     );
 
     document.body.style.overflow = lockScroll ? "hidden" : "";
@@ -166,7 +166,7 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({
    * по центру — `md:h-auto` снимает «на всю высоту», `md:max-w-5xl` делает пошире,
    * появляются скругление, рамка и тень, чтобы окно читалось окном, а не ещё одним экраном.
    *
-   * Фоновую картинку магазина (`bg-shop.webp`) убрали: панель — полупрозрачная (`bg-color-main`
+   * Фоновую картинку Торговая Капсулаа (`bg-shop.webp`) убрали: панель — полупрозрачная (`bg-color-main`
    * + blur), так что карта просвечивает, и колония не исчезает за «шторкой». Закрывающий крестик
    * позиционируется от самой панели (relative), а не от экрана: на десктопе он стоит в углу
    * карточки, а не сбоку за её пределами.
@@ -181,7 +181,7 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({
   const renderModal = (
     modal: (typeof modals)[number],
     isActive: boolean,
-    index: number
+    index: number,
   ) => {
     if (!modalRoot) return null;
 
@@ -198,9 +198,7 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({
       <div
         className={`overlay md:p-4 ${options.overlayClassName ?? ""}`}
         style={
-          isActive
-            ? undefined
-            : { visibility: "hidden", pointerEvents: "none" }
+          isActive ? undefined : { visibility: "hidden", pointerEvents: "none" }
         }
         aria-hidden={isActive ? undefined : true}
         onClick={options.closeOnOverlayClick ? handleOverlayClick : undefined}
@@ -275,7 +273,7 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({
     <ModalContext.Provider value={contextValue}>
       {children}
       {modals.map((modal, index) =>
-        renderModal(modal, index === modals.length - 1 && modal.isOpen, index)
+        renderModal(modal, index === modals.length - 1 && modal.isOpen, index),
       )}
     </ModalContext.Provider>
   );

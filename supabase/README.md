@@ -4,10 +4,45 @@
 приём денег живут здесь. Клиент про эти файлы знает только то, что описано в
 `src/backend/auth.ts` и `src/backend/purchases.ts`.
 
-## 1. Схема и RLS
+## Быстрый старт
 
-Supabase → **SQL Editor** → выполнить `supabase/schema.sql` целиком.
-Скрипт идемпотентный: свежая база и уже потрёпанная тестовая приходят к одному виду.
+```bash
+# 1. В .env уже должны быть VITE_SUPABASE_URL и публичный ключ
+#    (VITE_SUPABASE_PUBLISHABLE_KEY или старое имя VITE_SUPABASE_ANON_KEY).
+
+# 2. Один раз добавить Personal Access Token (sbp_...) из
+#    https://supabase.com/dashboard/account/tokens
+#    SUPABASE_ACCESS_TOKEN=sbp_...
+
+npm run db:push   # таблицы + RLS + Anonymous sign-ins + Email provider
+npm run dev       # клиент создаст сессию и включит облачный синк
+```
+
+Публичный ключ не может создавать таблицы — ему для этого не хватает прав. Именно
+поэтому для разовой настройки нужен PAT (или строка подключения Postgres, см. ниже).
+
+## 1. Схема и RLS — одной командой
+
+Добавьте в `.env` Personal Access Token (Dashboard → **Account** → **Access Tokens**,
+начинается с `sbp_`) и выполните:
+
+```bash
+npm run db:push
+```
+
+`scripts/db-push.mjs` применит `supabase/schema.sql` целиком, проверит, что все
+таблицы созданы, и включит обязательные провайдеры Auth. Вставлять SQL в редактор
+руками не нужно; повторный запуск безопасен — скрипт идемпотентный.
+
+Публичный ключ (`VITE_SUPABASE_PUBLISHABLE_KEY` / `VITE_SUPABASE_ANON_KEY`) для
+создания таблиц не подходит: это ключ доступа к данным, а не к управлению проектом.
+Если PAT нет, можно указать строку подключения Postgres — тогда скрипт применит
+схему через `psql`:
+
+```bash
+# .env
+SUPABASE_DB_URL=postgresql://postgres:...@db.<ref>.supabase.co:5432/postgres
+```
 
 Что получится:
 
@@ -18,14 +53,15 @@ Supabase → **SQL Editor** → выполнить `supabase/schema.sql` цел�
 | `credits` | только владелец | бот (service-role); клиент может лишь проставить `applied_at` |
 | `players` | никто из клиентов | Edge Function и бот (service-role) |
 
-**Anonymous sign-ins** обязан быть включён: Supabase → Authentication → Sign In /
-Providers → *Allow anonymous sign-ins*. Иначе веб-версия (и Telegram, если функция
-ещё не задеплоена) останется без сессии, и облако молча выключится.
+**Anonymous sign-ins** и **Email provider** скрипт включает сам (через Management API).
+Без анонимного входа веб-версия (и Telegram, пока функция не задеплоена) останется
+без сессии, и облако молча выключится. Если запускали схему через `psql` и PAT не
+использовали, включите вручную: Authentication → Sign In / Providers →
+*Allow anonymous sign-ins* и *Email*.
 
-**Email** нужен для входа и регистрации в браузере (модалка «Аккаунт» в меню игры,
-`src/backend/auth.ts` → `signUpWithEmail`/`signInWithEmail`): Supabase →
-Authentication → Sign In / Providers → *Email* → **Enable email provider**. Пароли
-проверяет сам GoTrue, нам остаётся только показывать его ответ.
+Email нужен для входа и регистрации в браузере (модалка «Аккаунт» в меню игры,
+`src/backend/auth.ts` → `signUpWithEmail`/`signInWithEmail`). Пароли проверяет сам
+GoTrue, нам остаётся только показывать его ответ.
 
 Там же — *Confirm email*. Выключено (по умолчанию): регистрация сразу отдаёт сессию,
 и игрок попадает в игру. Включено: аккаунт создаётся, но игрок сначала подтверждает

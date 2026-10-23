@@ -7,7 +7,7 @@ import {
   DynamicGroupId,
 } from "./achivements-list";
 
-// Интерфейс для состояния магазина
+// Интерфейс для состояния Торговая Капсулаа
 export interface AchivementsState {
   completed: string[];
   rewards: string[];
@@ -41,7 +41,7 @@ export const completeAchivement = (id: DynamicAchievementId) => {
 
 export const completeAchivementCounter = (
   action: AchievementTaskType,
-  value: number
+  value: number,
 ) => {
   const currentState = getAchievementState();
   if (!currentState.counter) {
@@ -60,7 +60,7 @@ export const completeAchivementCounter = (
     .filter(
       (a) =>
         currentState.counter[action] &&
-        currentState.counter[action] >= (a.taskValue || 0)
+        currentState.counter[action] >= (a.taskValue || 0),
     );
 
   achivements.forEach((achivement) => {
@@ -74,7 +74,7 @@ export const claimReward = (id: DynamicGroupId) => {
 };
 
 export const updateAchivementsState = (
-  updates: Partial<AchivementsState>
+  updates: Partial<AchivementsState>,
 ): AchivementsState => {
   const currentState = getAchievementState();
   const newState = { ...currentState, ...updates };
@@ -107,7 +107,7 @@ export const initializeAchivements = (): AchivementsState => {
 
 export const checkGeneticAchievements = (toad: Toad) => {
   const achievements = achievementGroups.find(
-    (g) => g.id === "genetic-engineer"
+    (g) => g.id === "genetic-engineer",
   )?.achievements;
 
   if (!achievements) {

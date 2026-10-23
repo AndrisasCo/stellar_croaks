@@ -62,14 +62,14 @@ const MENU_ITEMS: {
   target: JSX.Element;
   /**
    * Сектор, без которого пункт меню закрыт. «Рынок» открывается только после того,
-   * как на карте колонии построен «Магазин»: до постройки торговли в колонии нет.
+   * как на карте колонии построен «Торговая Капсула»: до постройки торговли в колонии нет.
    */
   requiresRoom?: ColonyRoomKind;
   /** Подсказка вместо описания, пока нужный сектор не построен. */
   lockedDesc?: string;
 }[] = [
   // Рынок и склад по-прежнему доступны из меню, но «Рынок» открывается только когда
-  // на карте колонии построен «Магазин» (`requiresRoom`): без сектора торговли нет.
+  // на карте колонии построен «Торговая Капсула» (`requiresRoom`): без сектора торговли нет.
   {
     id: "shop",
     icon: MenuIcons.shop,
@@ -78,7 +78,7 @@ const MENU_ITEMS: {
     color: "text-fuchsia-300",
     target: <ShopMenu />,
     requiresRoom: "shop",
-    lockedDesc: "Сначала постройте «Магазин» на карте колонии",
+    lockedDesc: "Сначала постройте «Торговая Капсула» на карте колонии",
   },
   {
     id: "storage",
@@ -88,28 +88,7 @@ const MENU_ITEMS: {
     color: "text-emerald-300",
     target: <StorageModal />,
   },
-  {
-    id: "expedition",
-    icon: (
-      <svg
-        className="w-6 h-6"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={1.5}
-          d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"
-        />
-      </svg>
-    ),
-    label: "Разведка",
-    desc: "Походы команд за Периметр",
-    color: "text-amber-300",
-    target: <ExpeditionModal />,
-  },
+
   {
     id: "gallery",
     icon: (

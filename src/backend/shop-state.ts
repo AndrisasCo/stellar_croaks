@@ -9,7 +9,7 @@ import {
 } from "./elite-order-generator";
 import type { EliteOrder } from "./elite-order-generator";
 
-// Интерфейс для состояния магазина
+// Интерфейс для состояния Торговая Капсулаа
 export interface ShopState {
   availableToads: Partial<Toad>[];
   lastRefresh: number; // timestamp последнего обновления
@@ -20,7 +20,7 @@ export interface ShopState {
   items: Record<string, number>;
 }
 
-// Список всех возможных жаб для магазина
+// Список всех возможных жаб для Торговая Капсулаа
 export const ALL_TOADS: Partial<Toad>[] = [
   {
     name: "Зеленая жаба",
@@ -243,7 +243,7 @@ export const getShopState = (): ShopState => {
     return JSON.parse(stored);
   }
 
-  // Инициализация нового состояния магазина
+  // Инициализация нового состояния Торговая Капсулаа
   return initializeShop();
 };
 
@@ -258,7 +258,7 @@ export const initialItemsAmount = {
   sparkleFlys: 10,
   [Items.pigmentUnstable]: 5,
 };
-// Инициализация магазина со случайным набором жаб
+// Инициализация Торговая Капсулаа со случайным набором жаб
 export const initializeShop = (): ShopState => {
   const now = Date.now();
 

@@ -8,7 +8,14 @@ import { createClient } from "@supabase/supabase-js";
  * `.env`, а Vite инлайнит их в бандл на этапе сборки (шаблон — в `.env.example`).
  */
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+/**
+ * Публичный ключ проекта. Supabase выдаёт его под именем `publishable`
+ * (`sb_publishable_...`), но старые проекты и документация зовут тот же ключ `anon`.
+ * `supabase-js` работает с обоими одинаково, поэтому принимаем любое имя.
+ */
+const SUPABASE_ANON_KEY =
+  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ??
+  import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 /**
  * Заданы ли креды Supabase. Без них облачный синк, лидерборд и вход отключены —
@@ -18,8 +25,9 @@ export const isCloudSyncEnabled = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
 
 if (!isCloudSyncEnabled) {
   console.warn(
-    "[supabase] VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY не заданы — облачная " +
-      "синхронизация, лидерборд и вход отключены. Добавьте их в .env (см. .env.example)."
+    "[supabase] VITE_SUPABASE_URL / VITE_SUPABASE_PUBLISHABLE_KEY (или " +
+      "VITE_SUPABASE_ANON_KEY) не заданы — облачная синхронизация, лидерборд и вход " +
+      "отключены. Добавьте их в .env (см. .env.example)."
   );
 }
 

@@ -91,7 +91,7 @@ bot.command("help", (ctx) =>
   ),
 );
 
-/** Магазин звёзд. Пакеты — из bot/stars.js (один прайс на бота и на тесты). */
+/** Торговая Капсула звёзд. Пакеты — из bot/stars.js (один прайс на бота и на тесты). */
 const shopKeyboard = () =>
   Markup.inlineKeyboard(
     TOKEN_PACKS.map((pack) => [

@@ -135,7 +135,7 @@ const getHintText = (item: GallerySlot): string => {
         ? getLootboxHint(item.lootboxChanceLevel)
         : "Лутбокс";
     case "shop":
-      return "Продается в магазине";
+      return "Продается в Торговая Капсулае";
     case "achievement":
       return "Награда за достижение";
     case "collider":
@@ -437,7 +437,7 @@ export const ToadGalleryModal: React.FC = () => {
                   </div>
                 )}
 
-                {/* Цена для магазинных */}
+                {/* Цена для Торговая Капсуланых */}
                 {item.obtainedBy === "shop" &&
                   !item.isUnlocked &&
                   item.price && (

@@ -29,7 +29,7 @@ import { withRoomNames } from "./room-names";
  *    постройки открываются все шесть соседних гексов (см. `getUnlockedRooms`);
  *  - слот под застройку стоит только рядом с построенным сектором (`BUILD_REQUIRES_NEIGHBOUR`):
  *    так его открывает фронт застройки, и гексов «в пустоте» на карте не бывает;
- *  - коллайдер, магазин и диссоциатор — единственные в колонии: второй такой не поставить;
+ *  - коллайдер, Торговая Капсула и диссоциатор — единственные в колонии: второй такой не поставить;
  *  - остальные секторы строятся сколько угодно раз, каждая следующая дороже;
  *  - сразу после постройки сектор обесточен — ток появится, когда рядом окажется ядро
  *    или энергосектор ⚡ с кормлёнными жабами (самой ⚡ внешнее питание не нужно:
@@ -215,21 +215,23 @@ export const resolveColonyRooms = (
       .filter((sceneId): sceneId is number => sceneId != null),
   );
   const freeScene = scenes.find((scene) => !claimedScenes.has(scene.id));
-  const rooms = getUnlockedRooms(colony.rooms, colony.demolished).map((room) => {
-    const built = knownRooms.find(
-      (item) => (item.slotId ?? item.id) === room.slotId,
-    );
+  const rooms = getUnlockedRooms(colony.rooms, colony.demolished).map(
+    (room) => {
+      const built = knownRooms.find(
+        (item) => (item.slotId ?? item.id) === room.slotId,
+      );
 
-    // Слот застроили — на карте стоит сектор того вида, который выбрал игрок
-    if (!built) {
-      // Базовый гекс «Биопод»: его биопод — свободный `Scene` (сейвы строек помнят свои)
-      return room.kind === "aviary" && freeScene
-        ? { ...room, sceneId: freeScene.id }
-        : room;
-    }
+      // Слот застроили — на карте стоит сектор того вида, который выбрал игрок
+      if (!built) {
+        // Базовый гекс «Биопод»: его биопод — свободный `Scene` (сейвы строек помнят свои)
+        return room.kind === "aviary" && freeScene
+          ? { ...room, sceneId: freeScene.id }
+          : room;
+      }
 
-    return createColonyRoom(room, built.kind, built.sceneId);
-  });
+      return createColonyRoom(room, built.kind, built.sceneId);
+    },
+  );
 
   // Свободные гексы, доступные под застройку, помечаем плюсом — их видно на карте.
   // Имена с номерами считаем по порядку постройки (`colony.rooms`), а не по порядку гексов:
@@ -291,7 +293,8 @@ export const getPowerGrid = (
   rooms: RoomConfig[],
   toadsByRoom: Record<string, Toad[]>,
   expeditions?: Expedition[],
-): PowerGrid => computePowerGrid(getPowerNodes(rooms, toadsByRoom, expeditions));
+): PowerGrid =>
+  computePowerGrid(getPowerNodes(rooms, toadsByRoom, expeditions));
 
 /** Есть ли в секторе ток (непостроенным слотам ток не нужен). */
 export const isRoomPowered = (room: RoomConfig, grid: PowerGrid): boolean =>
@@ -396,7 +399,7 @@ export const willBePoweredAfterBuild = (
  *
  * В задании «Первый сектор» игрок строит Торговую капсулу. Если поставить её на обесточенный
  * гекс, обучение закроется, а сектор останется без тока — поэтому во время этого задания
- * магазин разрешён только там, где после постройки будет ток (рядом с ядром или ⚡-сектором).
+ * Торговая Капсула разрешён только там, где после постройки будет ток (рядом с ядром или ⚡-сектором).
  */
 export const getTutorialBuildIssue = (
   slot: RoomConfig,
