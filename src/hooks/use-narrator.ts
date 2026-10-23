@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { completeAchivement } from "../backend/achivements-manager";
 import { GameState } from "../backend/localStorage";
+import { Items } from "../models/user";
 import {
   NARRATOR_RESTART_EVENT,
   NARRATOR_STEPS,
@@ -67,13 +68,32 @@ const isTaskComplete = (task: NarratorTaskId, state: GameState): boolean => {
   switch (task) {
     case "build-shop":
       return Boolean(state.colony?.rooms.some((room) => room.kind === "shop"));
+    case "buy-food":
+      // Задание закрывает не факт нажатия «Купить», а корм на складе: так шаг
+      // не потеряется после перезагрузки страницы.
+      return (state.user.storage?.[Items.food] ?? 0) > 0;
+    case "build-nest":
+      return Boolean(
+        state.colony?.rooms.some((room) => room.kind === "breeding"),
+      );
     case "scout":
-      return Boolean(state.colony?.rooms.some((room) => room.kind === "scout"));
+      return Boolean(
+        state.colony?.rooms.some((room) => room.kind === "scout") &&
+          // Контур построен — осталось отправить первую команду. Поход мог уже
+          // завершиться и уйти в архив, поэтому смотрим и статистику разведки.
+          ((state.expeditions?.length ?? 0) > 0 ||
+            (state.expeditionArchive?.length ?? 0) > 0 ||
+            (state.expeditionStats?.completed ?? 0) > 0),
+      );
     case "breed": {
       const breedingRooms = getBreedingRoomIds(state);
       // Пара должна стоять в одном репродукторе: самец в одном, самка в другом —
-      // это ещё не пара.
-      const pairs = new Map<string, { male: boolean; female: boolean }>();
+      // это ещё не пара. Игрок должен не просто посадить жаб, а нажать
+      // «Начать ухаживание»: без этого шаг обучения не закрывается.
+      const pairs = new Map<
+        string,
+        { male: boolean; female: boolean; courtship: boolean }
+      >();
 
       state.toads.forEach((toad) => {
         const roomId = getToadRoomId(toad);
@@ -86,16 +106,24 @@ const isTaskComplete = (task: NarratorTaskId, state: GameState): boolean => {
           return;
         }
 
-        const room = pairs.get(roomId) ?? { male: false, female: false };
+        const room =
+          pairs.get(roomId) ?? { male: false, female: false, courtship: false };
         if (toad.sex === "male") {
           room.male = true;
         } else if (toad.sex === "female") {
           room.female = true;
         }
+        // Ухаживание уже началось (или сразу перешло в беременность, если
+        // игрок успел перезагрузить страницу после таймера).
+        if (toad.mating || toad.pregnancy?.isPregnant) {
+          room.courtship = true;
+        }
         pairs.set(roomId, room);
       });
 
-      return [...pairs.values()].some((pair) => pair.male && pair.female);
+      return [...pairs.values()].some(
+        (pair) => pair.male && pair.female && pair.courtship,
+      );
     }
     case "feed": {
       const expeditions = state.expeditions ?? [];

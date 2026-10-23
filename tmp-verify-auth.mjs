@@ -14,9 +14,11 @@
  *   5) подписка на смену аккаунта доносит вход/выход до интерфейса и снимается;
  *   6) регистрация из анонимной сессии идёт через updateUser: uuid сохраняется,
  *      почта появляется у того же игрока, второй пользователь не создаётся;
- *   7) выход гасит сессию, УБИРАЕТ локальный сейв прошлого игрока и перезапускает
+ *   7) если анонимного игрока удалили на сервере (`user_not_found`), мёртвая
+ *      сессия сбрасывается, и регистрация проходит обычным signUp, а не падает;
+ *   8) выход гасит сессию, УБИРАЕТ локальный сейв прошлого игрока и перезапускает
  *      игру, а неудачный выход не врёт об успехе и не трогает сейв;
- *   8) без настроенного Supabase вход отключён и ничего не падает.
+ *   9) без настроенного Supabase вход отключён и ничего не падает.
  *
  * Запуск: node tmp-verify-auth.mjs
  */
@@ -168,8 +170,8 @@ auth.supabase.auth.signInWithPassword = async (credentials) => {
   return signInResponse;
 };
 
-auth.supabase.auth.signOut = async () => {
-  calls.push(["signOut"]);
+auth.supabase.auth.signOut = async (...args) => {
+  calls.push(["signOut", ...args]);
   return signOutResponse;
 };
 
@@ -345,8 +347,57 @@ check(
   failedConvert.message,
   "User already registered"
 );
+check(
+  "обычная ошибка не считается мёртвой сессией",
+  calls.some(([name]) => name === "signOut"),
+  false
+);
 
-// 6c. Аккаунт создан, но сессию обновить не удалось: не врём про вход и просим
+// 6c. Анонимного игрока удалили на сервере, а JWT остался в браузере: GoTrue
+//     отвечает `user_not_found` («User from sub claim in JWT does not exist»).
+//     Регистрация не должна падать: мёртвая сессия убирается локально, аккаунт
+//     создаётся обычным signUp, а локальная колония привяжется к новому uuid.
+listener("SIGNED_IN", { user: anonUser });
+updateUserResponse = {
+  data: { user: null },
+  error: {
+    code: "user_not_found",
+    message: "User from sub claim in JWT does not exist",
+  },
+};
+
+const frank = makeUser({
+  id: "b3f1c0de-0000-4000-8000-000000000004",
+  email: "frank@example.com",
+});
+signUpResponse = {
+  data: { user: frank, session: { user: frank, access_token: "token" } },
+  error: null,
+};
+const signUpsBeforeDead = calls.filter(([name]) => name === "signUp").length;
+
+const recovered = await auth.signUpWithEmail("frank@example.com", "secret1");
+check("удалённый игрок не блокирует регистрацию", recovered.ok, true);
+check("после восстановления игрок вошёл", recovered.signedIn, true);
+check(
+  "мёртвая сессия убрана только на этом устройстве",
+  calls.filter(([name]) => name === "signOut").at(-1)?.[1]?.scope,
+  "local"
+);
+check(
+  "регистрация продолжилась обычным signUp",
+  calls.filter(([name]) => name === "signUp").length,
+  signUpsBeforeDead + 1
+);
+check(
+  "signUp получил ту же почту без пробелов",
+  calls.filter(([name]) => name === "signUp").at(-1)?.[1]?.email,
+  "frank@example.com"
+);
+check("новый аккаунт заменил удалённый", auth.getAccount()?.id, frank.id);
+check("новый аккаунт не анонимный", auth.getAccount()?.isAnonymous, false);
+
+// 6d. Аккаунт создан, но сессию обновить не удалось: не врём про вход и просим
 //     войти заново — иначе после перезагрузки игрок снова оказался бы гостем.
 listener("SIGNED_IN", { user: anonUser });
 updateUserResponse = {

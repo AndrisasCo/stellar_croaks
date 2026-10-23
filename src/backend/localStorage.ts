@@ -46,13 +46,15 @@ export const getDefaultGameState = (): GameState => {
       username: identity.username || localId,
       // В Telegram id есть сразу — это «визитка» для бота; вне Telegram его нет.
       tg_id: identity.tgId,
-      tokens: 50,
+      // Стартовый капитал обучения: хватает на первый корм (60 🔷) и КОНТУР (25 🔷).
+      tokens: 100,
 
       astro_quax: 0,
       biomass: 50,
-      // Стартовая колония: корм есть, остальные полки пустые (склад предметов, Часть 3.7)
+      // Стартовая колония: склад пуст — первый корм игрок покупает в Торговой капсуле
+      // по заданию обучения (склад предметов, Часть 3.7).
       storage: Object.values(Items).reduce(
-        (acc, key) => ({ ...acc, [key]: key === Items.food ? 100 : 0 }),
+        (acc, key) => ({ ...acc, [key]: 0 }),
         {} as Record<Items, number>,
       ),
     },

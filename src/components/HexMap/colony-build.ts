@@ -74,16 +74,29 @@ export const isRoomKindBuilt = (
 /**
  * Цена сектора: первая — по базовой цене черновика, каждая следующая дороже в `costGrowth` раз.
  * У единственных секторов рост равен 1, поэтому цена у них всегда базовая.
+ *
+ * Исключение обучения (`firstFree` в каталоге) — Репродуктор: первый ПОСТРОЕННЫЙ
+ * сектор этого вида бесплатный. Базовый Репродуктор стоит с начала игры и в счёте
+ * построенных не участвует, поэтому скидка достаётся именно первой постройке игрока.
+ * Дальше цена обычная: 150, 225, … (как если бы бесплатного сектора не было).
  */
 export const getRoomCost = (
   colony: ColonyState,
   kind: ColonyRoomKind,
 ): number => {
   const blueprint = ROOM_BLUEPRINTS[kind];
+  const built = getBuiltRoomsCount(colony, kind);
+
+  if (blueprint.firstFree && built === 0) {
+    return 0;
+  }
+
+  // Бесплатный первый сектор не сдвигает цену следующих: второй стоит как
+  // обычный первый (150), третий — как обычный второй (225).
+  const priceStep = blueprint.firstFree ? Math.max(0, built - 1) : built;
 
   return Math.round(
-    blueprint.baseCost *
-      Math.pow(blueprint.costGrowth, getBuiltRoomsCount(colony, kind)),
+    blueprint.baseCost * Math.pow(blueprint.costGrowth, priceStep),
   );
 };
 

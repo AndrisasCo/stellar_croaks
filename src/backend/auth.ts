@@ -237,6 +237,57 @@ export interface SignOutResult {
   message: string;
 }
 
+/** Минимум полей ошибки Supabase Auth, который нужен для распознавания причины. */
+type AuthErrorLike = {
+  code?: string | null;
+  message?: string | null;
+};
+
+/**
+ * Сессия ссылается на пользователя, которого на сервере уже нет.
+ *
+ * GoTrue достаёт `sub` из JWT и, не найдя такого игрока, отвечает
+ * `403 user_not_found` («User from sub claim in JWT does not exist»). Так бывает
+ * после удаления аккаунта в Supabase (чистка тестовых игроков, сброс проекта):
+ * токен остаётся в браузере, но обновить такого пользователя уже нельзя.
+ *
+ * `session_not_found`/«Auth session missing» — тот же тупик с другой стороны:
+ * аккаунт в памяти есть, а сессии в хранилище нет.
+ */
+const isDeadSessionError = (error: AuthErrorLike | null): boolean => {
+  if (!error) {
+    return false;
+  }
+
+  if (error.code === "user_not_found" || error.code === "session_not_found") {
+    return true;
+  }
+
+  return /user from sub claim in jwt does not exist|auth session missing/i.test(
+    error.message ?? ""
+  );
+};
+
+/**
+ * Забывает сессию удалённого игрока, чтобы регистрация не упиралась в неё снова.
+ *
+ * `scope: "local"` чистит только это устройство и не отзывает токены остальных.
+ * Даже если сервер ответит 403 `user_not_found`, supabase-js считает такой выход
+ * успешным и всё равно удаляет сессию из localStorage.
+ */
+const discardDeadSession = async (): Promise<void> => {
+  setAccount(null);
+
+  const { error } = await supabase.auth.signOut({ scope: "local" });
+
+  if (error) {
+    console.warn(
+      "[auth] не удалось убрать сессию удалённого игрока:",
+      error.message
+    );
+  }
+};
+
 /** Текущий аккаунт сессии, без ожидания входа (для интерфейса). */
 export const getAccount = (): Account | null => currentAccount;
 
@@ -259,6 +310,36 @@ export const subscribeAccount = (
   });
 
   return () => data.subscription.unsubscribe();
+};
+
+/** Обычная регистрация почтой: новый пользователь и, без подтверждения, сессия. */
+const registerEmailAccount = async (
+  email: string,
+  password: string
+): Promise<AuthResult> => {
+  const { data, error } = await supabase.auth.signUp({
+    email: email.trim(),
+    password,
+    // Куда вернуть игрока после подтверждения почты — на ту же страницу игры.
+    options: { emailRedirectTo: window.location.origin },
+  });
+
+  if (error) {
+    return { ok: false, signedIn: false, message: error.message };
+  }
+
+  if (!data.session) {
+    // В проекте включено подтверждение почты: аккаунт есть, сессии ещё нет.
+    return {
+      ok: true,
+      signedIn: false,
+      message: "Аккаунт создан. Подтвердите почту и войдите.",
+    };
+  }
+
+  setAccount(toAccount(data.user as SessionUser));
+
+  return { ok: true, signedIn: true, message: "Аккаунт создан — вы вошли" };
 };
 
 /** Регистрация по почте. Из анонимной сессии делает постоянный аккаунт. */
@@ -286,6 +367,16 @@ export const signUpWithEmail = async (
     );
 
     if (error || !data.user) {
+      // Анонимного игрока могли удалить на сервере (чистка тестовых аккаунтов,
+      // сброс проекта), а JWT остался в браузере. Тогда `updateUser` навсегда
+      // отвечает `user_not_found`; сбрасываем мёртвую сессию и регистрируем
+      // обычным `signUp`. Локальная колония никуда не денется: при следующем
+      // синке `attachIdentity` привяжет её к новому uuid.
+      if (isDeadSessionError(error)) {
+        await discardDeadSession();
+        return registerEmailAccount(email, password);
+      }
+
       return {
         ok: false,
         signedIn: false,
@@ -326,29 +417,7 @@ export const signUpWithEmail = async (
     return { ok: true, signedIn: true, message: "Аккаунт создан — вы вошли" };
   }
 
-  const { data, error } = await supabase.auth.signUp({
-    email: email.trim(),
-    password,
-    // Куда вернуть игрока после подтверждения почты — на ту же страницу игры.
-    options: { emailRedirectTo: window.location.origin },
-  });
-
-  if (error) {
-    return { ok: false, signedIn: false, message: error.message };
-  }
-
-  if (!data.session) {
-    // В проекте включено подтверждение почты: аккаунт есть, сессии ещё нет.
-    return {
-      ok: true,
-      signedIn: false,
-      message: "Аккаунт создан. Подтвердите почту и войдите.",
-    };
-  }
-
-  setAccount(toAccount(data.user as SessionUser));
-
-  return { ok: true, signedIn: true, message: "Аккаунт создан — вы вошли" };
+  return registerEmailAccount(email, password);
 };
 
 /** Вход по почте и паролю. */
