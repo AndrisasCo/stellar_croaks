@@ -135,6 +135,7 @@ let listener = null;
 let unsubscribes = 0;
 let signUpResponse = { data: { user: null, session: null }, error: null };
 let updateUserResponse = { data: { user: null }, error: null };
+let refreshResponse = { data: { session: null, user: null }, error: null };
 let signInResponse = { data: { user: null, session: null }, error: null };
 let signOutResponse = { error: null };
 
@@ -155,6 +156,11 @@ auth.supabase.auth.signUp = async (credentials) => {
 auth.supabase.auth.updateUser = async (attributes, options) => {
   calls.push(["updateUser", attributes, options]);
   return updateUserResponse;
+};
+
+auth.supabase.auth.refreshSession = async () => {
+  calls.push(["refreshSession"]);
+  return refreshResponse;
 };
 
 auth.supabase.auth.signInWithPassword = async (credentials) => {
@@ -265,14 +271,14 @@ listener("SIGNED_IN", { user: anonUser });
 check("анонимная сессия установлена", auth.getAccount()?.isAnonymous, true);
 
 const signUpCallsBefore = calls.filter(([name]) => name === "signUp").length;
-updateUserResponse = {
-  data: {
-    user: makeUser({
-      id: anonId,
-      email: "eve@example.com",
-      is_anonymous: false,
-    }),
-  },
+const permanentUser = makeUser({
+  id: anonId,
+  email: "eve@example.com",
+  is_anonymous: false,
+});
+updateUserResponse = { data: { user: permanentUser }, error: null };
+refreshResponse = {
+  data: { session: { user: permanentUser }, user: permanentUser },
   error: null,
 };
 
@@ -289,6 +295,11 @@ check(
   "updateUser сохранил ссылку возврата",
   updateCall?.[2]?.emailRedirectTo,
   "https://croak.example"
+);
+check(
+  "после updateUser сессия обновлена (JWT больше не анонимный)",
+  calls.some(([name]) => name === "refreshSession"),
+  true
 );
 check("анонимный стал постоянным", converted.ok && converted.signedIn, true);
 check("uuid аккаунта не изменился", auth.getAccount()?.id, anonId);
@@ -333,6 +344,41 @@ check(
   "ошибка сервера при регистрации дошла дословно",
   failedConvert.message,
   "User already registered"
+);
+
+// 6c. Аккаунт создан, но сессию обновить не удалось: не врём про вход и просим
+//     войти заново — иначе после перезагрузки игрок снова оказался бы гостем.
+listener("SIGNED_IN", { user: anonUser });
+updateUserResponse = {
+  data: {
+    user: makeUser({
+      id: anonId,
+      email: "eve3@example.com",
+      is_anonymous: false,
+    }),
+  },
+  error: null,
+};
+refreshResponse = {
+  data: { session: null, user: null },
+  error: { message: "network down" },
+};
+
+const unrefreshed = await auth.signUpWithEmail("eve3@example.com", "secret1");
+check(
+  "без свежей сессии вход не обещан",
+  unrefreshed.ok && !unrefreshed.signedIn,
+  true
+);
+check(
+  "игроку предложено войти заново",
+  /Войдите/.test(unrefreshed.message),
+  true
+);
+check(
+  "аккаунт остался прежним анонимным",
+  auth.getAccount()?.isAnonymous,
+  true
 );
 
 unsubscribeAnon();

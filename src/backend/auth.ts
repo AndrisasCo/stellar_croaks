@@ -302,7 +302,26 @@ export const signUpWithEmail = async (
       };
     }
 
-    setAccount(toAccount(data.user as SessionUser));
+    // updateUser меняет пользователя на сервере, но НЕ переписывает текущий JWT:
+    // в нём остаётся is_anonymous = true. Без refresh после перезагрузки
+    // getSession() вернул бы анонимного игрока, и интерфейс снова показал бы
+    // «гостя». refreshSession() выдаёт токен уже постоянного пользователя.
+    const { data: refreshed, error: refreshError } =
+      await supabase.auth.refreshSession();
+
+    if (refreshError || !refreshed.session?.user) {
+      console.warn(
+        "[auth] аккаунт создан, но сессия не обновилась:",
+        refreshError?.message ?? "нет сессии"
+      );
+      return {
+        ok: true,
+        signedIn: false,
+        message: "Аккаунт создан. Войдите с почтой и паролем.",
+      };
+    }
+
+    setAccount(toAccount(refreshed.session.user as SessionUser));
 
     return { ok: true, signedIn: true, message: "Аккаунт создан — вы вошли" };
   }
