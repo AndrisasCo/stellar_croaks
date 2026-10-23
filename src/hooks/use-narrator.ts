@@ -14,7 +14,6 @@ import {
   saveNarratorState,
 } from "../utils/narrator";
 import { useGameState } from "./use-game-state";
-import { NEST_ROOM_ID } from "../utils/constants";
 import { isToadBusyOnExpedition } from "../utils/expedition-manager";
 import { getToadRoomId } from "../utils/toad-location";
 
@@ -36,17 +35,9 @@ const createInitialState = (): NarratorState => {
   return { status: "active", step: "intro" };
 };
 
-/** id всех репродукторов: базового и построенных на карте. */
+/** id всех репродукторов, которые игрок построил на карте. */
 const getBreedingRoomIds = (state: GameState): Set<string> => {
   const ids = new Set<string>();
-  const demolished = new Set(state.colony?.demolished ?? []);
-
-  if (
-    !demolished.has(NEST_ROOM_ID) &&
-    !demolished.has("breeding")
-  ) {
-    ids.add(NEST_ROOM_ID);
-  }
 
   state.colony?.rooms.forEach((room) => {
     if (room.kind === "breeding") {

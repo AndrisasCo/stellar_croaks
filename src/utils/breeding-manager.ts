@@ -466,23 +466,26 @@ export const abortMating = (toadId: number): NestActionResult => {
 };
 
 /**
- * Репродуктор ли это на карте: базовый репродуктор колонии (`NEST_ROOM_ID`) или гекс «Репродуктор»,
- * построенный игроком. Только в репродукторе жабы могут забеременеть — в биоподе нет.
+ * Репродуктор ли это на карте: гекс «Репродуктор», построенный игроком, или историческое
+ * место `breeding`/`NEST_ROOM_ID` из старого сейва. Только в репродукторе жабы могут
+ * забеременеть — в биоподе нет.
  */
 export const isNestRoomId = (roomId?: string | null): boolean => {
   if (!roomId) {
     return false;
   }
 
-  if (roomId === NEST_ROOM_ID || roomId === "breeding") {
-    return true;
-  }
-
-  return (getGameState().colony?.rooms ?? []).some(
-    (room) =>
-      (room.id === roomId || room.slotId === roomId) &&
-      room.kind === "breeding",
+  const room = (getGameState().colony?.rooms ?? []).find(
+    (item) =>
+      item.id === roomId ||
+      item.slotId === roomId ||
+      // Карта зовёт исторический гекс `NEST_ROOM_ID`, а сейв постройки — `breeding`.
+      (roomId === NEST_ROOM_ID && item.slotId === "breeding") ||
+      (roomId === "breeding" && item.id === NEST_ROOM_ID),
   );
+
+  // Нет постройки — нет и репродуктора: на старте этот гекс свободен.
+  return room?.kind === "breeding";
 };
 
 /**

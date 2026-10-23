@@ -7,14 +7,14 @@
  * функции, что работают в игре:
  *   1) формула имени (`room-names.ts` → `formatRoomName`): «#номер» только у тех видов,
  *      которые строятся по нескольку раз, название вида — из каталога построек;
- *   2) имена гексов стартовой карты (`resolveColonyRooms`): «Биопод #1» и «Репродуктор #1»
- *      у базовых секторов, «Ядро» без номера, пустые слоты без имени вовсе;
- *   3) постройки продолжают нумерацию своего вида: второй репродуктор — «Репродуктор #2»,
+ *   2) имена гексов стартовой карты (`resolveColonyRooms`): «Биопод #1» у базового биопода,
+ *      «Ядро» без номера, пустые слоты без имени вовсе — Репродуктора на старте нет;
+ *   3) постройки получают номера своего вида: первый Репродуктор — «Репродуктор #1»,
  *      склады — «Склад #1» и «Склад #2» по порядку возведения;
  *   4) единственные секторы номера не получают («Коллайдер»), и второго такого не построить
  *      (`canBuildRoomKind`);
  *   5) имя будущей постройки (`getNextRoomName`) сходится с тем, что она получит на карте;
- *   6) снос освобождает номер: без базового репродуктора первая постройка снова «#1»;
+ *   6) снос освобождает номер: без Репродуктора первая постройка снова «#1»;
  *   7) у каждого сектора карты имя своё и непустое — по нему игрок отличает один гекс от другого.
  *
  * Запуск: node tmp-verify-room-names.mjs
@@ -127,7 +127,16 @@ check("название вида берётся из каталога", roomName
 console.log("\n=== 2. Стартовая карта ===");
 const start = map(colony([]));
 check("базовый биопод — «Биопод #1»", nameOf(start, "aviary"), "Биопод #1");
-check("базовый репродуктор — «Репродуктор #1»", nameOf(start, NEST), "Репродуктор #1");
+check(
+  "на старте нет Репродуктора",
+  start.some((item) => item.kind === "breeding"),
+  false,
+);
+check(
+  "гекс breeding — свободный слот без имени",
+  nameOf(start, "breeding"),
+  "",
+);
 check("ядро — без номера", nameOf(start, "core"), "Ядро");
 const startSlots = start.filter((item) => item.kind === "empty");
 check("пустые слоты на карте есть", startSlots.length > 0, true);
@@ -141,7 +150,7 @@ check(
   new Set(start.filter((item) => item.kind !== "empty").map((item) => item.name)).size,
   start.filter((item) => item.kind !== "empty").length,
 );
-check("всего секторов на старте", start.filter((item) => item.kind !== "empty").length, 3);
+check("всего секторов на старте", start.filter((item) => item.kind !== "empty").length, 2);
 
 // === 2.1 Инкубатор из старого сейва =======================================
 console.log("\n=== 2.1 Инкубатор из старого сейва ===");
@@ -164,10 +173,9 @@ const builtState = colony([
   room("slot-south-west", "storage"),
 ]);
 const built = map(builtState);
-check("второй репродуктор — «Репродуктор #2»", nameOf(built, "slot-north"), "Репродуктор #2");
+check("первый репродуктор — «Репродуктор #1»", nameOf(built, "slot-north"), "Репродуктор #1");
 check("первый склад — «Склад #1»", nameOf(built, "slot-south"), "Склад #1");
 check("второй склад — «Склад #2»", nameOf(built, "slot-south-west"), "Склад #2");
-check("базовый репродуктор остаётся первым", nameOf(built, NEST), "Репродуктор #1");
 check("биопод нумерацию складов не трогает", nameOf(built, "aviary"), "Биопод #1");
 check(
   "порядок постройки в сейве задаёт номер",
@@ -257,9 +265,9 @@ MULTI.forEach((kind, index) => {
   );
 });
 check(
-  "следующий репродуктор — «#3»",
+  "следующий репродуктор — «#2»",
   roomNames.getNextRoomName(built, "breeding"),
-  "Репродуктор #3",
+  "Репродуктор #2",
 );
 check("следующий склад — «#3»", roomNames.getNextRoomName(built, "storage"), "Склад #3");
 check("следующий биопод — «#2»", roomNames.getNextRoomName(built, "aviary"), "Биопод #2");
@@ -268,15 +276,15 @@ check("следующий биопод — «#2»", roomNames.getNextRoomName(bu
 // === 6. Снос освобождает номер ============================================
 console.log("\n=== 6. Снос освобождает номер ===");
 const withoutNest = map(colony([], [NEST]));
-check("снесённый репродуктор — пустой слот", nameOf(withoutNest, "breeding"), "");
+check("снесённый исторический гекс — пустой слот", nameOf(withoutNest, "breeding"), "");
 const rebuiltNest = map(colony([room("slot-north", "breeding")], [NEST]));
-check("без базы постройка снова «#1»", nameOf(rebuiltNest, "slot-north"), "Репродуктор #1");
+check("первая постройка снова «#1»", nameOf(rebuiltNest, "slot-north"), "Репродуктор #1");
 const rebuiltSecond = map(
   colony([room("slot-north", "breeding"), room("slot-south", "breeding")], [NEST]),
 );
 check("и следующая за ней — «#2»", nameOf(rebuiltSecond, "slot-south"), "Репродуктор #2");
 check(
-  "снос репродуктора биопод не сбивает",
+  "снос исторического гекса биопод не сбивает",
   nameOf(map(colony([], [NEST])), "aviary"),
   "Биопод #1",
 );
@@ -308,7 +316,7 @@ check(
   crowdedNames.every((name) => typeof name === "string" && name.length > 0),
   true,
 );
-check("секторов на карте", crowdedNames.length, 12);
+check("секторов на карте", crowdedNames.length, 11);
 check(
   "соседние склады различаются именем",
   nameOf(crowded, FREE_SLOTS[2]) !== nameOf(crowded, FREE_SLOTS[3]),

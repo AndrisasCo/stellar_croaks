@@ -98,15 +98,15 @@ export const getGameState = (): GameState => {
   }
 };
 
+type LegacyToad = Toad & { roomId?: string | null };
+
 /**
  * id места жабы в старом сейве. До перехода на `scene_id` сектор колонии хранился
- * в `roomId`; у базового репродуктора этот id был литералом `"breeding"`, а теперь
- * карта зовёт его постоянным `NEST_ROOM_ID`.
+ * в `roomId`; у гекса `breeding` это был литерал `"breeding"`, а карта зовёт его
+ * постоянным `NEST_ROOM_ID` — даже когда Репродуктор уже построен игроком.
  */
 const normalizeLegacyRoomId = (roomId: string): string =>
   roomId === "breeding" ? NEST_ROOM_ID : roomId;
-
-type LegacyToad = Toad & { roomId?: string | null };
 
 const getLegacyRoomId = (toad: LegacyToad): string | null =>
   typeof toad.roomId === "string" ? normalizeLegacyRoomId(toad.roomId) : null;

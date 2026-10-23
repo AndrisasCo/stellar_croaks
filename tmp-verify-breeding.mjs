@@ -111,7 +111,16 @@ const stubState = (patch = {}) => ({
     toad({ id: 2, name: "Жена", sex: "female" }),
     toad({ id: 3, name: "Вторая самка", sex: "female" }),
   ],
-  colony: { rooms: [] },
+  colony: {
+    rooms: [
+      {
+        id: "breeding_100000001",
+        slotId: "breeding",
+        kind: "breeding",
+        builtAt: "",
+      },
+    ],
+  },
   lastSaved: "",
   createdAt: "",
   ...patch,
@@ -374,12 +383,23 @@ reset();
 const baseScene = { id: 1, name: "Био Под", capacity: 20, created_at: "" };
 const secondScene = { id: 99, name: "Вольер #2", capacity: 20, created_at: "" };
 const colonyRooms = colonyBuild.resolveColonyRooms(
-  { rooms: [{ id: "outpost-0", kind: "aviary", builtAt: "", sceneId: secondScene.id }] },
+  {
+    rooms: [
+      { id: "outpost-0", kind: "aviary", builtAt: "", sceneId: secondScene.id },
+      {
+        id: constants.NEST_ROOM_ID,
+        slotId: "breeding",
+        kind: "breeding",
+        builtAt: "",
+      },
+    ],
+  },
   [baseScene, secondScene]
 );
 const grid = colonyBuild.getPowerGrid(colonyRooms, {});
-const nest = rooms.HEX_ROOM_BY_ID[constants.NEST_ROOM_ID];
-check("id гнезда совпадает с картой", nest.kind, "breeding");
+const nest = colonyRooms.find((room) => room.kind === "breeding");
+const nestMapId = nest.id;
+check("гнездо на карте есть", Boolean(nest), true);
 check(
   "гнездо под током (ядро питает кольцо 1)",
   colonyBuild.isRoomPowered(nest, grid),
@@ -435,12 +455,12 @@ checkText(
 const mapLists = toadLists.getRoomToadLists(colonyRooms, [
   toad({ id: 1, scene_id: baseScene.id }),
   toad({ id: 20, scene_id: secondScene.id }),
-  toad({ id: 2, scene_id: constants.NEST_ROOM_ID }),
-  toad({ id: 7, scene_id: constants.NEST_ROOM_ID }),
+  toad({ id: 2, scene_id: nestMapId }),
+  toad({ id: 7, scene_id: nestMapId }),
 ]);
 check(
   "гнездо рисует только тех, кого туда посадили",
-  mapLists[constants.NEST_ROOM_ID].length,
+  mapLists[nestMapId].length,
   2
 );
 check(
@@ -457,14 +477,14 @@ check(
 );
 checkText(
   "жаба, посаженная в гнездо, не пропадает с карты",
-  mapLists[constants.NEST_ROOM_ID].some((item) => item.id === 7) ? "да" : "нет",
+  mapLists[nestMapId].some((item) => item.id === 7) ? "да" : "нет",
   /да/
 );
 check("вольер показывает жильцов своего вольера", mapLists[constants.AVIARY_ROOM_ID].length, 1);
 check("второй вольер показывает своих жильцов", mapLists["outpost-0"].length, 1);
 checkText(
   "жаба из вольера не висит ещё и в гнезде",
-  mapLists[constants.NEST_ROOM_ID].some((item) => item.id === 1) ? "да" : "нет",
+  mapLists[nestMapId].some((item) => item.id === 1) ? "да" : "нет",
   /нет/
 );
 check(

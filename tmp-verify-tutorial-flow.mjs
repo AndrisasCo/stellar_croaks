@@ -107,6 +107,19 @@ check(
   true,
 );
 
+/** Стартовая карта: Репродуктора нет, гекс под него свободен. */
+const startRooms = colonyBuild.resolveColonyRooms(start.colony);
+check(
+  "на старте нет Репродуктора",
+  startRooms.some((room) => room.kind === "breeding"),
+  false,
+);
+check(
+  "гекс под Репродуктор свободен",
+  startRooms.find((room) => room.slotId === "breeding")?.kind,
+  "empty",
+);
+
 /** Колония без построек: базовые секторы в счёт не входят */
 const emptyColony = { rooms: [], demolished: [] };
 const builtRooms = (count, kind) =>

@@ -2,12 +2,13 @@
  * Проверка роста карты колонии на РЕАЛЬНОМ коде проекта (без запуска игры).
  *
  * Правило карты одно: **слот под застройку стоит только рядом с построенной комнатой**.
- * Фронт застройки ведут все комнаты — и базовые (ядро, вольер, гнездо), и возведённые игроком:
+ * Фронт застройки ведут все комнаты — и базовые (ядро и вольер), и возведённые игроком:
  * у новой комнаты открываются ВСЕ её соседние гексы — и наружу, и вбок по её же кольцу.
  * Скрипт бандлит модули через esbuild и прогоняет их как обычный JS — проверяются те же
  * формулы, что работают в игре:
- *   1) стартовая карта — ядро, вольер, гнездо и слоты вокруг них (13 гексов, 10 слотов):
- *      слотов без комнаты рядом на ней нет, дальние слоты кольца 2 закрыты;
+ *   1) стартовая карта — ядро, вольер и слоты вокруг них (10 гексов, 8 слотов): гнезда
+ *      на старте нет, его гекс свободен; слотов без комнаты рядом на ней нет, дальние слоты
+ *      кольца 2 закрыты;
  *   2) id слотов второго кольца остались `outpost-N` (старые сейвы не теряют постройки),
  *      третьего — `outpost-3-N`;
  *   3) новая комната открывает все свои соседние гексы и только вокруг себя: целого кольца
@@ -22,9 +23,9 @@
  *      и выросшую вместе с новыми гексами фронта (узкий телефон и широкий экран), а приближенный
  *      зум от размера карты не зависит (см. `hex-zoom.ts` → `getOverviewView`);
  *   9) снос комнаты (`ColonyState.demolished`): гекс остаётся на карте свободным слотом, карта
- *      не сжимается, снесённая базовая комната (гнездо) тоже показывается слотом, на месте
- *      снесённого строят заново, а правила сноса и цена следующей такой комнаты считаются
- *      реальными функциями (`getRoomDemolishIssue`, `getRoomCostAfterDemolish`).
+ *      не сжимается, снесённый Репродуктор тоже показывается слотом, на месте снесённого
+ *      строят заново, а правила сноса и цена следующей такой комнаты считаются реальными
+ *      функциями (`getRoomDemolishIssue`, `getRoomCostAfterDemolish`).
  *
  * Запуск: node tmp-verify-colony-growth.mjs
  */
@@ -111,7 +112,7 @@ const outwardKeys = (room) => new Set(keysOf(outwardCoords(room)));
 console.log("── 1. Начальная карта колонии ─────────────────────────────");
 const startRooms = roomsOf(colonyWith());
 
-/** Координаты построенных комнат карты: ядро, вольер, гнездо и постройки игрока. */
+/** Координаты построенных комнат карты: ядро, вольер и постройки игрока. */
 const builtCoordsOf = (rooms) =>
   new Set(
     rooms
@@ -136,9 +137,9 @@ const lonelySlots = (rooms) => {
 };
 
 check(
-  "гексов на старте (ядро, вольер, гнездо и слоты вокруг них)",
+  "гексов на старте (ядро, вольер и слоты вокруг них)",
   startRooms.length,
-  13,
+  10,
 );
 check(
   "дальнее кольцо стартовой карты",
@@ -148,13 +149,18 @@ check(
 check(
   "свободных слотов под застройку на старте",
   colonyBuild.getBuildableSlots(startRooms).length,
-  10,
+  8,
 );
 checkTrue(
-  "ядро и базовые комнаты на карте",
-  ["core", "aviary", "breeding"].every((slotId) =>
+  "ядро и базовый биопод на карте",
+  ["core", "aviary"].every((slotId) =>
     startRooms.some((room) => room.slotId === slotId),
   ),
+);
+check(
+  "гекс исторического Репродуктора на старте свободен",
+  startRooms.find((room) => room.slotId === "breeding")?.kind,
+  "empty",
 );
 check(
   "слотов без построенной комнаты рядом — ни одного",
@@ -162,9 +168,9 @@ check(
   0,
 );
 check(
-  "слоты кольца 2 стоят только у вольера и гнезда",
+  "слоты кольца 2 стоят только у вольера",
   idsAtRing(startRooms, 2).join(","),
-  "outpost-10,outpost-11,outpost-3,outpost-4,outpost-5,outpost-9",
+  "outpost-10,outpost-11,outpost-9",
 );
 checkTrue(
   "дальние слоты кольца 2 (без комнат рядом) закрыты на старте",
@@ -208,9 +214,9 @@ check(
   2,
 );
 check(
-  "постройка из сейва открыла три соседних гекса",
+  "постройка из сейва открыла пять соседних гексов",
   savedAviary.length,
-  startRooms.length + 3,
+  startRooms.length + 5,
 );
 check(
   "у постройки из сейва тоже нет слотов без комнаты рядом",
@@ -224,16 +230,16 @@ const edgeRooms = roomsOf(edgeColony);
 const builtEdge = edgeRooms.find((room) => room.id === "outpost-0");
 const openedKeys = new Set(coordKeys(ringRooms(edgeRooms, 3)));
 
-check("гексов после постройки на краю", edgeRooms.length, 13 + 5);
+check("гексов после постройки на краю", edgeRooms.length, startRooms.length + 5);
 check(
   "новых гексов за одну комнату (её гекс, боковой слот и три наружу)",
   edgeRooms.length - startRooms.length,
   5,
 );
 check(
-  "слотов под застройку: было 10, плюс четыре новых слота",
+  "слотов под застройку: было 8, плюс четыре новых слота",
   colonyBuild.getBuildableSlots(edgeRooms).length,
-  14,
+  12,
 );
 check("из 18 слотов третьего кольца открыто три", idsAtRing(edgeRooms, 3).length, 3);
 check(
@@ -308,7 +314,7 @@ const union = new Set([...clumpA, ...clumpB]);
 
 check("соседние комнаты делят один гекс фронта", shared.length, 1);
 check("объединённый фронт — четыре гекса", union.size, 4);
-check("гексов после двух соседних комнат", pairRooms.length, 20);
+check("гексов после двух соседних комнат", pairRooms.length, 17);
 check(
   "вторая комната добавила два гекса вместо пяти",
   pairRooms.length - edgeRooms.length,
@@ -329,9 +335,9 @@ console.log("\n── 5. Что карту не двигает ─────�
 check(
   "застройка слота первого кольца открывает два соседних слота",
   roomsOf(colonyWith({ id: "slot-north", kind: "shop", builtAt: "" })).length,
-  13 + 2,
+  startRooms.length + 2,
 );
-check("чужой id из сейва", roomsOf(colonyWith({ id: "nope", kind: "shop", builtAt: "" })).length, 13);
+check("чужой id из сейва", roomsOf(colonyWith({ id: "nope", kind: "shop", builtAt: "" })).length, startRooms.length);
 checkTrue(
   "слота с чужим id в каталоге нет",
   roomsConfig.HEX_ROOM_BY_ID["nope"] === undefined,
@@ -348,7 +354,7 @@ checkTrue(
 check(
   "она открыла и внешние гексы, и боковые",
   orphanRooms.length,
-  13 + 1 + 4,
+  startRooms.length + 7,
 );
 check("слотов под застройку у неё", idsAtRing(orphanRooms, 4).length, 2);
 check(
@@ -388,7 +394,7 @@ check(
 );
 checkTrue(
   "цепочка открыла больше, чем комнат в ней самой",
-  chainRooms.length > 13 + chain.length,
+  chainRooms.length > startRooms.length + chain.length,
 );
 check(
   "у цепочки нет слотов без комнаты рядом",
@@ -466,7 +472,7 @@ const touchedByColony = (coord) =>
     .hexNeighbors(coord)
     .some((neighbour) => startKeys.has(`${neighbour.q}:${neighbour.r}`));
 
-check("клеток сетки на старте", frameStart.length, 16);
+check("клеток сетки на старте", frameStart.length, 14);
 checkTrue(
   "сетка не заходит на гексы колонии",
   keysOf(frameStart).every((key) => !startKeys.has(key)),
@@ -478,7 +484,7 @@ const frameEdge = honeycomb.getHoneycombCoords(
 );
 const edgeKeys = new Set(coordKeys(edgeRooms));
 
-check("клеток сетки вокруг выросшей колонии", frameEdge.length, 19);
+check("клеток сетки вокруг выросшей колонии", frameEdge.length, 17);
 checkTrue(
   "сетка не заходит и на новые гексы",
   keysOf(frameEdge).every((key) => !edgeKeys.has(key)),
@@ -649,11 +655,11 @@ checkTrue(
   builtFarm.rooms[0].id === farmSlot.id,
 );
 
-/** Базовые комнаты: снос гнезда оставляет гекс, ядро не трогается вовсе */
+/** Репродуктор: снос оставляет гекс, ядро не трогается вовсе */
 const clearedBase = roomsOf({ rooms: [], demolished: ["breeding"] });
 check(
-  "снесённое базовое гнездо показывается слотом",
-  clearedBase.find((room) => room.id === "breeding")?.kind,
+  "снесённый Репродуктор показывается слотом",
+  clearedBase.find((room) => room.slotId === "breeding")?.kind,
   "empty",
 );
 check(
@@ -666,13 +672,15 @@ check(
   roomsOf({
     rooms: [{ id: "breeding", kind: "breeding", builtAt: "" }],
     demolished: ["breeding"],
-  }).find((room) => room.id === "breeding")?.kind,
+  }).find((room) => room.slotId === "breeding")?.kind,
   "breeding",
 );
 
 console.log("\n── 9b. Правила сноса и цена ───────────────────────────────");
 const coreRoom = startRooms.find((room) => room.kind === "core");
-const nestRoom = startRooms.find((room) => room.slotId === "breeding");
+const nestRoom = roomsOf(
+  colonyWith({ id: "breeding", kind: "breeding", builtAt: "" }),
+).find((room) => room.slotId === "breeding");
 const emptyRoom = startRooms.find((room) => room.kind === "empty");
 const toadStub = { id: 1, name: "жаба" };
 
@@ -681,7 +689,7 @@ checkTrue(
   "причина по ядру — сердце колонии",
   colonyBuild.getRoomDemolishIssue(coreRoom, []).includes("Ядро"),
 );
-checkTrue("пустое гнездо снести можно", colonyBuild.canDemolishRoom(nestRoom, []));
+checkTrue("построенный Репродуктор снести можно", colonyBuild.canDemolishRoom(nestRoom, []));
 checkTrue("жаба в комнате запрещает снос", !colonyBuild.canDemolishRoom(nestRoom, [toadStub]));
 check(
   "причина называет число жаб",

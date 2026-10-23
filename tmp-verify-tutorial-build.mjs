@@ -56,7 +56,7 @@ const check = (label, actual, expected) => {
 };
 const checkTrue = (label, value) => check(label, Boolean(value), true);
 
-/** Пустая колония: на карте только ядро, биопод и репродуктор. */
+/** Пустая колония: на карте только ядро и биопод. */
 const colony = { rooms: [], demolished: [] };
 const startMap = colonyBuild.resolveColonyRooms(colony);
 const slots = startMap.filter((room) => colonyBuild.canBuildOnSlot(room, startMap));

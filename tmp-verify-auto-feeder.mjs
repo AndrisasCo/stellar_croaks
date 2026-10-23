@@ -151,7 +151,11 @@ const setState = ({
     },
     scenes,
     toads,
-    colony: { rooms, upgrades: roomUpgrades, demolished },
+    colony: {
+      rooms,
+      upgrades: roomUpgrades,
+      demolished,
+    },
     lastSaved: new Date().toISOString(),
     createdAt: new Date().toISOString(),
   });
@@ -366,10 +370,15 @@ console.log("\n── 13. Снос комнаты: состояние колон
 const demolishCost = constants.DEMOLISH_ROOM_COST;
 check("снос комнаты стоит 100 🔷", demolishCost, 100);
 
-/** Настоящий свободный слот карты: рядом с ним есть комната, поэтому карта его открыла */
-const slotId = colonyBuild.getBuildableSlots(
-  colonyBuild.resolveColonyRooms({ rooms: [] }),
-)[0].id;
+/** Настоящий свободный слот карты: рядом с ним есть комната, поэтому карта его открыла.
+ *  Исторический гекс `breeding` не берём: у него отдельное правило очистки старых улучшений. */
+const slot = colonyBuild
+  .getBuildableSlots(colonyBuild.resolveColonyRooms({ rooms: [] }))
+  .find((room) => room.slotId !== "breeding");
+const slotId = slot.slotId;
+/** Карта адресует гекс по `id` (у исторического `breeding` это `NEST_ROOM_ID`) */
+const mapRooms = () => colonyBuild.resolveColonyRooms(stateNow().colony);
+const roomAtSlot = (id) => mapRooms().find((room) => room.slotId === id);
 
 setState({
   rooms: [],
@@ -401,9 +410,7 @@ checkTrue(
 );
 check(
   "снесённый гекс на карте — свободный слот",
-  colonyBuild
-    .resolveColonyRooms(stateNow().colony)
-    .find((room) => room.id === slotId)?.kind,
+  roomAtSlot(slotId)?.kind,
   "empty",
 );
 
@@ -415,24 +422,20 @@ checkTrue(
 );
 check(
   "гекс снова показывает комнату",
-  colonyBuild
-    .resolveColonyRooms(stateNow().colony)
-    .find((room) => room.id === slotId)?.kind,
+  roomAtSlot(slotId)?.kind,
   "storage",
 );
 
-// Базовая комната в сейве не лежит: её снос помнит только метка
+// Исторический гекс Репродуктора: снос помнит только метка, постройки в сейве нет
 setState({ rooms: [], upgrades: { breeding: { autoFeeder: true } } });
 colony.demolishColonyRoom("breeding");
 checkTrue(
-  "снос базового гнезда помнит метка",
+  "снос исторического гнезда помнит метка",
   stateNow().colony.demolished.includes("breeding"),
 );
 check(
-  "снесённое гнездо на карте — слот",
-  colonyBuild
-    .resolveColonyRooms(stateNow().colony)
-    .find((room) => room.id === "breeding")?.kind,
+  "снесённое историческое гнездо на карте — слот",
+  roomAtSlot("breeding")?.kind,
   "empty",
 );
 checkTrue(

@@ -126,8 +126,18 @@ const stubState = (patch = {}) => ({
     storage: { food: 10 },
   },
   scenes: [{ id: 1, name: "Биопод #1", capacity: 20, created_at: "" }],
-  // Построенный репродуктор: его жильцов список тоже не предлагает
-  colony: { rooms: [{ id: "outpost-3", kind: "breeding", builtAt: "" }] },
+  // Построенные репродукторы: их жильцов список тоже не предлагает
+  colony: {
+    rooms: [
+      {
+        id: "breeding_100000001",
+        slotId: "breeding",
+        kind: "breeding",
+        builtAt: "",
+      },
+      { id: "outpost-3", kind: "breeding", builtAt: "" },
+    ],
+  },
   expeditions: [ON_EXPEDITION],
   toads: [
     toad({ id: 1, name: "Муж", sex: "male", genes: { rarity: 5 } }),

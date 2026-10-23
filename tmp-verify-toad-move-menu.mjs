@@ -147,12 +147,18 @@ const toadLists = bundle(
 
 
 /**
- * Карта колонии: базовые биопод и репродуктор плюс построенные лазарет,
+ * Карта колонии: базовый биопод плюс построенные Репродуктор, лазарет,
  * КОНТУР, энергосектор и второй биопод на свободных гексах первого кольца.
  * Все они соседствуют с ядром, поэтому под током.
  */
 const colony = {
   rooms: [
+    {
+      id: "breeding_1",
+      slotId: "breeding",
+      kind: "breeding",
+      builtAt: "",
+    },
     { id: "hospital_1", slotId: "slot-north", kind: "hospital", builtAt: "" },
     { id: "scout_1", slotId: "slot-south", kind: "scout", builtAt: "" },
     {
