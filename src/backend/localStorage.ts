@@ -1,7 +1,11 @@
 import { DEFAULT_SCENE, Scene } from "../models/scene";
 import { DEFAULT_TOADS, Toad } from "../models/Toad";
 import { Items, User } from "../models/user";
-import { Expedition, ExpeditionStats, DEFAULT_EXPEDITION_STATS } from "../models/expedition";
+import {
+  Expedition,
+  ExpeditionStats,
+  DEFAULT_EXPEDITION_STATS,
+} from "../models/expedition";
 import { ColonyState, EMPTY_COLONY } from "../models/colony";
 import { platform } from "../platform";
 import { NEST_ROOM_ID } from "../utils/constants";

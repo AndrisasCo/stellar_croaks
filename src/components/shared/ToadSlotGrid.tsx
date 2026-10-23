@@ -217,7 +217,7 @@ export const ToadSlotGrid: React.FC<ToadSlotGridProps> = ({
                   ? `${toad.name} · ${slot.label}`
                   : (slot.disabledHint ?? `${slot.label}: выбрать жабу`)
               }
-              className={`relative max-w-[250px] flex aspect-square w-full flex-col items-center justify-center gap-1 rounded-xl border px-1.5 py-2 transition-colors duration-300 ${
+              className={`relative m-auto max-w-[250px] flex aspect-square w-full flex-col items-center justify-center gap-1 rounded-xl border px-1.5 py-2 transition-colors duration-300 ${
                 toad
                   ? "border-solid border-emerald-500/40 bg-emerald-500/5 hover:border-cyan-300/60 hover:bg-emerald-500/10"
                   : "border-dashed border-slate-500/60 bg-slate-950/20 hover:border-cyan-300/60 hover:bg-slate-800/40"

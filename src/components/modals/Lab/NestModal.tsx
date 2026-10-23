@@ -247,7 +247,7 @@ export default function NestModal({
     }
 
     if (toad.pregnancy?.isPregnant) {
-      return " вынашивает потомство — роды придут сами";
+      return " вынашивает потомство - можно отправить в биопод";
     }
 
     if (toad.stage !== "adult") {
@@ -366,7 +366,6 @@ export default function NestModal({
     }
 
     placeToadInRoom(toad.id, roomId);
-    playSuccess();
     // Ухаживание не стартует само: игрок сначала сажает пару, а потом жмёт
     // «Начать ухаживание» в блоке ниже (кнопка объяснит, чего не хватает)
     setTick((t) => t + 1);
@@ -384,7 +383,6 @@ export default function NestModal({
   /** Вынести жабу из репродуктора домой — в её биопод (ухаживание при этом прерывается) */
   const handleRelease = (toad: Toad) => {
     if (isToadBusyOnExpedition(toad)) {
-      playError();
       addNotification({ type: "warn", content: EXPEDITION_TOAD_BUSY_REASON });
       return;
     }
@@ -412,9 +410,6 @@ export default function NestModal({
       setTick((t) => t + 1);
       return;
     }
-
-    // Ухаживание прервано — это предупреждение, а не успех: оставляем нейтральный «ok»
-    wasCourting ? playOk() : playSuccess();
 
     if (wasCourting) {
       addNotification({
@@ -525,7 +520,7 @@ export default function NestModal({
                       icon: toad.mating
                         ? "🫧"
                         : toad.pregnancy?.isPregnant
-                          ? "🤰"
+                          ? ""
                           : "⏳",
                       label: toadStatus(toad).trim(),
                       className:
