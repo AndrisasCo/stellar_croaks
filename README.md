@@ -7,9 +7,11 @@
 - Локально: `npm run dev` (Vite подскажет адрес, обычно http://localhost:5173)
 - Сборка: `npm run build`, предпросмотр: `npm run preview`
 - Бот: `npm run bot` (нужны `BOT_TOKEN` и `APP_URL`, см. `.env.example`)
+- Бот на Vercel: webhook `/api/telegram`; настройка —
+  [`supabase/README.md`](supabase/README.md), раздел «Бот на Vercel».
 - Всё на одном сервере/VPS: `npm run build && npm run start:all` (сайт + бот;
-  `START_BOT=0` — только сайт). На Vercel `start:all` не используется: бот там
-  должен быть отдельным процессом.
+  `START_BOT=0` — только сайт). На Vercel `start:all` не используется: сайт там
+  статический, а бот работает через webhook `/api/telegram`.
 
 Вход и схема Supabase, деплой `telegram-auth` и настройка URL описаны в
 [`supabase/README.md`](supabase/README.md).

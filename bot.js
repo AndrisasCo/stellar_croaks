@@ -25,6 +25,13 @@ const SUPABASE_URL =
   process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL ?? "";
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
 
+/**
+ * На Vercel нет долгоживущего процесса: там бот принимает updates через webhook
+ * (`api/telegram.js`), а polling не запускается. Локально и на VPS — polling.
+ */
+const WEBHOOK_MODE =
+  Boolean(process.env.VERCEL) || process.env.BOT_MODE === "webhook";
+
 if (!BOT_TOKEN) {
   console.error(
     "Ошибка: не задан BOT_TOKEN.\n" +
@@ -66,9 +73,10 @@ const bot = new Telegraf(BOT_TOKEN);
 /**
  * Кнопка меню в чате должна вести на актуальный APP_URL. Держим её в коде, а не
  * только в BotFather: при переезде домена достаточно поменять .env и перезапустить
- * бота — игроки не останутся на мёртвой ссылке.
+ * бота — игроки не останутся на мёртвой ссылке. В webhook-режиме её ставит
+ * `scripts/set-webhook.mjs`, чтобы не делать лишний API-вызов на каждом cold start.
  */
-if (APP_URL) {
+if (APP_URL && !WEBHOOK_MODE) {
   bot.telegram
     .setChatMenuButton({
       menuButton: {
@@ -223,13 +231,19 @@ bot.catch((error, ctx) => {
   console.error(`[bot] ошибка на апдейте "${ctx.updateType}":`, error);
 });
 
-bot.launch()
-  .then(() => console.log("🐸 Stellar Croak bot запущен"))
-  .catch((error) => {
-    console.error(`[bot] не удалось запустить polling: ${error.message}`);
-    process.exit(1);
-  });
+if (!WEBHOOK_MODE) {
+  bot.launch()
+    .then(() => console.log("🐸 Stellar Croak bot запущен"))
+    .catch((error) => {
+      console.error(`[bot] не удалось запустить polling: ${error.message}`);
+      process.exit(1);
+    });
 
-// Корректно останавливаем бота по сигналам завершения, чтобы не оставлять висящий polling.
-process.once("SIGINT", () => bot.stop("SIGINT"));
-process.once("SIGTERM", () => bot.stop("SIGTERM"));
+  // Корректно останавливаем бота по сигналам завершения, чтобы не оставлять висящий polling.
+  process.once("SIGINT", () => bot.stop("SIGINT"));
+  process.once("SIGTERM", () => bot.stop("SIGTERM"));
+} else {
+  console.log("[bot] webhook-режим: polling не запускается (Vercel)");
+}
+
+export default bot;

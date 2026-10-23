@@ -141,9 +141,44 @@ SUPABASE_SERVICE_ROLE_KEY=eyJ...
 
 Если сайт и бот живут на одном сервере/VPS, можно поднять их одной командой:
 `npm run start:all` (сначала нужен `npm run build`). `START_BOT=0` отключает бота,
-если он уже запущен отдельно. На Vercel эта команда не работает: там только
-статический сайт, а бот должен быть отдельным долгоживущим процессом. Два
-одновременных polling-инстанса Telegram не допускает (`409 Conflict`).
+если он уже запущен отдельно. Два одновременных polling-инстанса Telegram не
+допускает (`409 Conflict`).
+
+### Бот на Vercel: webhook вместо polling
+
+Vercel не держит процесс постоянно, поэтому `bot.launch()` там не запускается.
+Вместо этого игра деплоит функцию `api/telegram.js`, а Telegram присылает updates
+на `https://stellar-croaks.vercel.app/api/telegram`. Код бота общий: `bot.js`
+видит `VERCEL=1` и переключается в webhook-режим.
+
+1. В Vercel → Project → Settings → Environment Variables (Production) добавьте:
+   ```bash
+   BOT_TOKEN=123456789:AA...
+   APP_URL=https://stellar-croaks.vercel.app
+   SUPABASE_URL=https://<project>.supabase.co
+   SUPABASE_SERVICE_ROLE_KEY=eyJ...
+   TELEGRAM_WEBHOOK_SECRET=<openssl rand -hex 32>
+   ```
+   `SUPABASE_SERVICE_ROLE_KEY` и `TELEGRAM_WEBHOOK_SECRET` — только серверные
+   переменные, без префикса `VITE_`.
+
+2. Запушьте изменения — Vercel сам соберёт `api/telegram.js` как функцию.
+
+3. Добавьте тот же `TELEGRAM_WEBHOOK_SECRET` в локальный `.env` и включите webhook:
+   ```bash
+   npm run bot:webhook:set
+   ```
+   Скрипт ставит webhook, обновляет кнопку меню и печатает `getWebhookInfo`.
+   Перед этим остановите polling-бота (`npm run bot` / `start:all`), иначе
+   Telegram будет ругаться на конфликт.
+
+4. Проверьте бота в Telegram: `/start`, `/buy`. Ошибки смотрите в Vercel →
+   Deployments → Functions → Logs.
+
+Вернуться к polling: `npm run bot:webhook:delete`, затем снова `npm run bot`.
+Webhook и polling одновременно не работают. У webhook есть cold start (первый
+запрос после простоя чуть медленнее); обработчики покупок пишут в очередь
+`credits`, поэтому кратковременная задержка не теряет оплату.
 
 Без `APP_URL` и `SUPABASE_SERVICE_ROLE_KEY` бот всё равно стартует, но работает
 как витрина: `/start`, `/help` и `/buy` отвечают, однако кнопки «Играть» нет, а
@@ -154,8 +189,9 @@ SUPABASE_SERVICE_ROLE_KEY=eyJ...
 
 Прод живёт на Vercel: **https://stellar-croaks.vercel.app**. Этот адрес записан в
 `APP_URL`, поэтому `npm run db:push` сам поддерживает `site_url` и Redirect URLs в
-актуальном состоянии. При старте бот ставит кнопку меню на `APP_URL` — после смены
-домена достаточно перезапустить его, и игроки не останутся на мёртвой ссылке.
+актуальном состоянии. В polling-режиме при старте бот ставит кнопку меню на
+`APP_URL` — после смены домена достаточно перезапустить его, и игроки не останутся
+на мёртвой ссылке. В webhook-режиме кнопку обновляет `npm run bot:webhook:set`.
 
 Отдельно есть **Main Mini App** — ссылка вида `https://t.me/bioblobbot?startapp`.
 Её адрес хранится только в BotFather (Bot Settings → Main Mini App) и через Bot API

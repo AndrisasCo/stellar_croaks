@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "bot": "node --env-file-if-exists=.env bot.js",
+    "bot:webhook:set": "node --env-file-if-exists=.env scripts/set-webhook.mjs",
+    "bot:webhook:delete": "node --env-file-if-exists=.env scripts/set-webhook.mjs --delete",
     "notify": "node --env-file-if-exists=.env bot/notify.js",
     "dev": "vite --host",
     "build": "vite build",
