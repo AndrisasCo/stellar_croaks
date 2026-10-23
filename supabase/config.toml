@@ -1,0 +1,10 @@
+# Конфигурация Supabase CLI.
+#
+# `telegram-auth` вызывается ДО появления сессии: клиент присылает подписанный
+# Telegram initData, а взамен получает одноразовый token_hash. Публичный ключ
+# (sb_publishable_...) не является JWT, поэтому платформенная проверка JWT здесь
+# только мешает. Подпись initData функция проверяет сама — по BOT_TOKEN.
+project_id = "unegxfuqgobfxkjbgsjc"
+
+[functions.telegram-auth]
+verify_jwt = false

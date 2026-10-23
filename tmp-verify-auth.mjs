@@ -11,10 +11,12 @@
  *      (аккаунт при этом создан) — иначе игрок решил бы, что вход сломан;
  *   3) ошибка сервера (неверный пароль, занятая почта) доходит до игрока дословно;
  *   4) успешный вход поднимает сессию и показывает почту и имя игрока;
- *   5) выход гасит сессию, УБИРАЕТ локальный сейв прошлого игрока и перезапускает
- *      игру — даже если сеть подвела на самом выходе;
- *   6) подписка на смену аккаунта доносит вход/выход до интерфейса и снимается;
- *   7) без настроенного Supabase вход отключён и ничего не падает.
+ *   5) подписка на смену аккаунта доносит вход/выход до интерфейса и снимается;
+ *   6) регистрация из анонимной сессии идёт через updateUser: uuid сохраняется,
+ *      почта появляется у того же игрока, второй пользователь не создаётся;
+ *   7) выход гасит сессию, УБИРАЕТ локальный сейв прошлого игрока и перезапускает
+ *      игру, а неудачный выход не врёт об успехе и не трогает сейв;
+ *   8) без настроенного Supabase вход отключён и ничего не падает.
  *
  * Запуск: node tmp-verify-auth.mjs
  */
@@ -132,6 +134,7 @@ const calls = [];
 let listener = null;
 let unsubscribes = 0;
 let signUpResponse = { data: { user: null, session: null }, error: null };
+let updateUserResponse = { data: { user: null }, error: null };
 let signInResponse = { data: { user: null, session: null }, error: null };
 let signOutResponse = { error: null };
 
@@ -147,6 +150,11 @@ const makeUser = (overrides = {}) => ({
 auth.supabase.auth.signUp = async (credentials) => {
   calls.push(["signUp", credentials]);
   return signUpResponse;
+};
+
+auth.supabase.auth.updateUser = async (attributes, options) => {
+  calls.push(["updateUser", attributes, options]);
+  return updateUserResponse;
 };
 
 auth.supabase.auth.signInWithPassword = async (credentials) => {
@@ -247,7 +255,90 @@ check("подписчик увидел выход", seen[1], null);
 unsubscribe();
 check("отписка дошла до Supabase", unsubscribes, 1);
 
-// 6. Выход: сессия погашена, сейв прошлого игрока убран, игра перезапущена
+// 6. Регистрация из АНОНИМНОЙ сессии: updateUser сохраняет тот же uuid, а не создаёт
+//    второго пользователя (иначе колония, лидерборд и кредиты остались бы на старом).
+const anonId = "b3f1c0de-0000-4000-8000-000000000003";
+const anonUser = makeUser({ id: anonId, email: null, is_anonymous: true });
+const unsubscribeAnon = auth.subscribeAccount(() => {});
+
+listener("SIGNED_IN", { user: anonUser });
+check("анонимная сессия установлена", auth.getAccount()?.isAnonymous, true);
+
+const signUpCallsBefore = calls.filter(([name]) => name === "signUp").length;
+updateUserResponse = {
+  data: {
+    user: makeUser({
+      id: anonId,
+      email: "eve@example.com",
+      is_anonymous: false,
+    }),
+  },
+  error: null,
+};
+
+const converted = await auth.signUpWithEmail("  eve@example.com  ", "secret1");
+const updateCall = calls.find(([name]) => name === "updateUser");
+check("анонимная регистрация идёт через updateUser", Boolean(updateCall), true);
+check(
+  "updateUser получил почту без пробелов",
+  updateCall?.[1]?.email,
+  "eve@example.com"
+);
+check("updateUser получил пароль", updateCall?.[1]?.password, "secret1");
+check(
+  "updateUser сохранил ссылку возврата",
+  updateCall?.[2]?.emailRedirectTo,
+  "https://croak.example"
+);
+check("анонимный стал постоянным", converted.ok && converted.signedIn, true);
+check("uuid аккаунта не изменился", auth.getAccount()?.id, anonId);
+check("почта появилась в аккаунте", auth.getAccount()?.email, "eve@example.com");
+check(
+  "второй пользователь не создавался",
+  calls.filter(([name]) => name === "signUp").length,
+  signUpCallsBefore
+);
+
+// 6a. Если подтверждение почты всё-таки включили, игрок остаётся анонимным и ждёт письмо.
+listener("SIGNED_IN", { user: anonUser });
+updateUserResponse = {
+  data: {
+    user: makeUser({ id: anonId, email: null, is_anonymous: true }),
+  },
+  error: null,
+};
+
+const pendingConvert = await auth.signUpWithEmail("eve2@example.com", "secret1");
+check(
+  "подтверждение почты: без входа после регистрации",
+  pendingConvert.ok && !pendingConvert.signedIn,
+  true
+);
+check(
+  "подтверждение почты: игроку сказано проверить письмо",
+  /Подтвердите/.test(pendingConvert.message),
+  true
+);
+
+// 6b. Ошибка updateUser (например, почта занята) доходит до игрока.
+listener("SIGNED_IN", { user: anonUser });
+updateUserResponse = {
+  data: { user: null },
+  error: { message: "User already registered" },
+};
+
+const failedConvert = await auth.signUpWithEmail("eve@example.com", "secret1");
+check("ошибка регистрации не выдаётся за успех", failedConvert.ok, false);
+check(
+  "ошибка сервера при регистрации дошла дословно",
+  failedConvert.message,
+  "User already registered"
+);
+
+unsubscribeAnon();
+listener("SIGNED_OUT", null);
+
+// 7. Выход: сессия погашена, сейв прошлого игрока убран, игра перезапущена
 // Ключ тот же, что пишет `backend/localStorage.ts` (LS_KEY).
 const LS_KEY = "Game_State6";
 browser.store.set(LS_KEY, JSON.stringify({ user: { userId: "old-player" } }));

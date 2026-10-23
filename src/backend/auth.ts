@@ -135,15 +135,27 @@ const initAuth = async (): Promise<Account | null> => {
     console.warn("[auth] не удалось прочитать сессию:", sessionError.message);
   }
 
+  // Подписанная строка есть только в Telegram — там и берём доверенную личность.
+  // Читаем её ДО проверки сохранённой сессии: в мини-аппе она главнее.
+  const { initData } = platform.identity();
+
   const stored = sessionData?.session?.user;
   if (stored) {
     const account = toAccount(stored as SessionUser);
+
+    // Анонимная сессия могла остаться от веб-версии (тот же origin). В Telegram
+    // её нужно обменять на подтверждённую личность, иначе tg_id так и не появится.
+    if (initData && account.isAnonymous) {
+      const viaTelegram = await signInWithTelegram(initData);
+      if (viaTelegram) {
+        return viaTelegram;
+      }
+    }
+
     setAccount(account);
     return account;
   }
 
-  // Подписанная строка есть только в Telegram — там и берём доверенную личность.
-  const { initData } = platform.identity();
   if (initData) {
     const viaTelegram = await signInWithTelegram(initData);
     if (viaTelegram) {
@@ -202,9 +214,12 @@ export const ensureAccount = async (): Promise<Account | null> => {
 // остаётся прежним (`auth.uid()`), поэтому синк, лидерборд и покупки работают
 // одинаково в обеих версиях.
 //
-// Регистрация из анонимной сессии (в вебе она создаётся на старте) превращает её в
-// постоянный аккаунт. Если в проекте включено подтверждение почты, сервер вернёт
-// пользователя без сессии — тогда игрока ждёт письмо (см. supabase/README.md).
+// Регистрация из анонимной сессии (в вебе она создаётся на старте) идёт через
+// `updateUser`, а не `signUp`: GoTrue создал бы ВТОРОГО пользователя с новым uuid,
+// и колония, лидерборд и покупки остались бы на старом. `updateUser` превращает
+// текущего анонимного игрока в постоянного, сохраняя `auth.uid()`.
+// Если в проекте включено подтверждение почты, сервер вернёт пользователя без
+// постоянной сессии — тогда игрока ждёт письмо (см. supabase/README.md).
 // ---------------------------------------------------------------------------
 
 export interface AuthResult {
@@ -257,6 +272,39 @@ export const signUpWithEmail = async (
       signedIn: false,
       message: "Облако не настроено: вход недоступен",
     };
+  }
+
+  const current = getAccount();
+
+  // Анонимного игрока превращаем в постоянного НА МЕСТЕ: `auth.uid()` сохраняется,
+  // а вместе с ним — сейв, строка лидерборда и уже купленные кредиты.
+  if (current?.isAnonymous) {
+    const { data, error } = await supabase.auth.updateUser(
+      { email: email.trim(), password },
+      // Куда вернуть игрока после подтверждения почты (если оно включено).
+      { emailRedirectTo: window.location.origin }
+    );
+
+    if (error || !data.user) {
+      return {
+        ok: false,
+        signedIn: false,
+        message: error?.message ?? "Не удалось создать аккаунт",
+      };
+    }
+
+    if (data.user.is_anonymous) {
+      // Подтверждение почты включено: до перехода по ссылке игрок остаётся анонимным.
+      return {
+        ok: true,
+        signedIn: false,
+        message: "Аккаунт создан. Подтвердите почту и войдите.",
+      };
+    }
+
+    setAccount(toAccount(data.user as SessionUser));
+
+    return { ok: true, signedIn: true, message: "Аккаунт создан — вы вошли" };
   }
 
   const { data, error } = await supabase.auth.signUp({

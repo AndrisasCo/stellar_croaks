@@ -63,6 +63,26 @@ if (!admin) {
 
 const bot = new Telegraf(BOT_TOKEN);
 
+/**
+ * Кнопка меню в чате должна вести на актуальный APP_URL. Держим её в коде, а не
+ * только в BotFather: при переезде домена достаточно поменять .env и перезапустить
+ * бота — игроки не останутся на мёртвой ссылке.
+ */
+if (APP_URL) {
+  bot.telegram
+    .setChatMenuButton({
+      menuButton: {
+        type: "web_app",
+        text: "🎮 Играть",
+        web_app: { url: APP_URL },
+      },
+    })
+    .then(() => console.log(`[bot] кнопка меню ведёт на ${APP_URL}`))
+    .catch((error) =>
+      console.warn(`[bot] не удалось обновить кнопку меню: ${error.message}`)
+    );
+}
+
 /** Кнопка «Играть» — вход в мини-апп прямо из чата. */
 const playKeyboard = () =>
   APP_URL

@@ -7,8 +7,9 @@
  *   1. применяет schema.sql целиком (скрипт идемпотентный — можно запускать сколько
  *      угодно раз, в том числе на уже существующей базе);
  *   2. проверяет, что все четыре таблицы на месте;
- *   3. включает Anonymous sign-ins и Email provider — без них клиент не получит
- *      сессию, и облако молча выключится (см. supabase/README.md).
+ *   3. включает Anonymous sign-ins, Email provider и автоподтверждение почты —
+ *      без них клиент не получит сессию, и облако молча выключится
+ *      (см. supabase/README.md).
  *
  * Как ходим в базу (первый доступный способ):
  *   - Management API + `SUPABASE_ACCESS_TOKEN` (Personal Access Token, `sbp_...`) —
@@ -36,6 +37,27 @@ const PUBLIC_KEY =
   process.env.VITE_SUPABASE_ANON_KEY ??
   "";
 
+/**
+ * Публичный адрес игры. Auth использует его как `site_url` (ссылки из писем) и
+ * включает в список разрешённых возвратов. Без APP_URL настройки не трогаем:
+ * вдруг проект уже настроен руками, а скрипт запускают только ради схемы.
+ */
+const SITE_URL = (
+  process.env.APP_URL ??
+  process.env.VITE_APP_URL ??
+  ""
+).replace(/\/+$/, "");
+
+/** Локальные адреса Vite: нужны, чтобы вход работал и на `npm run dev`. */
+const LOCAL_REDIRECT_URLS = [
+  "http://localhost:3000",
+  "http://localhost:3000/**",
+  "http://localhost:5173",
+  "http://localhost:5173/**",
+  "http://localhost:4173",
+  "http://localhost:4173/**",
+];
+
 /** Таблицы, которые создаёт schema.sql. По ним же проверяем результат. */
 const TABLES = ["game_state", "leaderboard", "credits", "players"];
 
@@ -45,6 +67,38 @@ from information_schema.tables
 where table_schema = 'public'
   and table_name in (${TABLES.map((table) => `'${table}'`).join(", ")})
 order by table_name;
+`;
+
+/**
+ * Проверка не только таблиц, но и прав. Supabase по умолчанию выдаёт
+ * `authenticated` ALL на новые таблицы public, поэтому одного `revoke ... from anon`
+ * мало: без отзыва у authenticated остаётся табличный UPDATE, и игрок может
+ * дописать себе `credits.tokens` в обход колоночного grant'а.
+ *
+ * Запрос возвращает строки ТОЛЬКО при нарушениях (пустой результат — всё хорошо).
+ */
+const VERIFY_GRANTS_SQL = `
+select 'authenticated может менять credits.tokens' as problem
+where has_column_privilege('authenticated', 'public.credits', 'tokens', 'UPDATE')
+   or has_table_privilege('authenticated', 'public.credits', 'UPDATE')
+union all
+select 'authenticated не может отметить credits.applied_at'
+where not has_column_privilege('authenticated', 'public.credits', 'applied_at', 'UPDATE')
+union all
+select 'authenticated имеет доступ к players'
+where has_table_privilege('authenticated', 'public.players', 'SELECT')
+   or has_table_privilege('authenticated', 'public.players', 'INSERT')
+   or has_table_privilege('authenticated', 'public.players', 'UPDATE')
+   or has_table_privilege('authenticated', 'public.players', 'DELETE')
+union all
+select 'authenticated может менять game_state.user_id'
+where has_column_privilege('authenticated', 'public.game_state', 'user_id', 'UPDATE')
+union all
+select 'authenticated может менять leaderboard.user_id'
+where has_column_privilege('authenticated', 'public.leaderboard', 'user_id', 'UPDATE')
+union all
+select 'service_role не может писать credits'
+where not has_table_privilege('service_role', 'public.credits', 'INSERT');
 `;
 
 const fail = (message) => {
@@ -135,6 +189,16 @@ const assertTables = (names) => {
   console.log(`✅ Таблицы на месте: ${names.join(", ")}`);
 };
 
+const assertGrants = (problems) => {
+  if (problems.length) {
+    fail(`права настроены неверно:\n  - ${problems.join("\n  - ")}`);
+  }
+
+  console.log(
+    "✅ Права: клиент не может менять токены и ключи, players закрыт для клиента"
+  );
+};
+
 /** Основной путь: Management API (нужен только PAT). */
 const applyViaManagementApi = async () => {
   console.log(`→ Management API, проект ${projectRef}`);
@@ -163,10 +227,30 @@ const enableAuthProviders = async () => {
       body: {
         external_anonymous_users_enabled: true,
         external_email_enabled: true,
+        // Своего SMTP у игры нет: с включённым подтверждением почты GoTrue создаёт
+        // аккаунт без сессии, а письмо не доходит (у встроенного отправителя жёсткий
+        // лимит). Autoconfirm выдаёт сессию сразу — регистрация работает из коробки.
+        // Включая подтверждение позже, настройте SMTP и верните false.
+        mailer_autoconfirm: true,
+        // Регистрация в браузере возвращает игрока на текущий origin (emailRedirectTo),
+        // а Supabase пускает только адреса из списка. localhost — для разработки,
+        // APP_URL — прод. Без APP_URL не перезаписываем то, что настроено в Dashboard.
+        ...(SITE_URL
+          ? {
+              site_url: SITE_URL,
+              uri_allow_list: [...LOCAL_REDIRECT_URLS, SITE_URL, `${SITE_URL}/**`].join(
+                ","
+              ),
+            }
+          : {}),
       },
     });
 
-    console.log("✅ Auth: анонимный вход и email-провайдер включены");
+    console.log(
+      SITE_URL
+        ? `✅ Auth: анонимный вход, email и автоподтверждение включены; возврат разрешён на ${SITE_URL}`
+        : "✅ Auth: анонимный вход, email и автоподтверждение включены"
+    );
   } catch (error) {
     console.warn(
       `⚠️  Auth не настроен автоматически: ${
@@ -220,6 +304,37 @@ const applyViaPsql = () => {
     .sort();
 };
 
+/** Проверяем гранты тем же способом, которым применяли схему. */
+const verifyGrants = async () => {
+  if (ACCESS_TOKEN) {
+    const rows = await apiRequest(`/v1/projects/${projectRef}/database/query`, {
+      method: "POST",
+      body: { query: VERIFY_GRANTS_SQL },
+    });
+
+    return rowsOf(rows)
+      .map((row) => row?.problem)
+      .filter(Boolean);
+  }
+
+  const verified = spawnSync("psql", [DB_URL, "-tA", "-c", VERIFY_GRANTS_SQL], {
+    encoding: "utf8",
+  });
+
+  if (verified.error || verified.status !== 0) {
+    fail(
+      `не удалось проверить права через psql: ${
+        verified.error?.message ?? verified.stderr?.trim() ?? "неизвестная ошибка"
+      }`
+    );
+  }
+
+  return verified.stdout
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+};
+
 const schema = readFileSync(SCHEMA_PATH, "utf8");
 
 const main = async () => {
@@ -255,6 +370,7 @@ const main = async () => {
   const tableNames = ACCESS_TOKEN ? await applyViaManagementApi() : applyViaPsql();
 
   assertTables(tableNames);
+  assertGrants(await verifyGrants());
 
   if (ACCESS_TOKEN) {
     await enableAuthProviders();

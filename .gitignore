@@ -48,5 +48,8 @@ dist-ssr/
 .env.*
 .DS_Store
 
+# Supabase CLI (локальный кэш/метаданные, не для VCS)
+supabase/.temp/
+
 # Шаблон окружения — единственный env-файл, который должен быть в VCS
 !.env.example

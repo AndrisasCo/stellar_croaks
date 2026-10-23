@@ -1,9 +1,9 @@
 -- ============================================================================
 -- Stellar Croak: схема Supabase.
 --
--- Приложение ещё не в проде, поэтому файл — не история миграций, а актуальный
--- срез: целиком выполняется в Supabase → SQL Editor. Позже его можно разрезать
--- на миграции (`supabase migration new ...`) без изменения логики клиента.
+-- Файл — не история миграций, а актуальный срез: применяется одной командой
+-- `npm run db:push` (см. supabase/README.md). Позже его можно разрезать на
+-- миграции (`supabase migration new ...`) без изменения логики клиента.
 --
 -- Ключ аккаунта везде — `user_id` (uuid из Supabase Auth): одна и та же игра
 -- работает и в Telegram (сессия после проверки initData), и в вебе (анонимная
@@ -144,9 +144,14 @@ create policy credits_mark_applied on public.credits
 -- вправе менять. Поэтому `update` выдаём не на таблицу целиком, а на конкретные
 -- колонки — иначе игрок мог бы нарисовать себе кваксы в `credits` или подменить
 -- `user_id` в лидерборде.
+--
+-- ВАЖНО: Supabase по умолчанию выдаёт anon и authenticated ALL на новые таблицы
+-- public. Пока это право не отозвано, колоночные grant'ы ниже ничего не
+-- ограничивают: табличный UPDATE разрешит менять и `credits.tokens`. Поэтому
+-- отзываем у обеих ролей всё, а затем выдаём ровно нужное.
 -- ---------------------------------------------------------------------------
 revoke all on public.game_state, public.leaderboard, public.credits, public.players
-  from anon;
+  from anon, authenticated;
 
 grant select, insert, delete on public.game_state to authenticated;
 grant update (content, achievements, collider, shop, tg_id, updated_at)
