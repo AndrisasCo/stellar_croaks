@@ -618,6 +618,13 @@ export const isToadRoom = (room: RoomConfig) =>
   room.kind === "scout" ||
   room.kind === "hospital";
 
+export const hasAutofeeder = (room: RoomConfig) =>
+  room.kind === "aviary" ||
+  room.kind === "breeding" ||
+  room.kind === "power" ||
+  room.kind === "scout" ||
+  room.kind === "hospital";
+
 /**
  * Видна ли жаба в секторе прямо сейчас: ушедшую в поход карта не рисует —
  * жаба в походе, а не в секторе, и в двух местах сразу не бывает. Место в секторе она при

@@ -34,10 +34,10 @@ export const OfflineEventsButton = () => {
           : "События колонии"
       }
       onClick={() => openModal(() => <OfflineEventsModal />)}
-      className={`pointer-events-auto relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-1 text-xl font-black leading-none backdrop-blur-md transition-all duration-300 active:scale-95 ${
+      className={`pointer-events-auto  relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-1 text-xl font-black leading-none backdrop-blur-md transition-all duration-300 active:scale-95 ${
         hasUnread
-          ? "border-amber-300/90 bg-amber-400/20 text-amber-100 shadow-[0_0_20px_-5px_rgba(251,191,36,0.95)]"
-          : "border-white/15 bg-slate-950/65 text-slate-400 hover:border-white/30 hover:text-slate-200"
+          ? "border-amber-300/90 border-solid border-[1px] bg-amber-400/20 text-amber-100 "
+          : "border-white/15 border-solid border-[1px] bg-slate-950/65 text-slate-400 hover:border-white/30 hover:text-slate-200"
       }`}
     >
       !

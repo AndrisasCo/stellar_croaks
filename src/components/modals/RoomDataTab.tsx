@@ -22,6 +22,7 @@ import {
 import {
   getBuiltRoomKind,
   getRoomBlueprint,
+  hasAutofeeder,
   isToadRoom,
   RoomConfig,
 } from "../HexMap/rooms-config";
@@ -76,7 +77,7 @@ export default function RoomDataTab({ room, stats }: RoomDataTabProps) {
   );
   const powered = isRoomPowered(room, powerGrid);
   /** Апгрейды есть только у жилых секторов: остальным кормушка ни к чему */
-  const canUpgrade = isToadRoom(room);
+  const canUpgrade = hasAutofeeder(room);
   const installed = ROOM_UPGRADES.filter((option) =>
     hasUpgrade(upgrades, option.upgrade),
   ).length;
@@ -157,9 +158,7 @@ export default function RoomDataTab({ room, stats }: RoomDataTabProps) {
                 </span>
               )}
             </div>
-            <p className="ui-caption">
-              {room.subtitle}
-            </p>
+            <p className="ui-caption">{room.subtitle}</p>
           </div>
         </div>
 
@@ -197,9 +196,7 @@ export default function RoomDataTab({ room, stats }: RoomDataTabProps) {
         </p>
 
         {!canUpgrade && (
-          <p className="ui-caption">
-            У этого сектора улучшений нет.
-          </p>
+          <p className="ui-caption">У этого сектора улучшений нет.</p>
         )}
 
         {canUpgrade &&
@@ -222,9 +219,7 @@ export default function RoomDataTab({ room, stats }: RoomDataTabProps) {
                     <p className="text-xs font-semibold text-white">
                       {option.title}
                     </p>
-                    <p className="ui-caption">
-                      {option.description}
-                    </p>
+                    <p className="ui-caption">{option.description}</p>
                   </div>
                 </div>
 

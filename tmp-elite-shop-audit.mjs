@@ -40,13 +40,14 @@ const PERSONALITY_COUNT = 50; // models/Toad/index.ts — 50 ключей
 const P_PERSONALITY_ASSIGN = 0.9; // calculate-genetics.ts:96 (10% -> null)
 const P_SPECIFIC_PERS = P_PERSONALITY_ASSIGN / PERSONALITY_COUNT; // ≈0.018
 
-const MAX_ENERGY = 100, ENERGY_REGEN_PER_HOUR = 6; // gamification-config.ts:8,10
+const MAX_ENERGY = 100, ENERGY_PER_RARITY = 5; // gamification-config.ts
+const ENERGY_REGEN_BASE_PER_HOUR = 3, ENERGY_REGEN_MAX_HUNGER_MULT = 10; // utils/energy.ts
 const BREED_ENERGY_BASE = 25, BREED_BIOMASS_BASE = 8, COOLDOWN_BASE_MS = 600000;
 const BIOMASS_PER_TOAD_HOUR = 2.1, UPKEEP_PER_TOAD_HOUR = 0.6, HUNGER_PER_DAY = 40;
 const BIOMASS_TO_TOKENS = 0.5; // 2🧪 = 1🔷
 const HOURS_TO_GROW_UP = 2; // models/Toad/index.ts:724
 const HUNGER_DECAY_PER_HOUR = HUNGER_PER_DAY / 24;
-const ENERGY_PER_DAY_PER_TOAD = ENERGY_REGEN_PER_HOUR * 24; // 144
+const ENERGY_PER_DAY_PER_TOAD = ENERGY_REGEN_BASE_PER_HOUR * ENERGY_REGEN_MAX_HUNGER_MULT * 24; // 720 — максимум при сытости 100
 
 // shop-state.ts:221-223, 239-246
 const REFRESH_COOLDOWN = 3 * 3600e3;
@@ -356,7 +357,7 @@ const market12 = buyPrice({ rarity: 12, fert: 1.5, hungerRate: 1.0, type: "camo"
 
 console.log(`\n[D] ЦЕНЫ МАГАЗИНА: ЧТО ПЛАТИМ И ЧТО ПОЛУЧАЕМ`);
 console.log(line("-"));
-console.log(`  Ориентиры: спаривание = 2x${getEnergyCost(5)}⚡ + 2x${getBreedBiomassCost(5)}🧪; энергия ${ENERGY_REGEN_PER_HOUR}⚡/ч = ${ENERGY_PER_DAY_PER_TOAD}⚡/сут на жабу;`);
+console.log(`  Ориентиры: спаривание = 2x${getEnergyCost(5)}⚡ + 2x${getBreedBiomassCost(5)}🧪; энергия ${ENERGY_REGEN_BASE_PER_HOUR}⚡/ч при сытости 1, до ${ENERGY_REGEN_BASE_PER_HOUR * ENERGY_REGEN_MAX_HUNGER_MULT}⚡/ч при сытости 100 (${ENERGY_PER_DAY_PER_TOAD}⚡/сут максимум);`);
 console.log(`  жаба с рынка rarity1.2 = ${market27}🔷, rarity12 (колония avg15) = ${market12}🔷; выработка средней жабы ${f2(rate)}🧪/ч.`);
 console.log("");
 const rows = [

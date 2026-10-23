@@ -87,11 +87,10 @@ import {
 } from "../../utils/expedition-manager";
 import { getMaxExpeditions } from "../../utils/expedition-config";
 import {
-  ENERGY_REGEN_PER_HOUR,
-  MAX_ENERGY,
   PRODUCTION_HUNGRY_FACTOR,
   PRODUCTION_MIN_HUNGER,
   getToadEnergy,
+  getToadMaxEnergy,
 } from "../../utils/gamification-config";
 import { RoomConfig } from "../HexMap/rooms-config";
 import { ToadSlotGrid } from "../shared/ToadSlotGrid";
@@ -160,7 +159,7 @@ const ToadVitals: React.FC<{
     <>
       <span
         className={energy >= energyCost ? "text-lime-300" : "text-red-400"}
-        title={`Силы: ${energy} / ${MAX_ENERGY}. Поход в этот сектор стоит ${energyCost} ⚡ — силы восстанавливаются +${ENERGY_REGEN_PER_HOUR} в час`}
+        title={`Силы: ${energy} / ${getToadMaxEnergy(toad)}. Поход в этот сектор стоит ${energyCost} ⚡`}
       >
         ⚡{energy}
       </span>
@@ -702,6 +701,10 @@ const ExpeditionModal: React.FC<{
     const best = getBestRole(toad);
     const offRole = Boolean(assigned) && assigned !== best;
 
+    if (assigned) {
+      return null;
+    }
+
     return (
       <div
         key={toad.id}
@@ -722,25 +725,7 @@ const ExpeditionModal: React.FC<{
           <p className="text-xs font-semibold text-slate-100 truncate">
             {toad.name}
           </p>
-          <p className="text-2xs text-slate-400 truncate">
-            {!check.ok && !assigned
-              ? `⚠️ ${check.reason}`
-              : assigned
-                ? `в команде: ${config.icon} ${config.label} ${getRolePowerPercent(
-                    toad,
-                    assigned,
-                  )}%${
-                    offRole
-                      ? ` · сильнее: ${ROLE_CONFIG[best].icon} ${
-                          ROLE_CONFIG[best].label
-                        }`
-                      : ""
-                  }`
-                : `пойдёт на роль: ${config.icon} ${config.label} ${getRolePowerPercent(
-                    toad,
-                    role,
-                  )}%`}
-          </p>
+
           <ToadVitals
             toad={toad}
             energyCost={energyCostPerToad}

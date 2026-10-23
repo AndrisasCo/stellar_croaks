@@ -300,9 +300,9 @@ export default function HospitalModal({ room }: HospitalModalProps) {
     /** Что обещает кнопка «быстро в Медотсек»: койка здесь, в другом секторе или отказ */
     const admitLabel = admission?.room
       ? admission.room.id === room.id
-        ? "🛏️ Быстро в Медотсек (сюда)"
-        : `🛏️ Быстро в Медотсек: «${admission.room.name}»`
-      : `🛏️ В Медотсек нельзя: ${admission?.issue ?? "некуда"}`;
+        ? "Поместить в медотсек"
+        : `Поместить в медотсек: «${admission.room.name}»`
+      : admission?.issue;
 
     return (
       <ToadListCard
@@ -331,10 +331,15 @@ export default function HospitalModal({ room }: HospitalModalProps) {
           </p>
         )}
 
+        {!wounded && !disease && (
+          <p className="text-2xs text-slate-400">
+            Полностью здоров - можно выписывать
+          </p>
+        )}
+
         {!wounded && disease && (
           <p className="text-2xs text-slate-400">
-            Раны зажили — осталась болезнь: на койке срок идёт в{" "}
-            {HOSPITAL_DISEASE_SPEED} раза быстрее, а пациент никого не заражает.
+            Выздоравливает от "{disease.name}"
           </p>
         )}
 
@@ -393,8 +398,8 @@ export default function HospitalModal({ room }: HospitalModalProps) {
             }`}
           >
             {dischargeIssue
-              ? `🚪 Выписать нельзя: ${dischargeIssue}`
-              : "🚪 Выписать в биопод"}
+              ? `Выписать нельзя: ${dischargeIssue}`
+              : "Вернуть в биопод"}
           </ClickButton>
         )}
       </ToadListCard>

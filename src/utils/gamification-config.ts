@@ -3,10 +3,15 @@ import { getDiseasePenaltyMultiplier } from "../models/disease";
 
 // === Размножение: энергия и cooldown (Часть 3.2) ===
 
-/** Максимальный запас «сил» жабы */
+/**
+ * Базовый максимум «сил» жабы.
+ *
+ * Итоговый максимум растёт с качеством: `getToadMaxEnergy`. Константа остаётся
+ * базой для обычной жабы и для старых сейвов, где качество не задано.
+ */
 export const MAX_ENERGY = 100;
-/** Пассивное восстановление энергии: +1 за 10 минут */
-export const ENERGY_REGEN_PER_HOUR = 6;
+/** Прибавка к максимуму сил за единицу качества (rarity) */
+export const ENERGY_PER_RARITY = 5;
 /** Базовая стоимость спаривания (энергия) */
 export const BREED_ENERGY_BASE = 25;
 /** Базовый расход биомассы на одно спаривание */
@@ -126,10 +131,23 @@ const COOLDOWN_PERSONALITY: Record<string, number> = {
   robot: 1.2,
 };
 
+/**
+ * Максимум сил жабы: база плюс качество.
+ *
+ * Максимум — чистая функция генов, как и `getToadMaxHp`: в сейве он не хранится,
+ * поэтому старые сейвы не требуют миграции. Поле `Toad.energy` — только текущий
+ * запас, который обрезается по этому максимуму.
+ */
+export const getToadMaxEnergy = (toad: Pick<Toad, "genes">): number =>
+  Math.round(
+    MAX_ENERGY + Math.max(0, toad.genes?.rarity || 0) * ENERGY_PER_RARITY,
+  );
+
 /** Текущая энергия жабы (с учётом дефолта для старых сейвов) */
 export const getToadEnergy = (toad: Toad): number => {
-  const energy = toad.energy ?? MAX_ENERGY;
-  return Math.max(0, Math.min(MAX_ENERGY, energy));
+  const maxEnergy = getToadMaxEnergy(toad);
+  const energy = toad.energy ?? maxEnergy;
+  return Math.max(0, Math.min(maxEnergy, energy));
 };
 
 /** Множитель отдыха по характеру жабы (быстрые / медленные) */

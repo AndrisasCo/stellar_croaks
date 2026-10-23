@@ -89,14 +89,14 @@ export const OfflineEventsModal: React.FC = () => {
             Пока вас не было, в колонии ничего не случилось.
           </div>
         ) : (
-          <div className="flex max-h-[55vh] flex-col gap-2 overflow-y-auto pr-1">
+          <div className="flex  flex-col gap-2 overflow-y-auto pr-1">
             {ordered.map((event) => {
               const style = EVENT_STYLES[event.type];
 
               return (
                 <div
                   key={event.id}
-                  className={`relative overflow-hidden rounded-xl border p-3 ${style.panel}`}
+                  className={`relative rounded-xl border p-3 ${style.panel}`}
                 >
                   <div className="flex items-start gap-2.5">
                     <span

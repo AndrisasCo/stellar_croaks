@@ -50,7 +50,7 @@ export interface Toad {
   homeId?: number | null;
   sex: string; // 'male' 'female' 'neuter'
   type: ToadTypes | null; // пока не используется, мб тут будут варианты окраса
-  energy?: number; // 0 to 100
+  energy?: number; // 0..getToadMaxEnergy(toad): максимум растёт с качеством
   breedCooldownUntil?: number; // timestamp, до которого жаба отдыхает после скрещивания
   // Разведка (экспедиции): HP жабы
   hp?: number; // 0 to maxHp

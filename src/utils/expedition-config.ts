@@ -503,18 +503,23 @@ export const getExpeditionSendCost = (
  * склад, а каждая участница команды: в модалке разведки у жаб видно силы, а
  * снаряжение биомассой оплачивается отдельно, со склада.
  *
- * Дома силы капают обратно (+6 в час), так что поход — ещё и очередь: жабу, которая
+ * Силы возвращаются только в биоподе или Медотсеке и зависят от сытости и
+ * аппетита (`utils/energy.ts`), поэтому поход — ещё и очередь: жабу, которая
  * копит силы на «Репродуктор», дешевле взять в ближний сектор, чем в дальний.
- * Первый сектор стоит 10 ⚡, «Центр станции» (глубина 8) — 52 ⚡.
+ * Минимальная цена похода — 70 ⚡, дальше +6 ⚡ за каждую глубину.
  */
-export const EXPEDITION_ENERGY_BASE = 10;
+export const EXPEDITION_MIN_ENERGY_COST = 70;
+export const EXPEDITION_ENERGY_BASE = EXPEDITION_MIN_ENERGY_COST;
 /** Плюс столько сил за каждую следующую глубину сектора */
-export const EXPEDITION_ENERGY_PER_DEPTH = 6;
+export const EXPEDITION_ENERGY_PER_DEPTH = 10;
 
-/** Силы одной жабы на поход в сектор */
+/** Силы одной жабы на поход в сектор (не меньше `EXPEDITION_MIN_ENERGY_COST`) */
 export const getExpeditionToadEnergyCost = (sector: SectorDef): number =>
-  EXPEDITION_ENERGY_BASE +
-  EXPEDITION_ENERGY_PER_DEPTH * (Math.max(1, sector.depth) - 1);
+  Math.max(
+    EXPEDITION_MIN_ENERGY_COST,
+    EXPEDITION_ENERGY_BASE +
+      EXPEDITION_ENERGY_PER_DEPTH * (Math.max(1, sector.depth) - 1),
+  );
 
 /** Силы всей команды на поход: каждую жабу считаем отдельно, тут — сумма для итога */
 export const getExpeditionEnergyCost = (

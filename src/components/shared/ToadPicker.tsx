@@ -11,8 +11,8 @@ import { ClickButton } from "./ClickButton";
  * Общий список жаб и выпадающая панель со всеми доступными жабами.
  *
  * Жабу сажают в слот в нескольких местах: репродуктор (`NestModal`), коллайдер
- * (`ToadColliderModal`) и Медотсек (`HospitalModal`) открывают список модалкой
- * (`shared/ToadSlotGrid` → `ToadPickerList`), а энергосектор ⚡ (`PowerRoomModal`) и роль
+ * (`ToadColliderModal`), Медотсек (`HospitalModal`) и энергосектор ⚡ (`PowerRoomModal`)
+ * открывают список модалкой (`shared/ToadSlotGrid` → `ToadPickerList`), а роль
  * в походе (`ExpeditionModal`) — выпадающей панелью (`ToadPicker`). Раньше у каждого места
  * был свой список: где-то кнопка с панелью, где-то цветные карточки. Теперь место описывает
  * только **свои правила** (кого вообще можно взять и почему нет), а вид строки, сортировка,

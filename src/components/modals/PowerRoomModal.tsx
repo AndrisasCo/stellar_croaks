@@ -20,7 +20,7 @@ import { ClickButton } from "../shared/ClickButton";
 import Modal from "../shared/Header";
 import ModalTabs, { ModalTabItem } from "../shared/ModalTabs";
 import { ToadListCard } from "../shared/ToadListCard";
-import { ToadPicker } from "../shared/ToadPicker";
+import { ToadSlotGrid } from "../shared/ToadSlotGrid";
 import { ToadInfo } from "./ToadInfoModal";
 import { isRoomPowered } from "../HexMap/colony-build";
 import {
@@ -44,7 +44,8 @@ import RoomDataTab, { ROOM_DATA_TAB, RoomDataTabId } from "./RoomDataTab";
  * Табы — общие для всех секторов (`shared/ModalTabs`): работающие жабы первым, «Данные
  * сектора» (`modals/RoomDataTab.tsx`) — последним: описание, улучшения и снос, то есть всё,
  * что раньше жило в отдельной модалке улучшения. Энергосектор открывают только с гекса,
- * поэтому табов у неё всегда два.
+ * поэтому табов у неё всегда два. Жабы стоят в общей сетке слотов (`shared/ToadSlotGrid`) —
+ * той же, что в Медотсеке и репродукторе: квадраты с «+», выбор модалкой и крестик.
  */
 /** Табы энергосектора: работающие жабы первым, «Данные сектора» — последним */
 type PowerTab = "power" | RoomDataTabId;
@@ -78,6 +79,15 @@ export default function PowerRoomModal({ room }: { room: RoomConfig }) {
     (toad) => !isToadPowering(toad, expeditions),
   );
   const freeSlots = POWER_ROOM_TOAD_SLOTS - roomToads.length;
+  /** Слоты энергосектора: жаба на месте или пустой квадрат с «+» — как в Медотсеке */
+  const powerSlots = Array.from(
+    { length: POWER_ROOM_TOAD_SLOTS },
+    (_, index) => ({
+      toad: roomToads[index] ?? null,
+      label: `Жаба ${index + 1}`,
+      icon: "⚡",
+    }),
+  );
   // Корм считает `getFeedCost`: один корм на жабу; жабы в походе не едят
   const feedCost = getFeedCost(activeRoomToads);
   const food = Math.floor(account?.storage?.food || 0);
@@ -88,7 +98,8 @@ export default function PowerRoomModal({ room }: { room: RoomConfig }) {
     "сектор колонии";
 
   /**
-   * Жабы для подсадки в энергосектор — строками общего списка (`shared/ToadPicker`).
+   * Жабы для подсадки в энергосектор — строками общего списка (`shared/ToadPicker`),
+   * который открывает модалка слота (`shared/ToadSlotGrid`).
    *
    * Взять можно свободных здоровых взрослых жаб колонии: энергосектор — рабочий сектор всей
    * колонии, поэтому в неё берут жаб из любого биопода. Остальные из списка не исчезают:
@@ -269,19 +280,51 @@ export default function PowerRoomModal({ room }: { room: RoomConfig }) {
             </div>
           </div>
 
-          {/* Жабы, которые сидят в секторе */}
-          {roomToads.length === 0 ? (
-            <div className="py-6 text-center">
-              <div className="mb-2 text-4xl">⚡</div>
-              <p className="text-sm text-slate-300">
-                В секторе пока никто не работает
-              </p>
-              <p className="mt-1 text-2xs text-slate-400">
-                Посадите жаб — по одной на каждого соседа — и кормите их.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-1.5">
+          {/* Слоты энергосектора — та же сетка, что у Медотсека и репродуктора */}
+          <ToadSlotGrid
+            slots={powerSlots}
+            columns={6}
+            title={`⚡ В «${room.name}» (${roomToads.length}/${POWER_ROOM_TOAD_SLOTS})`}
+            headerRight={`свободно мест: ${freeSlots}`}
+            pickerFor={() => ({
+              groups: [
+                {
+                  label: `Можно взять (${candidates.available.length})`,
+                  // Порядок строк уже задан `splitToadPickerCandidates`: кто даёт ток — сверху
+                  items: candidates.available.map(({ toad }) => ({
+                    toad,
+                    note: isToadPowering(toad, expeditions)
+                      ? "даёт ток"
+                      : `голодная — ток не даёт (нужна сытость выше ${POWER_MIN_HUNGER})`,
+                  })),
+                },
+              ],
+              rejected: {
+                label: TOAD_PICKER_REJECTED_GROUP,
+                items: candidates.rejected,
+              },
+              hint: `Сверху — жабы, которые уже дают ток: взрослые, живые и сытые выше ${POWER_MIN_HUNGER}. Энергосектор — рабочий сектор всей колонии, поэтому взять можно жабу из любого биопода. Жабу из другого сектора выбор перенесёт сюда.`,
+              emptyText:
+                "Свободных взрослых жаб нет: остальные в походе, выбиты или уже работают в секторе колонии.",
+              locationOf,
+            })}
+            onPick={(toad) => handlePlace(toad)}
+            onOpen={(toad) => openToadCard(toad)}
+            onRemove={(toad) => handleRelease(toad)}
+            removeLabel="Вернуть в биопод"
+            footer={
+              roomToads.length === 0 ? (
+                <p className="text-2xs leading-snug text-slate-400">
+                  Посадите жаб — по одной на каждого соседа — и кормите их:
+                  каждая сытая взрослая жаба даёт одну единицу тока.
+                </p>
+              ) : null
+            }
+          />
+
+          {/* Под сеткой — карточки работающих жаб: сытость, статус тока и выписка */}
+          {roomToads.length > 0 && (
+            <div className="mt-2 space-y-1.5">
               {roomToads.map((toad) => {
                 const onExpedition = isToadBusyOnExpedition(toad, expeditions);
                 const powering =
@@ -334,41 +377,6 @@ export default function PowerRoomModal({ room }: { room: RoomConfig }) {
               })}
             </div>
           )}
-
-          {/* Подсадка жаб: общий выпадающий список — свободные взрослые жабы всей колонии */}
-          <div className="mt-3">
-            <ToadPicker
-              icon="⚡"
-              caption="Энергосектор"
-              label="Энергосектор"
-              placeholder={
-                freeSlots > 0
-                  ? `＋ Поместить жабу (свободно мест: ${freeSlots})`
-                  : `Все ${POWER_ROOM_TOAD_SLOTS} мест заняты`
-              }
-              disabled={freeSlots <= 0}
-              groups={[
-                {
-                  label: `Можно взять (${candidates.available.length})`,
-                  // Порядок строк уже задан `splitToadPickerCandidates`: кто даёт ток — сверху
-                  items: candidates.available.map(({ toad }) => ({
-                    toad,
-                    note: isToadPowering(toad, expeditions)
-                      ? "даёт ток"
-                      : `голодная — ток не даёт (нужна сытость выше ${POWER_MIN_HUNGER})`,
-                  })),
-                },
-              ]}
-              rejected={{
-                label: TOAD_PICKER_REJECTED_GROUP,
-                items: candidates.rejected,
-              }}
-              hint={`Сверху — жабы, которые уже дают ток: взрослые, живые и сытые выше ${POWER_MIN_HUNGER}. Энергосектор — рабочий сектор всей колонии, поэтому взять можно жабу из любого биопода. Жабу из другого сектора выбор перенесёт сюда.`}
-              emptyText="Свободных взрослых жаб нет: остальные в походе, выбиты или уже работают в секторе колонии."
-              locationOf={locationOf}
-              onPick={handlePlace}
-            />
-          </div>
         </div>
       )}
 

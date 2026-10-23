@@ -23,8 +23,6 @@ import { useNotifications } from "../../../hooks/use-notification";
 import { endPregnancy } from "../../../utils/breeding-manager";
 import {
   BIOMASS_PER_TOAD_HOUR,
-  ENERGY_REGEN_PER_HOUR,
-  MAX_ENERGY,
   PRODUCTION_HUNGRY_FACTOR,
   PRODUCTION_MIN_HUNGER,
   UPKEEP_PER_TOAD_HOUR,
@@ -34,6 +32,7 @@ import {
   getPersonalityCooldownMultiplier,
   getProductionFactor,
   getToadEnergy,
+  getToadMaxEnergy,
 } from "../../../utils/gamification-config";
 import {
   EXPEDITION_ENERGY_BASE,
@@ -51,6 +50,10 @@ import {
   getHospitalRoomIds,
   isToadInHospital,
 } from "../../../utils/hospital";
+import {
+  getEnergyRegenPerHour,
+  getToadEnergyRegenPlace,
+} from "../../../utils/energy";
 import {
   EXPEDITION_TOAD_BUSY_REASON,
   isToadBusyOnExpedition,
@@ -178,7 +181,8 @@ export const ToadInfo = () => {
    * Кибер-болезнь: на койке Медотсека срок идёт в `HOSPITAL_DISEASE_SPEED` раза
    * быстрее, поэтому прогресс и прогноз выздоровления считаем с учётом койки.
    */
-  const hospitalIds = getHospitalRoomIds(getGameState().colony);
+  const colony = getGameState().colony;
+  const hospitalIds = getHospitalRoomIds(colony);
   const inHospital = isToadInHospital(toad, hospitalIds);
 
   /**
@@ -199,7 +203,29 @@ export const ToadInfo = () => {
 
   // Ручное размножение (Репродуктор): силы жабы, отдых и готовность (Часть 3.2)
   const energy = getToadEnergy(toad);
+  const maxEnergy = getToadMaxEnergy(toad);
   const energyCost = getEnergyCost(toad);
+  const isEnergyFull = energy >= maxEnergy;
+  const energyRegen = getEnergyRegenPerHour(toad, colony);
+  const energyRegenRate = Math.round(energyRegen * 10) / 10;
+  const energyRegenPlace = getToadEnergyRegenPlace(toad, colony);
+  const energyRegenPlaceLabel =
+    energyRegenPlace === "biopod"
+      ? "биоподе"
+      : energyRegenPlace === "hospital"
+        ? "Медотсеке"
+        : null;
+  const energyRegenHint = isEnergyFull
+    ? "Силы уже полны."
+    : energyRegen > 0 && energyRegenPlaceLabel
+      ? `Сейчас жаба в ${energyRegenPlaceLabel}: +${energyRegenRate} ⚡ в час.`
+      : energyRegenPlace === null
+        ? toad.status === "out"
+          ? "Сейчас жаба в походе — силы не восстанавливаются."
+          : "Сейчас жаба не в биоподе и не в Медотсеке — силы не восстанавливаются."
+        : hunger < 1
+          ? "Сейчас жаба голодна (сытость 0 %) — силы не восстанавливаются."
+          : "Сейчас силы не восстанавливаются.";
   const cooldownLeft = Math.max(0, (toad.breedCooldownUntil ?? 0) - Date.now());
   const isPregnant = Boolean(toad.pregnancy?.isPregnant);
   const isCourting = Boolean(toad.mating);
@@ -636,7 +662,7 @@ export const ToadInfo = () => {
               <StatCard
                 icon={<span>⚡</span>}
                 label="Силы"
-                value={`${Math.round(energy)} / ${MAX_ENERGY}`}
+                value={`${Math.round(energy)} / ${maxEnergy}`}
                 colorClass={
                   energy >= energyCost ? "text-lime-400" : "text-red-400"
                 }
@@ -650,15 +676,17 @@ export const ToadInfo = () => {
                       className="right-0 w-[200%]"
                     >
                       <p className="text-sm text-slate-200">
-                        Силы ⚡ — личный запас жабы, максимум {MAX_ENERGY}.
-                        Спаривание в «Репродукторе» стоит {energyCost} ⚡, а
-                        поход за Периметр — от {EXPEDITION_ENERGY_BASE} ⚡ за
-                        ближний сектор и на {EXPEDITION_ENERGY_PER_DEPTH} ⚡
-                        дороже за каждый следующий (силы тратит каждая жаба
-                        команды). Биомасса на снаряжение платится со склада и к
-                        силам отношения не имеет. Восстанавливаются силы сами: +
-                        {ENERGY_REGEN_PER_HOUR} в час. Снять отдых после
-                        спаривания можно за 1 Астро-квакс.
+                        Силы ⚡ — личный запас жабы, максимум {maxEnergy} (растёт
+                        с качеством). Спаривание в «Репродукторе» стоит{" "}
+                        {energyCost} ⚡, а поход за Периметр — от{" "}
+                        {EXPEDITION_ENERGY_BASE} ⚡ за ближний сектор и на{" "}
+                        {EXPEDITION_ENERGY_PER_DEPTH} ⚡ дороже за каждый
+                        следующий (силы тратит каждая жаба команды). Биомасса на
+                        снаряжение платится со склада и к силам отношения не
+                        имеет. Силы восстанавливаются только в биоподе или
+                        Медотсеке, при сытости выше 0; чем выше аппетит, тем
+                        быстрее. {energyRegenHint} Снять отдых после спаривания
+                        можно за 1 Астро-квакс.
                       </p>
                     </Tooltip>
                   )
