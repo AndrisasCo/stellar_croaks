@@ -43,12 +43,14 @@ import {
   getContourPassReward,
   getDispatchOfficeCost,
   getEvacuationCost,
+  getExpeditionEventChance,
   getExpeditionProfitFloor,
   getExpeditionSampleReward,
   getExpeditionSendCost,
   getExpeditionEnergyCost,
   getExpeditionSuccessChance,
   getExpeditionToadEnergyCost,
+  getRolePower,
   getRoleStat,
   getSectorDamageMultiplier,
   getSectorSuccessFactor,
@@ -524,7 +526,15 @@ const ExpeditionModal: React.FC<{
         items: group.toads.map((toad): ToadPickerItem => {
           const other = getAssignedRole(slots, toad.id);
           const own = other === role;
+          const power = getRolePower(toad, role);
           const percent = getRolePowerPercent(toad, role);
+          const eventChance = Math.round(
+            getExpeditionEventChance(
+              power,
+              selectedSector,
+              getToadHp(toad) / Math.max(1, getToadMaxHp(toad)),
+            ) * 100,
+          );
 
           return {
             toad,
@@ -532,8 +542,8 @@ const ExpeditionModal: React.FC<{
             tone: own ? "selected" : other ? "warn" : "default",
             note: (
               <div className="truncate">
-                {getRoleStat(toad, role).toFixed(2)} {config.statLabel} ·{" "}
-                {getToadHpStatusLabel(toad)}
+                {getRoleStat(toad, role).toFixed(2)} {config.statLabel} · событие{" "}
+                {eventChance}% · {getToadHpStatusLabel(toad)}
                 {own
                   ? " · ✓ на этой роли"
                   : other

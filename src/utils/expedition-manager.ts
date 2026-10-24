@@ -64,14 +64,11 @@ import {
   EXTRACTION_ASTRO_COST,
   EXPEDITION_ARCHIVE_LIMIT,
   EXPEDITION_BASE_EVENT_CHANCE,
-  EXPEDITION_DANGER_CHANCE_PENALTY,
-  EXPEDITION_EVENT_PROGRESS_STEP,
   EXPEDITION_GOOD_FINISH_LOOT,
   EXPEDITION_MAX_COMPANIONS,
   EXPEDITION_MAX_EVENTS_PER_TICK,
   EXPEDITION_MIN_RETURN_HOURS,
   EXPEDITION_RETURN_RATIO,
-  EXPEDITION_ROLE_CHANCE_BONUS,
   EXPEDITION_SAMPLE_TOAD_CHANCE,
   EXPEDITION_TEAM_SIZE,
   FORCED_EXTRACTION_FEE_PER_TOAD,
@@ -81,6 +78,8 @@ import {
   getEvacuationCost,
   getAwayToadUpdate,
   getContourPassReward,
+  getExpeditionEventChance,
+  getExpeditionEventCount,
   getExpeditionProfitFloor,
   getExpeditionSampleReward,
   getExpeditionSendCost,
@@ -122,8 +121,6 @@ import { getHpRegenPerHour, getHospitalRoomIds } from "./hospital";
  */
 
 const HOUR_MS = 60 * 60 * 1000;
-/** Сколько шагов событий на пути «туда» */
-const STEPS_TOTAL = Math.ceil(1 / EXPEDITION_EVENT_PROGRESS_STEP);
 
 export interface ExpeditionActionResult {
   success: boolean;
@@ -437,6 +434,7 @@ export const startExpedition = (
     phase: "outbound",
     progress: 0,
     resolvedSteps: 0,
+    totalEvents: getExpeditionEventCount(sector),
     successChance: getExpeditionSuccessChance(
       successMembers,
       sector,
@@ -959,15 +957,12 @@ const buildEventContext = (
     const toad = runtime.toads.get(member.toadId) as Toad;
     const maxHp = runtime.maxHp.get(member.toadId) || 1;
     const hpRatio = clamp((runtime.hp.get(member.toadId) ?? 0) / maxHp, 0, 1);
-    const chance =
-      clamp(
-        baseChance +
-          getRolePower(toad, member.role) * EXPEDITION_ROLE_CHANCE_BONUS -
-          (sector.dangerMultiplier - 1) * EXPEDITION_DANGER_CHANCE_PENALTY,
-        0.05,
-        0.95,
-      ) *
-      (0.6 + 0.4 * hpRatio);
+    const chance = getExpeditionEventChance(
+      getRolePower(toad, member.role),
+      sector,
+      hpRatio,
+      baseChance,
+    );
 
     return rng() < chance;
   };
@@ -1013,23 +1008,36 @@ const runExpeditionStep = (
   return ctx;
 };
 
-/** Сколько шагов событий уже «наступило» по часам */
+/**
+ * Сколько событий на пути «туда»: у старых сейвов поля нет, поэтому
+ * считаем по текущему сектору.
+ */
+const getEventsTotal = (expedition: Expedition, sector: SectorDef): number =>
+  Math.max(1, expedition.totalEvents ?? getExpeditionEventCount(sector));
+
+/**
+ * Сколько шагов событий уже «наступило» по часам.
+ *
+ * Первое событие разыгрывается на старте, дальше — через равные отрезки
+ * `путь / число событий`. Последнее событие приходится на предпоследний
+ * отрезок, а оставшийся отрезок нужен на прибытие в сектор.
+ */
 const getStepsDue = (
   expedition: Expedition,
   sector: SectorDef,
   now: number,
 ): number => {
+  const totalEvents = getEventsTotal(expedition, sector);
   const totalMs = sector.durationHours * HOUR_MS;
   const elapsed = Math.max(0, now - expedition.startedAt);
 
-  if (elapsed >= totalMs) {
-    return STEPS_TOTAL;
+  if (totalMs <= 0 || elapsed >= totalMs) {
+    return totalEvents;
   }
 
-  return Math.min(
-    STEPS_TOTAL,
-    Math.floor(elapsed / (totalMs * EXPEDITION_EVENT_PROGRESS_STEP)) + 1,
-  );
+  const intervalMs = totalMs / totalEvents;
+
+  return Math.min(totalEvents, Math.floor(elapsed / intervalMs) + 1);
 };
 
 /**
@@ -1062,6 +1070,7 @@ export const processExpeditions = (
     const sector = getSectorById(expedition.sectorId);
 
     if (expedition.phase === "outbound") {
+      const totalEvents = getEventsTotal(expedition, sector);
       const stepsDue = getStepsDue(expedition, sector, now);
       const runtime = buildRuntime(expedition, state.toads);
       let resolvedNow = 0;
@@ -1103,7 +1112,7 @@ export const processExpeditions = (
       if (expedition.phase === "outbound") {
         const stepProgress = Math.min(
           1,
-          expedition.resolvedSteps * EXPEDITION_EVENT_PROGRESS_STEP,
+          expedition.resolvedSteps / totalEvents,
         );
 
         if (stepProgress !== expedition.progress) {
@@ -1112,7 +1121,7 @@ export const processExpeditions = (
         }
 
         const arrived =
-          expedition.resolvedSteps >= STEPS_TOTAL &&
+          expedition.resolvedSteps >= totalEvents &&
           now - expedition.startedAt >= sector.durationHours * HOUR_MS;
 
         if (arrived) {

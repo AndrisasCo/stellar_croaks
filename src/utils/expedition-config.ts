@@ -17,6 +17,17 @@ import {
 } from "./gamification-config";
 import { getToadHomeId } from "./toad-location";
 
+export const EXPEDITION_RESERVE_REQUIREMENTS: Record<
+  ExpeditionRole,
+  ExpeditionReserveRequirement
+> = {
+  hacker: { rarity: 10 },
+  scout: { speed: 2 },
+  tank: { weight: 30 },
+  medic: { fertility: 2 },
+  negotiator: { hungerRate: 2 },
+};
+
 /**
  * Константы разведки (Часть 5) и смысл характеристик жаб (Часть 5.3).
  * Чистые расчёты без обращения к сохранению — состояние меняет
@@ -71,35 +82,35 @@ export const ROLE_CONFIG: Record<ExpeditionRole, ExpeditionRoleConfig> = {
     icon: "🏃",
     statLabel: "Скорость",
     description: "Уклоняется, разведывает путь, находит обходы.",
-    statCap: 1.5,
+    statCap: EXPEDITION_RESERVE_REQUIREMENTS.scout.speed,
   },
   tank: {
     label: "Щитоносец",
     icon: "🛡️",
     statLabel: "Масса / HP",
     description: "Принимает урон на себя и прикрывает команду.",
-    statCap: 40,
+    statCap: EXPEDITION_RESERVE_REQUIREMENTS.tank.weight,
   },
   medic: {
     label: "Ремонтник",
     icon: "🔧",
     statLabel: "Плодовитость",
     description: "Починяет и подлечивает жаб прямо в рейде.",
-    statCap: 3,
+    statCap: EXPEDITION_RESERVE_REQUIREMENTS.medic.fertility,
   },
   hacker: {
     label: "Оператор",
     icon: "💻",
     statLabel: "Качество",
     description: "Вскрывает сейфы, обходит турели, выкачивает данные.",
-    statCap: 12,
+    statCap: EXPEDITION_RESERVE_REQUIREMENTS.hacker.rarity,
   },
   negotiator: {
-    label: "Повар",
+    label: "Снабженец",
     icon: "🍎",
     statLabel: "Аппетит",
     description: "Договаривается с местной органикой, добывает образцы.",
-    statCap: 1.5,
+    statCap: EXPEDITION_RESERVE_REQUIREMENTS.negotiator.hungerRate,
   },
 };
 
@@ -138,7 +149,7 @@ export const getRolePower = (toad: Toad, role: ExpeditionRole): number => {
  * - скаут: скорость — сила роли;
  * - щитоносец: размер даёт HP и силу роли;
  * - ремонтник: плодовитость — сила роли;
- * - повар: аппетит — сила роли.
+ * - Снабженец: аппетит — сила роли.
  *
  * Значения синхронизированы с описанием `m13-expedition-reserve`.
  */
@@ -151,24 +162,12 @@ export interface ExpeditionReserveRequirement {
   hungerRate?: number;
 }
 
-export const EXPEDITION_RESERVE_REQUIREMENTS: Record<
-  ExpeditionRole,
-  ExpeditionReserveRequirement
-> = {
-  hacker: { maxEnergy: 150, rarity: 10 },
-  scout: { speed: 1.2 },
-  tank: { weight: 18 },
-  medic: { fertility: 1.2 },
-  negotiator: { hungerRate: 1.2 },
-};
-
 /**
  * Жаба получена селекцией или коллайдером: у неё есть родители.
  * Дикие жабы и жабы из лутбоксов (`parents: null`) под условие не попадают.
  */
-export const isBredOrColliderToad = (
-  toad: Pick<Toad, "parents">,
-): boolean => Array.isArray(toad.parents) && toad.parents.length > 0;
+export const isBredOrColliderToad = (toad: Pick<Toad, "parents">): boolean =>
+  Array.isArray(toad.parents) && toad.parents.length > 0;
 
 const meetsReserveRequirement = (
   toad: Toad,
@@ -214,9 +213,7 @@ export const isExpeditionReserveToad = (toad: Toad): boolean =>
  * проходит её порог. Одна жаба может закрыть несколько ролей сразу, поэтому
  * универсал со всеми статами даёт максимальные 5/5.
  */
-export const countExpeditionReserveRoles = (
-  toads: readonly Toad[],
-): number => {
+export const countExpeditionReserveRoles = (toads: readonly Toad[]): number => {
   const covered = new Set<ExpeditionRole>();
 
   for (const toad of toads) {
@@ -377,14 +374,72 @@ export const getHealCost = (toad: Toad): number => {
 
 // === Путь, события и добыча ===
 
-/** Через какие доли пути (0..1) разыгрывается событие похода */
-export const EXPEDITION_EVENT_PROGRESS_STEP = 0.12;
+/**
+ * Максимум событий на пути «туда». События идут равными промежутками,
+ * поэтому на длинных маршрутах интервал растёт, а не число событий.
+ */
+export const EXPEDITION_MAX_EVENTS = 30;
+/** Минимальный интервал между событиями похода, минуты */
+export const EXPEDITION_MIN_EVENT_INTERVAL_MINUTES = 7;
+
+const MINUTE_MS = 60 * 1000;
+const HOUR_MS = 60 * MINUTE_MS;
+
+/**
+ * Сколько событий разыграется на пути «туда».
+ *
+ * Считаем по минимальному интервалу и ограничиваем сверху 30:
+ * s1 (1.5 ч) — 18 событий по 5 минут, s2–s8 — 30 событий с интервалом
+ * от 6 до 48 минут. Если маршрут короче 5 минут, всё равно оставляем
+ * одно событие, чтобы поход не остался без событий вовсе.
+ */
+export const getExpeditionEventCount = (sector: SectorDef): number => {
+  const durationMs = Math.max(0, sector.durationHours) * HOUR_MS;
+  const byInterval = Math.floor(
+    durationMs / (EXPEDITION_MIN_EVENT_INTERVAL_MINUTES * MINUTE_MS),
+  );
+
+  return Math.max(1, Math.min(EXPEDITION_MAX_EVENTS, byInterval));
+};
+
+/** Интервал между событиями похода: путь делится на равные отрезки */
+export const getExpeditionEventIntervalMs = (sector: SectorDef): number =>
+  (Math.max(0, sector.durationHours) * HOUR_MS) /
+  getExpeditionEventCount(sector);
 /** База шанса на успех в событии роли */
 export const EXPEDITION_BASE_EVENT_CHANCE = 0.55;
 /** Вклад силы роли в шанс успеха */
 export const EXPEDITION_ROLE_CHANCE_BONUS = 0.35;
 /** Штраф к шансу за каждую единицу опасности выше 1 */
 export const EXPEDITION_DANGER_CHANCE_PENALTY = 0.12;
+
+const clamp = (value: number, min: number, max: number): number =>
+  Math.max(min, Math.min(max, value));
+
+/**
+ * Шанс успешной проверки события для роли.
+ *
+ * База + вклад силы роли − опасность сектора; раненые жабы бросают хуже.
+ * Формула одна для менеджера и интерфейса: карточка роли показывает ровно тот
+ * шанс, который реально бросается в событии.
+ */
+export const getExpeditionEventChance = (
+  rolePower: number,
+  sector: SectorDef,
+  hpRatio = 1,
+  baseChance = EXPEDITION_BASE_EVENT_CHANCE,
+): number => {
+  const chance = clamp(
+    baseChance +
+      Math.max(0, rolePower) * EXPEDITION_ROLE_CHANCE_BONUS -
+      (sector.dangerMultiplier - 1) * EXPEDITION_DANGER_CHANCE_PENALTY,
+    0.05,
+    0.95,
+  );
+
+  return chance * (0.6 + 0.4 * clamp(hpRatio, 0, 1));
+};
+
 /** Добыча события «за шаг пути» (биомасса) */
 export const EXPEDITION_STEP_BIOMASS = 5;
 /** Добыча события «за шаг пути» (Кваксы) */
@@ -393,8 +448,12 @@ export const EXPEDITION_STEP_TOKENS = 4;
 export const EXPEDITION_MIN_RETURN_HOURS = 0.25;
 /** Путь назад = половина пройденного времени (Часть 5.2) */
 export const EXPEDITION_RETURN_RATIO = 0.5;
-/** Максимум событий, разыгрываемых за один тик (анти-оффлайн-фарм) */
-export const EXPEDITION_MAX_EVENTS_PER_TICK = 6;
+/**
+ * Максимум событий, разыгрываемых за один тик. События и так привязаны
+ * к часам, поэтому оффлайн-догон можно разыграть целиком: иначе 30 событий
+ * растянулись бы на пять 5-минутных тиков и команда висела бы «в пути».
+ */
+export const EXPEDITION_MAX_EVENTS_PER_TICK = EXPEDITION_MAX_EVENTS;
 /** Доля боли, которую снимает щитоносец с команды */
 export const TANK_DAMAGE_REDIRECT = 0.6;
 
@@ -436,7 +495,7 @@ export const getContourPassReward = (sector: SectorDef): number =>
 /**
  * Каждая роль в команде добавляет шанс завершить поход удачно.
  * Полностью подходящая жаба (сила роли 1.0) даёт +20%; жаба на 200% даёт +40%,
- * а жаба, которая лишь дотягивает до требований роли (сила < 1), закрывает только
+ * а жаба, которая не дотягивает до требований роли (сила < 1), закрывает только
  * половину вклада. Отсюда две опорные точки дизайна:
  *  - 5 ролей с силой 0.9 → 5 × 0.45 × 20% = 45% удачного завершения;
  *  - 3 роли с силой 2.0 → 3 × 2.0 × 20% = 120% (гарантированный успех).
@@ -476,7 +535,7 @@ export const EXPEDITION_ASTRO_VALUE = 5;
 
 /** Вклад роли в «юнитах»: 1 юнит = +20% к шансу удачного завершения */
 export const getRoleSuccessUnits = (power: number): number =>
-  Math.max(0, power) <= 1
+  Math.max(0, power) < 1
     ? Math.max(0, power) * EXPEDITION_ROLE_UNDERFIT_FACTOR
     : Math.max(0, power);
 

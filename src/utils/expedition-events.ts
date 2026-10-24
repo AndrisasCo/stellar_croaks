@@ -195,7 +195,100 @@ const failMissingRole = (
 
 // === Пул событий похода ===
 
-export const EXPEDITION_EVENTS: ExpeditionEventDef[] = [
+const NEUTRAL_EVENTS = [
+  {
+    id: "sealed_observation_deck",
+    run: (ctx) => {
+      ctx.log({
+        kind: "info",
+        text: "Смотровая палуба заварена изнутри. Через щель видно, что станция дрейфует к газовому гиганту — медленно, но верно. Никто не стал считать, сколько осталось.",
+      });
+    },
+  },
+  {
+    id: "crew_roster_wall",
+    run: (ctx) => {
+      ctx.log({
+        kind: "info",
+        text: "На стене — список экипажа. Последние двенадцать имён зачёркнуты одним движением, снизу подписано: «переведены». Куда — не указано.",
+      });
+    },
+  },
+  {
+    id: "toad_superstition",
+    run: (ctx) => {
+      ctx.log({
+        kind: "info",
+        text: "Команда обходит люк с маркировкой «B-13» по широкой дуге. Никто не объясняет почему, и спрашивать никто не хочет.",
+      });
+    },
+  },
+  {
+    id: "abandoned_experiment_log",
+    run: (ctx) => {
+      ctx.log({
+        kind: "info",
+        text: "На терминале открыт журнал эксперимента: последняя запись обрывается на середине слова. Курсор всё ещё мигает.",
+      });
+    },
+  },
+  {
+    id: "gravity_anomaly",
+    run: (ctx) => {
+      ctx.log({
+        kind: "info",
+        text: "В одном отсеке гравитация чуть сильнее — капли конденсата падают быстрее. Приборы показывают норму. Жабы решили не задерживаться.",
+      });
+    },
+  },
+  {
+    id: "handwritten_warning",
+    run: (ctx) => {
+      ctx.log({
+        kind: "info",
+        text: "Кто-то выцарапал на переборке: «они считают нас». Почерк торопливый, глубина царапин — неровная, будто рука дрожала.",
+      });
+    },
+  },
+  {
+    id: "toad_ritual",
+    run: (ctx) => {
+      ctx.log({
+        kind: "info",
+        text: "Одна из жаб молча коснулась переборки и что-то прошептала — старый обычай перед дальней дорогой. Остальные сделали вид, что не заметили.",
+      });
+    },
+  },
+  {
+    id: "dormant_swarm",
+    run: (ctx) => {
+      ctx.log({
+        kind: "info",
+        text: "За стеклом — масса спящих насекомых, прижатых к дальней стенке контейнера. Стекло целое. Пока целое. Команда прошла мимо на цыпочках.",
+      });
+    },
+  },
+  {
+    id: "sector_map_scratch",
+    run: (ctx) => {
+      ctx.log({
+        kind: "info",
+        text: "На стене нацарапана карта сектора. Несколько коридоров перечёркнуты, один обведён трижды. Подписи стёрты — кто-то не хотел, чтобы их читали.",
+      });
+    },
+  },
+  {
+    id: "distress_buoy",
+    run: (ctx) => {
+      ctx.log({
+        kind: "info",
+        text: "В углу мигает спасательный буй. Сигнал записан и повторяется по кругу: голос называет координаты, но не называет себя. Буй никто не выключил.",
+      });
+    },
+  },
+];
+
+export const EXPEDITION_EVENTS = [
   {
     id: "quiet_corridor",
     run: (ctx) => {
@@ -623,7 +716,653 @@ export const EXPEDITION_EVENTS: ExpeditionEventDef[] = [
       }
     },
   },
-];
+  {
+    id: "medkit_cache",
+    run: (ctx) => {
+      const power = ctx.byRole("medic")
+        ? getRolePower(ctx.byRole("medic")!.toad, "medic")
+        : 0;
+      const amount = Math.round(6 + power * 8);
+      let healed = 0;
+      ctx.alive.forEach((m) => {
+        healed += ctx.heal(m, amount);
+      });
+      ctx.log({
+        kind: "good",
+        text: `в стене нашли аптечку, заныканную кем-то на чёрный день. Судя по пыли, день так и не наступил. Команда подлатана на ${healed} HP`,
+      });
+    },
+  },
+  {
+    id: "supply_drop_pod",
+    run: (ctx) => {
+      const delta = {
+        ...stepLoot(ctx, 1.2),
+        items: { [Items.food]: 2 + Math.floor(ctx.rng() * 4) },
+        ...rareLoot(ctx),
+      };
+      ctx.loot(delta);
+      ctx.log({
+        kind: "good",
+        text: `сбили капсулу снабжения, застрявшую в ферме антенн. На борту — припасы и записка: «прости, что не дождался». Адресат так и не получил посылку: ${describeLoot(delta)}`,
+      });
+    },
+  },
+  {
+    id: "friendly_maintenance_drone",
+    run: (ctx) => {
+      const delta = {
+        tokens: Math.max(2, Math.round(3 * getSectorLootFactor(ctx.sector))),
+        ...rareLoot(ctx),
+      };
+      ctx.loot(delta);
+      ctx.log({
+        kind: "good",
+        text: `дрон-уборщик принял команду за смену, которую ждал годами, и высыпал содержимое бака: ${describeLoot(delta)}. Улетая, он трижды просигналил что-то похожее на «наконец-то»`,
+      });
+    },
+  },
+  {
+    id: "clean_water_condenser",
+    run: (ctx) => {
+      const delta = stepLoot(ctx, 1.3);
+      ctx.loot(delta);
+      ctx.log({
+        kind: "good",
+        text: `конденсатор ещё работает — кто-то настраивал его совсем недавно. Нацедили чистой воды и сняли биомассу с осадка: ${describeLoot(delta)}`,
+      });
+    },
+  },
+  {
+    id: "cache_of_spare_parts",
+    run: (ctx) => {
+      const delta = {
+        items: { [Items.geneDust]: 1 },
+        ...stepLoot(ctx, 0.9),
+        ...rareLoot(ctx),
+      };
+      ctx.loot(delta);
+      ctx.log({
+        kind: "good",
+        text: `разобрали заклинивший шкаф с запчастями. Внутри — аккуратно подписанные коробки и пустая полка с биркой «для Витька». Витька здесь давно нет: ${describeLoot(delta)}`,
+      });
+    },
+  },
+  {
+    id: "collapsing_ceiling",
+    run: (ctx) => {
+      const { total } = ctx.teamDamage(scaleDamage(ctx, 9));
+      ctx.log({
+        kind: "bad",
+        text: `потолок просел и осыпался: команда потеряла ${total} HP. В обломках — чей-то спальный мешок, аккуратно свёрнутый. Кто-то спал здесь, пока балки держали`,
+      });
+    },
+  },
+  {
+    id: "acid_drip",
+    run: (ctx) => {
+      const victim = ctx.randomMember();
+      if (!victim) return;
+      const dealt = ctx.damage(victim, scaleDamage(ctx, 8));
+      ctx.log({
+        member: victim,
+        kind: "bad",
+        text: `капля кислоты с потолка попала ${victim.toad.name} (−${dealt} HP). Над головой — разъеденная труба: кто-то пустил по ней не то, что она должна была нести`,
+      });
+    },
+  },
+  {
+    id: "false_floor",
+    run: (ctx) => {
+      const victim = ctx.randomMember();
+      if (!victim) return;
+      const dealt = ctx.damage(victim, scaleDamage(ctx, 10));
+      ctx.log({
+        member: victim,
+        kind: "bad",
+        text: `фальшпол провалился под ${victim.toad.name} (−${dealt} HP). Внизу — кабели, перерезанные аккуратно, а не порванные. Кто-то готовил эту ловушку заранее`,
+      });
+    },
+  },
+  {
+    id: "contaminated_air",
+    run: (ctx) => {
+      const victim = ctx.randomMember();
+      if (!victim) return;
+      const disease = ctx.infect(victim);
+      if (disease) {
+        ctx.log({
+          member: victim,
+          kind: "bad",
+          text: `в отсеке надышались дряни: ${victim.toad.name} подхватил${victim.toad.sex === "female" ? "а" : ""} ${disease}. Фильтры выдраны с корнем — вентиляцию отключили намеренно`,
+        });
+      } else {
+        const dealt = ctx.damage(victim, scaleDamage(ctx, 6));
+        ctx.log({
+          member: victim,
+          kind: "bad",
+          text: `в отсеке надышались дряни: ${victim.toad.name} (−${dealt} HP). Фильтры выдраны с корнем — вентиляцию отключили намеренно`,
+        });
+      }
+    },
+  },
+  {
+    id: "snapped_cable",
+    run: (ctx) => {
+      const { total } = ctx.teamDamage(scaleDamage(ctx, 7));
+      ctx.log({
+        kind: "bad",
+        text: `лопнувший силовой кабель хлестнул по команде (−${total} HP). На срезе видно: кабель перегрызли, а не перетёрли. Кто-то был здесь и ушёл`,
+      });
+    },
+  },
+  {
+    id: "manual_override_hatch",
+    role: "scout",
+    run: (ctx) => {
+      const scout = ctx.byRole("scout");
+      if (!scout) {
+        failMissingRole(
+          ctx,
+          11,
+          (victim, dealt) =>
+            `люк захлопнулся, прищемив ${victim.toad.name} (−${dealt} HP): разведчика в команде не было`,
+        );
+        return;
+      }
+      if (ctx.check(scout, 0.5)) {
+        const delta = { ...stepLoot(ctx, 1.1), ...rareLoot(ctx) };
+        ctx.loot(delta);
+        ctx.log({
+          member: scout,
+          kind: "good",
+          text: `пролез в технический лаз и открыл ручной обход. В лазу — чужие следы, свежие, но ведущие наружу: ${describeLoot(delta)}`,
+        });
+      } else {
+        const dealt = ctx.damage(scout, scaleDamage(ctx, 11));
+        ctx.log({
+          member: scout,
+          kind: "bad",
+          text: `застрял в лазу и ободрался (−${dealt} HP). Стенки лаза исцарапаны изнутри — кто-то выбирался отсюда так же`,
+        });
+      }
+    },
+  },
+  {
+    id: "pressure_bulkhead",
+    role: "tank",
+    run: (ctx) => {
+      const tank = ctx.byRole("tank");
+      if (!tank) {
+        failMissingRole(
+          ctx,
+          15,
+          (victim, dealt) =>
+            `гермодверь прижала ${victim.toad.name} (−${dealt} HP): щитоносца в команде не было`,
+        );
+        return;
+      }
+      if (ctx.check(tank, 0.55)) {
+        const delta = {
+          ...stepLoot(ctx, 1.0),
+          items: { [Items.geneDust]: 1 },
+          ...rareLoot(ctx),
+        };
+        ctx.loot(delta);
+        ctx.log({
+          member: tank,
+          kind: "good",
+          text: `удержал гермодверь и вынес из отсека всё ценное. За дверью — стол, накрытый на двоих: ${describeLoot(delta)}`,
+        });
+      } else {
+        const dealt = ctx.damage(tank, scaleDamage(ctx, 15));
+        ctx.log({
+          member: tank,
+          kind: "bad",
+          text: `дверь пошла на закрытие и приложила щитоносца (−${dealt} HP). Механизм заклинило снаружи — кто-то заблокировал его намеренно`,
+        });
+      }
+    },
+  },
+  {
+    id: "encrypted_black_box",
+    role: "hacker",
+    run: (ctx) => {
+      const hacker = ctx.byRole("hacker");
+      if (!hacker) {
+        failMissingRole(
+          ctx,
+          9,
+          (victim, dealt) =>
+            `чёрный ящик коротнул на ${victim.toad.name} (−${dealt} HP): вскрывать было некому`,
+        );
+        return;
+      }
+      if (ctx.check(hacker, 0.45)) {
+        const delta = {
+          tokens: Math.max(
+            3,
+            Math.round(
+              EXPEDITION_STEP_TOKENS * 1.4 * getSectorLootFactor(ctx.sector),
+            ),
+          ),
+          ...rareLoot(ctx),
+        };
+        ctx.loot(delta);
+        ctx.log({
+          member: hacker,
+          kind: "good",
+          text: `расковырял чёрный ящик дрона. Последняя запись: «возвращаюсь на базу», хотя базы в этом секторе нет уже годами: ${describeLoot(delta)}`,
+        });
+      } else {
+        const dealt = ctx.damage(hacker, scaleDamage(ctx, 9));
+        ctx.log({
+          member: hacker,
+          kind: "bad",
+          text: `ящик оказался с сюрпризом (−${dealt} HP). Внутри — не данные, а ловушка. Кто-то не хотел, чтобы это читали`,
+        });
+      }
+    },
+  },
+  {
+    id: "spore_hive",
+    role: "negotiator",
+    run: (ctx) => {
+      const negotiator = ctx.byRole("negotiator");
+      if (!negotiator) {
+        failMissingRole(
+          ctx,
+          9,
+          (victim, dealt) =>
+            `улей плесени атаковал ${victim.toad.name} (−${dealt} HP): договариваться было некому`,
+        );
+        return;
+      }
+      if (ctx.check(negotiator, 0.5)) {
+        const delta: ExpeditionLootDelta = {
+          ...stepLoot(ctx, 0.7),
+          ...rareLoot(ctx),
+        };
+        if (ctx.rng() < 0.2) {
+          delta.sample = (delta.sample || 0) + 1;
+        }
+        ctx.loot(delta);
+        ctx.log({
+          member: negotiator,
+          kind: "good",
+          text: `уговорил${negotiator.toad.sex === "female" ? "а" : ""} улей отдать излишки. Плесень признала команду — значит, кто-то до неё уже договаривался: ${describeLoot(delta)}`,
+        });
+      } else {
+        const victim = ctx.randomMember() ?? negotiator;
+        const dealt = ctx.damage(victim, scaleDamage(ctx, 9));
+        ctx.log({
+          member: victim,
+          kind: "bad",
+          text: `улей не стал слушать: ${victim.toad.name} (−${dealt} HP). В спорах улей видел только чужаков — и, судя по костям у входа, не впервые`,
+        });
+      }
+    },
+  },
+  {
+    id: "field_surgery_kit",
+    role: "medic",
+    run: (ctx) => {
+      const medic = ctx.byRole("medic");
+      if (!medic) {
+        failMissingRole(
+          ctx,
+          8,
+          (victim, dealt) =>
+            `автоклав ошпарил ${victim.toad.name} (−${dealt} HP): ремонтника в команде нет`,
+        );
+        return;
+      }
+      if (ctx.check(medic, 0.55)) {
+        const power = getRolePower(medic.toad, "medic");
+        const amount = Math.round(10 + power * 16);
+        let healed = 0;
+        ctx.alive.forEach((m) => {
+          healed += ctx.heal(m, amount);
+        });
+        ctx.log({
+          member: medic,
+          kind: "good",
+          text: `развернул${medic.toad.sex === "female" ? "а" : ""} полевую хирургию в старом медотсеке. На столе — разложенные инструменты, будто врач вышел на минуту: команда восстановлена на ${healed} HP`,
+        });
+      } else {
+        const dealt = ctx.damage(medic, scaleDamage(ctx, 8));
+        ctx.log({
+          member: medic,
+          kind: "bad",
+          text: `медотсек оказался неисправен, автоклав ошпарил ремонтника (−${dealt} HP). В журнале — последняя запись: «стерилизовать повторно» — и дата трёхлетней давности`,
+        });
+      }
+    },
+  },
+  {
+    id: "medkit_cache",
+    run: (ctx) => {
+      const power = ctx.byRole("medic")
+        ? getRolePower(ctx.byRole("medic")!.toad, "medic")
+        : 0;
+      const amount = Math.round(6 + power * 8);
+      let healed = 0;
+      ctx.alive.forEach((m) => {
+        healed += ctx.heal(m, amount);
+      });
+      ctx.log({
+        kind: "good",
+        text: `в стене нашли аптечку, заныканную кем-то на чёрный день. Судя по пыли, день так и не наступил. Команда подлатана на ${healed} HP`,
+      });
+    },
+  },
+  {
+    id: "supply_drop_pod",
+    run: (ctx) => {
+      const delta = {
+        ...stepLoot(ctx, 1.2),
+        items: { [Items.food]: 2 + Math.floor(ctx.rng() * 4) },
+        ...rareLoot(ctx),
+      };
+      ctx.loot(delta);
+      ctx.log({
+        kind: "good",
+        text: `сбили капсулу снабжения, застрявшую в ферме антенн. На борту — припасы и записка: «прости, что не дождался». Адресат так и не получил посылку: ${describeLoot(delta)}`,
+      });
+    },
+  },
+  {
+    id: "friendly_maintenance_drone",
+    run: (ctx) => {
+      const delta = {
+        tokens: Math.max(2, Math.round(3 * getSectorLootFactor(ctx.sector))),
+        ...rareLoot(ctx),
+      };
+      ctx.loot(delta);
+      ctx.log({
+        kind: "good",
+        text: `дрон-уборщик принял команду за смену, которую ждал годами, и высыпал содержимое бака: ${describeLoot(delta)}. Улетая, он трижды просигналил что-то похожее на «наконец-то»`,
+      });
+    },
+  },
+  {
+    id: "clean_water_condenser",
+    run: (ctx) => {
+      const delta = stepLoot(ctx, 1.3);
+      ctx.loot(delta);
+      ctx.log({
+        kind: "good",
+        text: `конденсатор ещё работает — кто-то настраивал его совсем недавно. Нацедили чистой воды и сняли биомассу с осадка: ${describeLoot(delta)}`,
+      });
+    },
+  },
+  {
+    id: "cache_of_spare_parts",
+    run: (ctx) => {
+      const delta = {
+        items: { [Items.geneDust]: 1 },
+        ...stepLoot(ctx, 0.9),
+        ...rareLoot(ctx),
+      };
+      ctx.loot(delta);
+      ctx.log({
+        kind: "good",
+        text: `разобрали заклинивший шкаф с запчастями. Внутри — аккуратно подписанные коробки и пустая полка с биркой «для Витька». Витька здесь давно нет: ${describeLoot(delta)}`,
+      });
+    },
+  },
+  {
+    id: "collapsing_ceiling",
+    run: (ctx) => {
+      const { total } = ctx.teamDamage(scaleDamage(ctx, 9));
+      ctx.log({
+        kind: "bad",
+        text: `потолок просел и осыпался: команда потеряла ${total} HP. В обломках — чей-то спальный мешок, аккуратно свёрнутый. Кто-то спал здесь, пока балки держали`,
+      });
+    },
+  },
+  {
+    id: "acid_drip",
+    run: (ctx) => {
+      const victim = ctx.randomMember();
+      if (!victim) return;
+      const dealt = ctx.damage(victim, scaleDamage(ctx, 8));
+      ctx.log({
+        member: victim,
+        kind: "bad",
+        text: `капля кислоты с потолка попала ${victim.toad.name} (−${dealt} HP). Над головой — разъеденная труба: кто-то пустил по ней не то, что она должна была нести`,
+      });
+    },
+  },
+  {
+    id: "false_floor",
+    run: (ctx) => {
+      const victim = ctx.randomMember();
+      if (!victim) return;
+      const dealt = ctx.damage(victim, scaleDamage(ctx, 10));
+      ctx.log({
+        member: victim,
+        kind: "bad",
+        text: `фальшпол провалился под ${victim.toad.name} (−${dealt} HP). Внизу — кабели, перерезанные аккуратно, а не порванные. Кто-то готовил эту ловушку заранее`,
+      });
+    },
+  },
+  {
+    id: "contaminated_air",
+    run: (ctx) => {
+      const victim = ctx.randomMember();
+      if (!victim) return;
+      const disease = ctx.infect(victim);
+      if (disease) {
+        ctx.log({
+          member: victim,
+          kind: "bad",
+          text: `в отсеке надышались дряни: ${victim.toad.name} подхватил${victim.toad.sex === "female" ? "а" : ""} ${disease}. Фильтры выдраны с корнем — вентиляцию отключили намеренно`,
+        });
+      } else {
+        const dealt = ctx.damage(victim, scaleDamage(ctx, 6));
+        ctx.log({
+          member: victim,
+          kind: "bad",
+          text: `в отсеке надышались дряни: ${victim.toad.name} (−${dealt} HP). Фильтры выдраны с корнем — вентиляцию отключили намеренно`,
+        });
+      }
+    },
+  },
+  {
+    id: "snapped_cable",
+    run: (ctx) => {
+      const { total } = ctx.teamDamage(scaleDamage(ctx, 7));
+      ctx.log({
+        kind: "bad",
+        text: `лопнувший силовой кабель хлестнул по команде (−${total} HP). На срезе видно: кабель перегрызли, а не перетёрли. Кто-то был здесь и ушёл`,
+      });
+    },
+  },
+  {
+    id: "manual_override_hatch",
+    role: "scout",
+    run: (ctx) => {
+      const scout = ctx.byRole("scout");
+      if (!scout) {
+        failMissingRole(
+          ctx,
+          11,
+          (victim, dealt) =>
+            `люк захлопнулся, прищемив ${victim.toad.name} (−${dealt} HP): разведчика в команде не было`,
+        );
+        return;
+      }
+      if (ctx.check(scout, 0.5)) {
+        const delta = { ...stepLoot(ctx, 1.1), ...rareLoot(ctx) };
+        ctx.loot(delta);
+        ctx.log({
+          member: scout,
+          kind: "good",
+          text: `пролез в технический лаз и открыл ручной обход. В лазу — чужие следы, свежие, но ведущие наружу: ${describeLoot(delta)}`,
+        });
+      } else {
+        const dealt = ctx.damage(scout, scaleDamage(ctx, 11));
+        ctx.log({
+          member: scout,
+          kind: "bad",
+          text: `застрял в лазу и ободрался (−${dealt} HP). Стенки лаза исцарапаны изнутри — кто-то выбирался отсюда так же`,
+        });
+      }
+    },
+  },
+  {
+    id: "pressure_bulkhead",
+    role: "tank",
+    run: (ctx) => {
+      const tank = ctx.byRole("tank");
+      if (!tank) {
+        failMissingRole(
+          ctx,
+          15,
+          (victim, dealt) =>
+            `гермодверь прижала ${victim.toad.name} (−${dealt} HP): щитоносца в команде не было`,
+        );
+        return;
+      }
+      if (ctx.check(tank, 0.55)) {
+        const delta = {
+          ...stepLoot(ctx, 1.0),
+          items: { [Items.geneDust]: 1 },
+          ...rareLoot(ctx),
+        };
+        ctx.loot(delta);
+        ctx.log({
+          member: tank,
+          kind: "good",
+          text: `удержал гермодверь и вынес из отсека всё ценное. За дверью — стол, накрытый на двоих: ${describeLoot(delta)}`,
+        });
+      } else {
+        const dealt = ctx.damage(tank, scaleDamage(ctx, 15));
+        ctx.log({
+          member: tank,
+          kind: "bad",
+          text: `дверь пошла на закрытие и приложила щитоносца (−${dealt} HP). Механизм заклинило снаружи — кто-то заблокировал его намеренно`,
+        });
+      }
+    },
+  },
+  {
+    id: "encrypted_black_box",
+    role: "hacker",
+    run: (ctx) => {
+      const hacker = ctx.byRole("hacker");
+      if (!hacker) {
+        failMissingRole(
+          ctx,
+          9,
+          (victim, dealt) =>
+            `чёрный ящик коротнул на ${victim.toad.name} (−${dealt} HP): вскрывать было некому`,
+        );
+        return;
+      }
+      if (ctx.check(hacker, 0.45)) {
+        const delta = {
+          tokens: Math.max(
+            3,
+            Math.round(
+              EXPEDITION_STEP_TOKENS * 1.4 * getSectorLootFactor(ctx.sector),
+            ),
+          ),
+          ...rareLoot(ctx),
+        };
+        ctx.loot(delta);
+        ctx.log({
+          member: hacker,
+          kind: "good",
+          text: `расковырял чёрный ящик дрона. Последняя запись: «возвращаюсь на базу», хотя базы в этом секторе нет уже годами: ${describeLoot(delta)}`,
+        });
+      } else {
+        const dealt = ctx.damage(hacker, scaleDamage(ctx, 9));
+        ctx.log({
+          member: hacker,
+          kind: "bad",
+          text: `ящик оказался с сюрпризом (−${dealt} HP). Внутри — не данные, а ловушка. Кто-то не хотел, чтобы это читали`,
+        });
+      }
+    },
+  },
+  {
+    id: "spore_hive",
+    role: "negotiator",
+    run: (ctx) => {
+      const negotiator = ctx.byRole("negotiator");
+      if (!negotiator) {
+        failMissingRole(
+          ctx,
+          9,
+          (victim, dealt) =>
+            `улей плесени атаковал ${victim.toad.name} (−${dealt} HP): договариваться было некому`,
+        );
+        return;
+      }
+      if (ctx.check(negotiator, 0.5)) {
+        const delta: ExpeditionLootDelta = {
+          ...stepLoot(ctx, 0.7),
+          ...rareLoot(ctx),
+        };
+        if (ctx.rng() < 0.2) {
+          delta.sample = (delta.sample || 0) + 1;
+        }
+        ctx.loot(delta);
+        ctx.log({
+          member: negotiator,
+          kind: "good",
+          text: `уговорил${negotiator.toad.sex === "female" ? "а" : ""} улей отдать излишки. Плесень признала команду — значит, кто-то до неё уже договаривался: ${describeLoot(delta)}`,
+        });
+      } else {
+        const victim = ctx.randomMember() ?? negotiator;
+        const dealt = ctx.damage(victim, scaleDamage(ctx, 9));
+        ctx.log({
+          member: victim,
+          kind: "bad",
+          text: `улей не стал слушать: ${victim.toad.name} (−${dealt} HP). В спорах улей видел только чужаков — и, судя по костям у входа, не впервые`,
+        });
+      }
+    },
+  },
+  {
+    id: "field_surgery_kit",
+    role: "medic",
+    run: (ctx) => {
+      const medic = ctx.byRole("medic");
+      if (!medic) {
+        failMissingRole(
+          ctx,
+          8,
+          (victim, dealt) =>
+            `автоклав ошпарил ${victim.toad.name} (−${dealt} HP): ремонтника в команде нет`,
+        );
+        return;
+      }
+      if (ctx.check(medic, 0.55)) {
+        const power = getRolePower(medic.toad, "medic");
+        const amount = Math.round(10 + power * 16);
+        let healed = 0;
+        ctx.alive.forEach((m) => {
+          healed += ctx.heal(m, amount);
+        });
+        ctx.log({
+          member: medic,
+          kind: "good",
+          text: `развернул${medic.toad.sex === "female" ? "а" : ""} полевую хирургию в старом медотсеке. На столе — разложенные инструменты, будто врач вышел на минуту: команда восстановлена на ${healed} HP`,
+        });
+      } else {
+        const dealt = ctx.damage(medic, scaleDamage(ctx, 8));
+        ctx.log({
+          member: medic,
+          kind: "bad",
+          text: `медотсек оказался неисправен, автоклав ошпарил ремонтника (−${dealt} HP). В журнале — последняя запись: «стерилизовать повторно» — и дата трёхлетней давности`,
+        });
+      }
+    },
+  },
+].concat(NEUTRAL_EVENTS) as ExpeditionEventDef[];
 
 /**
  * Случайное событие из пула. Состав команды пул не фильтрует: событие роли, которую

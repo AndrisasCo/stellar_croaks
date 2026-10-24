@@ -45,8 +45,9 @@ const HOUR_MS = 60 * 60 * 1000;
 const LS_KEY = "Game_State6";
 
 /**
- * Жаба на поход. Масса и качество дают 250 HP — событий на пути девять,
- * даже при худшем раскладе команда не выбьется и поход завершится штатно.
+ * Жаба на поход. Масса и качество дают 250 HP. Событий на пути s1 теперь 18
+ * (1.5 ч / минимальный интервал 5 минут), поэтому rng фиксируется на нейтральном
+ * событии — проверяем тайминги, а не выживаемость.
  */
 const toad = (id = 1) => ({
   id,
@@ -140,6 +141,7 @@ globalThis.CustomEvent = class {
 };
 
 const models = bundle("src/models/expedition.ts", "models-expedition");
+const config = bundle("src/utils/expedition-config.ts", "expedition-config");
 const manager = bundle("src/utils/expedition-manager.ts", "expedition-manager");
 
 const failures = [];
@@ -171,17 +173,39 @@ const SECTOR = models.SECTORS[0];
 const OUTBOUND_MS = SECTOR.durationHours * HOUR_MS;
 const RETURN_HOURS = 0.75; // 0.5 × 1.5 ч
 
+console.log("\n[0] Каденция событий: не больше 30 и не чаще 5 минут");
+console.log("─".repeat(60));
+for (const sector of models.SECTORS) {
+  const expected = Math.max(
+    1,
+    Math.min(30, Math.floor((sector.durationHours * 60) / 5)),
+  );
+  const count = config.getExpeditionEventCount(sector);
+  const intervalMs = config.getExpeditionEventIntervalMs(sector);
+
+  check(`${sector.name}: событий`, count, expected);
+  check(
+    `${sector.name}: интервал ≥ 5 мин`,
+    intervalMs >= 5 * 60 * 1000 - 1e-6,
+    true,
+  );
+  check(
+    `${sector.name}: интервал равномерный`,
+    near(intervalMs * count, sector.durationHours * HOUR_MS),
+    true,
+  );
+}
+
 console.log("\n[1] Путь «туда» закончился в оффлайне — возврат идёт по часам");
 console.log("─".repeat(60));
 const startedAt = Date.now() - 2 * HOUR_MS;
 reset(makeState({ expeditions: [outbound(startedAt)] }));
 
-// Первый тик «догоняет» шесть событий, второй — остальные три и разворот.
-manager.processExpeditions();
-check("после первого тика команда ещё в пути", savedExpedition().phase, "outbound");
-
+// Догон разыгрывает все 18 событий s1 за один тик: иначе после оффлайна
+// команда висела бы «в пути» ещё несколько игровых тиков.
 manager.processExpeditions();
 const returning = savedExpedition();
+check("разыграны все события пути", returning.resolvedSteps, 18);
 check("после догона команда возвращается", returning.phase, "returning");
 check(
   "возврат начался в момент прибытия в сектор",
@@ -200,7 +224,6 @@ console.log("─".repeat(60));
 const longAgo = Date.now() - 8 * HOUR_MS;
 reset(makeState({ expeditions: [outbound(longAgo)] }));
 
-manager.processExpeditions();
 manager.processExpeditions();
 const completed = savedExpedition();
 check("поход завершён без ожидания обратного пути", completed.phase, "completed");
