@@ -1,13 +1,20 @@
 import { ensureAccount, updateAccountUsername } from "./auth";
 import { applyPendingCredits } from "./purchases";
 import { Toad } from "../models/Toad";
-import { attachIdentity, getGameState, updateGameState } from "./localStorage";
+import { ColliderState } from "../models/types";
+import {
+  attachIdentity,
+  getGameState,
+  updateGameState,
+  type GameState,
+} from "./localStorage";
 import {
   getAchievementState,
   saveAchievementState,
+  type AchivementsState,
 } from "./achivements-manager";
 import { loadColliderState, saveColliderState } from "./collider-manager";
-import { getShopState, saveShopState } from "./shop-state";
+import { getShopState, saveShopState, type ShopState } from "./shop-state";
 import { isCloudSyncEnabled, supabase } from "./supabase";
 
 // Клиент Supabase и флаг «облако настроено» переехали в ./supabase (чтобы вход не
@@ -649,7 +656,11 @@ export const createGameStateDB = async (accountId?: string) => {
     .insert([gameData])
     .select();
 
-  console.log("Created game state!");
+  if (error) {
+    console.warn("[db] не удалось создать прогресс в облаке:", error.message);
+  } else {
+    console.log("Created game state!");
+  }
 
   return { data, error };
 };
@@ -708,9 +719,88 @@ export const getGameStateDB = async (accountId?: string) => {
   return { data, error };
 };
 
-export const syncGameState = async () => {
+/**
+ * Итог синхронизации прогресса.
+ *
+ * `synced: false, retryable: true` — облако настроено, но прочитать или записать
+ * сейв не удалось (сеть, RLS, временная ошибка сервера): загрузочный экран
+ * повторит попытку, а игра всё равно стартует на локальном сейве.
+ */
+export type GameSyncOutcome = {
+  /** Прогресс сверен с облаком (или облако не настроено — тогда играем локально). */
+  synced: boolean;
+  /** Синк упал по временной причине: имеет смысл повторить. */
+  retryable: boolean;
+  /** Ключ аккаунта, к которому привязан сейв. `null` — вход не выполнен. */
+  accountId: string | null;
+};
+
+/** Строка `game_state` в облаке. */
+type StoredGameState = {
+  created_at: string;
+  content: GameState;
+  achievements: AchivementsState;
+  collider: ColliderState;
+  shop?: ShopState | null;
+};
+
+type MergeOutcome = { ok: boolean; retryable: boolean };
+
+/**
+ * Допуск при сравнении `lastSaved`. Часы устройства и облака не обязаны
+ * совпадать до миллисекунды, а «свежее на пару секунд» — ещё не повод гонять
+ * сейв туда-обратно.
+ *
+ * Раньше здесь было 3 минуты, и прогресс, сохранённый на другом устройстве
+ * минуту назад, просто не применялся: игра стартовала на старом сейве, и со
+ * стороны это выглядело как «синк не сработал». Синк теперь идёт только на
+ * загрузке (src/backend/boot.ts), поэтому сравнивать надо честно: что новее —
+ * то и остаётся.
+ */
+const SYNC_TOLERANCE_MS = 1000;
+
+const MERGE_OK: MergeOutcome = { ok: true, retryable: false };
+const MERGE_RETRY: MergeOutcome = { ok: false, retryable: true };
+
+/** Переносит облачный сейв в localStorage: игру, достижения, коллайдер, магазин. */
+const applyCloudGameState = (
+  stored: StoredGameState,
+  useCloudCreatedAt = false,
+) => {
+  updateGameState(
+    useCloudCreatedAt
+      ? { ...stored.content, createdAt: stored.created_at }
+      : { ...stored.content },
+  );
+
+  if (stored.achievements && Object.keys(stored.achievements).length) {
+    saveAchievementState(stored.achievements);
+  }
+  if (stored.collider && Object.keys(stored.collider).length) {
+    saveColliderState(stored.collider);
+    window.dispatchEvent(new Event("colliderChanged"));
+  }
+  if (stored.shop && Object.keys(stored.shop).length) {
+    saveShopState(stored.shop);
+  }
+};
+
+/**
+ * Загрузка прогресса на старте игры.
+ *
+ * Вызывается из `src/backend/boot.ts`, пока показан загрузочный экран: сначала
+ * вход (`resolveAccountId`), только потом чтение облака. Возвращает итог, чтобы
+ * загрузка знала, повторять ли попытку и можно ли вообще сохранять в облако.
+ */
+export const syncGameState = async (): Promise<GameSyncOutcome> => {
+  const offline: GameSyncOutcome = {
+    synced: false,
+    retryable: false,
+    accountId: null,
+  };
+
   if (!isCloudSyncEnabled) {
-    return;
+    return offline;
   }
 
   // Аккаунт (uuid сессии) появляется один раз на старте: вход через Telegram либо
@@ -719,10 +809,14 @@ export const syncGameState = async () => {
   const accountId = await resolveAccountId();
 
   if (!accountId) {
-    return;
+    return { ...offline, retryable: true };
   }
 
-  await mergeGameState(accountId);
+  const merged = await mergeGameState(accountId);
+
+  if (!merged.ok) {
+    return { synced: false, retryable: merged.retryable, accountId };
+  }
 
   // Профиль с именем нужен лидерборду: строка витрины ссылается на аккаунт, а
   // имя читается отдельно. Заводим его до того, как игрок откроет витрину.
@@ -731,85 +825,86 @@ export const syncGameState = async () => {
   // Покупки за звёзды бот кладёт мимо сейва (см. purchases.ts) — забираем их
   // последними, чтобы они не «перетёрлись» пришедшим из облака состоянием.
   await applyPendingCredits(accountId);
+
+  return { synced: true, retryable: false, accountId };
 };
 
 /** Сливает локальный сейв с облачным по времени последнего сохранения. */
-const mergeGameState = async (accountId: string) => {
+const mergeGameState = async (accountId: string): Promise<MergeOutcome> => {
   const currentGS = getGameState();
 
   const data = await getGameStateDB(accountId);
 
-  if (data?.error) {
-    return;
+  if (!data || data.error) {
+    console.warn(
+      "[db] не удалось прочитать прогресс из облака:",
+      data?.error?.message ?? "нет ответа",
+    );
+
+    return MERGE_RETRY;
   }
 
-  if (!data?.data) {
-    await createGameStateDB(accountId);
+  if (!data.data) {
+    // Прогресса в облаке ещё нет — заводим строку из локального сейва.
+    const created = await createGameStateDB(accountId);
 
-    return;
+    return created && !created.error ? MERGE_OK : MERGE_RETRY;
   }
 
-  const gameStateStored = data.data;
+  const stored = data.data as StoredGameState;
+
+  if (!stored.content || !stored.content.lastSaved) {
+    console.warn("[db] в облаке пустой сейв — оставляем локальный");
+
+    return MERGE_RETRY;
+  }
 
   const accountCreated = currentGS.createdAt
     ? new Date(currentGS.createdAt).getTime()
     : Date.now();
 
   // аккаунт создался в лс, но он уже есть в бд
-  if (new Date(gameStateStored.created_at).getTime() < accountCreated) {
-    // перезаписываем игру через дб
-    updateGameState({
-      ...gameStateStored.content,
-      createdAt: gameStateStored.created_at,
-    });
-    if (Object.keys(gameStateStored.achievements).length) {
-      saveAchievementState(gameStateStored.achievements);
-    }
-    if (Object.keys(gameStateStored.collider).length) {
-      saveColliderState(gameStateStored.collider);
-      window.dispatchEvent(new Event("colliderChanged"));
-    }
-    if (gameStateStored.shop && Object.keys(gameStateStored.shop).length) {
-      saveShopState(gameStateStored.shop);
-    }
-    console.log("sync GameState");
+  if (new Date(stored.created_at).getTime() < accountCreated) {
+    applyCloudGameState(stored, true);
+    console.log("sync GameState: облако создано раньше локального сейва");
 
-    return;
+    return MERGE_OK;
   }
 
-  // смотрим какое сохранение более свежее
   const lastVisitLs = new Date(currentGS.lastSaved).getTime();
-  const lastVisitDb = new Date(gameStateStored.content.lastSaved).getTime();
+  const lastVisitDb = new Date(stored.content.lastSaved).getTime();
 
   console.log(
-    `last saved ls: ${currentGS.lastSaved}, last saved db: ${gameStateStored.content.lastSaved}`,
+    `last saved ls: ${currentGS.lastSaved}, last saved db: ${stored.content.lastSaved}`,
   );
 
-  // последний синк меньше чем 3 минуты - много багов у пользователй, может какие-то тормоза мешают
-  if (Math.abs(lastVisitLs - lastVisitDb) < 1000 * 60 * 3) {
-    console.log("sync Data is fresh");
-    return;
+  // Битая дата в локальном сейве: доверяем облаку, иначе прогресс «зависнет».
+  if (!Number.isFinite(lastVisitLs)) {
+    applyCloudGameState(stored);
+
+    return MERGE_OK;
   }
 
-  if (lastVisitLs > lastVisitDb) {
+  // Локальный сейв новее (или дата в облаке битая) — отправляем его в облако.
+  if (
+    !Number.isFinite(lastVisitDb) ||
+    lastVisitLs - lastVisitDb > SYNC_TOLERANCE_MS
+  ) {
     console.log("sync GameState db");
-    await updateGameStateDB(accountId);
-    return;
+    const updated = await updateGameStateDB(accountId);
+
+    return updated && !updated.error ? MERGE_OK : MERGE_RETRY;
   }
 
-  console.log("sync GameState ls");
-  updateGameState({
-    ...gameStateStored.content,
-  });
+  // Облачный сейв новее — применяем его.
+  if (lastVisitDb - lastVisitLs > SYNC_TOLERANCE_MS) {
+    console.log("sync GameState ls");
+    applyCloudGameState(stored);
 
-  if (Object.keys(gameStateStored.achievements).length) {
-    saveAchievementState(gameStateStored.achievements);
+    return MERGE_OK;
   }
-  if (Object.keys(gameStateStored.collider).length) {
-    saveColliderState(gameStateStored.collider);
-    window.dispatchEvent(new Event("colliderChanged"));
-  }
-  if (gameStateStored.shop && Object.keys(gameStateStored.shop).length) {
-    saveShopState(gameStateStored.shop);
-  }
+
+  console.log("sync Data is fresh");
+
+  return MERGE_OK;
 };

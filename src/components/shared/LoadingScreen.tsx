@@ -1,13 +1,28 @@
 import { useEffect, useState } from "react";
 
-const LoadingScreen = () => {
-  const [progress, setProgress] = useState(0);
+interface LoadingScreenProps {
+  /**
+   * Реальный прогресс загрузки (0..100). Пока его нет, полоса анимируется
+   * декоративно — как раньше.
+   */
+  progress?: number;
+  /** Что именно происходит: «Авторизация...», «Загружаем прогресс...». */
+  message?: string;
+}
+
+const LoadingScreen = ({ progress, message }: LoadingScreenProps) => {
+  const [fakeProgress, setFakeProgress] = useState(0);
   const [dots, setDots] = useState("");
 
   useEffect(() => {
-    // Анимация прогресса загрузки
+    // Декоративная анимация нужна только без реального прогресса: иначе полоса
+    // «убегала» бы вперёд и врала о том, что игра почти загрузилась.
+    if (progress !== undefined) {
+      return;
+    }
+
     const progressInterval = setInterval(() => {
-      setProgress((prev) => {
+      setFakeProgress((prev) => {
         if (prev >= 100) {
           clearInterval(progressInterval);
           return 100;
@@ -16,6 +31,12 @@ const LoadingScreen = () => {
       });
     }, 200);
 
+    return () => {
+      clearInterval(progressInterval);
+    };
+  }, [progress]);
+
+  useEffect(() => {
     // Анимация точек
     const dotsInterval = setInterval(() => {
       setDots((prev) => {
@@ -25,10 +46,11 @@ const LoadingScreen = () => {
     }, 500);
 
     return () => {
-      clearInterval(progressInterval);
       clearInterval(dotsInterval);
     };
   }, []);
+
+  const shownProgress = Math.max(0, Math.min(100, progress ?? fakeProgress));
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-[#070c14] z-50">
@@ -93,12 +115,12 @@ const LoadingScreen = () => {
           <div className="mb-2 h-3 overflow-hidden rounded-full border border-slate-600/50 bg-slate-950/60">
             <div
               className="brand-bar h-full rounded-full shadow-lg shadow-cyan-500/20 transition-all duration-300 ease-out"
-              style={{ width: `${progress}%` }}
+              style={{ width: `${shownProgress}%` }}
             />
           </div>
           <div className="flex justify-between text-sm text-slate-300">
-            <span>Загрузка...</span>
-            <span>{Math.min(100, Math.round(progress))}%</span>
+            <span>{message ?? "Загрузка"}{dots}</span>
+            <span>{Math.round(shownProgress)}%</span>
           </div>
         </div>
 

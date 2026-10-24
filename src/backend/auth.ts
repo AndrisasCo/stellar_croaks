@@ -288,15 +288,26 @@ const initAuth = async (): Promise<Account | null> => {
  * После неудачи вход не повторяется на каждый запрос: `AUTH_RETRY_COOLDOWN_MS`
  * даёт серверу паузу, а игрок всё это время спокойно играет локально.
  *
+ * `force` — только для загрузочного экрана (src/backend/boot.ts): там вход
+ * повторяется сразу, не дожидаясь 15-секундной паузы. Игра стартует лишь после
+ * того, как вход либо удался, либо окончательно отложен, поэтому «ещё одно
+ * обращение к облаку» на старте — это именно то, что нужно.
+ *
  * @returns аккаунт или `null`, если облако не настроено/недоступно
  */
-export const ensureAccount = async (): Promise<Account | null> => {
+export const ensureAccount = async (
+  options: { force?: boolean } = {},
+): Promise<Account | null> => {
   if (!isCloudSyncEnabled) {
     return null;
   }
 
   if (currentAccount) {
     return currentAccount;
+  }
+
+  if (options.force) {
+    nextAuthAttemptAt = 0;
   }
 
   if (Date.now() < nextAuthAttemptAt) {

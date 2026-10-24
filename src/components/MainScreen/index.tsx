@@ -1,5 +1,4 @@
-import { useEffect, useLayoutEffect, useState } from "react";
-import { useToads } from "../ToadContext";
+import { useEffect, useState } from "react";
 import MusicPlayer from "../shared/MusicPlayer";
 import LoadingScreen from "../shared/LoadingScreen";
 import HexMapScreen from "../HexMap";
@@ -26,6 +25,7 @@ import {
   updateGameStateDB,
   updateLeaderbord,
 } from "../../backend/db";
+import { bootGame, type BootStage } from "../../backend/boot";
 import { useTelegram } from "../../hooks/use-tg";
 import { useNotifications } from "../../hooks/use-notification";
 import { useOfflineEvents } from "../../hooks/use-offline-events";
@@ -57,6 +57,24 @@ const UPDATES_LOG = [
   },
 ];
 
+/** Минимальное время показа загрузки: на быстрой сети экран иначе мигает. */
+const MIN_LOADING_MS = 600;
+
+/** Пауза перед повтором синка, если старт не смог прочитать облако. */
+const CLOUD_RETRY_MS = 60_000;
+
+/** Шаги загрузочного экрана: прогресс и подпись. */
+const BOOT_STEPS: Record<
+  BootStage | "world" | "ready",
+  { progress: number; message: string }
+> = {
+  platform: { progress: 10, message: "Готовим платформу" },
+  auth: { progress: 40, message: "Авторизация" },
+  sync: { progress: 70, message: "Загружаем прогресс" },
+  world: { progress: 90, message: "Собираем колонию" },
+  ready: { progress: 100, message: "Добро пожаловать" },
+};
+
 /**
  * Тик голода вместе с автокормушками.
  *
@@ -81,32 +99,36 @@ const runHungerTick = (hoursPassed: number) => {
  * загрузку, оффлайн-расчёты, игровые таймеры, музыку и онбординг.
  */
 export default function ToadGame() {
-  const { account, allToads } = useToads();
-  const { isLoading: isLoadingTg } = useTelegram();
   const { addNotification } = useNotifications();
   const { addOfflineEvents } = useOfflineEvents();
-  const [isLoading, setIsLoading] = useState(true);
+  const [stage, setStage] = useState<BootStage | "world" | "ready">("platform");
+  const [isReady, setIsReady] = useState(false);
 
-  const showLoadingScreen = isLoading || !account || !allToads || isLoadingTg;
+  // Платформа здоровается с клиентом (`ready`, `expand`); сама загрузка ждёт её
+  // появления внутри boot.ts, поэтому результат хука здесь не нужен.
+  useTelegram();
 
-  // Инициализация игры (Game Logic)
-  useLayoutEffect(() => {
-    if (!allToads) {
-      return;
-    }
+  /**
+   * Порядок старта: платформа → вход → прогресс из облака. Пока boot не
+   * закончился, вместо карты висит экран загрузки, а оффлайн-догон и игровые
+   * таймеры стартуют уже на актуальном сейве.
+   */
+  useEffect(() => {
+    let cancelled = false;
+    const intervals: number[] = [];
+    const timeouts: number[] = [];
+    let onlineRetry: (() => void) | null = null;
+    // Сохранение в облако включается только после успешного чтения прогресса:
+    // иначе локальный (возможно, старый) сейв затрёт прогресс с другого устройства.
+    let cloudSynced = false;
 
-    const initGame = async () => {
-      preloadImages([
-        "/bg/bg-main.webp",
-        "/bg/bg-col.webp",
-        "/bg/bg-lab.webp",
-        "/bg/bg-shop.webp",
-        "/bg/main-end.webp",
-        "/bg/incubator.webp",
-      ]);
+    const wait = (ms: number) =>
+      new Promise<void>((resolve) => {
+        window.setTimeout(resolve, ms);
+      });
 
-      await syncGameState();
-
+    /** Догоняем время, пока игра была закрыта: оффлайн-расчёты по свежему сейву. */
+    const catchUp = () => {
       // Биоподы строятся гексами: приводим карту колонии и список биоподов в согласие
       syncColonyScenes();
 
@@ -151,80 +173,134 @@ export default function ToadGame() {
       updateLeaderbord();
 
       saveGameState(getGameState(), false);
+    };
+
+    /** Игровые таймеры: включаются, когда карта уже показана. */
+    const startLoops = (synced: boolean) => {
+      // Ферма (Часть 3.3): выработка биомассы, апкипинг и восстановление сил жаб
+      intervals.push(
+        window.setInterval(() => {
+          processProduction(0.08);
+          processEnergyRegen(0.08);
+        }, 5 * 60 * 1000),
+      );
+
+      // Голод и автокормушки (см. `runHungerTick`): раз в 5 минут, как и ферма
+      intervals.push(
+        window.setInterval(() => runHungerTick(0.08), 5 * 60 * 1000),
+      );
+
+      // Кибер-события и болезни (Часть 3.6): раз в час игрового времени
+      intervals.push(
+        window.setInterval(() => {
+          processDiseases(1);
+          processCyberEvents(1, addNotification);
+        }, 60 * 60 * 1000),
+      );
+
+      // Роды и рост головастиков. Новые беременности запускаются вручную («Репродуктор»)
+      intervals.push(
+        window.setInterval(
+          () => processBreeding(0, addNotification),
+          60 * 1000,
+        ),
+      );
+
+      // Разведка (Часть 5): события походов и регенерация HP дома — раз в 5 минут
+      intervals.push(
+        window.setInterval(() => {
+          processExpeditions(addNotification);
+          processHpRegen(0.25);
+        }, 5 * 60 * 1000),
+      );
+
+      intervals.push(
+        window.setInterval(() => {
+          // Пока облако не прочитано, сейв наверх не отправляем: иначе локальный
+          // прогресс затрёт более свежий с другого устройства.
+          if (cloudSynced) {
+            updateGameStateDB();
+          }
+        }, 3 * 60 * 1000),
+      );
+
+      if (synced) {
+        return;
+      }
+
+      // Старт не смог прочитать облако — догоняем его позже, не блокируя игру.
+      const retry = async () => {
+        if (cancelled || cloudSynced) {
+          return;
+        }
+
+        const outcome = await syncGameState();
+
+        if (cancelled || !outcome.synced) {
+          return;
+        }
+
+        cloudSynced = true;
+        console.info("[MainScreen] облако синхронизировано после старта");
+      };
+
+      onlineRetry = () => {
+        void retry();
+      };
+
+      window.addEventListener("online", onlineRetry);
+      intervals.push(window.setInterval(onlineRetry, CLOUD_RETRY_MS));
+    };
+
+    const start = async () => {
+      const startedAt = Date.now();
+
+      preloadImages([
+        "/bg/bg-main.webp",
+        "/bg/bg-col.webp",
+        "/bg/bg-lab.webp",
+        "/bg/bg-shop.webp",
+        "/bg/main-end.webp",
+        "/bg/incubator.webp",
+      ]);
+
+      const boot = await bootGame((next) => {
+        if (!cancelled) {
+          setStage(next);
+        }
+      });
+
+      if (cancelled) {
+        return;
+      }
+
+      cloudSynced = boot.synced;
+
+      // Прогресс из облака уже в localStorage — догоняем оффлайн-время по нему.
+      setStage("world");
+      catchUp();
+
+      // На быстрой сети загрузка мигала бы: даём ей показаться хотя бы немного.
+      const left = MIN_LOADING_MS - (Date.now() - startedAt);
+      if (left > 0) {
+        await wait(left);
+      }
+
+      if (cancelled) {
+        return;
+      }
+
+      setStage("ready");
+      setIsReady(true);
 
       // Костыль для первого рендера
-      setTimeout(() => {
-        window.dispatchEvent(new Event("gameStateUpdated"));
-      }, 2000);
-    };
+      timeouts.push(
+        window.setTimeout(() => {
+          window.dispatchEvent(new Event("gameStateUpdated"));
+        }, 2000),
+      );
 
-    initGame();
-
-    // Игровой цикл
-    // Ферма (Часть 3.3): выработка биомассы, апкипинг и восстановление сил жаб
-    const farmLoop = setInterval(
-      () => {
-        processProduction(0.08);
-        processEnergyRegen(0.08);
-      },
-      5 * 60 * 1000,
-    );
-
-    // Голод и автокормушки (см. `runHungerTick`): раз в 5 минут, как и ферма
-    const hungerLoop = setInterval(() => runHungerTick(0.08), 5 * 60 * 1000);
-
-    // Кибер-события и болезни (Часть 3.6): раз в час игрового времени
-    const cyberLoop = setInterval(
-      () => {
-        processDiseases(1);
-        processCyberEvents(1, addNotification);
-      },
-      60 * 60 * 1000,
-    );
-
-    // Роды и рост головастиков. Новые беременности запускаются вручную («Репродуктор»)
-    const birthLoop = setInterval(
-      () => processBreeding(0, addNotification),
-      60 * 1000,
-    );
-
-    // Разведка (Часть 5): события походов и регенерация HP дома — раз в 5 минут
-    const expeditionLoop = setInterval(
-      () => {
-        processExpeditions(addNotification);
-        processHpRegen(0.25);
-      },
-      5 * 60 * 1000,
-    );
-
-    const saveLoop = setInterval(() => updateGameStateDB(), 3 * 60 * 1000);
-
-    return () => {
-      clearInterval(farmLoop);
-      clearInterval(hungerLoop);
-      clearInterval(cyberLoop);
-      clearInterval(birthLoop);
-      clearInterval(expeditionLoop);
-      clearInterval(saveLoop);
-    };
-  }, []);
-
-  // Инициализация UI и уведомлений
-  useEffect(() => {
-    // Слушатель ачивок
-    const handleAchievement = (e: any) => {
-      addNotification({
-        type: "success",
-        content: `Новое достижение! ${e.detail.name}`,
-      });
-    };
-    window.addEventListener("AchivementCompleted", handleAchievement);
-
-    // Логика при загрузке
-    const loadingTimeout = setTimeout(() => {
-      setIsLoading(false);
-
-      // Проверка обновлений
+      // Проверка обновлений: тосты показываем, когда карта уже на экране.
       const lastSaveTime = new Date(getGameState().lastSaved).getTime();
 
       UPDATES_LOG.forEach((update) => {
@@ -236,19 +312,51 @@ export default function ToadGame() {
           });
         }
       });
-    }, 2000);
+
+      startLoops(boot.synced);
+    };
+
+    start();
+
+    return () => {
+      cancelled = true;
+      intervals.forEach((id) => window.clearInterval(id));
+      timeouts.forEach((id) => window.clearTimeout(id));
+
+      if (onlineRetry) {
+        window.removeEventListener("online", onlineRetry);
+      }
+    };
+  }, []);
+
+  // Слушатель достижений: тост показываем в любой момент игры.
+  useEffect(() => {
+    const handleAchievement = (event: Event) => {
+      const { name } = (event as CustomEvent<{ name?: string }>).detail ?? {};
+
+      addNotification({
+        type: "success",
+        content: `Новое достижение! ${name ?? ""}`,
+      });
+    };
+
+    window.addEventListener("AchivementCompleted", handleAchievement);
 
     return () => {
       window.removeEventListener("AchivementCompleted", handleAchievement);
-      clearTimeout(loadingTimeout);
     };
   }, []);
 
   return (
     <div className="min-h-[100dvh] flex flex-col bg-[#070c14]">
-      {showLoadingScreen && <LoadingScreen />}
+      {!isReady && (
+        <LoadingScreen
+          progress={BOOT_STEPS[stage].progress}
+          message={BOOT_STEPS[stage].message}
+        />
+      )}
       <HexMapScreen />
-      {!showLoadingScreen && <Narrator />}
+      {isReady && <Narrator />}
       <MusicPlayer />
     </div>
   );

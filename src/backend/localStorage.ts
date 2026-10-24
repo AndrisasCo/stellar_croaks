@@ -372,5 +372,9 @@ export const attachIdentity = (accountId?: string | null): GameState => {
 
   console.info(`[localStorage] Аккаунт обновлён: ${changes.join(", ")}`);
 
-  return updateGameState({ user });
+  // `syntetic = true`: привязка аккаунта — не игровой прогресс. Иначе `lastSaved`
+  // обновлялся бы прямо перед синком (`backend/db.ts` → `resolveAccountId`), и
+  // локальный сейв всегда выглядел бы новее облачного: прогресс, сохранённый на
+  // другом устройстве, не применялся бы никогда.
+  return updateGameState({ user }, true);
 };
