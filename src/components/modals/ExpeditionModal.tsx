@@ -138,33 +138,14 @@ const ToadVitals: React.FC<{
   className?: string;
 }> = ({ toad, energyCost }) => {
   const energy = Math.round(getToadEnergy(toad));
-  const hunger = Math.round(toad.state?.hunger ?? 0);
-  const hungerColor =
-    hunger >= 80
-      ? "text-green-300"
-      : hunger >= 50
-        ? "text-yellow-300"
-        : hunger >= PRODUCTION_MIN_HUNGER
-          ? "text-orange-300"
-          : "text-red-400";
 
   return (
-    <>
-      <span
-        className={energy >= energyCost ? "text-lime-300" : "text-red-400"}
-        title={`Силы: ${energy} / ${getToadMaxEnergy(toad)}. Поход в этот сектор стоит ${energyCost} ⚡`}
-      >
-        ⚡{energy}
-      </span>
-      <span
-        className={`ml-2 ${hungerColor}`}
-        title={`Сытость: ${hunger} %. Ниже ${PRODUCTION_MIN_HUNGER} % жаба вырабатывает лишь ${Math.round(
-          PRODUCTION_HUNGRY_FACTOR * 100,
-        )} % биомассы`}
-      >
-        🍽{hunger}%
-      </span>
-    </>
+    <span
+      className={energy >= energyCost ? "text-lime-300" : "text-red-400"}
+      title={`Силы: ${energy} / ${getToadMaxEnergy(toad)}. Поход в этот сектор стоит ${energyCost} ⚡`}
+    >
+      ⚡{energy}
+    </span>
   );
 };
 
@@ -511,23 +492,15 @@ const ExpeditionModal: React.FC<{
         items: group.toads.map((toad): ToadPickerItem => {
           const other = getAssignedRole(slots, toad.id);
           const own = other === role;
-          const power = getRolePower(toad, role);
           const percent = getRolePowerPercent(toad, role);
-          const eventChance = Math.round(
-            getExpeditionEventChance(
-              power,
-              selectedSector,
-              getToadHp(toad) / Math.max(1, getToadMaxHp(toad)),
-            ) * 100,
-          );
 
           return {
             toad,
             rank: getRoleStat(toad, role),
             tone: own ? "selected" : other ? "warn" : "default",
             note: (
-              <div className="truncate">
-                {getRoleStat(toad, role).toFixed(2)} {config.statLabel} ·{" "}
+              <>
+                {getRoleStat(toad, role).toFixed(2)} {config.statLabel}{" "}
                 {toad.hp} XP
                 {own
                   ? " · ✓ на этой роли"
@@ -536,8 +509,7 @@ const ExpeditionModal: React.FC<{
                         ROLE_CONFIG[other].label
                       }`
                     : ""}
-                <ToadVitals toad={toad} energyCost={energyCostPerToad} />
-              </div>
+              </>
             ),
             meter: { value: percent, label: `${percent}%` },
           };

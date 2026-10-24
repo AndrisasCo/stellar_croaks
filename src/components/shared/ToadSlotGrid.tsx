@@ -1,5 +1,11 @@
 import React from "react";
-import { getRarityConfig, Toad } from "../../models/Toad";
+import { Toad } from "../../models/Toad";
+import {
+  getToadHp,
+  getToadHpStatusLabel,
+  getToadMaxHp,
+} from "../../utils/expedition-config";
+import { getToadEnergy, getToadMaxEnergy } from "../../utils/gamification-config";
 import { useModal } from "../ModalContext";
 import { ClickButton } from "./ClickButton";
 import Modal from "./Header";
@@ -112,20 +118,59 @@ const ToadSlotPickerModal: React.FC<ToadSlotPickerModalProps> = ({
 
   return (
     <Modal title={`Выбрать жабу · ${slotLabel}`} icon={icon}>
-      <div className="mx-auto w-full max-w-2xl overflow-hidden rounded-xl border border-slate-600/50 bg-slate-900/70">
-        <div className="max-h-[60vh] overflow-y-auto">
-          <ToadPickerList
-            label={slotLabel}
-            groups={picker.groups}
-            rejected={picker.rejected}
-            hint={picker.hint}
-            emptyText={picker.emptyText}
-            locationOf={picker.locationOf}
-            onPick={pick}
-          />
-        </div>
+      <div className="mx-auto w-full max-w-2xl rounded-xl border border-slate-600/50 bg-slate-900/70">
+        <ToadPickerList
+          label={slotLabel}
+          groups={picker.groups}
+          rejected={picker.rejected}
+          hint={picker.hint}
+          emptyText={picker.emptyText}
+          locationOf={picker.locationOf}
+          onPick={pick}
+        />
       </div>
     </Modal>
+  );
+};
+
+/**
+ * Показатель в слоте: значок и число, под ними — полоска запаса.
+ *
+ * Слот — маленький квадрат, поэтому вместо подписи «HP 168/168» здесь только число:
+ * текущее значение, а максимум и статус живут в подсказке. Цвет полоски и числа
+ * задаёт вызывающий — у HP и энергии разные шкалы (`hpBarClass` / `energyBarClass`).
+ */
+const SlotVital: React.FC<{
+  icon: string;
+  value: number;
+  max: number;
+  barClassName: string;
+  valueClassName: string;
+  title: string;
+}> = ({ icon, value, max, barClassName, valueClassName, title }) => {
+  const ratio = max > 0 ? Math.max(0, Math.min(1, value / max)) : 0;
+
+  return (
+    <span
+      title={title}
+      className="flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-md border border-white/10 bg-slate-950/50 px-1 py-0.5"
+    >
+      <span
+        className={`flex items-center gap-0.5 text-3xs font-semibold leading-none tabular-nums ${valueClassName}`}
+      >
+        <span aria-hidden>{icon}</span>
+        {Math.round(value)}
+      </span>
+      <span
+        aria-hidden
+        className="h-0.5 w-full overflow-hidden rounded-full bg-slate-700/70"
+      >
+        <span
+          className={`block h-full rounded-full transition-all duration-500 ${barClassName}`}
+          style={{ width: `${ratio * 100}%` }}
+        />
+      </span>
+    </span>
   );
 };
 
@@ -196,7 +241,43 @@ export const ToadSlotGrid: React.FC<ToadSlotGridProps> = ({
             !disabled && !toad && Boolean(onPick) && Boolean(pickerFor);
           const canRemove = !disabled && Boolean(toad) && Boolean(onRemove);
           const clickable = canOpenToad || canOpenPicker;
-          const rarity = toad ? getRarityConfig(toad.genes.rarity) : null;
+          const hp = toad ? Math.round(getToadHp(toad)) : 0;
+          const maxHp = toad ? getToadMaxHp(toad) : 0;
+          const energy = toad ? Math.round(getToadEnergy(toad)) : 0;
+          const maxEnergy = toad ? getToadMaxEnergy(toad) : 0;
+
+          // HP: та же шкала, что у `HpBar` и полоски в карточке жабы (зелёный → жёлтый → красный)
+          const hpRatio = maxHp > 0 ? Math.max(0, Math.min(1, hp / maxHp)) : 0;
+          const hpBarClass =
+            hpRatio <= 0
+              ? "bg-red-600"
+              : hpRatio < 0.35
+                ? "bg-red-500"
+                : hpRatio < 0.7
+                  ? "bg-yellow-500"
+                  : "bg-green-500";
+          const hpValueClass =
+            hpRatio <= 0
+              ? "text-red-300"
+              : hpRatio < 0.7
+                ? "text-rose-200"
+                : "text-slate-200";
+
+          // Энергия: изумрудный акцент проекта, ниже половины — янтарный, ниже 20% — розовый
+          const energyRatio =
+            maxEnergy > 0 ? Math.max(0, Math.min(1, energy / maxEnergy)) : 0;
+          const energyBarClass =
+            energyRatio >= 0.5
+              ? "bg-lime-400"
+              : energyRatio >= 0.2
+                ? "bg-amber-400"
+                : "bg-rose-500";
+          const energyValueClass =
+            energyRatio >= 0.5
+              ? "text-lime-300"
+              : energyRatio >= 0.2
+                ? "text-amber-300"
+                : "text-rose-300";
 
           return (
             <ClickButton
@@ -229,12 +310,27 @@ export const ToadSlotGrid: React.FC<ToadSlotGridProps> = ({
                   <span className="w-full truncate text-center text-2xs font-semibold text-slate-100">
                     {toad.name}
                   </span>
-                  <span className={`text-3xs ${rarity?.color ?? ""}`}>
-                    {rarity?.icon} {toad.genes.rarity.toFixed(1)}
-                  </span>
+                  <div className="flex w-full items-stretch gap-1">
+                    <SlotVital
+                      icon="❤️"
+                      value={hp}
+                      max={maxHp}
+                      barClassName={hpBarClass}
+                      valueClassName={hpValueClass}
+                      title={`Здоровье: ${hp} / ${maxHp} · ${getToadHpStatusLabel(toad)}`}
+                    />
+                    <SlotVital
+                      icon="⚡️"
+                      value={energy}
+                      max={maxEnergy}
+                      barClassName={energyBarClass}
+                      valueClassName={energyValueClass}
+                      title={`Силы: ${energy} / ${maxEnergy}`}
+                    />
+                  </div>
                   {slot.badge != null && (
                     <span className="max-w-full truncate text-3xs font-semibold text-amber-200">
-                      {slot.badge}
+                      подходит {slot.badge}
                     </span>
                   )}
 
