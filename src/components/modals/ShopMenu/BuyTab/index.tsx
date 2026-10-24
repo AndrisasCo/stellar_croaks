@@ -75,10 +75,10 @@ const BuyTab: React.FC = () => {
               className="ui-button-primary flex-1"
             >
               {canRefresh ? (
-                "Обновить ассортимент"
+                "Обновить рынок"
               ) : (
                 <>
-                  Обновить ассортимент за {INSTANT_REFRESH_COST}{" "}
+                  Обновить за {INSTANT_REFRESH_COST}{" "}
                   <CurrencyIcon currency="tokens" className="h-4 w-4" />
                 </>
               )}
