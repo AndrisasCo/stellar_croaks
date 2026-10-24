@@ -90,21 +90,6 @@ export interface ToadListCardProps {
   className?: string;
 }
 
-/** Цвет и подпись редкости — в одной плашке справа, как во всех секторах */
-const RarityBadge = ({ toad }: { toad: Toad }) => {
-  const rarity = getRarityConfig(toad.genes.rarity);
-
-  return (
-    <span
-      className={`shrink-0 rounded-md border border-white/10 bg-slate-950/40 px-1.5 py-0.5 text-2xs font-medium ${rarity.color}`}
-      title={`Качество: ${rarity.label} · ${toad.genes.rarity.toFixed(1)}`}
-    >
-      {rarity.icon} <span className="hidden sm:inline">{rarity.label} · </span>
-      {toad.genes.rarity.toFixed(1)}
-    </span>
-  );
-};
-
 /** Строка-показатель: подпись, полоска и значение */
 const ToadMeter = ({
   label,

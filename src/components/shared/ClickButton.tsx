@@ -6,7 +6,7 @@ export const ClickButton = ({
   onClick,
   disabled,
   ...props
-}: ButtonHTMLAttributes<{}>) => {
+}: ButtonHTMLAttributes<HTMLButtonElement>) => {
   const { playClick } = useSoundEffects();
   const handleClick = (e: any) => {
     onClick?.(e);

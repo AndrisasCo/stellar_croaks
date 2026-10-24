@@ -1,5 +1,4 @@
-import React, { ReactNode, useEffect, useState } from "react";
-import { ClickButton } from "./ClickButton";
+import React, { ReactNode } from "react";
 
 interface ToadListModalProps {
   icon?: ReactNode;

@@ -284,7 +284,7 @@ export const useShop = () => {
     newState.availableToads = newToads.map((t) => ({
       ...t,
       genes: { ...t.genes, rarity: averageLevel + (t.genes?.rarity ?? 1) },
-    })) as Partial<Toad>[];
+    }));
     newState.items = { ...initialItemsAmount };
     newState.lastRefresh = now;
     newState.nextRefresh = now + cooldownMs;

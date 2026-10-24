@@ -362,7 +362,7 @@ const past = { startedAt: Date.now() - 900000, startAt: Date.now() - 1 };
 patchToad(1, { mating: { ...startedMale, ...past } });
 patchToad(2, { mating: { ...startedFemale, ...past } });
 notes.length = 0;
-breeding.processBreeding(0, collect);
+breeding.processBreeding(collect);
 const born = findToad(2);
 check("самка беременна", born.pregnancy?.isPregnant, true);
 check("беременность без ухаживания", born.mating, null);
@@ -378,7 +378,7 @@ reset();
 pairInNest();
 patchToad(1, { status: "out" });
 notes.length = 0;
-breeding.processBreeding(0, collect);
+breeding.processBreeding(collect);
 check("самка перестала ухаживать", findToad(2).mating, null);
 check("самец перестал ухаживать", findToad(1).mating, null);
 check("самка осталась в гнезде", findToad(2).scene_id, constants.NEST_ROOM_ID);
@@ -561,7 +561,7 @@ checkText("та же причина под кнопкой", tooSoonCheck.message
 
 // Тик пару не заводит: ухаживание всегда начинается кнопкой игрока
 notes.length = 0;
-breeding.processBreeding(0, collect);
+breeding.processBreeding(collect);
 check("тик не заводит уставшую пару", Boolean(findToad(2).mating), false);
 check("тик молчит о причине", notes.length, 0);
 
@@ -571,7 +571,7 @@ const restedCheck = breeding.checkNestCourtship(constants.NEST_ROOM_ID);
 check("после отдыха кнопка оживает", restedCheck.ready, true);
 
 notes.length = 0;
-breeding.processBreeding(0, collect);
+breeding.processBreeding(collect);
 check("тик молчит и у отдохнувшей пары", Boolean(findToad(1).mating), false);
 check("тик не шумит уведомлением", notes.length, 0);
 
@@ -593,7 +593,7 @@ const accelerated = astro.acceleratePregnancy(2);
 check("ухаживание ускоряется", accelerated.success, true);
 check("астро-кваксы списаны", gameState().user.astro_quax, 8);
 notes.length = 0;
-breeding.processBreeding(0, collect);
+breeding.processBreeding(collect);
 check("после ускорения самка беременна", findToad(2).pregnancy?.isPregnant, true);
 
 reset();
@@ -611,7 +611,7 @@ pairInNest();
 const waited = { startedAt: Date.now() - 900000, startAt: Date.now() - 1 };
 patchToad(1, { mating: { ...findToad(1).mating, ...waited } });
 patchToad(2, { mating: { ...findToad(2).mating, ...waited } });
-breeding.processBreeding(0, collect);
+breeding.processBreeding(collect);
 const pregnancy = findToad(2).pregnancy;
 check("самка беременна в гнезде", Boolean(pregnancy?.isPregnant), true);
 
@@ -620,7 +620,7 @@ patchToad(2, {
   pregnancy: { ...pregnancy, pregnancyStart: Date.now() - 3600000 * 99 },
 });
 notes.length = 0;
-breeding.processBreeding(0, collect);
+breeding.processBreeding(collect);
 await new Promise((resolve) => setTimeout(resolve, 30));
 const bornInNest = gameState().toads.filter(
   (item) => item.stage === "toadpole" && item.scene_id === constants.NEST_ROOM_ID
@@ -644,7 +644,7 @@ patchToad(2, {
 });
 patchToad(1, { scene_id: "outpost-3" });
 notes.length = 0;
-breeding.processBreeding(0, collect);
+breeding.processBreeding(collect);
 await new Promise((resolve) => setTimeout(resolve, 30));
 check("мать из вольера осталась в своём биоподе", findToad(2).scene_id, 1);
 check("роды в вольере без тоста", notes.length, 0);

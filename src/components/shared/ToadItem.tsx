@@ -13,7 +13,6 @@ import {
   getToadHp,
   getToadMaxHp,
   getToadHpRatio,
-  getToadHpStatusLabel,
 } from "../../utils/expedition-config";
 import {
   PRODUCTION_HUNGRY_FACTOR,

@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { SortArrowIcon } from "./SortArrowIcon";
 import React from "react";
 import { Toad } from "../../models/Toad";

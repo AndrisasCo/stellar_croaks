@@ -9,7 +9,7 @@ import { Toad } from "../models/Toad";
 
 export const generateRandomHexColor = () => {
   // Функция для генерации случайного числа в диапазоне
-  const getRandomInRange = (min, max) =>
+  const getRandomInRange = (min: number, max: number) =>
     Math.floor(Math.random() * (max - min + 1)) + min;
 
   // Генерируем RGB компоненты
@@ -20,7 +20,7 @@ export const generateRandomHexColor = () => {
   const b = getRandomInRange(50, 220);
 
   // Преобразуем в hex
-  const toHex = (value) => value.toString(16).padStart(2, "0");
+  const toHex = (value: number) => value.toString(16).padStart(2, "0");
 
   return `#${toHex(r)}${toHex(g)}${toHex(b)}`.toUpperCase();
 };

@@ -195,7 +195,7 @@ const failMissingRole = (
 
 // === Пул событий похода ===
 
-const NEUTRAL_EVENTS = [
+const NEUTRAL_EVENTS: ExpeditionEventDef[] = [
   {
     id: "sealed_observation_deck",
     run: (ctx) => {
@@ -288,7 +288,7 @@ const NEUTRAL_EVENTS = [
   },
 ];
 
-export const EXPEDITION_EVENTS = [
+const EXPEDITION_EVENTS_BASE: ExpeditionEventDef[] = [
   {
     id: "quiet_corridor",
     run: (ctx) => {
@@ -1362,7 +1362,13 @@ export const EXPEDITION_EVENTS = [
       }
     },
   },
-].concat(NEUTRAL_EVENTS) as ExpeditionEventDef[];
+];
+
+/** Полный пул: ролевые события и общие нейтральные */
+export const EXPEDITION_EVENTS: ExpeditionEventDef[] = [
+  ...EXPEDITION_EVENTS_BASE,
+  ...NEUTRAL_EVENTS,
+];
 
 /**
  * Случайное событие из пула. Состав команды пул не фильтрует: событие роли, которую

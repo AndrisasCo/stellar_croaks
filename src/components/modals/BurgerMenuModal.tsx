@@ -8,7 +8,6 @@ import { useModal } from "../ModalContext";
 import Modal from "../shared/Header";
 import AchivementsModal from "./AchivementsModal";
 import AuthModal from "./AuthModal";
-import ExpeditionModal from "./ExpeditionModal";
 import LeaderboardModal from "./LeaderboardModal";
 import LoreArchiveModal from "./LoreArchiveModal";
 import SettingsModal from "./SettingsModal";

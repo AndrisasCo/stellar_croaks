@@ -5,7 +5,7 @@ import {
   SectorDef,
 } from "../models/expedition";
 import { DISEASES, DiseaseDef, isToadSick } from "../models/disease";
-import { getPersonalityMultipliers, Toad } from "../models/Toad";
+import { Toad } from "../models/Toad";
 import { LootboxRarity, UNIQUE_TOADS_BY_RARITY } from "../models/Toad/lootbox";
 import { Items } from "../models/user";
 import {
@@ -17,16 +17,13 @@ import {
 } from "./gamification-config";
 import { getToadHomeId } from "./toad-location";
 
-export const EXPEDITION_RESERVE_REQUIREMENTS: Record<
-  ExpeditionRole,
-  ExpeditionReserveRequirement
-> = {
+export const EXPEDITION_RESERVE_REQUIREMENTS = {
   hacker: { rarity: 10 },
   scout: { speed: 2 },
   tank: { weight: 30 },
   medic: { fertility: 2 },
   negotiator: { hungerRate: 2 },
-};
+} satisfies Record<ExpeditionRole, ExpeditionReserveRequirement>;
 
 /**
  * Константы разведки (Часть 5) и смысл характеристик жаб (Часть 5.3).

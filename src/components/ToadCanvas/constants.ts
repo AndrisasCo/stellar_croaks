@@ -1,5 +1,3 @@
-import { Texture } from "pixi.js";
-
 // Константы для анимации
 export const TOAD_FRAMES_COUNT = 7; // Количество кадров анимации жабы
 export const TOAD_FRAMES_HEIGHT = 150;

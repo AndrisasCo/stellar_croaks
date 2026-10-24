@@ -57,7 +57,11 @@ export const SceneStatsTab: React.FC<{
       type: result.success ? "success" : "warn",
       content: result.message,
     });
-    result.success ? playSuccess() : playError();
+    if (result.success) {
+      playSuccess();
+    } else {
+      playError();
+    }
   };
 
   /**

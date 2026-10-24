@@ -5,7 +5,6 @@ import {
   getGeneticFaultConfig,
 } from "../../../models/Toad";
 import { ToadGender } from "../../shared/ToadGender";
-import { getToadRelatives } from "./utils";
 
 export const CompactToadItem = ({
   toad,
@@ -13,20 +12,15 @@ export const CompactToadItem = ({
   onSelect,
   familyColor,
   onProfileClick,
-  allToads,
 }: {
   toad: Toad;
   isSelected: boolean;
   onSelect: (toadId: number) => void;
   familyColor?: string;
   onProfileClick: (toad: Toad) => void;
-  allToads: Toad[];
 }) => {
   const rarityConfig = getRarityConfig(toad.genes.rarity);
   const geneticFaultConfig = getGeneticFaultConfig(toad.state?.genetic_fault);
-
-  // Получаем информацию о родственниках для этой жабы
-  const relativesInfo = getToadRelatives(toad, allToads);
 
   const getHungerColor = (level: number) => {
     if (level >= 80) return "bg-green-500";
@@ -37,7 +31,7 @@ export const CompactToadItem = ({
 
   return (
     <div
-      id={toad.id}
+      id={String(toad.id)}
       onClick={() => onSelect(toad.id)}
       className={`bg-color-main flex flex-col gap-1.5 rounded-xl p-1 border transition-colors cursor-pointer ${
         isSelected
@@ -53,7 +47,7 @@ export const CompactToadItem = ({
       <div className="flex items-center justify-between min-w-0">
         <div className="flex items-center gap-2 min-w-0 flex-1">
           <span className="text-sm flex-shrink-0">
-             <ToadGender gender={toad.sex} />
+            <ToadGender gender={toad.sex} />
           </span>
           <span className="text-white font-medium text-sm truncate">
             {toad.name}

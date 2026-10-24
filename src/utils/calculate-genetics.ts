@@ -212,7 +212,7 @@ const calculateGeneticFault = (
     }
     // Естественное размножение: мягкое сокращение поломки
     const naturalReduction = 0.7; // Уменьшение на 30%
-    let baseFault = avgParentFault * naturalReduction;
+    const baseFault = avgParentFault * naturalReduction;
 
     // Небольшая случайная вариация
     const randomVariation = (Math.random() - 0.5) * 5; // -2.5 to +2.5

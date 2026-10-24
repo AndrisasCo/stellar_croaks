@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { TYPE_ICONS } from "../../../utils/constants";
 import {
-  getPersonalityMultipliers,
   getRarityConfig,
   personalities,
   getPersonalityLabel,
@@ -170,7 +169,7 @@ export const ToadInfo = () => {
   const rarityConfig = getRarityConfig(toad.genes?.rarity || 1);
   const geneticFault = getGeneticFaultConfig(toad.state?.genetic_fault);
   const personality = toad.genes?.personality
-    ? personalities[toad.genes.personality]
+    ? personalities[toad.genes.personality as keyof typeof personalities]
     : null;
 
   /**
@@ -255,19 +254,6 @@ export const ToadInfo = () => {
   const toggleTooltip = (key: string) =>
     setTooltips((prev) => ({ ...prev, [key]: !prev[key] }));
 
-  const handleNav = (direction: "next" | "prev") => {
-    setTooltips({});
-    const idx = toads.findIndex((t) => t.id === toad.id);
-    if (idx === -1) {
-      return;
-    }
-    const target =
-      direction === "next"
-        ? toads[(idx + 1) % toads.length]
-        : toads[(idx - 1 + toads.length) % toads.length];
-    selectToad(target.id);
-  };
-
   /** Единая причина отказа для действий с жабой в походе */
   const warnExpeditionBusy = () =>
     addNotification({ type: "warn", content: EXPEDITION_TOAD_BUSY_REASON });
@@ -305,8 +291,10 @@ export const ToadInfo = () => {
     const resourceName =
       type === "growth" ? "Протеиновых Червей 🪱" : "Сияющих Мушек ✨";
 
-    if ((account.storage[resource] || 0) > 0) {
-      updateUserStorage({ [resource]: account.storage[resource] - 1 });
+    const resourceAmount = account.storage[resource] || 0;
+
+    if (resourceAmount > 0) {
+      updateUserStorage({ [resource]: resourceAmount - 1 });
       if (type === "growth") {
         updateToadById(toad.id, { stage: "adult" });
       } else {
@@ -563,7 +551,7 @@ export const ToadInfo = () => {
                   : "bg-pink-900/50 border-pink-500"
               }`}
             >
-              {TYPE_ICONS[toad.sex]}
+              {TYPE_ICONS[toad.sex === "male" ? "male" : "female"]}
             </div>
           )}
         </div>

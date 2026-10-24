@@ -169,11 +169,9 @@ const loadProgress = async (): Promise<boolean> => {
 export type BootListener = (stage: BootStage) => void;
 
 const listeners = new Set<BootListener>();
-let stage: BootStage = "platform";
 let bootPromise: Promise<BootResult> | null = null;
 
 const setStage = (next: BootStage) => {
-  stage = next;
   listeners.forEach((listener) => listener(next));
 };
 

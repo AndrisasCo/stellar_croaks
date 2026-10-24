@@ -5,7 +5,6 @@ import { getGameState } from "../backend/localStorage";
 import { Toad } from "../models/Toad";
 import {
   DISEASES,
-  getDiseaseByIndex,
   getDiseaseCureCost,
   getDiseaseIndex,
   getDiseasePenaltyMultiplier,

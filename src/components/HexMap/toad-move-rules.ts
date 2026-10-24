@@ -7,7 +7,7 @@ import {
 import { EXPEDITION_TEAM_SIZE } from "../../utils/expedition-config";
 import { NEST_ROOM_TOAD_SLOTS } from "../../utils/gamification-config";
 import { HOSPITAL_ROOM_TOAD_SLOTS } from "../../utils/hospital";
-import { canBuildOnSlot, getPowerGrid, isRoomPowered } from "./colony-build";
+import { canBuildOnSlot, isRoomPowered } from "./colony-build";
 import { POWER_ROOM_TOAD_SLOTS, PowerGrid } from "./colony-power";
 import { RoomConfig } from "./rooms-config";
 

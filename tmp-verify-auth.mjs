@@ -466,7 +466,7 @@ const makeTelegramBundle = async (name, initData) => {
     invoke: () => ({ data: { token_hash: "token" }, error: null }),
   };
 
-  window.Telegram = {
+  globalThis.window.Telegram = {
     WebApp: {
       initData,
       initDataUnsafe: {
@@ -485,7 +485,7 @@ const makeTelegramBundle = async (name, initData) => {
     state.calls.push("anonymously");
     return state.anonymous;
   };
-  bundle.supabase.auth.verifyOtp = async (params) => {
+  bundle.supabase.auth.verifyOtp = async () => {
     state.calls.push("verifyOtp");
     return state.verify;
   };
@@ -556,7 +556,7 @@ check(
 
 // 12. Веб без Telegram: анонимная сессия по-прежнему создаётся — там дубля нет,
 //     ключ аккаунта и есть это устройство.
-delete window.Telegram;
+delete globalThis.window.Telegram;
 const webBundle = await bundleAuth("auth-web-anon", CLOUD_ENV);
 const webAnon = makeUser({
   id: "b3f1c0de-0000-4000-8000-000000000009",

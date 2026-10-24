@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { RARITY_GROUPS_TRESHOLD, Toad } from "../../../models/Toad";
 import Modal from "../../shared/Header";
 import { updateToadsByIds } from "../../../backend";
@@ -696,7 +696,6 @@ const ToadListModal: React.FC<{
                       onSelect={handleSelectToad}
                       familyColor={familyColor}
                       onProfileClick={handleToadClick}
-                      allToads={toads}
                     />
                   );
                 })}

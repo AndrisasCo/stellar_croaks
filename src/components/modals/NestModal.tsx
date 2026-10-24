@@ -28,7 +28,6 @@ import {
 import { placeToadInRoom, sendToadHome } from "../../backend/colony";
 import {
   getToadHomeId,
-  isToadFromEnclosure,
   isToadInRoom,
 } from "../../utils/toad-location";
 import {
@@ -36,13 +35,7 @@ import {
   isToadBusyOnExpedition,
 } from "../../utils/expedition-manager";
 import { CURRENCY_CONFIG, NEST_ROOM_ID } from "../../utils/constants";
-import {
-  ASTRO_PRICES,
-  acceleratePregnancy,
-  getAstroBalance,
-  resetBreedCooldown,
-} from "../../utils/astro-shop";
-import { completeAchivement } from "../../backend/achivements-manager";
+import { getAstroBalance } from "../../utils/astro-shop";
 import { resolveColonyRooms } from "../HexMap/colony-build";
 import { ClickButton } from "../shared/ClickButton";
 import Modal from "../shared/Header";
@@ -156,7 +149,7 @@ export default function NestModal({
   const { allToads, account, selectToad } = useToads();
   const { addNotification } = useNotifications();
   const { openModal } = useModal();
-  const { playOk, playSuccess, playError } = useSoundEffects();
+  const { playSuccess, playError } = useSoundEffects();
   const gameState = useGameState();
   const { powerGrid } = useColony();
   // Раз в секунду обновляем обратные отсчёты: ухаживание, отдых, статусы жаб
@@ -207,18 +200,6 @@ export default function NestModal({
   const nestAdults = nestToads.filter((toad) => toad.stage === "adult");
   /** …а головастики, рождённые в репродукторе, живут поверх мест, пока их не вынесут */
   const nestChildren = nestToads.filter((toad) => toad.stage !== "adult");
-
-  /**
-   * Биопод, к которому относится репродуктор: родильные слоты, карантин и апгрейды — свойства
-   * биопода, а пара приходит в репродуктор из своего дома. Дом жабы — её `homeId`: пока пара
-   * сидит в репродукторе, места в биоподе она не занимает (`utils/toad-location.ts`).
-   * Раньше это был «текущий биопод» игрока; теперь берём дом пары в репродукторе,
-   * а если репродуктор пуст — первый биопод колонии.
-   */
-  const hostScene =
-    scenes.find((scene) => scene.id === getToadHomeId(nestAdults[0] ?? {})) ??
-    scenes[0] ??
-    null;
 
   /**
    * Два места репродуктора: первый слот — самка, второй — самец (Часть 3.2). Слота два,
@@ -332,9 +313,6 @@ export default function NestModal({
   /** Что сейчас происходит в репродукторе — подсказка рядом с кнопкой ухаживания */
   const nestHint = ((): string | null => {
     if (courtingToad) {
-      const partner = allToads.find(
-        (toad) => toad.id === courtingToad.mating?.partnerId,
-      );
       return `Ухаживание запущено`;
     }
 
@@ -376,7 +354,11 @@ export default function NestModal({
     const result = startNestCourtship(roomId, addNotification);
 
     // О причине отказа менеджер уже сказал уведомлением, и её же видно под кнопкой
-    result.started ? playSuccess() : playError();
+    if (result.started) {
+      playSuccess();
+    } else {
+      playError();
+    }
     setTick((t) => t + 1);
   };
 
@@ -422,18 +404,6 @@ export default function NestModal({
     setTick((t) => t + 1);
   };
 
-  /** Сброс отдыха жабы после спаривания (астро-кваксы) */
-  const handleResetCooldown = (toad: Toad) => {
-    const result = resetBreedCooldown(toad.id);
-
-    if (!result.success) {
-      addNotification({ type: "warn", content: result.message });
-    }
-
-    result.success ? playSuccess() : playError();
-    setTick((t) => t + 1);
-  };
-
   /** Прервать ухаживание: жабы перестают ухаживать, но остаются в репродукторе */
   const handleAbortMating = (toad: Toad) => {
     const result = abortMating(toad.id);
@@ -442,7 +412,11 @@ export default function NestModal({
       addNotification({ type: "warn", content: result.message });
     }
 
-    result.success ? playSuccess() : playError();
+    if (result.success) {
+      playSuccess();
+    } else {
+      playError();
+    }
     setTick((t) => t + 1);
   };
 

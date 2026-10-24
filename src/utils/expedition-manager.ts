@@ -27,14 +27,11 @@ import {
 import { getIncubatingToadIds } from "./dissolve-manager";
 import { getToadDisease, infectToad } from "./disease-manager";
 import {
-  getActiveExpeditions,
   getExpeditionById,
   getExpeditions,
   getRoomExpeditions,
-  getToadExpedition,
   isExpeditionActive,
   isExpeditionFromRoom,
-  isToadBusyOnExpedition,
   isToadOnExpedition,
 } from "./expedition-status";
 import { generateRandomHexColor } from "./randomize-toad-characteristics";
@@ -91,7 +88,6 @@ import {
   getMaxExpeditions,
   getReturnRemainingHours,
   getRolePower,
-  getSectorLootFactor,
   getSpeedUpReturnCost,
   getToadHp,
   getToadMaxHp,

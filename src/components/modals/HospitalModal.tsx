@@ -14,15 +14,8 @@ import { Toad } from "../../models/Toad";
 import { getDiseaseCureCost, getToadDisease } from "../../models/disease";
 import { cureToadForTokens } from "../../utils/disease-manager";
 import { healToad, isToadOnExpedition } from "../../utils/expedition-manager";
+import { getHealCost, getToadHp, getToadMaxHp } from "../../utils/expedition-config";
 import {
-  getHealCost,
-  getToadHp,
-  getToadMaxHp,
-  HP_REGEN_PER_HOUR,
-} from "../../utils/expedition-config";
-import {
-  HOSPITAL_DISEASE_SPEED,
-  HOSPITAL_HP_REGEN_PER_HOUR,
   HOSPITAL_ROOM_TOAD_SLOTS,
   getHospitalPatients,
   getHoursToFullHp,

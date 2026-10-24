@@ -2,7 +2,7 @@ import React, { useEffect } from "react";
 import Modal from "../shared/Header";
 import { useSoundEffects } from "../../hooks/use-sound-effects";
 import { INITIAL_CAPACITY } from "../../models/scene";
-import { CURRENCY_CONFIG, TYPE_ICONS } from "../../utils/constants";
+import { CURRENCY_CONFIG } from "../../utils/constants";
 import { completeAchivement } from "../../backend/achivements-manager";
 import { useModal } from "../ModalContext";
 import { CurrencyText } from "../shared/CurrencyIcon";

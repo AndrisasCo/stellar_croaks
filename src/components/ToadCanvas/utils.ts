@@ -1,4 +1,4 @@
-import { Assets, Texture } from "pixi.js";
+import { Assets, Rectangle, Texture } from "pixi.js";
 import { ToadTypes } from "../../models/Toad/toad-species";
 
 export function makeColorWhiter(hexColor: string, percent: number) {
@@ -35,24 +35,24 @@ export const createTextures = (
         result.push(
           new Texture({
             source: spritesheet,
-            frame: {
-              x: (i * spritesheet.width) / iMax,
-              y: (j * spritesheet.height) / jMax,
-              width: spritesheet.width / iMax,
-              height: spritesheet.height / 2,
-            },
+            frame: new Rectangle(
+              (i * spritesheet.width) / iMax,
+              (j * spritesheet.height) / jMax,
+              spritesheet.width / iMax,
+              spritesheet.height / 2,
+            ),
           })
         );
       }
       result.push(
         new Texture({
           source: spritesheet,
-          frame: {
-            x: (i * spritesheet.width) / iMax,
-            y: (j * spritesheet.height) / jMax,
-            width: spritesheet.width / iMax,
-            height: spritesheet.height / jMax,
-          },
+          frame: new Rectangle(
+            (i * spritesheet.width) / iMax,
+            (j * spritesheet.height) / jMax,
+            spritesheet.width / iMax,
+            spritesheet.height / jMax,
+          ),
         })
       );
     }

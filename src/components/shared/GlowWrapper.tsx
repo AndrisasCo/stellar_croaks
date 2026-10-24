@@ -90,10 +90,20 @@ const goldenGlowStyle = `
   }
 `;
 
+/** Стили обёртки: помимо обычных CSS-свойств, галерея задаёт цвета свечения. */
+type GlowStyle = React.CSSProperties & {
+  "--color-01"?: string;
+  "--color-02"?: string;
+  "--color-03"?: string;
+  "--color-04"?: string;
+};
+
 // Компонент для золотого свечения
 export const GlowWrapper: React.FC<{
   children: React.ReactNode;
   className?: string;
+  style?: GlowStyle;
+  onClick?: () => void;
   disabled?: boolean;
   sparklesOn?: boolean;
 }> = ({ children, disabled, className, sparklesOn, ...rest }) => {

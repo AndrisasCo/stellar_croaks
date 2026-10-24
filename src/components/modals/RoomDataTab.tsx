@@ -23,7 +23,6 @@ import {
   getBuiltRoomKind,
   getRoomBlueprint,
   hasAutofeeder,
-  isToadRoom,
   RoomConfig,
 } from "../HexMap/rooms-config";
 import { ClickButton } from "../shared/ClickButton";

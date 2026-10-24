@@ -1,18 +1,15 @@
-import React, { useMemo, useState } from "react";
-import { useSoundEffects } from "../../../hooks/use-sound-effects";
+import React from "react";
 import Modal from "../../shared/Header";
 import { ToadAvatar } from "../../shared/ToadAvatar";
 import {
-  TOAD_SPECIES_CONFIG,
   ToadObtainedBy,
   getLootboxHint,
   LootboxChanceLevel,
 } from "../../../models/Toad/toad-species";
-import { getAchievementState } from "../../../backend/achivements-manager";
 import { GlowWrapper } from "../../shared/GlowWrapper";
 
 // Интерфейс для элемента галереи
-interface GallerySlot {
+export interface GallerySlot {
   type: string;
   name: string;
   rarity: "common" | "rare" | "epic" | "legendary";
@@ -142,10 +139,13 @@ const getHintText = (item: GallerySlot): string => {
   }
 };
 
-export const DetailedView: React.FC = ({ selectedItem }) => {
-  const detailStyles = selectedItem
-    ? getRarityStyles(selectedItem.rarity, selectedItem.isUnlocked)
-    : null;
+export const DetailedView: React.FC<{ selectedItem: GallerySlot }> = ({
+  selectedItem,
+}) => {
+  const detailStyles = getRarityStyles(
+    selectedItem.rarity,
+    selectedItem.isUnlocked,
+  );
 
   return (
     <Modal title={selectedItem?.name}>

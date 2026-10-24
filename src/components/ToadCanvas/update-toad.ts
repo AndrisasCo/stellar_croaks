@@ -6,13 +6,16 @@ import { Toad } from "../../models/Toad";
 
 export const updateToadAppearance =
   (container: Container, toad: Toad, state: string, bounce: number = 0) =>
-  (texturesRef) => {
+  (texturesRef: { current: any }) => {
     const toadSprite = container.getChildAt(0) as Sprite;
     if (!toadSprite || !texturesRef.current) {
       return;
     }
     const isToadpole = toad.stage === "toadpole";
-    const data = container.userData;
+    // Pixi v8 не описывает `userData` в типах: прогресс анимации кладёт туда карта.
+    const data = (
+      container as Container & { userData?: { animationProgress: number } }
+    ).userData;
     const textures = isToadpole
       ? texturesRef.current.toadpoleTextures
       : getTextureByType(texturesRef, toad.type);
@@ -25,7 +28,9 @@ export const updateToadAppearance =
         toadSprite.texture = textures[frameIndex];
       } else {
         toadSprite.texture = textures[0];
-        data.animationProgress = 0;
+        if (data) {
+          data.animationProgress = 0;
+        }
       }
     }
     const size = toad.genes.weight * 1.5;

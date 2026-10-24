@@ -351,18 +351,3 @@ const NotificationStack: React.FC = () => {
     </div>
   );
 };
-
-// Функция для обратной совместимости
-export const triggerNotification = ({
-  content,
-  timeout = 5000,
-  type = "warn",
-}: {
-  content: string;
-  timeout?: number;
-  type?: NotificationType;
-}) => {
-  console.warn(
-    "triggerNotification is deprecated. Use useNotifications hook instead."
-  );
-};

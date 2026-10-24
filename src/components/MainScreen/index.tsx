@@ -153,7 +153,7 @@ export default function ToadGame() {
         ]);
       };
 
-      processBreeding(offlineHours, collectOfflineEvent);
+      processBreeding(collectOfflineEvent);
 
       if (offlineHours > 0.09) {
         runHungerTick(offlineHours);
@@ -201,7 +201,7 @@ export default function ToadGame() {
       // Роды и рост головастиков. Новые беременности запускаются вручную («Репродуктор»)
       intervals.push(
         window.setInterval(
-          () => processBreeding(0, addNotification),
+          () => processBreeding(addNotification),
           60 * 1000,
         ),
       );

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { getRarityConfig, Toad } from "../../models/Toad";
+import { Toad } from "../../models/Toad";
 import { CURRENCY_CONFIG } from "../../utils/constants";
 import Modal from "../shared/Header";
 import { useSoundEffects } from "../../hooks/use-sound-effects";
@@ -17,11 +17,6 @@ import { ToadAvatar } from "../shared/ToadAvatar";
 import { ToadTypes } from "../../models/Toad/toad-species";
 import { HorizontalScroll } from "../shared/HorizontalScroll";
 import { CurrencyIcon, CurrencyText } from "../shared/CurrencyIcon";
-
-interface LeaderboardModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-}
 
 const LeaderboardModal: React.FC = () => {
   const { account } = useToads();

@@ -63,7 +63,7 @@ export const Colors = ({ toad }: { toad: Toad }) => {
       return;
     }
 
-    const colors = {
+    const colors: Partial<Record<Items, string>> = {
       [Items.pigmentBlue]: varyColor("#0000AA"),
       [Items.pigmentRed]: varyColor("#AA0000"),
       [Items.pigmentGreen]: varyColor("#00AA00"),
@@ -72,7 +72,13 @@ export const Colors = ({ toad }: { toad: Toad }) => {
 
     const color = colors[pigment.key];
 
-    updateUserStorage({ [pigment.key]: account.storage[pigment.key] - 1 });
+    if (!color) {
+      return;
+    }
+
+    const left = (account.storage[pigment.key] || 0) - 1;
+
+    updateUserStorage({ [pigment.key]: left });
     updateToadById(toad.id, { genes: { ...toad.genes, colors: [color] } });
 
     addNotification({

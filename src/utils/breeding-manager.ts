@@ -79,12 +79,12 @@ export class TimeManager {
   }
 }
 
-export const processBreeding = (hoursPassed: number, addNotification: any) => {
+export const processBreeding = (addNotification: any) => {
   const toadsByScene = groupToadsByScene(getGameState().toads);
 
   // Обрабатываем каждую сцену отдельно
-  Object.entries(toadsByScene).forEach(([sceneId, sceneToads]) => {
-    processSceneBreeding(sceneId, sceneToads, hoursPassed, addNotification);
+  Object.values(toadsByScene).forEach((sceneToads) => {
+    processSceneBreeding(sceneToads, addNotification);
   });
 };
 
@@ -106,9 +106,7 @@ const groupToadsByScene = (toads: Toad[]): Record<string, Toad[]> => {
 };
 
 const processSceneBreeding = async (
-  sceneId: string,
   sceneToads: Toad[],
-  hoursPassed: number,
   addNotification: any,
 ) => {
   const pregnant = sceneToads.filter((t) => t.pregnancy);

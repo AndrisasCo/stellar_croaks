@@ -11,7 +11,7 @@ import { useShop } from "./use-shop";
 
 const BuyTab: React.FC = () => {
   const { account } = useToads();
-  const { tokens = 0, astro_quax = 0, storage = { food: 0 } } = account || {};
+  const { tokens = 0 } = account || {};
   const {
     shopItems,
     handleInstantRefresh,

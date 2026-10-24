@@ -11,7 +11,7 @@ import type { EliteOrder } from "./elite-order-generator";
 
 // Интерфейс для состояния Торговая Капсулаа
 export interface ShopState {
-  availableToads: Partial<Toad>[];
+  availableToads: Toad[];
   lastRefresh: number; // timestamp последнего обновления
   nextRefresh: number; // timestamp следующего обновления
   lastRefreshElite: number; // timestamp последнего обновления
@@ -275,12 +275,14 @@ export const initializeShop = (): ShopState => {
   };
 };
 
-export const getNewToads = () => {
+export const getNewToads = (): Toad[] => {
   const shuffled = [...ALL_TOADS].sort(() => Math.random() - 0.5);
+  // ALL_TOADS — полные шаблоны жаб, randomizeToadCharacteristics меняет только
+  // характеристики, поэтому витрина всегда получает целых жаб с новым id.
   return shuffled.slice(0, 3).map((toad) => ({
     ...randomizeToadCharacteristics(toad, 0.1),
     id: Math.round(Math.random() * Date.now()),
-  }));
+  })) as Toad[];
 };
 
 /** Сколько заказов показывает витрина за одно обновление */

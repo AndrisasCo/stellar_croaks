@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Modal from "../shared/Header";
 import { ClickButton } from "../shared/ClickButton";
 import { CurrencyIcon, CurrencyText } from "../shared/CurrencyIcon";
@@ -33,38 +33,30 @@ import {
 } from "../../models/expedition";
 import { Items } from "../../models/user";
 import {
-  EXPEDITION_BASE_DISEASE_CHANCE,
-  EXPEDITION_RETURN_RATIO,
   EXPEDITION_SAMPLE_TOAD_CHANCE,
   EXPEDITION_TEAM_SIZE,
   EXTRACTION_ASTRO_COST,
   ExpeditionTeamMember,
   canToadAffordExpedition,
   getContourPassReward,
-  getDispatchOfficeCost,
   getEvacuationCost,
   getExpeditionEventChance,
-  getExpeditionProfitFloor,
   getExpeditionSampleReward,
   getExpeditionSendCost,
-  getExpeditionEnergyCost,
   getExpeditionSuccessChance,
   getExpeditionToadEnergyCost,
   getRolePower,
   getRoleStat,
   getSectorDamageMultiplier,
-  getSectorSuccessFactor,
   getSpeedUpReturnCost,
   getToadHp,
   getToadHpStatusLabel,
   getToadMaxHp,
-  HP_REGEN_PER_HOUR,
   isAwaitingEvacuation,
   ROLE_CONFIG,
 } from "../../utils/expedition-config";
 import {
   EXPEDITION_TOAD_BUSY_REASON,
-  buyDispatchOffice,
   canSendToad,
   evacuateExpedition,
   extractExpedition,
@@ -80,7 +72,6 @@ import {
   getSectorUnlockStatus,
   isExpeditionFromRoom,
   isToadBusyOnExpedition,
-  isToadOnExpedition,
   processExpeditions,
   speedUpReturn,
   startExpedition,
@@ -257,8 +248,6 @@ const ExpeditionModal: React.FC<{
 
   const [sectorId, setSectorId] = useState<number>(SECTORS[0].id);
   const [slots, setSlots] = useState<ExpeditionSlots>(emptyExpeditionSlots());
-  /** Плашки ролей с описанием и HP скрыты под спойлером — команду собирают по слотам */
-  const [rolesInfoOpen, setRolesInfoOpen] = useState(false);
 
   // Походы живут по реальному времени — обновляем отсчёты раз в секунду
   useEffect(() => {
@@ -326,9 +315,6 @@ const ExpeditionModal: React.FC<{
     previousSectorUnlocked &&
     previousSectorCompleted &&
     contourPasses >= unlockStatus.required;
-  const unlockedSectors = SECTORS.filter((item) =>
-    isSectorUnlocked(item, stats),
-  ).length;
 
   const availableToads = useMemo(
     () => state.toads.filter((toad) => canSendToad(toad, expeditions).ok),
@@ -358,7 +344,6 @@ const ExpeditionModal: React.FC<{
   }, []);
   const biomass = state.user.biomass || 0;
   const tokens = state.user.tokens || 0;
-  const astro = state.user.astro_quax || 0;
 
   // Сектора и жаб по секторам берём из колонии теми же вычислениями, что и карта.
   const { rooms, toadsByRoom, powerGrid, releaseToad } = useColony();

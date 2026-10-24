@@ -4,58 +4,13 @@ import Modal from "../../shared/Header";
 import { ToadAvatar } from "../../shared/ToadAvatar";
 import {
   TOAD_SPECIES_CONFIG,
-  ToadObtainedBy,
   getLootboxHint,
-  LootboxChanceLevel,
 } from "../../../models/Toad/toad-species";
 import { getAchievementState } from "../../../backend/achivements-manager";
 import { GlowWrapper } from "../../shared/GlowWrapper";
-import { DetailedView } from "./DetailedView";
+import { DetailedView, type GallerySlot } from "./DetailedView";
 import { useModal } from "../../ModalContext";
 
-// Интерфейс для элемента галереи
-interface GallerySlot {
-  type: string;
-  name: string;
-  rarity: "common" | "rare" | "epic" | "legendary";
-  description: string;
-  isUnlocked: boolean;
-  unlockedAt?: string;
-  exampleToad?: any;
-  obtainedBy?: ToadObtainedBy;
-  lootboxChanceLevel?: LootboxChanceLevel;
-  recipeHint?: string;
-  achievementId?: string;
-  price?: number;
-  hidden?: boolean;
-}
-
-interface ToadGalleryModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-}
-
-// Хелпер для иконок способов получения
-const getObtainedByIcon = (obtainedBy?: ToadObtainedBy) => {
-  switch (obtainedBy) {
-    case "start":
-      return { icon: "", label: "Стартовая" };
-    case "shop":
-      return { icon: "🛒", label: "Торговая капсула" };
-    case "lootbox":
-      return { icon: "🎁", label: "Лутбокс" };
-    case "achievement":
-      return { icon: "🏆", label: "Достижение" };
-    case "collider":
-      return { icon: "⚗️", label: "Коллайдер" };
-    case "recipe":
-      return { icon: "🔮", label: "Рецепт" };
-    case "unknown":
-      return { icon: "❓", label: "Неизвестно" };
-    default:
-      return { icon: "❓", label: "Неизвестно" };
-  }
-};
 
 // Хелпер для цветов редкости
 const getRarityStyles = (rarity: string, isUnlocked: boolean) => {
@@ -230,7 +185,7 @@ export const ToadGalleryModal: React.FC = () => {
     const items = [...galleryItems];
 
     switch (sortBy) {
-      case "rarity":
+      case "rarity": {
         const rarityOrder = { legendary: 4, epic: 3, rare: 2, common: 1 };
         return items.sort((a, b) => {
           if (a.isUnlocked !== b.isUnlocked) {
@@ -240,6 +195,7 @@ export const ToadGalleryModal: React.FC = () => {
           if (rarityDiff !== 0) return rarityDiff;
           return a.name.localeCompare(b.name);
         });
+      }
 
       case "unlocked":
         return items.sort((a, b) => {

@@ -1,6 +1,5 @@
 import { ColonyRoomKind, ColonyRoomState } from "../../models/colony";
 import { Expedition } from "../../models/expedition";
-import { INITIAL_CAPACITY } from "../../models/scene";
 import { Toad } from "../../models/Toad";
 import { isToadBusyOnExpedition } from "../../utils/expedition-status";
 import {

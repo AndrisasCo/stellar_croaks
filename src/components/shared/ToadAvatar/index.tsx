@@ -5,15 +5,23 @@ import {
 } from "../../../models/Toad/toad-species";
 import { makeColorWhiter } from "../../ToadCanvas/utils";
 
+/** Аватару нужны только вид и окрас: каталог лутбокса хранит частичных жаб. */
+type ToadAvatarModel = {
+  type?: Toad["type"];
+  genes?: Pick<Toad["genes"], "colors">;
+};
+
 export const ToadAvatar = (props: {
-  toad: Toad;
+  toad: ToadAvatarModel;
   size?: number;
   onClick?: () => void;
 }) => {
   const { toad, size = 10, onClick } = props;
-  const type = Object.values(ToadTypes).includes(toad.type)
-    ? toad.type
-    : ToadTypes.hybrid;
+  const type =
+    toad.type && Object.values(ToadTypes).includes(toad.type)
+      ? toad.type
+      : ToadTypes.hybrid;
+  const baseColor = toad.genes?.colors[0] ?? "#1C2229";
 
   const isColoredToad = isColorableToadType(type);
   const imageSrc = isColoredToad ? `/bg/${type}.webp` : `/sprites/${type}.webp`;
@@ -31,7 +39,7 @@ export const ToadAvatar = (props: {
         className="absolute inset-0"
         style={{
           backgroundColor: isColoredToad
-            ? makeColorWhiter(toad.genes?.colors[0], 20)
+            ? makeColorWhiter(baseColor, 20)
             : "#1C2229",
         }}
       />
@@ -39,7 +47,7 @@ export const ToadAvatar = (props: {
         style={{
           width: size * 4,
           height: size * 4,
-          color: toad.genes?.colors[0],
+          color: baseColor,
           background: `url(${imageSrc}) ${
             isColoredToad ? "5% 50%" : "0% 0%"
           }  / ${isColoredToad ? 4.5 * size : 13 * size}px no-repeat #1C2229`,
