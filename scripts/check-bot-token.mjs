@@ -52,10 +52,13 @@ const callTelegram = async (method) => {
   };
 };
 
-/** Тот же алгоритм, что в supabase/functions/_shared/telegram-init-data.ts. */
+/**
+ * Тот же алгоритм, что в supabase/functions/_shared/telegram-init-data.ts, и в том
+ * виде, в каком данные подписывает живой клиент: `signature` входит в строку проверки.
+ */
 const signInitData = (botToken, params) => {
   const dataCheckString = Object.keys(params)
-    .filter((key) => key !== "hash" && key !== "signature")
+    .filter((key) => key !== "hash")
     .sort()
     .map((key) => `${key}=${params[key]}`)
     .join("\n");
@@ -134,9 +137,14 @@ const main = async () => {
     );
   } else {
     // 3) Главная проверка: подпись протухшего initData нашим токеном.
+    //    Набор полей — как у живого мини-аппа (Bot API 8.0): `signature` есть и
+    //    участвует в подписи, поэтому проверяется именно тот путь, что у игрока.
     const initData = signInitData(BOT_TOKEN, {
       auth_date: String(Math.floor(Date.now() / 1000) - 3 * 24 * 60 * 60),
+      chat_instance: "8842000271892048179",
+      chat_type: "sender",
       query_id: "AAHdF6IQAAAAAN0Xoha",
+      signature: "check-bot-token-not-a-real-ed25519-signature",
       user: JSON.stringify({ id: 999999999, first_name: "CheckBotToken" }),
     });
 

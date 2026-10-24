@@ -11,9 +11,9 @@
  *   2) чужой токен бота не проходит (HMAC не сходится);
  *   3) подменённый user (например, чужой tg_id) не проходит — hash покрывает поля;
  *   4) отсутствие hash и просроченный auth_date отклоняются;
- *   5) поле `signature` (Bot API 8.0) исключается из строки проверки — на новых
- *      клиентах подпись продолжает сходиться;
- *   6) data_check_string собирается по алфавиту и не содержит `hash`/`signature`.
+ *   5) поле `signature` (Bot API 8.0) принимается в обоих видах: живой клиент
+ *      подписывает данные ВМЕСТЕ с `signature`, старые/иные — без него;
+ *   6) data_check_string собирается по алфавиту и не содержит `hash`.
  *
  * Запуск: node tmp-verify-init-data.mjs
  */
@@ -60,6 +60,7 @@ const check = (label, actual, expected) => {
 
 const {
   buildDataCheckString,
+  buildDataCheckStrings,
   computeInitDataHash,
   getInitDataDisplayName,
   verifyInitData,
@@ -79,24 +80,32 @@ const telegramHash = (botToken, dataCheckString) => {
 };
 
 /**
- * Собирает initData так, как это делает Telegram: `hash` в строку проверки не входит,
- * `signature` (Bot API 8.0) — тоже.
+ * Собирает initData так, как это делает Telegram: `hash` в строку проверки не входит.
+ *
+ * `signatureInHash` — правило для поля `signature` (Bot API 8.0): живой мини-апп
+ * подписывает данные вместе с ним, часть клиентов — без. `userJson` позволяет
+ * подсунуть `user` ровно в том виде, в каком его присылает Telegram (с `\/` в URL).
  */
 const makeInitData = ({
   user,
   authDate = NOW,
   extra = {},
   token = BOT_TOKEN,
+  signatureInHash = false,
+  userJson,
 }) => {
   const params = {
     auth_date: String(authDate),
     query_id: "AAHdF6IQAAAAAN0Xoha",
-    user: JSON.stringify(user),
+    user: userJson ?? JSON.stringify(user),
     ...extra,
   };
 
   const dataCheckString = Object.keys(params)
-    .filter((key) => key !== "hash" && key !== "signature")
+    .filter(
+      (key) =>
+        key !== "hash" && (signatureInHash || key !== "signature")
+    )
     .sort()
     .map((key) => `${key}=${params[key]}`)
     .join("\n");
@@ -175,15 +184,59 @@ const user = {
   );
   check("initData возрастом 23 ч ещё годится", fresh.ok, true);
 
-  // 5. Bot API 8.0: `signature` вписан в данные, но в подписи не участвует
-  const withSignature = makeInitData({
+  // 5. Bot API 8.0: `signature`. Живой мини-апп подписывает данные ВМЕСТЕ с ним
+  //    (так пришёл реальный initData из Telegram), часть клиентов — без него.
+  const signature =
+    "qOaD7jZ2xKzmKLFZZroI_OISjRFOmPmk2PYEVILdrlO-ikVVJquI9OGlUHtl-BrbkEpuRXXOWK2b4XmfNOZjAQ";
+  const liveUserJson =
+    '{"id":857360604,"first_name":"Алиса","last_name":"Павлова","username":"pavlova_alisa","language_code":"ru","allows_write_to_pm":true,"photo_url":"https:\\/\\/t.me\\/i\\/userpic\\/320\\/Kcl6ZpGNZ3YU6_swhDOFCDyd3G55fBDmtcicrMfTz-Y.svg"}';
+  const liveExtras = {
+    chat_instance: "8842000271892048179",
+    chat_type: "sender",
+    signature,
+  };
+  const liveShape = makeInitData({
     user,
-    extra: { signature: "zm9vYmFyLXNpZ25hdHVyZS12YWx1ZQ" },
+    extra: liveExtras,
+    signatureInHash: true,
+    userJson: liveUserJson,
   });
-  const signedResult = await verifyInitData(withSignature, BOT_TOKEN, {
+  const liveResult = await verifyInitData(liveShape, BOT_TOKEN, {
     nowSeconds: NOW,
   });
-  check("initData с полем signature принят", signedResult.ok, true);
+  check("живой initData (signature в подписи) принят", liveResult.ok, true);
+  check(
+    "из живого initData достали tg_id",
+    liveResult.ok ? liveResult.data.user.id : null,
+    857360604
+  );
+
+  const legacySignature = makeInitData({
+    user,
+    extra: liveExtras,
+    userJson: liveUserJson,
+  });
+  const legacyResult = await verifyInitData(legacySignature, BOT_TOKEN, {
+    nowSeconds: NOW,
+  });
+  check("initData с signature вне подписи принят", legacyResult.ok, true);
+
+  const forgedLive = liveShape.replace(
+    encodeURIComponent('"id":857360604'),
+    encodeURIComponent('"id":1')
+  );
+  check(
+    "подмена tg_id в живом initData отклонена",
+    (await verifyInitData(forgedLive, BOT_TOKEN, { nowSeconds: NOW })).reason,
+    "bad_hash"
+  );
+
+  check(
+    "строк проверки две, когда есть signature",
+    [buildDataCheckStrings({ auth_date: "1", signature: "s" }).length,
+     buildDataCheckStrings({ auth_date: "1" }).length].join("/"),
+    "2/1"
+  );
 
   // 6. Строка проверки: только алфавитный порядок и без hash/signature
   const checkString = buildDataCheckString({

@@ -11,11 +11,15 @@
  * Алгоритм (Bot API, «Validating data received via the Mini App»):
  *   1) secret_key = HMAC_SHA256(key = "WebAppData", data = bot_token)
  *   2) hash       = HMAC_SHA256(key = secret_key,     data = data_check_string)
- *   3) data_check_string — все пары `key=value` кроме `hash` и `signature`,
- *      отсортированные по key и склеенные через "\n".
+ *   3) data_check_string — все пары `key=value` кроме `hash`, отсортированные по
+ *      key и склеенные через "\n".
  *
- * `signature` (Bot API 8.0, для проверки Ed25519) в строку проверки НЕ входит —
- * если его не исключить, HMAC перестанет сходиться на новых клиентах.
+ * Про `signature` (Bot API 8.0, отдельная Ed25519-подпись) договорённости нет:
+ * часть клиентов Telegram кладёт это поле в HMAC-строку, часть — нет. Настоящий
+ * `initData` из мини-аппа приходит с `signature`, и hash сходится ТОЛЬКО если он
+ * входит в строку проверки, поэтому проверяем оба варианта (см.
+ * `buildDataCheckStrings`). Пропускать поле целиком — значит ловить `bad_hash`
+ * на живых клиентах; включать всегда — ломать те, что подписывают без него.
  */
 
 const encoder = new TextEncoder();
@@ -58,16 +62,43 @@ const timingSafeEqual = (a: string, b: string): boolean => {
   return diff === 0;
 };
 
-/** Поля, которые не участвуют в `data_check_string`. */
-const SKIPPED_FIELDS = ["hash", "signature"];
+/** Поля, которые не участвуют в `data_check_string` ни в одном варианте. */
+const SKIPPED_FIELDS = ["hash"];
+
+/** Поле Bot API 8.0, вокруг которого у клиентов Telegram нет единого правила. */
+const SIGNATURE_FIELD = "signature";
 
 /** Строка проверки: `key=value`, отсортированные по key, через "\n". */
-export const buildDataCheckString = (params: Record<string, string>): string =>
+const joinSorted = (params: Record<string, string>, skip: string[]): string =>
   Object.keys(params)
-    .filter((key) => !SKIPPED_FIELDS.includes(key))
+    .filter((key) => !skip.includes(key))
     .sort()
     .map((key) => `${key}=${params[key]}`)
     .join("\n");
+
+/** Классическая строка проверки — без `hash` и `signature`. */
+export const buildDataCheckString = (params: Record<string, string>): string =>
+  joinSorted(params, [...SKIPPED_FIELDS, SIGNATURE_FIELD]);
+
+/**
+ * Все строки проверки, которые встречаются у настоящих клиентов.
+ *
+ * Живой `initData` из мини-аппа содержит `signature` и подписан ВМЕСТЕ с ним —
+ * hash сходится, только если поле попало в строку. Старые/иные клиенты
+ * подписывают без него. Поэтому принимаем оба варианта: подделка всё равно не
+ * пройдёт (она не может дать валидный hash ни для одной строки).
+ */
+export const buildDataCheckStrings = (
+  params: Record<string, string>
+): string[] => {
+  const variants = [buildDataCheckString(params)];
+
+  if (SIGNATURE_FIELD in params) {
+    variants.push(joinSorted(params, SKIPPED_FIELDS));
+  }
+
+  return variants;
+};
 
 /** Ожидаемая подпись `hash` для строки проверки (hex). */
 export const computeInitDataHash = async (
@@ -151,12 +182,22 @@ export const verifyInitData = async (
     return { ok: false, reason: "missing_hash" };
   }
 
-  const dataCheckString = buildDataCheckString(
+  const dataCheckStrings = buildDataCheckStrings(
     Object.fromEntries(params.entries())
   );
-  const expected = await computeInitDataHash(botToken, dataCheckString);
+  const targetHash = hash.toLowerCase();
+  let matched = false;
 
-  if (!timingSafeEqual(expected, hash.toLowerCase())) {
+  for (const dataCheckString of dataCheckStrings) {
+    const expected = await computeInitDataHash(botToken, dataCheckString);
+
+    if (timingSafeEqual(expected, targetHash)) {
+      matched = true;
+      break;
+    }
+  }
+
+  if (!matched) {
     return { ok: false, reason: "bad_hash" };
   }
 
