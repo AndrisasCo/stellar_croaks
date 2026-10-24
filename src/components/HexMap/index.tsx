@@ -22,6 +22,7 @@ import { ToadInfo } from "../modals/ToadInfoModal";
 import { ClickButton } from "../shared/ClickButton";
 import { CurrencyIcon } from "../shared/CurrencyIcon";
 import { OfflineEventsButton } from "../shared/OfflineEventsButton";
+import { QuestJournalButton } from "../shared/QuestJournalButton";
 import { canBuildOnSlot, getUnpoweredAviarySceneIds } from "./colony-build";
 import HexMapCanvas from "./HexMapCanvas";
 import { openRoomModal } from "./open-room-modal";
@@ -501,13 +502,18 @@ export default function HexMapScreen() {
             <OfflineEventsButton />
           </div>
 
-          <ClickButton
-            title="Меню колонии"
-            onClick={() => openModal(() => <BurgerMenu />)}
-            className="pointer-events-auto rounded-xl border-2 border-purple-300/70 bg-slate-950/65 p-2 text-purple-200 backdrop-blur-md duration-300 active:scale-95"
-          >
-            {MenuIcons.menu}
-          </ClickButton>
+          <div className="pointer-events-auto flex shrink-0 items-center gap-2">
+            {/* Журнал заданий: бейдж показывает готовые награды */}
+            <QuestJournalButton />
+
+            <ClickButton
+              title="Меню колонии"
+              onClick={() => openModal(() => <BurgerMenu />)}
+              className="pointer-events-auto flex items-center justify-center w-10 h-10 rounded-xl border-2 border-purple-300/70 bg-slate-950/65 p-2 text-purple-200 backdrop-blur-md duration-300 "
+            >
+              {MenuIcons.menu}
+            </ClickButton>
+          </div>
         </div>
 
         {/* Ресурсы колонии — плавающие чипы поверх карты; кормление живёт в ядре */}

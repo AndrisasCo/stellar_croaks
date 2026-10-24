@@ -19,6 +19,7 @@ import {
 } from "../../../models/Toad/lootbox";
 import { itemsFull, Items } from "../../../models/user";
 import { completeAchivementCounter } from "../../../backend/achivements-manager";
+import { recordQuestEvent } from "../../../backend/quests-manager";
 import {
   getStorageCapacityInfo,
   STORAGE_CAPACITY_PER_ROOM,
@@ -132,6 +133,10 @@ const StorageModal: React.FC<{ room?: RoomConfig }> = ({ room }) => {
     updateUser({
       storage: { ...current.storage, lootbox: current.storage.lootbox - 1 },
     });
+
+    // Лутбокс израсходован: событие журнала фиксируем после списания, чтобы
+    // прогресс не опережал сейв. Жаба ещё ждёт выбора биопода — это не важно.
+    recordQuestEvent("lootbox_opened", 1);
 
     // Жабу создаём только после выбора биопода — до этого она «в окне» лутбокса
     setLootboxReveal({

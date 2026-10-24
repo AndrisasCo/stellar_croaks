@@ -14,7 +14,9 @@
  *      ухаживающую жабу с карты не унести, а каждый гекс-вольер показывает своих жильцов
  *      (`RoomConfig.sceneId`), а не один общий список жаб;
  *   6) астро-кваксы ускоряют ухаживание, «Прервать» оставляет пару в гнезде;
- *   7) роды: в гнезде головастики остаются у матери, в вольере — расходятся по вольерам.
+ *   7) роды: в гнезде головастики остаются у матери, в вольере — расходятся по вольерам;
+ *   8) в обучении пара беременеет сразу после «Начать ухаживание» (без ожидания
+ *      15–30 минут), а вне обучения беременность по-прежнему ждёт таймер.
  *
  * Запуск: node tmp-verify-breeding.mjs
  */
@@ -134,12 +136,28 @@ let achievementsRaw = JSON.stringify({
   counter: {},
   toads_collection: [],
 });
+/** Прогресс рассказчика — отдельный ключ: от него зависит ускоренное обучение */
+let narratorRaw = "";
+
+const NARRATOR_KEY = "Stellar_Croak_Narrator_v1";
 
 globalThis.localStorage = {
-  getItem: (key) => (key === "achivements" ? achievementsRaw : raw),
+  getItem: (key) => {
+    if (key === "achivements") {
+      return achievementsRaw;
+    }
+    if (key === NARRATOR_KEY) {
+      return narratorRaw;
+    }
+    return raw;
+  },
   setItem: (key, value) => {
     if (key === "achivements") {
       achievementsRaw = value;
+      return;
+    }
+    if (key === NARRATOR_KEY) {
+      narratorRaw = value;
       return;
     }
     raw = value;
@@ -147,6 +165,10 @@ globalThis.localStorage = {
   removeItem: (key) => {
     if (key === "achivements") {
       achievementsRaw = "";
+      return;
+    }
+    if (key === NARRATOR_KEY) {
+      narratorRaw = "";
       return;
     }
     raw = "";
@@ -169,6 +191,7 @@ const reset = (patch) => {
     counter: {},
     toads_collection: [],
   });
+  narratorRaw = "";
 };
 
 const gameState = () => JSON.parse(raw);
@@ -632,6 +655,41 @@ check(
   ).length,
   0
 );
+
+// В обучении самка беременеет сразу после кнопки: игрок проходит весь цикл
+// (беременность → кормление → рост) без ожидания таймеров.
+console.log("\n[8] Обучение: пара беременеет сразу после ухаживания");
+console.log("─".repeat(60));
+reset();
+narratorRaw = JSON.stringify({ status: "active", step: "breed" });
+notes.length = 0;
+const tutorialPair = pairInNest();
+check("кнопка обучения запускает ухаживание", tutorialPair.started, true);
+checkText(
+  "сообщение ведёт к ускорению беременности",
+  tutorialPair.message,
+  /сразу забеременела/
+);
+const tutorialMother = findToad(2);
+check("самка сразу беременна", tutorialMother.pregnancy?.isPregnant, true);
+check("ухаживание не висит", tutorialMother.mating, null);
+check(
+  "самка осталась в репродукторе",
+  tutorialMother.scene_id,
+  constants.NEST_ROOM_ID
+);
+check(
+  "самец остался в репродукторе",
+  findToad(1).scene_id,
+  constants.NEST_ROOM_ID
+);
+check("самец больше не ухаживает", findToad(1).mating, null);
+check("уведомлений об успехе нет", notes.length, 0);
+
+// Вне обучения всё по-прежнему: пара ждёт 15–30 минут до беременности.
+reset();
+pairInNest();
+check("вне обучения беременность ждёт таймер", Boolean(findToad(2).pregnancy), false);
 
 console.log("\n" + "─".repeat(60));
 if (failures.length > 0) {

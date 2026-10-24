@@ -4,6 +4,23 @@ import { getToadHomeId } from "./toad-location";
 
 const getSum = (arr: number[]) => arr.reduce((a, b) => a + b, 0);
 
+/**
+ * Во сколько раз быстрее растут характеристики при селекции и в коллайдере.
+ *
+ * Множитель применяется только к **положительному** приросту относительно
+ * среднего значения родителей: удачные мутации и полезные отклонения
+ * закрепляются вдвое быстрее, а случайные ухудшения не усиливаются.
+ * Максимум сил (`getToadMaxEnergy`) растёт от качества, поэтому ускоряется
+ * вместе с ним без отдельной формулы.
+ */
+export const GENETIC_PROGRESS_MULTIPLIER = 2;
+
+/** Усиливает только прирост характеристики относительно среднего у родителей. */
+const amplifyPositiveGain = (average: number, value: number): number =>
+  value > average
+    ? average + (value - average) * GENETIC_PROGRESS_MULTIPLIER
+    : value;
+
 export const calculateRarityBonus = (parentCount: number): number => {
   // Бонус редкости в зависимости от количества родителей
   const bonuses: { [key: number]: number } = {
@@ -40,36 +57,67 @@ export const inheritTrait = (parents: number[], multiplier: number): number => {
   const average = getSum(parents) / parents.length;
   if (average > 100) {
     const mutation = Math.random() * 10 - 5; // -5 to +5
-    return average + mutation + (multiplier * 10 - 10);
+    return amplifyPositiveGain(
+      average,
+      average + mutation + (multiplier * 10 - 10),
+    );
   }
   if (average > 30) {
     const mutation = Math.random() * 0.1 - 0.05; // -10% to +10%
-    return average * (1 + mutation) * (0.7 + multiplier * 0.3);
+    return amplifyPositiveGain(
+      average,
+      average * (1 + mutation) * (0.7 + multiplier * 0.3),
+    );
   }
   const mutation = Math.random() * 0.2 - 0.1; // -10% to +10%
-  return average * (1 + mutation) * (0.7 + multiplier * 0.3);
+  return amplifyPositiveGain(
+    average,
+    average * (1 + mutation) * (0.7 + multiplier * 0.3),
+  );
 };
 
-// макс Качество 1 + 0.9 + 0.5 = 2.4
-// макс Качество если есть мутация 12.4
-// мин Качество 1 +  -0.5 = 0.5
-// мин Качество если есть мутация  10.5
+/**
+ * Качество гибрида в коллайдере.
+ *
+ * Базовый прирост и бонус за число родителей умножены на
+ * `GENETIC_PROGRESS_MULTIPLIER`: за одно смешивание характеристика растёт
+ * вдвое быстрее, а удачная мутация даёт вдвое больший диапазон.
+ */
 export const calculateRarity = (
   parents: number[],
   mutationChance: boolean,
 ): number => {
   let baseRarity = getSum(parents) / parents.length;
-  baseRarity += 1;
-  baseRarity += (3 * calculateRarityBonus(parents.length)) / 100;
+  baseRarity += 1 * GENETIC_PROGRESS_MULTIPLIER;
+  baseRarity +=
+    ((3 * calculateRarityBonus(parents.length)) / 100) *
+    GENETIC_PROGRESS_MULTIPLIER;
 
   // Мутация - шанс на повышенную Качество
   if (mutationChance) {
-    return baseRarity + 10 * Math.random(); // Сильнее мутации + 0-10 ед
+    return (
+      baseRarity + 10 * Math.random() * GENETIC_PROGRESS_MULTIPLIER
+    ); // Сильнее мутации + 0-20 ед
   }
 
   // Небольшие вариации
   const variation = Math.random() - 0.5; // -0.5 / + 0.5
   return Math.max(0, baseRarity + variation);
+};
+
+/**
+ * Качество потомства в репродукторе (обычная селекция).
+ *
+ * Раньше пара давала только +0.1…+0.3 к среднему качеству родителей.
+ * Множитель ускоряет этот прирост до +0.2…+0.6, не меняя разброс.
+ */
+export const calculateBreedingRarity = (parents: number[]): number => {
+  const average = getSum(parents) / parents.length;
+
+  return (
+    average +
+    (Math.ceil(Math.random() * 3) / 10) * GENETIC_PROGRESS_MULTIPLIER
+  );
 };
 
 export const calculateBreedingTime = (
@@ -216,8 +264,7 @@ export const generateChildToad = (
         parents.map((p) => p.genes.rarity),
         chances?.mutationChance || false,
       )
-    : (parents[0].genes.rarity + parents[1].genes.rarity) / 2 +
-      Math.ceil(Math.random() * 3) / 10;
+    : calculateBreedingRarity(parents.map((p) => p.genes.rarity));
 
   const personality = assignRandomPersonality();
   const personalityTrait =

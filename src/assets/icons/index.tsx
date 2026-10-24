@@ -31,7 +31,7 @@ export const MenuIcons = {
   ),
   menu: (
     <svg
-      className="w-10 h-10"
+      className="w-6 h-6"
       fill="none"
       stroke="currentColor"
       viewBox="0 0 24 24"
@@ -92,6 +92,28 @@ export const MenuIcons = {
         strokeLinejoin="round"
         strokeWidth={1.5}
         d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+      />
+    </svg>
+  ),
+  /** Журнал заданий: раскрытая книга с закладкой. */
+  journal: (
+    <svg
+      className="w-6 h-6"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.5}
+        d="M4 5.5A2.5 2.5 0 016.5 3H20v16H6.5A2.5 2.5 0 004 21.5v-16z"
+      />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.5}
+        d="M8 7h8M8 11h5M15 3v6l2-1.5L19 9V3"
       />
     </svg>
   ),

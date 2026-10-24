@@ -5,6 +5,7 @@ import {
 } from "../backend";
 import { getRoomUpgrades } from "../backend/colony";
 import { getGameState } from "../backend/localStorage";
+import { recordQuestEvent } from "../backend/quests-manager";
 import { Toad } from "../models/Toad";
 import { isToadBusyOnExpedition } from "./expedition-manager";
 import { PRODUCTION_MIN_HUNGER } from "./gamification-config";
@@ -107,6 +108,10 @@ export const processAutoFeeders = (
   updateUser({
     storage: { ...state.user.storage, food: foodOnStack - spent },
   });
+
+  // Кормушка реально накормила жаб, значит это тот же прогресс, что и ручное
+  // кормление: журнал не должен «не замечать» целый апгрейд.
+  recordQuestEvent("toad_fed", hungry.length);
 
   return { fed: hungry.length, spent };
 };

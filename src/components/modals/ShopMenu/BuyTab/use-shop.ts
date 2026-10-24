@@ -5,6 +5,7 @@ import {
   completeAchivementCounter,
 } from "../../../../backend/achivements-manager";
 import { getGameState } from "../../../../backend/localStorage";
+import { recordQuestEvent } from "../../../../backend/quests-manager";
 import {
   ShopState,
   getShopState,
@@ -226,8 +227,11 @@ export const useShop = () => {
         } as User["storage"],
       });
 
-      if (itemName === "food") {
+      if (itemName === Items.food) {
         completeAchivement("buy-food");
+        // Считаем именно купленные упаковки корма: покупка x10 закрывает
+        // задание «купите 10 корма» одним нажатием.
+        recordQuestEvent("food_bought", item[itemName] ?? 1);
       }
 
       if (noAmount) {

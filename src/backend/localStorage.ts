@@ -55,12 +55,17 @@ export const getDefaultGameState = (): GameState => {
 
       astro_quax: 0,
       biomass: 50,
-      // Стартовая колония: склад пуст — первый корм игрок покупает в Торговой капсуле
-      // по заданию обучения (склад предметов, Часть 3.7).
-      storage: Object.values(Items).reduce(
-        (acc, key) => ({ ...acc, [key]: 0 }),
-        {} as Record<Items, number>,
-      ),
+      // Стартовая колония: корма нет — первый корм игрок покупает в Торговой капсуле
+      // по заданию обучения (склад предметов, Часть 3.7). Мушка и червь нужны
+      // обучению: ими игрок сразу ускоряет беременность и рост головастика.
+      storage: {
+        ...Object.values(Items).reduce(
+          (acc, key) => ({ ...acc, [key]: 0 }),
+          {} as Record<Items, number>,
+        ),
+        [Items.sparkleFlys]: 1,
+        [Items.worms]: 1,
+      },
     },
     scenes: [DEFAULT_SCENE],
     toads: DEFAULT_TOADS,

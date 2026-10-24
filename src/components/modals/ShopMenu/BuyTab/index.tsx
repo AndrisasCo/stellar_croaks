@@ -34,60 +34,57 @@ const BuyTab: React.FC = () => {
 
   return (
     <div className="space-y-4 pb-4">
-      {/* Управление Торговая Капсулаом */}
-      <div className="bg-color-main rounded-2xl py-4 px-2 border border-slate-700">
-        <div className="flex flex-col gap-3">
-          <div className="flex justify-between items-center">
-            <span className="text-slate-300">Обновление ассортимента:</span>
-            <span className="text-white font-mono">{timeLeft}</span>
-          </div>
+      <div className="flex justify-between items-center mb-3">
+        <div className="flex gap-3 ">
+          <ClickButton
+            onClick={() => {
+              setActiveTab("items");
+            }}
+            className={`rounded-md border-2 px-2 text-lg font-semibold text-white duration-200 ${
+              activeTab === "items"
+                ? "border-cyan-400/70 bg-cyan-500/20 opacity-100"
+                : "border-slate-500/50 bg-color-main opacity-70 hover:opacity-90"
+            }`}
+          >
+            Предметы
+          </ClickButton>
+          <ClickButton
+            onClick={() => {
+              setActiveTab("toads");
+            }}
+            className={`rounded-md border-2 px-2 text-lg font-semibold text-white duration-200 ${
+              activeTab === "toads"
+                ? "border-cyan-400/70 bg-cyan-500/20 opacity-100"
+                : "border-slate-500/50 bg-color-main opacity-70 hover:opacity-90"
+            }`}
+          >
+            Жабы
+          </ClickButton>
+        </div>
 
-          <div className="flex gap-2">
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-2 relative">
+            {!canRefresh && (
+              <span className="text-xs absolute top-[-40px] right-0">
+                До обновления {timeLeft}
+              </span>
+            )}
             <button
-              onClick={handleRefreshShop}
+              onClick={canRefresh ? handleRefreshShop : handleInstantRefresh}
               disabled={!canRefresh}
               className="ui-button-primary flex-1"
             >
-              Обновить рынок
-            </button>
-
-            <button
-              onClick={handleInstantRefresh}
-              disabled={tokens < INSTANT_REFRESH_COST}
-              className="ui-button-secondary whitespace-nowrap"
-            >
-              {INSTANT_REFRESH_COST}{" "}
-              <CurrencyIcon currency="tokens" className="h-4 w-4" />
+              {canRefresh ? (
+                "Обновить ассортимент"
+              ) : (
+                <>
+                  Обновить ассортимент за {INSTANT_REFRESH_COST}{" "}
+                  <CurrencyIcon currency="tokens" className="h-4 w-4" />
+                </>
+              )}
             </button>
           </div>
         </div>
-      </div>
-
-      <div className="flex gap-3 mb-3">
-        <ClickButton
-          onClick={() => {
-            setActiveTab("items");
-          }}
-          className={`rounded-md border-2 px-2 text-lg font-semibold text-white duration-200 ${
-            activeTab === "items"
-              ? "border-cyan-400/70 bg-cyan-500/20 opacity-100"
-              : "border-slate-500/50 bg-color-main opacity-70 hover:opacity-90"
-          }`}
-        >
-          Предметы
-        </ClickButton>
-        <ClickButton
-          onClick={() => {
-            setActiveTab("toads");
-          }}
-          className={`rounded-md border-2 px-2 text-lg font-semibold text-white duration-200 ${
-            activeTab === "toads"
-              ? "border-cyan-400/70 bg-cyan-500/20 opacity-100"
-              : "border-slate-500/50 bg-color-main opacity-70 hover:opacity-90"
-          }`}
-        >
-          Жабы
-        </ClickButton>
       </div>
 
       {activeTab === "items" && shopItems.map((i) => <BuyButton item={i} />)}
@@ -98,8 +95,7 @@ const BuyTab: React.FC = () => {
             <div className="bg-color-main rounded-2xl p-6 border border-slate-700 text-center">
               <p className="text-slate-300 text-lg">Все жабы раскуплены!</p>
               <p className="text-slate-500 text-sm mt-1">
-                Дождитесь обновления Торговая Капсулаа или обновите его сейчас
-                за астрокваксы
+                Дождитесь обновления Торговой Капсулы
               </p>
             </div>
           ) : (

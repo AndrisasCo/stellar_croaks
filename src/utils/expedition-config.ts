@@ -1,4 +1,9 @@
-import { Expedition, ExpeditionRole, SectorDef } from "../models/expedition";
+import {
+  Expedition,
+  ExpeditionRole,
+  EXPEDITION_ROLE_ORDER,
+  SectorDef,
+} from "../models/expedition";
 import { DISEASES, DiseaseDef, isToadSick } from "../models/disease";
 import { getPersonalityMultipliers, Toad } from "../models/Toad";
 import { LootboxRarity, UNIQUE_TOADS_BY_RARITY } from "../models/Toad/lootbox";
@@ -8,6 +13,7 @@ import {
   UPKEEP_PER_TOAD_HOUR,
   getBiomassPotentialRate,
   getToadEnergy,
+  getToadMaxEnergy,
 } from "./gamification-config";
 import { getToadHomeId } from "./toad-location";
 
@@ -121,6 +127,105 @@ export const getRolePower = (toad: Toad, role: ExpeditionRole): number => {
   const cap = ROLE_CONFIG[role].statCap;
   const stat = getRoleStat(toad, role);
   return Math.max(0, Math.min(EXPEDITION_ROLE_MAX_POWER, stat / cap));
+};
+
+/**
+ * Пороги «экспедиционного резерва» по ролям. Для дальних походов нужно
+ * закрыть пять ролей; одна жаба может закрыть несколько ролей сразу, если
+ * проходит их пороги.
+ *
+ * - оператор: качество 10 даёт максимум 150 ⚡;
+ * - скаут: скорость — сила роли;
+ * - щитоносец: размер даёт HP и силу роли;
+ * - ремонтник: плодовитость — сила роли;
+ * - повар: аппетит — сила роли.
+ *
+ * Значения синхронизированы с описанием `m13-expedition-reserve`.
+ */
+export interface ExpeditionReserveRequirement {
+  maxEnergy?: number;
+  rarity?: number;
+  speed?: number;
+  weight?: number;
+  fertility?: number;
+  hungerRate?: number;
+}
+
+export const EXPEDITION_RESERVE_REQUIREMENTS: Record<
+  ExpeditionRole,
+  ExpeditionReserveRequirement
+> = {
+  hacker: { maxEnergy: 150, rarity: 10 },
+  scout: { speed: 1.2 },
+  tank: { weight: 18 },
+  medic: { fertility: 1.2 },
+  negotiator: { hungerRate: 1.2 },
+};
+
+/**
+ * Жаба получена селекцией или коллайдером: у неё есть родители.
+ * Дикие жабы и жабы из лутбоксов (`parents: null`) под условие не попадают.
+ */
+export const isBredOrColliderToad = (
+  toad: Pick<Toad, "parents">,
+): boolean => Array.isArray(toad.parents) && toad.parents.length > 0;
+
+const meetsReserveRequirement = (
+  toad: Toad,
+  requirement: ExpeditionReserveRequirement,
+): boolean =>
+  (requirement.maxEnergy === undefined ||
+    getToadMaxEnergy(toad) >= requirement.maxEnergy) &&
+  (requirement.rarity === undefined ||
+    (toad.genes?.rarity || 0) >= requirement.rarity) &&
+  (requirement.speed === undefined ||
+    (toad.genes?.speed || 0) >= requirement.speed) &&
+  (requirement.weight === undefined ||
+    (toad.genes?.weight || 0) >= requirement.weight) &&
+  (requirement.fertility === undefined ||
+    (toad.genes?.fertility || 0) >= requirement.fertility) &&
+  (requirement.hungerRate === undefined ||
+    (toad.genes?.hungerRate || 0) >= requirement.hungerRate);
+
+/**
+ * Роли, которые взрослая жаба из селекции/коллайдера может закрыть в резерве.
+ *
+ * Проверка чистая и не смотрит на текущие HP/сытость: это постоянная
+ * характеристика линии, а не состояние жабы в моменте.
+ */
+export const getExpeditionReserveRoles = (toad: Toad): ExpeditionRole[] => {
+  if (toad.stage !== "adult" || !isBredOrColliderToad(toad)) {
+    return [];
+  }
+
+  return EXPEDITION_ROLE_ORDER.filter((role) =>
+    meetsReserveRequirement(toad, EXPEDITION_RESERVE_REQUIREMENTS[role]),
+  );
+};
+
+/** Жаба подходит хотя бы на одну роль экспедиционного резерва. */
+export const isExpeditionReserveToad = (toad: Toad): boolean =>
+  getExpeditionReserveRoles(toad).length > 0;
+
+/**
+ * Сколько ролей экспедиционного резерва закрыто колонией.
+ *
+ * Роль засчитывается, если хотя бы одна взрослая жаба из селекции/коллайдера
+ * проходит её порог. Одна жаба может закрыть несколько ролей сразу, поэтому
+ * универсал со всеми статами даёт максимальные 5/5.
+ */
+export const countExpeditionReserveRoles = (
+  toads: readonly Toad[],
+): number => {
+  const covered = new Set<ExpeditionRole>();
+
+  for (const toad of toads) {
+    for (const role of getExpeditionReserveRoles(toad)) {
+      covered.add(role);
+    }
+  }
+
+  return covered.size;
 };
 
 // === HP (Часть 2: hp, урон и утилизация) ===

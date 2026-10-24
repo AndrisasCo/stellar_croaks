@@ -504,12 +504,6 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
                     <span>+0%</span>
                     <span>+{GENE_DUST_MAX_PER_MIX}% к качеству</span>
                   </div>
-
-                  {availableDust === 0 && (
-                    <p className="ui-hint mt-2">
-                      Генная пыль не найдена: её приносят походы за Периметр.
-                    </p>
-                  )}
                 </div>
 
                 {/* Колбы: квадраты с «+», выбор жабы — модалкой */}

@@ -1,5 +1,6 @@
 import { updateToadById, updateUser } from "../backend";
 import { completeAchivement } from "../backend/achivements-manager";
+import { recordQuestEvent } from "../backend/quests-manager";
 import { getGameState } from "../backend/localStorage";
 import { Toad } from "../models/Toad";
 import {
@@ -62,6 +63,10 @@ export const infectToad = (toadId: number, diseaseId?: string): boolean => {
     true,
   );
 
+  // Вспышка — это новое заражение (не повторный вызов для уже больной жабы):
+  // событие открывает медицинские задания журнала.
+  recordQuestEvent("disease_outbreak", 1);
+
   return true;
 };
 
@@ -77,6 +82,10 @@ export const cureToad = (toadId: number): boolean => {
     { state: { ...toad.state, diseaseId: -1, diseaseUntil: 0 } },
     true,
   );
+
+  // Лечение считаем только при реальном переходе «больна → здорова»:
+  // повторное нажатие на здоровую жабу задания не двигает.
+  recordQuestEvent("toad_cured", 1);
 
   return true;
 };

@@ -36,6 +36,7 @@ import {
 } from "./gamification-config";
 import { isToadDown } from "./expedition-config";
 import { isToadBusyOnExpedition } from "./expedition-manager";
+import { getActiveNarratorTask } from "./narrator";
 
 /**
  * Голодающие головастики, о которых уже предупредили в этой сессии.
@@ -758,10 +759,35 @@ export const startNestCourtship = (
   // startMating дописывает обоим ухаживание и оставляет пару в её репродукторе
   const { minutes } = startMating(updatedFemale, updatedMale, roomId);
 
+  /**
+   * Обучение ведёт игрока по всему циклу в одном проходе, поэтому не заставляет
+   * ждать 15–30 минут: пара беременеет сразу после нажатия «Начать ухаживание».
+   * Дальше рассказчик просит ускорить беременность мушкой и вырастить головастика.
+   */
+  const tutorialBreed = getActiveNarratorTask() === "breed";
+
+  if (tutorialBreed) {
+    // Жаб читаем заново: startMating уже перенёс пару в репродуктор (`scene_id`),
+    // и старая копия с прежним местом затёрла бы этот перенос в беременности.
+    const afterMating = getGameState();
+    const mother = afterMating.toads.find(
+      (toad) => toad.id === updatedFemale.id,
+    );
+    const father = afterMating.toads.find(
+      (toad) => toad.id === updatedMale.id,
+    );
+
+    if (mother && father) {
+      finishMating(mother, father);
+    }
+  }
+
   completeAchivement("first-manual-breed");
 
   return {
     started: true,
-    message: `Ухаживание в репродукторе: беременность через ~${minutes} мин`,
+    message: tutorialBreed
+      ? "Ухаживание в репродукторе: самка сразу забеременела — ускорьте беременность в её карточке"
+      : `Ухаживание в репродукторе: беременность через ~${minutes} мин`,
   };
 };

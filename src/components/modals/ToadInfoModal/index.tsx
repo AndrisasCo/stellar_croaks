@@ -93,6 +93,10 @@ const formatCooldownLeft = (ms: number): string => {
   return minutes > 0 ? `${minutes}м ${seconds}с` : `${seconds}с`;
 };
 
+/** Рост головастика стартует с первого кормления — без него «Ускорить» нельзя. */
+const GROWTH_FEED_FIRST_REASON =
+  "Сначала покормите головастика: кормление запускает рост.";
+
 export const ToadInfo = () => {
   const {
     selectedToad: toad,
@@ -157,15 +161,7 @@ export const ToadInfo = () => {
             onExpedition,
           })
         : [],
-    [
-      toad,
-      ownedScenes,
-      rooms,
-      allToads,
-      toadsByRoom,
-      powerGrid,
-      onExpedition,
-    ],
+    [toad, ownedScenes, rooms, allToads, toadsByRoom, powerGrid, onExpedition],
   );
 
   if (!toad) return null;
@@ -292,6 +288,16 @@ export const ToadInfo = () => {
   const handleAccelerate = (type: "growth" | "pregnancy") => {
     if (onExpedition) {
       warnExpeditionBusy();
+      return;
+    }
+
+    // Рост запускает первое кормление: без него ускорение сделало бы головастика
+    // взрослым в обход таймера роста и обучения («сначала накорми»).
+    if (type === "growth" && growth?.notStarted) {
+      addNotification({
+        type: "warn",
+        content: GROWTH_FEED_FIRST_REASON,
+      });
       return;
     }
 
@@ -450,8 +456,7 @@ export const ToadInfo = () => {
   /** Жаб в инкубаторе коллайдера и в походе разбирать нельзя */
   const incubatingIds = getIncubatingToadIds();
   const incubating = incubatingIds.includes(toad.id);
-  const cannotDissolve =
-    onExpedition || !canDissolveToad(toad, incubatingIds);
+  const cannotDissolve = onExpedition || !canDissolveToad(toad, incubatingIds);
   const dissolveBlockedReason = onExpedition
     ? EXPEDITION_TOAD_BUSY_REASON
     : incubating
@@ -476,27 +481,6 @@ export const ToadInfo = () => {
           >
             ‹ Назад
           </ClickButton>
-
-          {/* Листание жаб: стрелки внизу, рядом с кнопкой «Закрыть», а не по бокам
-              карточки. Крупные кнопки удобнее нажимать на телефоне. */}
-          <div className="flex m-auto items-center justify-center gap-3">
-            <ClickButton
-              onClick={() => handleNav("prev")}
-              aria-label="Предыдущая жаба"
-              title="Предыдущая жаба"
-              className="flex h-10 w-8 items-center justify-center rounded-xl border border-amber-300/40 bg-amber-500/15 text-3xl leading-none text-amber-100 transition-colors duration-300 hover:bg-amber-500/25 hover:text-amber-50"
-            >
-              ‹
-            </ClickButton>
-            <ClickButton
-              onClick={() => handleNav("next")}
-              aria-label="Следующая жаба"
-              title="Следующая жаба"
-              className="flex h-10 w-8 items-center justify-center rounded-xl border border-white/10 bg-slate-800/70 text-3xl leading-none text-slate-200 transition-colors duration-300 hover:bg-slate-700/70 hover:text-white"
-            >
-              ›
-            </ClickButton>
-          </div>
         </div>
 
         <div className="flex w-full items-center pb-1 px-10 ">
@@ -673,11 +657,11 @@ export const ToadInfo = () => {
                       title="Силы"
                       isOpen
                       onClose={() => toggleTooltip("energy")}
-                      className="right-0 w-[200%]"
+                      className="left-0 w-[200%]"
                     >
                       <p className="text-sm text-slate-200">
-                        Силы ⚡ — личный запас жабы, максимум {maxEnergy} (растёт
-                        с качеством). Спаривание в «Репродукторе» стоит{" "}
+                        Силы ⚡ — личный запас жабы, максимум {maxEnergy}{" "}
+                        (растёт с качеством). Спаривание в «Репродукторе» стоит{" "}
                         {energyCost} ⚡, а поход за Периметр — от{" "}
                         {EXPEDITION_ENERGY_BASE} ⚡ за ближний сектор и на{" "}
                         {EXPEDITION_ENERGY_PER_DEPTH} ⚡ дороже за каждый
@@ -930,10 +914,12 @@ export const ToadInfo = () => {
                     label: "Ускорить",
                     handler: () => handleAccelerate("growth"),
                     timeLeft: growth.timeLeft,
-                    disabled: onExpedition,
+                    disabled: onExpedition || growth.notStarted,
                     disabledReason: onExpedition
                       ? EXPEDITION_TOAD_BUSY_REASON
-                      : undefined,
+                      : growth.notStarted
+                        ? GROWTH_FEED_FIRST_REASON
+                        : undefined,
                   }}
                 />
                 {growth.hungry && (

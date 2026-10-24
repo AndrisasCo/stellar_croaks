@@ -11,6 +11,7 @@
  *   4) КОНТУР проходится по порядку: предыдущий сектор должен быть открыт
  *      и пройден хотя бы раз;
  *   5) только удачный завершённый поход начисляет пропуск на склад;
+ *      в добыче похода пропуск показывается отдельно и в биомассу не уходит;
  *   6) пропуска лежат на складе, но не занимают полки и не вытесняют добычу.
  *
  * Запуск: node tmp-verify-contour-pass.mjs
@@ -519,6 +520,41 @@ check(
   saved().expeditionStats.unlockedSectors,
   [],
 );
+check(
+  "пропуск записан в добычу похода",
+  saved().expeditions[0].contourPasses,
+  1,
+);
+check(
+  "пропуск виден в строке добычи",
+  manager.getExpeditionLootSummary(saved().expeditions[0]).endsWith("+1 🎫"),
+  true,
+);
+
+const completedWithPass = saved().expeditions[0];
+check(
+  "пропуск не входит в переработку в биомассу",
+  manager.getExpeditionBiomassValue({
+    ...completedWithPass,
+    contourPasses: 99,
+  }),
+  manager.getExpeditionBiomassValue({ ...completedWithPass, contourPasses: 0 }),
+);
+check(
+  "разбор добычи в биомассу",
+  manager.finishExpedition("e1", "biomass").success,
+  true,
+);
+check(
+  "пропуск остался на складе после переработки",
+  saved().user.storage.contourPass,
+  1,
+);
+check(
+  "архив сохранил пропуск в добыче",
+  saved().expeditionArchive[0].contourPasses,
+  1,
+);
 
 /** Провал: до сектора дошли, но бросок удачи не сложился — пропуска не будет */
 reset(
@@ -554,6 +590,16 @@ check(
   "провал не начисляет пропуск",
   saved().user.storage.contourPass,
   0,
+);
+check(
+  "в провальном походе пропуска нет",
+  saved().expeditions[0].contourPasses ?? 0,
+  0,
+);
+check(
+  "в строке добычи провала нет пропуска",
+  manager.getExpeditionLootSummary(saved().expeditions[0]).includes("🎫"),
+  false,
 );
 check(
   "провал всё равно засчитывает поход и сектор",

@@ -2,10 +2,12 @@
  * Проверка нового сценария обучения и цены первого Репродуктора на реальном коде.
  *
  * Сценарий: Торговая капсула → покупка корма → кормление → постройка Репродуктора →
- * ухаживание → КОНТУР и первый поход. Скрипт бандлит модули через esbuild и проверяет:
+ * ухаживание → ускорение беременности → кормление и рост головастика → КОНТУР и
+ * первый поход. Скрипт бандлит модули через esbuild и проверяет:
  *   1) шаги рассказчика идут в нужном порядке и не обрываются;
- *   2) задания покупки корма, постройки Репродуктора, ухаживания и похода описаны;
- *   3) новый игрок начинает со 100 Кваксов и пустым складом (корм покупается);
+ *   2) задания покупки корма, постройки Репродуктора, ухаживания, беременности,
+ *      роста головастика и похода описаны;
+ *   3) новый игрок начинает со 100 Кваксами, мушкой и червём, но без корма;
  *   4) первый построенный Репродуктор стоит 0, дальше цена обычная (150, 225, …);
  *   5) у остальных секторов цена не изменилась.
  *
@@ -86,25 +88,55 @@ check("Ядро ведёт к кормлению", link("core", "feed"), true);
 check("Кормление ведёт к биомассе", link("feed", "biomass-brief"), true);
 check("Биомасса ведёт к постройке Репродуктора", link("biomass-brief", "build-nest"), true);
 check("Постройка ведёт к ухаживанию", link("build-nest", "breed"), true);
-check("Ухаживание ведёт к КОНТУРу", link("breed", "breed-brief"), true);
-check("Брифинг о потомстве ведёт к походу", link("breed-brief", "scout"), true);
+check("Ухаживание ведёт к брифингу о потомстве", link("breed", "breed-brief"), true);
+check(
+  "Брифинг о потомстве ведёт к ускорению беременности",
+  link("breed-brief", "accelerate-pregnancy"),
+  true,
+);
+check(
+  "Ускорение беременности ведёт к росту головастика",
+  link("accelerate-pregnancy", "grow-tadpole"),
+  true,
+);
+check("Рост головастика ведёт к походу", link("grow-tadpole", "scout"), true);
 check("Первый поход ведёт к финалу", link("scout", "finale"), true);
-check("все шаги достижимы", order.length, 13);
+check("все шаги достижимы", order.length, 15);
 check("покупка корма — задание", steps["buy-food"].kind, "task");
 check("постройка Репродуктора — задание", steps["build-nest"].kind, "task");
 check("ухаживание — задание", steps.breed.kind, "task");
+check(
+  "ускорение беременности — задание",
+  steps["accelerate-pregnancy"].kind,
+  "task",
+);
+check("рост головастика — задание", steps["grow-tadpole"].kind, "task");
 check("поход — задание", steps.scout.kind, "task");
 check("покупка корма в точках прогресса", narrator.NARRATOR_TASKS.includes("buy-food"), true);
 check("постройка Репродуктора в точках прогресса", narrator.NARRATOR_TASKS.includes("build-nest"), true);
+check(
+  "ускорение беременности в точках прогресса",
+  narrator.NARRATOR_TASKS.includes("accelerate-pregnancy"),
+  true,
+);
+check(
+  "рост головастика в точках прогресса",
+  narrator.NARRATOR_TASKS.includes("grow-tadpole"),
+  true,
+);
 
 /** Стартовый сейв нового игрока: обучение начинается без корма, но со ста Кваксами. */
 const start = localStorage.getDefaultGameState();
 check("стартовые Кваксы", start.user.tokens, 100);
 check("стартовый корм", start.user.storage.food, 0);
+check("стартовая мушка для беременности", start.user.storage.sparkleFlys, 1);
+check("стартовый червь для роста", start.user.storage.worms, 1);
 check(
-  "стартовый склад пуст",
-  Object.values(start.user.storage).every((amount) => amount === 0),
-  true,
+  "остальной склад пуст",
+  Object.entries(start.user.storage).filter(
+    ([key, amount]) => !["food", "sparkleFlys", "worms"].includes(key) && amount !== 0,
+  ).length,
+  0,
 );
 
 /** Стартовая карта: Репродуктора нет, гекс под него свободен. */

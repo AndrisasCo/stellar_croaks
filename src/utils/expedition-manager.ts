@@ -696,7 +696,7 @@ export const extractExpedition = (
   if (astro < EXTRACTION_ASTRO_COST) {
     return {
       success: false,
-      message: `Маяк стоит ${EXTRACTION_ASTRO_COST} 💎 (сейчас ${astro})`,
+      message: `Эстренный вызор стоит ${EXTRACTION_ASTRO_COST} 💎 (сейчас ${astro})`,
     };
   }
 
@@ -1429,6 +1429,15 @@ const completeArrival = (
   expedition.companions = [];
 
   expedition.loot = arrival.loot;
+  /**
+   * Пропуска уже начислены на склад (`storedPasses + contourPasses` ниже).
+   * Запоминаем их только для отчёта о добыче: в биомассу они не перерабатываются.
+   */
+  if (contourPasses > 0) {
+    expedition.contourPasses = contourPasses;
+  } else {
+    delete expedition.contourPasses;
+  }
   expedition.success = arrival.success;
   expedition.phase = "completed";
   expedition.completedAt = Date.now();
@@ -1518,7 +1527,7 @@ const completeArrival = (
         lootText || "пусто, зато живые"
       }`
     : options.instant
-      ? `Экстренный маяк забрал команду из «${sector.name}»: ${
+      ? `Команда была эвакуирована из «${sector.name}»: ${
           lootText || "пусто, зато живые"
         }`
       : arrival.success
@@ -2044,13 +2053,25 @@ export const getActiveExpeditionToadIds = (): number[] =>
     expedition.team.map((member) => member.toadId),
   );
 
-/** Добыча «в рюкзаке» одной строкой — для карточек активного похода */
-export const getExpeditionLootSummary = (expedition: Expedition): string =>
-  describeLoot({
+/**
+ * Добыча похода одной строкой — для карточек «Походы» и «Архив».
+ *
+ * Пропуска КОНТУРа показываем, только если поход их принёс. В `loot` их нет:
+ * они начисляются на склад сразу при возврате и в биомассу не перерабатываются.
+ */
+export const getExpeditionLootSummary = (expedition: Expedition): string => {
+  const lootText = describeLoot({
     biomass: expedition.loot.biomass,
     tokens: expedition.loot.tokens,
     astro_quax: expedition.loot.astro_quax,
     items: expedition.loot.items,
     sample:
       (expedition.loot.samples || 0) + (expedition.loot.lootboxSamples || 0),
-  }) || "пока пусто";
+  });
+  const passText =
+    (expedition.contourPasses ?? 0) > 0
+      ? `+${expedition.contourPasses} 🎫`
+      : "";
+
+  return [lootText, passText].filter(Boolean).join(", ") || "пока пусто";
+};

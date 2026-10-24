@@ -50,7 +50,7 @@ export type RoomDataTabId = typeof ROOM_DATA_TAB_ID;
 /** Готовое описание таба «Данные сектора» для `shared/ModalTabs` */
 export const ROOM_DATA_TAB = {
   id: ROOM_DATA_TAB_ID,
-  label: "ⓘ Данные сектора",
+  label: "ⓘ О секторе",
 } as const;
 
 interface RoomDataTabProps {

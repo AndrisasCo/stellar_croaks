@@ -26,6 +26,7 @@ import {
 } from "../backend/collider-manager";
 import { TOADS_FED_EVENT } from "../utils/narrator";
 import { getFeedCost } from "../utils/feeding";
+import { recordQuestEvent } from "../backend/quests-manager";
 import { pickSceneForNewToad } from "../utils/housing";
 import { getToadHomeId } from "../utils/toad-location";
 import {
@@ -262,6 +263,10 @@ export const ToadProvider: React.FC<ToadProviderProps> = ({ children }) => {
     updateUser({
       storage: { ...account.storage, food: newFood },
     });
+
+    // Задания «покормите колонию» считают именно накормленных жаб, а не клики
+    // по кнопке: жабы в походе или при нехватке корма сюда не попадают.
+    recordQuestEvent("toad_fed", fedToads.length);
 
     // Рассказчик первого запуска ждёт именно ручное кормление всей колонии:
     // состояние жабы обновляется здесь, поэтому событие отправляем после записи.

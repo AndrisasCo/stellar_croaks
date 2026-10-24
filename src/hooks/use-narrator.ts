@@ -116,6 +116,17 @@ const isTaskComplete = (task: NarratorTaskId, state: GameState): boolean => {
         (pair) => pair.male && pair.female && pair.courtship,
       );
     }
+    case "accelerate-pregnancy":
+      // В обучении ускорение беременности оплачивается мушкой, поэтому головастик
+      // появляется сразу после него. Головастик в колонии — действие выполнено.
+      return state.toads.some((toad) => toad.stage === "toadpole");
+    case "grow-tadpole":
+      // Ускорение роста делает головастика взрослым, но только после кормления:
+      // таймер роста (`growthStartedAt`) запускает именно первое кормление.
+      return state.toads.some(
+        (toad) =>
+          toad.stage === "adult" && typeof toad.growthStartedAt === "number",
+      );
     case "feed": {
       const expeditions = state.expeditions ?? [];
       const feedable = state.toads.filter(

@@ -1141,6 +1141,7 @@ const ExpeditionModal: React.FC<{
                   <TeamStatusList expedition={expedition} />
                   <ExpeditionLootGrid
                     loot={expedition.loot}
+                    contourPasses={expedition.contourPasses}
                     sampleToad={getExpeditionSampleReward(sectorDef).template}
                   />
 

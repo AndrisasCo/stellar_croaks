@@ -38,6 +38,12 @@ const formatAmount = (amount: number): string =>
 export const ExpeditionLootGrid: React.FC<{
   loot: ExpeditionLoot;
   /**
+   * Пропуска КОНТУРа, начисленные за поход. Лежат отдельно от `loot`: попадают
+   * на склад сразу при возврате команды и в биомассу не перерабатываются.
+   * В старых сейвах поля нет — тогда карточки пропуска просто не будет.
+   */
+  contourPasses?: number;
+  /**
    * Именная жаба из лутбокса, закреплённая за глубиной сектора. Нужна, чтобы
    * особый образец показывался своим спрайтом, а не общей иконкой 🧬.
    */
@@ -45,7 +51,13 @@ export const ExpeditionLootGrid: React.FC<{
   /** Подпись над сеткой */
   title?: string;
   className?: string;
-}> = ({ loot, sampleToad, title = "Добыча похода", className = "" }) => {
+}> = ({
+  loot,
+  contourPasses,
+  sampleToad,
+  title = "Добыча похода",
+  className = "",
+}) => {
   const tiles: LootTile[] = [];
 
   if (loot.biomass > 0) {
@@ -78,6 +90,26 @@ export const ExpeditionLootGrid: React.FC<{
       icon: <CurrencyIcon currency="astro_quax" className="h-6 w-6" />,
       tone: "border-fuchsia-400/50 ",
       hint: "Премиальная космическая валюта",
+    });
+  }
+
+  if ((contourPasses ?? 0) > 0) {
+    const pass = itemsFull[Items.contourPass];
+
+    tiles.push({
+      id: "contour-pass",
+      name: pass.name,
+      amount: contourPasses ?? 0,
+      icon: (
+        <img
+          src={pass.icon}
+          alt={pass.name}
+          className="h-6 w-6 object-contain"
+          draggable={false}
+        />
+      ),
+      tone: ITEM_RARITY_TONE[pass.rarity] ?? "border-amber-400/40 ",
+      hint: pass.description,
     });
   }
 
