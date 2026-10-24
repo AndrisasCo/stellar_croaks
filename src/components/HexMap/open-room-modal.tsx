@@ -4,7 +4,7 @@ import HospitalModal from "../modals/HospitalModal";
 import ExpeditionModal from "../modals/ExpeditionModal";
 import DissolveModal from "../modals/Lab/DissolveModal";
 import ToadCollider from "../modals/Lab/ToadColliderModal";
-import NestModal from "../modals/Lab/NestModal";
+import NestModal from "../modals/NestModal";
 import PowerRoomModal from "../modals/PowerRoomModal";
 import ShopMenu from "../modals/ShopMenu";
 import StorageModal from "../modals/StorageModal";

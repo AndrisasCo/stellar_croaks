@@ -1,13 +1,23 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useSettings } from "../SettingsContext";
 import Modal from "../shared/Header";
 import {
   getDefaultGameState,
   updateGameState,
 } from "../../backend/localStorage";
-import { updateGameStateDB } from "../../backend/db";
+import {
+  PLAYER_NAME_MAX_LENGTH,
+  savePlayerName,
+  updateGameStateDB,
+} from "../../backend/db";
 import { useModal } from "../ModalContext";
+import { useGameState } from "../../hooks/use-game-state";
 import { restartNarrator } from "../../utils/narrator";
+import { mutate } from "swr";
+
+/** Поле ввода как в AuthModal: одно и то же оформление во всех формах. */
+const INPUT_CLASS =
+  "w-full rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-white placeholder-slate-500 outline-none transition-colors focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20";
 
 const SettingsModal: React.FC = () => {
   const {
@@ -26,6 +36,38 @@ const SettingsModal: React.FC = () => {
     settings.soundEffectsVolume
   );
   const [showResetConfirmation, setShowResetConfirmation] = useState(false);
+
+  // Имя живёт в аккаунте (таблица `profiles`), а не в строке лидерборда: так его
+  // правка сразу видна в витрине и переезжает на другое устройство.
+  const { user } = useGameState();
+  const [playerName, setPlayerName] = useState(user.username ?? "");
+  const [savingName, setSavingName] = useState(false);
+  const [nameResult, setNameResult] = useState<{
+    ok: boolean;
+    message: string;
+  } | null>(null);
+
+  // Имя могло приехать из облака или обновиться в другом окне — подхватываем.
+  useEffect(() => {
+    setPlayerName(user.username ?? "");
+  }, [user.username]);
+
+  const handleSaveName = async () => {
+    if (savingName) {
+      return;
+    }
+
+    setSavingName(true);
+    const result = await savePlayerName(playerName);
+    setSavingName(false);
+    setNameResult(result);
+
+    if (result.ok) {
+      // Лидерборд кэшируется на 30 секунд — после переименования сбрасываем его,
+      // чтобы новое имя было видно сразу, а не после истечения кэша.
+      void mutate((key) => Array.isArray(key) && key[0] === "leaderboard");
+    }
+  };
 
   const handleMusicVolumeChange = (volume: number) => {
     setLocalMusicVolume(volume);
@@ -212,6 +254,78 @@ const SettingsModal: React.FC = () => {
                 {Math.round(localSFXVolume * 100)}%
               </span>
             </div>
+          </div>
+
+          {/* Профиль игрока: имя видно в лидерборде */}
+          <div className="ui-panel p-4">
+            <div className="mb-3 flex items-center gap-2">
+              <svg
+                className="w-5 h-5 text-cyan-300"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                />
+              </svg>
+              <h3 className="text-sm font-semibold text-slate-100">Профиль</h3>
+            </div>
+
+            <p className="mb-3 text-sm text-slate-300">
+              Это имя видят другие игроки в лидерборде.
+            </p>
+
+            <label className="flex flex-col gap-1">
+              <span className="text-xs font-semibold text-slate-200">
+                Имя игрока
+              </span>
+              <input
+                type="text"
+                value={playerName}
+                onChange={(event) => {
+                  setPlayerName(event.target.value);
+                  setNameResult(null);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    void handleSaveName();
+                  }
+                }}
+                placeholder="Ваше имя"
+                maxLength={PLAYER_NAME_MAX_LENGTH}
+                spellCheck={false}
+                className={INPUT_CLASS}
+              />
+            </label>
+
+            <button
+              type="button"
+              onClick={() => void handleSaveName()}
+              disabled={
+                savingName ||
+                playerName.trim().length === 0 ||
+                playerName.trim() === (user.username ?? "")
+              }
+              className="ui-button-primary mt-3 w-full py-3"
+            >
+              {savingName ? "Сохраняем…" : "Сохранить имя"}
+            </button>
+
+            {nameResult && (
+              <p
+                className={`mt-2 rounded-lg border px-3 py-2 text-xs ${
+                  nameResult.ok
+                    ? "border-emerald-400/40 bg-emerald-500/15 text-emerald-100"
+                    : "border-rose-400/40 bg-rose-500/15 text-rose-100"
+                }`}
+              >
+                {nameResult.message}
+              </p>
+            )}
           </div>
 
           {/* Информация о игре */}

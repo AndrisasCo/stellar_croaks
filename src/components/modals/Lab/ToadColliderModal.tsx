@@ -12,12 +12,20 @@ import {
   getGeneticFaultConfig,
 } from "../../../models/Toad";
 import { ToadTypes } from "../../../models/Toad/toad-species";
+import { itemsFull, Items } from "../../../models/user";
 import { BreedingResult } from "../../../models/types";
 import {
   generateChildToad,
   calculateRarityBonus,
 } from "../../../utils/calculate-genetics";
 import { MIXING_DURATION } from "../../../utils/constants";
+import {
+  GENE_DUST_MAX_PER_MIX,
+  applyGeneDustToRarity,
+  getGeneDustBonusPercent,
+  getGeneDustCount,
+  spendGeneDust,
+} from "../../../utils/gene-dust";
 import { nameGenerator } from "../../../utils/name-generator";
 import {
   EXPEDITION_TOAD_BUSY_REASON,
@@ -46,6 +54,9 @@ import RoomDataTab, { ROOM_DATA_TAB, RoomDataTabId } from "../RoomDataTab";
  * последний таб «Данные сектора», как у остальных секторов (`shared/ModalTabs`).
  */
 type ColliderTab = "collider" | "incubator" | RoomDataTabId;
+
+/** Иконка генной пыли — та же, что на складе и в добыче похода (не эмодзи). */
+const GENE_DUST_ICON = itemsFull[Items.geneDust].icon;
 
 // Функция для определения цвета редкости
 const getRarityColor = (rarity: number): string => {
@@ -81,12 +92,20 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
   ]);
 
   const [isMixing, setIsMixing] = useState(false);
+  // Сколько генной пыли добавить в этот запуск: 0…10, каждая пылинка = +1% качества.
+  const [dustAmount, setDustAmount] = useState(0);
   // Коллайдер уничтожает исходных жаб безвозвратно — смешиваем только
   // после явного подтверждения.
   const [showWarning, setShowWarning] = useState(false);
 
-  const { startBreeding, updateBreeding, allToads, colliderState, selectToad } =
-    useToads();
+  const {
+    startBreeding,
+    updateBreeding,
+    allToads,
+    colliderState,
+    selectToad,
+    account,
+  } = useToads();
   const { addNotification } = useNotifications();
   const { openModal } = useModal();
   const { powerGrid } = useColony();
@@ -139,6 +158,16 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
   const currentToads = selectedToads.filter(Boolean) as Toad[];
 
   const isDisabled = currentToads.length < 2;
+
+  /**
+   * Ползунок генной пыли. Больше 10 пылинок за запуск не нужно, а больше,
+   * чем лежит на складе, взять нельзя. `dustForMix` — фактический выбор,
+   * который уходит и в бонус качества, и в списание.
+   */
+  const availableDust = getGeneDustCount(account?.storage);
+  const maxDust = Math.min(GENE_DUST_MAX_PER_MIX, availableDust);
+  const dustForMix = Math.min(dustAmount, maxDust);
+  const dustBonus = getGeneDustBonusPercent(dustForMix);
 
   const handlePickToad = (toad: Toad, slotIndex: number) => {
     if (isToadBusyOnExpedition(toad)) {
@@ -224,6 +253,9 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
 
     setIsMixing(true);
 
+    // Фиксируем пыль на момент запуска: бонус и списание должны совпадать.
+    const dustToUse = Math.min(dustAmount, getGeneDustCount());
+
     // Мутация - шанс на повышенную Качество
     const mutationChance = Math.random() < 0.1;
     const genesBreakChance = Math.random() < 0.1;
@@ -234,6 +266,9 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
       genesBreakChance,
       isMutant,
     }) as Toad;
+
+    // Генная пыль улучшает именно качество (редкость) гибрида: +1% за пылинку.
+    child.genes.rarity = applyGeneDustToRarity(child.genes.rarity, dustToUse);
 
     await new Promise<void>((resolve) =>
       setTimeout(resolve, MIXING_DURATION + 500),
@@ -247,6 +282,10 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
 
     if (mutationChance) {
       message += " Идельное смешивание генов! Ее Качество повышена";
+    }
+
+    if (dustToUse > 0) {
+      message += ` Генная пыль добавила +${getGeneDustBonusPercent(dustToUse)}% к качеству.`;
     }
 
     if (isMutant) {
@@ -263,6 +302,13 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
           "Инкубатор занят: сначала заберите гибрида, потом смешивайте жаб снова.",
       });
       return;
+    }
+
+    // Пыль списываем только после успешного старта: при занятой колбе
+    // смешивание отменяется и расходник остаётся на складе.
+    if (dustToUse > 0) {
+      spendGeneDust(dustToUse);
+      setDustAmount(0);
     }
 
     setBreedingResult({
@@ -304,6 +350,7 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
     setSelectedToads([null, null, null, null, null]);
     setBreedingResult(null);
     setCustomName("");
+    setDustAmount(0);
   };
 
   // Функция для генерации случайного имени
@@ -395,6 +442,76 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
                     ))}
                   </div>
                 </div>
+
+                {/* Генная пыль: ползунок 0…10, каждая пылинка — +1% к качеству гибрида */}
+                <div className="mb-3 rounded-xl border border-fuchsia-400/30 bg-fuchsia-950/15 p-3">
+                  <div className="mb-2 flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5 text-sm font-semibold text-fuchsia-200">
+                        <img
+                          src={GENE_DUST_ICON}
+                          alt=""
+                          draggable={false}
+                          className="h-4 w-4 shrink-0 select-none object-contain"
+                        />
+                        Добавить генную пыль
+                      </div>
+                      <div className="text-2xs text-slate-400">
+                        1 шт = +1% к качеству · на складе {availableDust}
+                      </div>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <div className="text-xs font-bold text-fuchsia-200 tabular-nums">
+                        {dustForMix} / {GENE_DUST_MAX_PER_MIX}
+                      </div>
+                      <div className="text-2xs font-bold text-emerald-300">
+                        +{dustBonus}%
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="range"
+                      min="0"
+                      max={maxDust}
+                      step="1"
+                      value={dustForMix}
+                      onChange={(event) =>
+                        setDustAmount(Number(event.target.value))
+                      }
+                      disabled={isMixing || maxDust <= 0}
+                      aria-label="Сколько генной пыли добавить в коллайдер"
+                      title="Ползунок: сколько генной пыли добавить (0–10)"
+                      className="h-2 flex-1 rounded-lg bg-slate-600 accent-fuchsia-500 disabled:opacity-50"
+                    />
+                    <span
+                      className={`inline-flex w-16 shrink-0 items-center justify-end gap-1 text-xs font-medium ${
+                        dustForMix > 0 ? "text-fuchsia-200" : "text-slate-500"
+                      }`}
+                    >
+                      <img
+                        src={GENE_DUST_ICON}
+                        alt=""
+                        draggable={false}
+                        className="h-3.5 w-3.5 shrink-0 select-none object-contain"
+                      />
+                      {dustForMix}
+                    </span>
+                  </div>
+
+                  <div className="mt-1 flex items-center justify-between text-2xs text-slate-400">
+                    <span>+0%</span>
+                    <span>+{GENE_DUST_MAX_PER_MIX}% к качеству</span>
+                  </div>
+
+                  {availableDust === 0 && (
+                    <p className="ui-hint mt-2">
+                      Генная пыль не найдена: её приносят походы за Периметр.
+                    </p>
+                  )}
+                </div>
+
                 {/* Колбы: квадраты с «+», выбор жабы — модалкой */}
                 <ToadSlotGrid
                   slots={selectedToads.map((toad, index) => ({

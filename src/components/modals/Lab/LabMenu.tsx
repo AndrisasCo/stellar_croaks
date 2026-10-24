@@ -1,7 +1,7 @@
 import { useModal } from "../../ModalContext";
 import { ClickButton } from "../../shared/ClickButton";
 import DissolveModal from "./DissolveModal";
-import NestModal from "./NestModal";
+import NestModal from "../NestModal";
 import ToadCollider from "./ToadColliderModal";
 
 interface LabMenuButton {
@@ -40,9 +40,7 @@ export const ColliderMenu = () => {
     <>
       {/* Заголовок */}
       <div className="flex items-center justify-center gap-3">
-        <h2 className="brand-text text-2xl font-bold">
-          Лаборатория
-        </h2>
+        <h2 className="brand-text text-2xl font-bold">Лаборатория</h2>
       </div>
 
       {/* Основное меню — крупные кнопки инструментов лаборатории */}

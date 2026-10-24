@@ -44,9 +44,8 @@ export const SCRIPTED_ELITE_KINDS: ScriptedEliteKind[] = [
 
 const SCRIPTED_ID_PREFIX = "scripted_v1";
 /** Потолок награды после ребаланса: дороже самого редкого кураторского заказа. */
-const MAX_SCRIPTED_REWARD = 150;
+const MAX_SCRIPTED_REWARD = 100;
 /** Старые id (до ребаланса) содержат награды до ~460 💎 — их принимаем, но урезаем. */
-const LEGACY_SCRIPTED_REWARD_LIMIT = 2000;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 const PERSONALITY_TITLES = [
@@ -134,18 +133,18 @@ const STAT_SCRIPTS: StatScriptConfig[] = [
     read: (toad) => toad.genes.weight,
     describe: (threshold) =>
       `Жаба с массой не менее ${formatNumber(threshold)}`,
-    reward: (threshold) => roundReward(25 + (threshold - 18) * 4),
+    reward: (threshold) => roundReward(25 + threshold),
   },
   {
     id: "speed",
     titles: ["Скорость света", "Быстрее ветра", "Реактивный прыжок"],
-    min: 0.75,
-    max: 1.4,
+    min: 1.2,
+    max: 3,
     step: 0.05,
     read: (toad) => toad.genes.speed,
     describe: (threshold) =>
       `Жаба со скоростью не менее ${formatNumber(threshold)}`,
-    reward: (threshold) => roundReward(35 + (threshold - 0.75) * 140),
+    reward: (threshold) => roundReward(35 + (threshold - 0.75)),
   },
   {
     id: "fertility",
@@ -156,7 +155,7 @@ const STAT_SCRIPTS: StatScriptConfig[] = [
     read: (toad) => toad.genes.fertility,
     describe: (threshold) =>
       `Жаба с плодовитостью не менее ${formatNumber(threshold)}`,
-    reward: (threshold) => roundReward(30 + (threshold - 1.5) * 50),
+    reward: (threshold) => roundReward(30 + (threshold - 1.5)),
   },
   {
     id: "rarity",
@@ -167,7 +166,7 @@ const STAT_SCRIPTS: StatScriptConfig[] = [
     read: (toad) => toad.genes.rarity,
     describe: (threshold) =>
       `Жаба с Качеством не менее ${formatNumber(threshold)}`,
-    reward: (threshold) => roundReward(20 + (threshold - 2) * 18),
+    reward: (threshold) => roundReward(20 + (threshold - 2)),
   },
   {
     id: "generation",
@@ -178,7 +177,7 @@ const STAT_SCRIPTS: StatScriptConfig[] = [
     read: (toad) => toad.generation,
     describe: (threshold) =>
       `Жаба с поколением не менее ${formatNumber(threshold)}`,
-    reward: (threshold) => roundReward(20 + (threshold - 2) * 15),
+    reward: (threshold) => roundReward(20 + threshold),
   },
   {
     id: "ageDays",
@@ -190,7 +189,7 @@ const STAT_SCRIPTS: StatScriptConfig[] = [
       Math.floor((Date.now() - new Date(toad.created_at).getTime()) / DAY_MS),
     describe: (threshold) =>
       `Жаба возрастом не менее ${formatNumber(threshold)} дн.`,
-    reward: (threshold) => roundReward(5 + (threshold - 2) * 3),
+    reward: (threshold) => roundReward(5 + (threshold - 2)),
   },
 ];
 
@@ -227,11 +226,7 @@ const parseReward = (value: string | undefined): number | null => {
   }
 
   const reward = Number(value);
-  if (
-    !Number.isFinite(reward) ||
-    reward <= 0 ||
-    reward > LEGACY_SCRIPTED_REWARD_LIMIT
-  ) {
+  if (!Number.isFinite(reward) || reward <= 0 || reward > 101) {
     return null;
   }
 

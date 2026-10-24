@@ -312,6 +312,40 @@ export const ensureAccount = async (): Promise<Account | null> => {
   return pendingAccount;
 };
 
+/**
+ * Сохраняет имя игрока в `user_metadata` аккаунта.
+ *
+ * Имя — часть аккаунта, а не строки лидерборда (см. `profiles` в схеме): так оно
+ * переезжает на другое устройство вместе с сессией. Заодно обновляем
+ * `currentAccount`, чтобы интерфейс сразу видел новый ник.
+ *
+ * @returns `true`, если сервер принял новое имя
+ */
+export const updateAccountUsername = async (
+  username: string,
+): Promise<boolean> => {
+  if (!isCloudSyncEnabled) {
+    return false;
+  }
+
+  const { data, error } = await supabase.auth.updateUser({
+    data: { username },
+  });
+
+  if (error || !data.user) {
+    console.warn(
+      "[auth] не удалось сохранить имя в аккаунте:",
+      error?.message ?? "нет пользователя"
+    );
+
+    return false;
+  }
+
+  setAccount(toAccount(data.user as SessionUser));
+
+  return true;
+};
+
 // ---------------------------------------------------------------------------
 // ВХОД И РЕГИСТРАЦИЯ ПО ПОЧТЕ (веб-версия)
 //

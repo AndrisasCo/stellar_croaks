@@ -31,7 +31,7 @@ export interface ExpeditionLoot {
   biomass: number;
   tokens: number;
   astro_quax: number;
-  /** Предметы склада: корм, пыль, пигменты, батарейки, мушки, черви */
+  /** Предметы склада: корм, генная пыль, пигменты, батарейки, мушки, черви */
   items: Partial<Record<Items, number>>;
   /** Найденные образцы: на возврате превращаются в жаб */
   samples: number;

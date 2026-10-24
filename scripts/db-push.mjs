@@ -59,7 +59,7 @@ const LOCAL_REDIRECT_URLS = [
 ];
 
 /** Таблицы, которые создаёт schema.sql. По ним же проверяем результат. */
-const TABLES = ["game_state", "leaderboard", "credits", "players"];
+const TABLES = ["game_state", "leaderboard", "credits", "players", "profiles"];
 
 const VERIFY_SQL = `
 select table_name
@@ -98,7 +98,16 @@ select 'authenticated может менять leaderboard.user_id'
 where has_column_privilege('authenticated', 'public.leaderboard', 'user_id', 'UPDATE')
 union all
 select 'service_role не может писать credits'
-where not has_table_privilege('service_role', 'public.credits', 'INSERT');
+where not has_table_privilege('service_role', 'public.credits', 'INSERT')
+union all
+select 'authenticated не видит имена игроков'
+where not has_table_privilege('authenticated', 'public.profiles', 'SELECT')
+union all
+select 'authenticated не может менять profiles.username'
+where not has_column_privilege('authenticated', 'public.profiles', 'username', 'UPDATE')
+union all
+select 'authenticated может менять profiles.user_id'
+where has_column_privilege('authenticated', 'public.profiles', 'user_id', 'UPDATE');
 `;
 
 const fail = (message) => {

@@ -35,8 +35,13 @@ export enum Items {
   pigmentRed = "pigmentRed",
   pigmentBlue = "pigmentBlue",
   pigmentUnstable = "pigmentUnstable",
-  /** Крафтовая пыль — получается при разборе дубликатов (Часть 3.7) */
-  craftDust = "craftDust",
+  /**
+   * Генная пыль — расходуемый материал коллайдера и товар для рынка.
+   *
+   * Значение ключа осталось `craftDust`: так предмет уже лежит в сохранениях
+   * игроков, и переименование enum-члена не должно обнулять их запасы.
+   */
+  geneDust = "craftDust",
   /**
    * Пропуск КОНТУРа: расходуемый ресурс разведки. Походы приносят его со склада,
    * а тратится он на открытие следующих секторов Периметра.
@@ -116,11 +121,11 @@ export const itemsFull: Record<Items, InventoryItem> = {
     description: "Красит жабу в случайный цвет",
     rarity: "uncommon",
   },
-  [Items.craftDust]: {
-    key: Items.craftDust,
-    name: "Крафтовая пыль",
+  [Items.geneDust]: {
+    key: Items.geneDust,
+    name: "Генная пыль",
     icon: "/assets/dust.webp",
-    description: "Материал крафта: получается при разборе дубликатов жаб",
+    description: "Улучшает качество гибрида в коллайдере. ",
     rarity: "uncommon",
   },
   [Items.contourPass]: {

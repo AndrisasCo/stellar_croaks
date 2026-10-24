@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { EMPTY_COLONY } from "../../../models/colony";
-import { Toad } from "../../../models/Toad";
-import { useColony } from "../../../hooks/use-colony";
-import { useGameState } from "../../../hooks/use-game-state";
-import { useNotifications } from "../../../hooks/use-notification";
-import { useRoomPowerTab } from "../../../hooks/use-room-power-tab";
-import { useSoundEffects } from "../../../hooks/use-sound-effects";
+import { EMPTY_COLONY } from "../../models/colony";
+import { Toad } from "../../models/Toad";
+import { useColony } from "../../hooks/use-colony";
+import { useGameState } from "../../hooks/use-game-state";
+import { useNotifications } from "../../hooks/use-notification";
+import { useRoomPowerTab } from "../../hooks/use-room-power-tab";
+import { useSoundEffects } from "../../hooks/use-sound-effects";
 import {
   MATING_MAX_MINUTES,
   MATING_MIN_MINUTES,
@@ -14,7 +14,7 @@ import {
   getEnergyCost,
   getMatingTimeLeft,
   getToadEnergy,
-} from "../../../utils/gamification-config";
+} from "../../utils/gamification-config";
 import {
   NEST_SLOT_SEXES,
   abortMating,
@@ -24,41 +24,41 @@ import {
   getNestSlotRejectReason,
   getNestSlotSex,
   startNestCourtship,
-} from "../../../utils/breeding-manager";
-import { placeToadInRoom, sendToadHome } from "../../../backend/colony";
+} from "../../utils/breeding-manager";
+import { placeToadInRoom, sendToadHome } from "../../backend/colony";
 import {
   getToadHomeId,
   isToadFromEnclosure,
   isToadInRoom,
-} from "../../../utils/toad-location";
+} from "../../utils/toad-location";
 import {
   EXPEDITION_TOAD_BUSY_REASON,
   isToadBusyOnExpedition,
-} from "../../../utils/expedition-manager";
-import { CURRENCY_CONFIG, NEST_ROOM_ID } from "../../../utils/constants";
+} from "../../utils/expedition-manager";
+import { CURRENCY_CONFIG, NEST_ROOM_ID } from "../../utils/constants";
 import {
   ASTRO_PRICES,
   acceleratePregnancy,
   getAstroBalance,
   resetBreedCooldown,
-} from "../../../utils/astro-shop";
-import { completeAchivement } from "../../../backend/achivements-manager";
-import { resolveColonyRooms } from "../../HexMap/colony-build";
-import { ClickButton } from "../../shared/ClickButton";
-import Modal from "../../shared/Header";
-import ModalTabs, { ModalTabItem } from "../../shared/ModalTabs";
-import { ToadListCard } from "../../shared/ToadListCard";
-import { ToadSlotGrid } from "../../shared/ToadSlotGrid";
-import { RoomConfig } from "../../HexMap/rooms-config";
-import { useModal } from "../../ModalContext";
-import RoomDataTab, { ROOM_DATA_TAB, RoomDataTabId } from "../RoomDataTab";
-import { ToadInfo } from "../ToadInfoModal";
-import { useToads } from "../../ToadContext";
+} from "../../utils/astro-shop";
+import { completeAchivement } from "../../backend/achivements-manager";
+import { resolveColonyRooms } from "../HexMap/colony-build";
+import { ClickButton } from "../shared/ClickButton";
+import Modal from "../shared/Header";
+import ModalTabs, { ModalTabItem } from "../shared/ModalTabs";
+import { ToadListCard } from "../shared/ToadListCard";
+import { ToadSlotGrid } from "../shared/ToadSlotGrid";
+import { RoomConfig } from "../HexMap/rooms-config";
+import { useModal } from "../ModalContext";
+import RoomDataTab, { ROOM_DATA_TAB, RoomDataTabId } from "./RoomDataTab";
+import { ToadInfo } from "./ToadInfoModal";
+import { useToads } from "../ToadContext";
 import {
   TOAD_PICKER_REJECTED_GROUP,
   getToadSexIcon,
-} from "../../../utils/toad-picker";
-import { ProgressBar } from "../ToadInfoModal/ProgressBar";
+} from "../../utils/toad-picker";
+import { ProgressBar } from "./ToadInfoModal/ProgressBar";
 
 /**
  * Модалка репродуктора (Часть 3.2).

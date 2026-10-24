@@ -4,14 +4,15 @@ import { CURRENCY_CONFIG } from "../../utils/constants";
 import Modal from "../shared/Header";
 import { useSoundEffects } from "../../hooks/use-sound-effects";
 import {
-  getAllLeaderboards,
+  getLeaderboardPage,
+  getLeaderboardRank,
+  LEADERBOARD_PAGE_SIZE,
   LeaderboardItemType,
+  LeaderboardTabType,
   ToadCollection,
-  updateLeaderbord,
 } from "../../backend/db";
 import useSWR from "swr";
 import { useToads } from "../ToadContext";
-import { getGameState, updateGameState } from "../../backend/localStorage";
 import { ToadAvatar } from "../shared/ToadAvatar";
 import { ToadTypes } from "../../models/Toad/toad-species";
 import { HorizontalScroll } from "../shared/HorizontalScroll";
@@ -22,198 +23,41 @@ interface LeaderboardModalProps {
   onClose: () => void;
 }
 
-type LeaderboardTabType =
-  | "rarity" // Самая редкая жаба
-  | "weight_max" // Самая большая жаба (макс вес)
-  | "weight_min" // Самая маленькая жаба (мин вес)
-  | "fertility_max" // Самая плодовитая жаба (макс фертильность)
-  | "fertility_min" // Самая стерильная жаба (мин фертильность)
-  | "speed_max" // Самая быстрая жаба (макс скорость)
-  | "speed_min" // Самая медленная жаба (мин скорость)
-  | "hunger_max" // Самая прожорливая жаба (макс голод)
-  | "hunger_min" // Самая неголодная жаба (мин голод)
-  | "tokens" // Богатство (кваксы)
-  | "species"; // Разнообразие видов
-
 const LeaderboardModal: React.FC = () => {
-  const { account, allToads } = useToads();
+  const { account } = useToads();
   const [activeTab, setActiveTab] = useState<LeaderboardTabType>("rarity");
-  const [editingUsername, setEditingUsername] = useState(false);
-  const [newUsername, setNewUsername] = useState(account?.username || "");
+  const [page, setPage] = useState(0);
   const { playClick } = useSoundEffects();
+
+  // Витрина листается по 10 строк: сортировку и лимит делает сервер, поэтому
+  // ключ кэша — вкладка + страница (при смене вкладки страница сбрасывается).
+  const { data: pageData } = useSWR(
+    ["leaderboard", activeTab, page],
+    () => getLeaderboardPage(activeTab, page),
+    {
+      dedupingInterval: 30000,
+    },
+  );
+
+  // Своё место считаем отдельно: игрок может быть и за пределами первой десятки.
+  const { data: myRank } = useSWR(
+    ["leaderboard-rank", activeTab],
+    () => getLeaderboardRank(activeTab),
+    {
+      dedupingInterval: 30000,
+      keepPreviousData: true,
+    },
+  );
 
   if (!account) {
     return null;
   }
 
-  const { data: players, mutate } = useSWR(
-    "leaderbord" + account.username,
-    () => getAllLeaderboards(),
-    {
-      dedupingInterval: 30000,
-      keepPreviousData: true,
-      fallbackData: account.id
-        ? [
-            {
-              username: account.username,
-              tg_id: account.tg_id,
-              user_id: account.id,
-              tokens: account.tokens,
-              total_toads: allToads.length,
-              total_species: new Set(allToads.map((t) => t.type)).size,
-              toads_collection: {
-                rarest_toad: allToads.sort(
-                  (a, b) => b.genes.rarity - a.genes.rarity,
-                )[0],
-                weight_max_toad: allToads.sort(
-                  (a, b) => b.genes.weight - a.genes.weight,
-                )[0],
-                weight_min_toad: allToads.sort(
-                  (a, b) => a.genes.weight - b.genes.weight,
-                )[0],
-                fertility_max_toad: allToads.sort(
-                  (a, b) => b.genes.fertility - a.genes.fertility,
-                )[0],
-                fertility_min_toad: allToads.sort(
-                  (a, b) => a.genes.fertility - b.genes.fertility,
-                )[0],
-                speed_max_toad: allToads.sort(
-                  (a, b) => b.genes.speed - a.genes.speed,
-                )[0],
-                speed_min_toad: allToads.sort(
-                  (a, b) => a.genes.speed - b.genes.speed,
-                )[0],
-                hunger_max_toad: allToads.sort(
-                  (a, b) => b.genes.hungerRate - a.genes.hungerRate,
-                )[0],
-                hunger_min_toad: allToads.sort(
-                  (a, b) => a.genes.hungerRate - b.genes.hungerRate,
-                )[0],
-              },
-            },
-          ]
-        : [],
-    },
-  );
-
-  if (!players) {
-    return null;
-  }
-
-  // Функция для сохранения нового никнейма
-  const handleSaveUsername = async () => {
-    const _newUsername = newUsername.trim();
-    if (_newUsername && _newUsername !== account?.username) {
-      try {
-        updateGameState({
-          user: { ...getGameState().user, username: _newUsername },
-        });
-        updateLeaderbord();
-        setEditingUsername(false);
-        mutate();
-      } catch (error) {
-        console.error("Error updating username:", error);
-      }
-    } else {
-      setEditingUsername(false);
-    }
-  };
-
-  const handleCancelEdit = () => {
-    setNewUsername(account?.username || "");
-    setEditingUsername(false);
-  };
-
-  // Функция для получения данных в зависимости от активной вкладки
-  const getSortedPlayers = (): LeaderboardItemType[] => {
-    const playersWithData = players.filter((player) => {
-      switch (activeTab) {
-        case "rarity":
-          return player.toads_collection.rarest_toad;
-        case "weight_max":
-          return player.toads_collection.weight_max_toad;
-        case "weight_min":
-          return player.toads_collection.weight_min_toad;
-        case "fertility_max":
-          return player.toads_collection.fertility_max_toad;
-        case "fertility_min":
-          return player.toads_collection.fertility_min_toad;
-        case "speed_max":
-          return player.toads_collection.speed_max_toad;
-        case "speed_min":
-          return player.toads_collection.speed_min_toad;
-        case "hunger_max":
-          return player.toads_collection.hunger_max_toad;
-        case "hunger_min":
-          return player.toads_collection.hunger_min_toad;
-        case "tokens":
-          return player.tokens > 0;
-        case "species":
-          return player.total_species > 0;
-        default:
-          return true;
-      }
-    });
-
-    return [...playersWithData].sort((a, b) => {
-      switch (activeTab) {
-        case "rarity":
-          return (
-            (b.toads_collection.rarest_toad?.genes.rarity || 0) -
-            (a.toads_collection.rarest_toad?.genes.rarity || 0)
-          );
-        case "weight_max":
-          return (
-            (b.toads_collection.weight_max_toad?.genes.weight || 0) -
-            (a.toads_collection.weight_max_toad?.genes.weight || 0)
-          );
-        case "weight_min":
-          return (
-            (a.toads_collection.weight_min_toad?.genes.weight || Infinity) -
-            (b.toads_collection.weight_min_toad?.genes.weight || Infinity)
-          );
-        case "fertility_max":
-          return (
-            (b.toads_collection.fertility_max_toad?.genes.fertility || 0) -
-            (a.toads_collection.fertility_max_toad?.genes.fertility || 0)
-          );
-        case "fertility_min":
-          return (
-            (a.toads_collection.fertility_min_toad?.genes.fertility ||
-              Infinity) -
-            (b.toads_collection.fertility_min_toad?.genes.fertility || Infinity)
-          );
-        case "speed_max":
-          return (
-            (b.toads_collection.speed_max_toad?.genes.speed || 0) -
-            (a.toads_collection.speed_max_toad?.genes.speed || 0)
-          );
-        case "speed_min":
-          return (
-            (a.toads_collection.speed_min_toad?.genes.speed || Infinity) -
-            (b.toads_collection.speed_min_toad?.genes.speed || Infinity)
-          );
-        case "hunger_max":
-          return (
-            (b.toads_collection.hunger_max_toad?.genes.hungerRate || 0) -
-            (a.toads_collection.hunger_max_toad?.genes.hungerRate || 0)
-          );
-        case "hunger_min":
-          return (
-            (a.toads_collection.hunger_min_toad?.genes.hungerRate || Infinity) -
-            (b.toads_collection.hunger_min_toad?.genes.hungerRate || Infinity)
-          );
-        case "tokens":
-          return (b.tokens || 0) - (a.tokens || 0);
-        case "species":
-          return (b.total_species || 0) - (a.total_species || 0);
-        default:
-          return 0;
-      }
-    });
-  };
-
-  const sortedPlayers = getSortedPlayers();
+  // Строки уже отсортированы и ограничены сервером — сортировать нечего.
+  const players = pageData?.rows ?? [];
+  // Номера мест считаем от страницы, которую реально вернул сервер: если
+  // запрошенная страница «схлопнулась», он отдаст начало списка.
+  const displayPage = pageData?.page ?? 0;
 
   const isCurrentUser = (player: LeaderboardItemType): boolean => {
     // Сравниваем по ключу аккаунта, а не по tg_id: в вебе его нет вовсе, и «моя»
@@ -340,10 +184,6 @@ const LeaderboardModal: React.FC = () => {
     </svg>
   );
 
-  const getRank = () => {
-    return 1 + sortedPlayers.findIndex((p) => p.user_id === account.id);
-  };
-
   // Компонент для отображения информации о жабе по параметру
   const ParameterInfo = ({
     player,
@@ -458,6 +298,8 @@ const LeaderboardModal: React.FC = () => {
         onClick={() => {
           playClick();
           setActiveTab(tab);
+          // Новая вкладка — снова с первой страницы: у неё свой порядок и объём.
+          setPage(0);
         }}
         className={`flex flex-col items-center py-2 text-xs font-medium transition-all ${
           isActive
@@ -474,83 +316,20 @@ const LeaderboardModal: React.FC = () => {
 
   return (
     <Modal icon={icon} title="Лидерборд">
-      {/* Заголовок с редактируемым никнеймом */}
-      <div className=" py-3 px-2 border-b border-slate-700">
-        <div className="flex items-center justify-between mb-2">
-          <div className="text-cyan-300 text-sm font-bold">
-            Рейтинг: {getRank()}
+      {/* Заголовок: своё место и имя (ник меняется в настройках) */}
+      <div className="py-3 px-2 border-b border-slate-700">
+        <div className="flex items-center justify-between gap-2">
+          <div className="text-cyan-300 text-sm font-bold shrink-0">
+            Рейтинг: {myRank ?? "—"}
           </div>
 
-          <div className="flex items-center gap-1">
-            {editingUsername ? (
-              <div className="flex items-center gap-1">
-                <input
-                  type="text"
-                  value={newUsername}
-                  onChange={(e) => setNewUsername(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") handleSaveUsername();
-
-                    if (e.key === "Escape") {
-                      // Esc в правке ника отменяет её, а не закрывает окно (см. ModalProvider).
-                      e.preventDefault();
-                      handleCancelEdit();
-                    }
-                  }}
-                  className="bg-color-second outline-none border border-cyan-400 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-cyan-400 w-28"
-                  placeholder="Введите ник"
-                  autoFocus
-                  maxLength={15}
-                />
-                <button
-                  onClick={handleSaveUsername}
-                  className="rounded-lg border border-cyan-400/40 bg-cyan-500/20 p-1 text-cyan-200 transition-colors hover:bg-cyan-500/30"
-                  title="Сохранить"
-                >
-                  <svg
-                    className="w-3 h-3"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                </button>
-              </div>
-            ) : (
-              <div className="flex items-center gap-1">
-                <span className="text-cyan-300 font-semibold text-sm">
-                  {account?.username || "Без имени"}
-                </span>
-                <button
-                  onClick={() => {
-                    playClick();
-                    setEditingUsername(true);
-                  }}
-                  className="text-slate-300 hover:text-cyan-300 transition-colors p-0.5 rounded hover:bg-cyan-900/20"
-                  title="Изменить никнейм"
-                >
-                  <svg
-                    className="w-3 h-3"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                    />
-                  </svg>
-                </button>
-              </div>
-            )}
+          <div className="text-right min-w-0">
+            <div className="text-cyan-300 font-semibold text-sm truncate">
+              {account.username || "Без имени"}
+            </div>
+            <div className="text-slate-400 text-xs leading-tight">
+              имя меняется в настройках
+            </div>
           </div>
         </div>
       </div>
@@ -585,8 +364,22 @@ const LeaderboardModal: React.FC = () => {
 
         {/* Список лидеров */}
         <div className="space-y-2 ">
-          {sortedPlayers.map((player, index) => {
+          {!pageData && (
+            <div className="py-6 text-center text-slate-300 text-sm">
+              Загружаем рейтинг…
+            </div>
+          )}
+
+          {pageData && players.length === 0 && (
+            <div className="py-6 text-center text-slate-300 text-sm">
+              Здесь пока никого нет — станьте первым!
+            </div>
+          )}
+
+          {players.map((player, index) => {
             const isUser = isCurrentUser(player);
+            // Место в общем рейтинге: страница сдвигает нумерацию, а не сбрасывает.
+            const rank = displayPage * LEADERBOARD_PAGE_SIZE + index;
 
             return (
               <div
@@ -599,7 +392,7 @@ const LeaderboardModal: React.FC = () => {
                         bg-gradient-to-r from-cyan-950/40 to-emerald-950/30
                         border-cyan-300/40 shadow-md shadow-cyan-950/30
                       `
-                      : index <= 2
+                      : rank <= 2
                         ? "border-yellow-500/30 bg-gradient-to-r from-slate-800 to-yellow-900/10"
                         : "border-slate-600 bg-color-main"
                   }
@@ -620,17 +413,17 @@ const LeaderboardModal: React.FC = () => {
                         ${
                           isUser
                             ? "text-cyan-300"
-                            : index === 0
+                            : rank === 0
                               ? "text-yellow-400"
-                              : index === 1
+                              : rank === 1
                                 ? "text-slate-200"
-                                : index === 2
+                                : rank === 2
                                   ? "text-orange-400"
                                   : "text-slate-300"
                         }
                       `}
                     >
-                      {getRankIcon(index)}
+                      {getRankIcon(rank)}
                     </div>
 
                     <div className="flex-1 min-w-0">
@@ -747,6 +540,41 @@ const LeaderboardModal: React.FC = () => {
             );
           })}
         </div>
+
+        {/* Пагинация: по 10 строк на страницу, чтобы витрина не тянула всю таблицу */}
+        {pageData && pageData.pageCount > 1 && (
+          <div className="flex items-center justify-between gap-2 py-3 px-1">
+            <button
+              type="button"
+              onClick={() => {
+                playClick();
+                setPage((current) => Math.max(0, current - 1));
+              }}
+              disabled={displayPage === 0}
+              className="ui-button-secondary px-3 py-1.5 text-sm disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              ← Назад
+            </button>
+
+            <span className="text-slate-300 text-xs tabular-nums">
+              {displayPage + 1} / {pageData.pageCount}
+            </span>
+
+            <button
+              type="button"
+              onClick={() => {
+                playClick();
+                setPage((current) =>
+                  Math.min(pageData.pageCount - 1, current + 1),
+                );
+              }}
+              disabled={displayPage + 1 >= pageData.pageCount}
+              className="ui-button-secondary px-3 py-1.5 text-sm disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Вперёд →
+            </button>
+          </div>
+        )}
       </div>
     </Modal>
   );

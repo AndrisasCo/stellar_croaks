@@ -24,6 +24,12 @@ import {
   getBiomassExchangeTokens,
 } from "../../../utils/production-manager";
 import { isToadBusyOnExpedition } from "../../../utils/expedition-manager";
+import { itemsFull, Items } from "../../../models/user";
+import {
+  GENE_DUST_SELL_PRICE,
+  getGeneDustSellTokens,
+  sellGeneDust,
+} from "../../../utils/gene-dust";
 
 /** Сколько биомассы продаём: `null` — «вся имеющаяся», число — выбор ползунка */
 type BiomassSellChoice = number | null;
@@ -31,6 +37,9 @@ type BiomassSellChoice = number | null;
 /** Биомасса в строке: без хвостовых нулей (12, 12.5) */
 const formatBiomass = (value: number): string =>
   String(Math.round(Math.max(0, value) * 100) / 100);
+
+/** Иконка генной пыли — та же, что на складе и в добыче похода (не эмодзи). */
+const GENE_DUST_ICON = itemsFull[Items.geneDust].icon;
 
 const SellTab: React.FC = () => {
   const { allToads: activeToads, account } = useToads();
@@ -64,6 +73,34 @@ const SellTab: React.FC = () => {
       addNotification({
         type: "warn",
         content: "Недостаточно биомассы для обмена",
+      });
+    }
+  };
+
+  /**
+   * Генная пыль — второй товар вкладки «Продать». Курс фиксированный:
+   * 1 пылинка = 5 Кваксов. Ползунок отдаёт часть запаса, остаток остаётся
+   * на складе для коллайдера.
+   */
+  const dustAvailable = Math.max(
+    0,
+    Math.floor(account?.storage?.[Items.geneDust] ?? 0),
+  );
+  const [dustChoice, setDustChoice] = useState<number | null>(null);
+  const sellDust = Math.min(dustChoice ?? dustAvailable, dustAvailable);
+  const geneDustTokens = getGeneDustSellTokens(sellDust);
+  const leftDust = dustAvailable - sellDust;
+
+  const handleSellGeneDust = () => {
+    const result = sellGeneDust(sellDust);
+
+    if (result.success) {
+      playCell();
+      setDustChoice(null);
+    } else {
+      addNotification({
+        type: "warn",
+        content: "Генной пыли нет на складе",
       });
     }
   };
@@ -243,6 +280,106 @@ const SellTab: React.FC = () => {
             </button>
           )}
         </div>
+      </div>
+
+      {/* Генная пыль: фиксированный курс 1 шт = 5 Кваксов, ползунок отдаёт часть запаса */}
+      <div className="bg-color-main rounded-xl p-3 border border-fuchsia-500/30 flex flex-col gap-2">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 text-fuchsia-300 font-semibold text-sm">
+              <img
+                src={GENE_DUST_ICON}
+                alt=""
+                draggable={false}
+                className="h-4 w-4 shrink-0 select-none object-contain"
+              />
+              <span className="truncate">Генная пыль: {dustAvailable}</span>
+            </div>
+            <div className="text-slate-400 text-xs">
+              Курс продажи: 1 шт = {GENE_DUST_SELL_PRICE}{" "}
+              <CurrencyIcon currency="tokens" className="h-3 w-3" />
+            </div>
+          </div>
+          <button
+            onClick={handleSellGeneDust}
+            disabled={geneDustTokens <= 0}
+            title={
+              geneDustTokens > 0
+                ? `Продать ${sellDust} шт. за ${geneDustTokens} Кваксов`
+                : "Нет генной пыли для продажи"
+            }
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all shrink-0 ${
+              geneDustTokens > 0
+                ? "ui-button-primary"
+                : "cursor-not-allowed border border-slate-500/30 bg-slate-600/30 text-slate-400"
+            }`}
+          >
+            Продать ({geneDustTokens}{" "}
+            <CurrencyIcon currency="tokens" className="h-3 w-3" />)
+          </button>
+        </div>
+
+        {/* Ползунок: 0 … вся генная пыль на складе */}
+        <div className="flex items-center gap-3">
+          <input
+            type="range"
+            min="0"
+            max={dustAvailable}
+            step="1"
+            value={sellDust}
+            onChange={(event) => setDustChoice(Number(event.target.value))}
+            disabled={dustAvailable <= 0}
+            aria-label="Сколько генной пыли продать"
+            title="Ползунок: сколько генной пыли отдать за Кваксы"
+            className="h-2 flex-1 rounded-lg bg-slate-600 accent-fuchsia-500 disabled:opacity-50"
+          />
+          <span
+            className={`inline-flex w-20 shrink-0 items-center justify-end gap-1 text-xs font-medium ${
+              sellDust > 0 ? "text-fuchsia-200" : "text-slate-500"
+            }`}
+          >
+            {sellDust}
+            <img
+              src={GENE_DUST_ICON}
+              alt=""
+              draggable={false}
+              className="h-3.5 w-3.5 shrink-0 select-none object-contain"
+            />
+          </span>
+        </div>
+
+        <div className="flex items-center justify-between gap-2 text-2xs">
+          <span className="text-slate-400">
+            Выручка:{" "}
+            <span className="text-fuchsia-300 font-semibold">
+              {geneDustTokens}{" "}
+              <CurrencyIcon currency="tokens" className="h-3 w-3" />
+            </span>{" "}
+            · останется {leftDust}{" "}
+            <img
+              src={GENE_DUST_ICON}
+              alt=""
+              draggable={false}
+              className="inline-block h-3 w-3 shrink-0 select-none object-contain align-[-0.15em]"
+            />
+          </span>
+          {sellDust < dustAvailable && (
+            <button
+              type="button"
+              onClick={() => setDustChoice(null)}
+              className="shrink-0 text-fuchsia-300 underline decoration-dotted hover:text-fuchsia-200"
+            >
+              вся пыль
+            </button>
+          )}
+        </div>
+
+        {dustAvailable === 0 && (
+          <p className="ui-hint">
+            Генная пыль приходит из походов за Периметр. В коллайдере она
+            повышает качество гибрида, а здесь её можно продать.
+          </p>
+        )}
       </div>
 
       {/* Жабы в походе в списке продажи не участвуют — причина видна сразу */}

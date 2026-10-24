@@ -122,7 +122,7 @@ export const stepLoot = (
 /** Иконки предметов склада для чата похода */
 export const ITEM_ICONS: Partial<Record<Items, string>> = {
   [Items.food]: "🍎",
-  [Items.craftDust]: "✨",
+  [Items.geneDust]: "✨",
   [Items.battery]: "🔋",
   [Items.worms]: "🪱",
   [Items.sparkleFlys]: "✨",
@@ -281,7 +281,7 @@ export const EXPEDITION_EVENTS: ExpeditionEventDef[] = [
       if (ctx.check(tank, 0.5)) {
         const delta = {
           ...stepLoot(ctx),
-          items: { [Items.craftDust]: 1 },
+          items: { [Items.geneDust]: 1 },
           ...rareLoot(ctx),
         };
         ctx.loot(delta);
@@ -467,7 +467,7 @@ export const EXPEDITION_EVENTS: ExpeditionEventDef[] = [
             EXPEDITION_STEP_TOKENS * 1.6 * getSectorLootFactor(ctx.sector),
           ),
         ),
-        items: { [Items.craftDust]: 1 },
+        items: { [Items.geneDust]: 1 },
         ...rareLoot(ctx),
       };
       ctx.loot(delta);
@@ -508,7 +508,7 @@ export const EXPEDITION_EVENTS: ExpeditionEventDef[] = [
       if (ctx.check(tank, 0.55)) {
         const delta = {
           ...stepLoot(ctx, 1.1),
-          items: { [Items.craftDust]: 1 },
+          items: { [Items.geneDust]: 1 },
           ...rareLoot(ctx),
         };
         ctx.loot(delta);

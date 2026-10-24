@@ -32,11 +32,14 @@ create unique index if not exists game_state_tg_id_key
 
 -- ---------------------------------------------------------------------------
 -- 2. leaderboard — витрина достижений (пишется каждой игрой, читается всеми)
+--
+-- Имени здесь нет: оно принадлежит аккаунту (см. `profiles`), а строка хранит
+-- только ссылку `user_id`. Иначе переименование в настройках не долетало бы до
+-- уже записанных строк, и на лидерборде висели бы старые ники.
 -- ---------------------------------------------------------------------------
 create table if not exists public.leaderboard (
   user_id uuid primary key references auth.users (id) on delete cascade,
   tg_id bigint,
-  username text not null default '',
   tokens integer not null default 0,
   total_toads integer not null default 0,
   total_species integer not null default 0,
@@ -81,7 +84,22 @@ create table if not exists public.players (
 
 
 -- ---------------------------------------------------------------------------
--- 5. RLS: без политик таблицы недоступны никому, кроме service-role.
+-- 5. profiles — имя игрока, привязанное к аккаунту
+--
+-- Имя живёт рядом с аккаунтом (`auth.users.id`), а не в строке лидерборда:
+-- переименование в настройках сразу меняет ник во всех витринах. Читают профиль
+-- все (это нужно лидерборду), менять может только владелец.
+-- ---------------------------------------------------------------------------
+create table if not exists public.profiles (
+  user_id uuid primary key references auth.users (id) on delete cascade,
+  -- 32 — запас над клиентским лимитом (15): имя из Telegram бывает длиннее.
+  username text not null check (char_length(username) between 1 and 32),
+  updated_at timestamptz not null default now()
+);
+
+
+-- ---------------------------------------------------------------------------
+-- 6. RLS: без политик таблицы недоступны никому, кроме service-role.
 --
 -- Игрок входит анонимно или через Telegram — в обоих случаях он получает роль
 -- `authenticated`, поэтому «анонимный» игрок в вебе ничем не хуже: он видит
@@ -91,6 +109,7 @@ alter table public.game_state enable row level security;
 alter table public.leaderboard enable row level security;
 alter table public.credits enable row level security;
 alter table public.players enable row level security;
+alter table public.profiles enable row level security;
 
 -- game_state: свой сейв — единственный видимый и единственный изменяемый.
 drop policy if exists game_state_select_own on public.game_state;
@@ -136,9 +155,22 @@ create policy credits_mark_applied on public.credits
 -- players: игроку там делать нечего — это внутренняя связка для бота.
 -- Политик нет: значит ни select, ни insert через anon/authenticated не пройдут.
 
+-- profiles: имя видят все (оно нужно лидерборду), меняет — только владелец.
+drop policy if exists profiles_select_all on public.profiles;
+create policy profiles_select_all on public.profiles
+  for select using (true);
+
+drop policy if exists profiles_insert_own on public.profiles;
+create policy profiles_insert_own on public.profiles
+  for insert with check (auth.uid() = user_id);
+
+drop policy if exists profiles_update_own on public.profiles;
+create policy profiles_update_own on public.profiles
+  for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
 
 -- ---------------------------------------------------------------------------
--- 6. Права. RLS ограничивает строки, GRANT — операции и колонки.
+-- 7. Права. RLS ограничивает строки, GRANT — операции и колонки.
 --
 -- Про колонки: политика определяет, какие СТРОКИ видит игрок, но не какие поля он
 -- вправе менять. Поэтому `update` выдаём не на таблицу целиком, а на конкретные
@@ -150,7 +182,8 @@ create policy credits_mark_applied on public.credits
 -- ограничивают: табличный UPDATE разрешит менять и `credits.tokens`. Поэтому
 -- отзываем у обеих ролей всё, а затем выдаём ровно нужное.
 -- ---------------------------------------------------------------------------
-revoke all on public.game_state, public.leaderboard, public.credits, public.players
+revoke all on public.game_state, public.leaderboard, public.credits, public.players,
+  public.profiles
   from anon, authenticated;
 
 grant select, insert, delete on public.game_state to authenticated;
@@ -158,23 +191,29 @@ grant update (content, achievements, collider, shop, tg_id, updated_at)
   on public.game_state to authenticated;
 
 grant select on public.leaderboard to authenticated;
-grant insert (user_id, tg_id, username, tokens, total_toads, total_species,
+grant insert (user_id, tg_id, tokens, total_toads, total_species,
               toads_collection)
   on public.leaderboard to authenticated;
-grant update (tg_id, username, tokens, total_toads, total_species,
+grant update (tg_id, tokens, total_toads, total_species,
               toads_collection, updated_at)
   on public.leaderboard to authenticated;
 
 grant select on public.credits to authenticated;
 grant update (applied_at) on public.credits to authenticated;
 
+-- profiles: имя читают все (лидерборд), пишет каждый только своё.
+grant select on public.profiles to authenticated;
+grant insert (user_id, username, updated_at) on public.profiles to authenticated;
+grant update (username, updated_at) on public.profiles to authenticated;
+
 -- Бот и Edge Function работают service-role ключом: им доступно всё.
-grant all on public.game_state, public.leaderboard, public.credits, public.players
+grant all on public.game_state, public.leaderboard, public.credits, public.players,
+  public.profiles
   to service_role;
 grant usage, select on all sequences in schema public to service_role;
 
 -- ---------------------------------------------------------------------------
--- 7. Если таблицы уже создавались вручную (до этого файла) — дотягиваем их.
+-- 8. Если таблицы уже создавались вручную (до этого файла) — дотягиваем их.
 -- Для свежей базы безвредно: всё с `if not exists`.
 -- ---------------------------------------------------------------------------
 alter table public.game_state
@@ -184,8 +223,45 @@ alter table public.game_state add column if not exists user_id uuid;
 alter table public.leaderboard add column if not exists tg_id bigint;
 alter table public.leaderboard add column if not exists user_id uuid;
 
+-- Имя больше не дублируется в лидерборде: переносим ники из старой колонки в
+-- `profiles`, затем колонку убираем. Блок идемпотентный: на свежей базе колонки
+-- нет, и запрос просто пропускается.
+do $migrate$
+begin
+  if exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'leaderboard'
+      and column_name = 'username'
+  ) then
+    execute $copy$
+      insert into public.profiles (user_id, username)
+      select l.user_id, left(btrim(l.username), 32)
+      from public.leaderboard l
+      -- Строки без аккаунта (старый лидерборд жил на tg_id) пропускаем: у них нет
+      -- user_id, а внешний ключ `profiles` смотрит в auth.users.
+      join auth.users u on u.id = l.user_id
+      where nullif(btrim(l.username), '') is not null
+      on conflict (user_id) do nothing
+    $copy$;
+
+    execute 'alter table public.leaderboard drop column username';
+  end if;
+end
+$migrate$;
+
+-- Игроки, которые ещё не заходили после обновления, но уже есть в Auth: имя из
+-- Telegram лежит в `user_metadata`, оттуда и заводим профиль (существующий ник
+-- не перетираем — его мог выбрать сам игрок).
+insert into public.profiles (user_id, username)
+select u.id, left(btrim(u.raw_user_meta_data ->> 'username'), 32)
+from auth.users u
+where nullif(btrim(coalesce(u.raw_user_meta_data ->> 'username', '')), '') is not null
+on conflict (user_id) do nothing;
+
 -- ---------------------------------------------------------------------------
--- 8. PostgREST кэширует схему. После DDL просим перечитать её, иначе REST может
+-- 9. PostgREST кэширует схему. После DDL просим перечитать её, иначе REST может
 -- ещё какое-то время отвечать «Could not find the table ... in the schema cache».
 -- ---------------------------------------------------------------------------
 notify pgrst, 'reload schema';
