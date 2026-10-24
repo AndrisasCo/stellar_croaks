@@ -527,8 +527,8 @@ const ExpeditionModal: React.FC<{
             tone: own ? "selected" : other ? "warn" : "default",
             note: (
               <div className="truncate">
-                {getRoleStat(toad, role).toFixed(2)} {config.statLabel} · событие{" "}
-                {eventChance}% · {getToadHpStatusLabel(toad)}
+                {getRoleStat(toad, role).toFixed(2)} {config.statLabel} ·{" "}
+                {toad.hp} XP
                 {own
                   ? " · ✓ на этой роли"
                   : other

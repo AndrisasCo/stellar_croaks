@@ -26,6 +26,7 @@ import {
   updateLeaderbord,
 } from "../../backend/db";
 import { bootGame, type BootStage } from "../../backend/boot";
+import { attachCloudFlush } from "../../backend/cloud-flush";
 import { useTelegram } from "../../hooks/use-tg";
 import { useNotifications } from "../../hooks/use-notification";
 import { useOfflineEvents } from "../../hooks/use-offline-events";
@@ -121,6 +122,11 @@ export default function ToadGame() {
     // Сохранение в облако включается только после успешного чтения прогресса:
     // иначе локальный (возможно, старый) сейв затрёт прогресс с другого устройства.
     let cloudSynced = false;
+
+    // Досыл сейва при закрытии игры: таймер облака тикает раз в 3 минуты, и без
+    // этого прогресс последних минут оставался бы только на устройстве. Пока
+    // облако не прочитано (`isReady`), запись запрещена — как и у таймера.
+    const detachCloudFlush = attachCloudFlush({ isReady: () => cloudSynced });
 
     const wait = (ms: number) =>
       new Promise<void>((resolve) => {
@@ -218,6 +224,8 @@ export default function ToadGame() {
         window.setInterval(() => {
           // Пока облако не прочитано, сейв наверх не отправляем: иначе локальный
           // прогресс затрёт более свежий с другого устройства.
+          // При закрытии/скрытии вкладки сейв досылает `attachCloudFlush`, а этот
+          // таймер страхует долгую сессию.
           if (cloudSynced) {
             updateGameStateDB();
           }
@@ -320,6 +328,7 @@ export default function ToadGame() {
 
     return () => {
       cancelled = true;
+      detachCloudFlush();
       intervals.forEach((id) => window.clearInterval(id));
       timeouts.forEach((id) => window.clearTimeout(id));
 

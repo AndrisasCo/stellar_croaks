@@ -106,6 +106,19 @@ export const getGameState = (): GameState => {
     return getDefaultGameState();
   }
 };
+/**
+ * Есть ли на устройстве сейв. В отличие от `getGameState` ничего не создаёт:
+ * благодаря этому досыл при закрытии не воскрешает сейв, стёртый выходом из
+ * аккаунта (`clearGameState`).
+ */
+export const hasGameState = (): boolean => {
+  try {
+    return Boolean(storage.get(LS_KEY));
+  } catch {
+    return false;
+  }
+};
+
 
 type LegacyToad = Toad & { roomId?: string | null };
 
