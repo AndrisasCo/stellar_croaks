@@ -421,8 +421,9 @@ check("в паре самец из списка слота самца", ready.pa
 check("в паре самка из списка слота самки", ready.pair?.female.id, 2);
 const started = breeding.startNestCourtship(NEST, collect);
 check("ухаживание началось", started.started, true);
-check("самка ухаживает", Boolean(findToad(2).mating), true);
-check("самец ухаживает", Boolean(findToad(1).mating), true);
+check("самка сразу беременна", findToad(2).pregnancy?.isPregnant, true);
+check("самка больше не ухаживает", findToad(2).mating, null);
+check("самец больше не ухаживает (его можно забрать)", findToad(1).mating, null);
 
 console.log("\n[7] Больная и выбитая жаба пару не образуют");
 console.log("─".repeat(60));

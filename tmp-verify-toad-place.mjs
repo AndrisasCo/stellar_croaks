@@ -9,6 +9,8 @@
  *      (`getRoomToadLists`), а жабу в секторе показывает сам сектор;
  *   3) возврат домой: `sendToadHome` ведёт в биопод, который жаба помнит, и проверяет
  *      место — в полный биопод жаба не влезает (`no-space`) и остаётся, где была;
+ *      `releaseToad` поверх этого ищет любой свободный биопод под током
+ *      (`findFreePoweredAviary`), чтобы жаба не застряла в секторе из-за полного дома;
  *   4) переезд в другой биопод (`moveToadToAviary`) тоже проверяет место и меняет дом;
  *   5) новые жабы: рождённый в репродукторе головастик место в биоподе не занимает, но дом
  *      у него есть (`createToads`), а новая жаба в биоподе получает дом по месту;
@@ -174,6 +176,7 @@ const place = bundle("src/utils/toad-location.ts", "toad-location");
 const colonyBuild = bundle("src/components/HexMap/colony-build.ts", "colony-build");
 const constants = bundle("src/utils/constants.tsx", "constants");
 const toadLists = bundle("src/components/HexMap/room-toad-lists.ts", "room-toad-lists");
+const aviaryRelease = bundle("src/components/HexMap/aviary-release.ts", "aviary-release");
 
 const NEST = constants.NEST_ROOM_ID;
 const AVIARY = constants.AVIARY_ROOM_ID;
@@ -256,6 +259,52 @@ check(
   colonyRooms.find((room) => room.slotId === "outpost-0").sceneId,
   2,
 );
+
+console.log("\n[2.1] Запасной биопод: свободный и под током");
+console.log("─".repeat(60));
+const fallbackRooms = [
+  { id: "off", kind: "aviary", sceneId: 1 },
+  { id: "full", kind: "aviary", sceneId: 2 },
+  { id: "free", kind: "aviary", sceneId: 3 },
+];
+const fallbackScenes = [
+  { id: 1, capacity: 2 },
+  { id: 2, capacity: 1 },
+  { id: 3, capacity: 2 },
+];
+const fallbackToads = [
+  { id: 10, scene_id: 2 },
+  { id: 11, scene_id: 3 },
+];
+const fallbackGrid = {
+  powered: { off: false, full: true, free: true },
+};
+const fallback = aviaryRelease.findFreePoweredAviary({
+  rooms: fallbackRooms,
+  scenes: fallbackScenes,
+  toads: fallbackToads,
+  powerGrid: fallbackGrid,
+  toadId: 99,
+});
+check("выбран свободный биопод под током", fallback?.id, "free");
+
+const noFallback = aviaryRelease.findFreePoweredAviary({
+  rooms: fallbackRooms.slice(0, 2),
+  scenes: fallbackScenes.slice(0, 2),
+  toads: fallbackToads,
+  powerGrid: fallbackGrid,
+  toadId: 99,
+});
+check("обесточенный и полный не годятся", noFallback, null);
+
+const ownSlotFallback = aviaryRelease.findFreePoweredAviary({
+  rooms: [{ id: "own", kind: "aviary", sceneId: 3 }],
+  scenes: [{ id: 3, capacity: 1 }],
+  toads: [{ id: 99, scene_id: 3 }],
+  powerGrid: { powered: { own: true } },
+  toadId: 99,
+});
+check("своё место не мешает переезду", ownSlotFallback?.id, "own");
 
 console.log("\n[3] Домой: место есть");
 console.log("─".repeat(60));

@@ -7,17 +7,14 @@ import { useNotifications } from "../../hooks/use-notification";
 import { useRoomPowerTab } from "../../hooks/use-room-power-tab";
 import { useSoundEffects } from "../../hooks/use-sound-effects";
 import {
-  MATING_MAX_MINUTES,
-  MATING_MIN_MINUTES,
   NEST_ROOM_TOAD_SLOTS,
   getBreedPairBiomassCost,
   getEnergyCost,
-  getMatingTimeLeft,
   getToadEnergy,
 } from "../../utils/gamification-config";
 import {
   NEST_SLOT_SEXES,
-  abortMating,
+  accelerateNestPregnancy,
   checkNestCourtship,
   getNestSlotCandidates,
   getNestSlotLabel,
@@ -25,11 +22,8 @@ import {
   getNestSlotSex,
   startNestCourtship,
 } from "../../utils/breeding-manager";
-import { placeToadInRoom, sendToadHome } from "../../backend/colony";
-import {
-  getToadHomeId,
-  isToadInRoom,
-} from "../../utils/toad-location";
+import { placeToadInRoom } from "../../backend/colony";
+import { getToadHomeId, isToadInRoom } from "../../utils/toad-location";
 import {
   EXPEDITION_TOAD_BUSY_REASON,
   isToadBusyOnExpedition,
@@ -66,23 +60,43 @@ import { ProgressBar } from "./ToadInfoModal/ProgressBar";
  * (переключатель «Не подходят») — чтобы не искать ответ, почему жабы нет в списке.
  *
  * Ухаживание заводит игрок: посадил самку в первый слот, самца во второй — и нажал
- * «Начать ухаживание». Кнопка активна не всегда: пока пара отдыхает, не хватает
- * биомассы или заняты родильные слоты биопода, под кнопкой висит причина
- * (`checkNestCourtship`). Беременность приходит через 15–30 минут, и из репродуктора
- * жабы не уходят сами — их выносит игрок.
+ * «Начать ухаживание». Кнопка активна не всегда: пока пара отдыхает или не хватает
+ * биомассы, под кнопкой висит причина (`checkNestCourtship`). Ухаживание мгновенное:
+ * самка сразу беременеет и остаётся в репродукторе до родов (её нельзя отселить,
+ * но можно ускорить беременность Сияющей мушкой ✨), а самца игрок может забрать
+ * в биопод — он больше не занят парой.
  *
  * Табы — общие для всех секторов (`shared/ModalTabs`): пары репродуктора первыми, «Данные
  * сектора» (`modals/RoomDataTab.tsx`) — последним. Репродуктор открывают и из лаборатории
  * (тогда гекса нет и таб один), и с гекса карты — тогда у модалки есть данные сектора.
  */
 
-/** «12м» / «1ч 05м» — отсчёт ухаживания в репродукторе */
-const formatWait = (ms: number): string => {
-  const totalMinutes = Math.max(1, Math.ceil(ms / 60_000));
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
+/**
+ * Сколько осталось до родов (мс): беременность хранится в часах (`pregnancyDuration`),
+ * а не в абсолютном времени, поэтому считаем от `pregnancyStart`.
+ */
+const getPregnancyTimeLeft = (toad: Toad): number => {
+  if (!toad.pregnancy) {
+    return 0;
+  }
 
-  return hours > 0 ? `${hours}ч ${minutes}м` : `${minutes}м`;
+  const durationMs = Math.max(1, toad.pregnancy.pregnancyDuration * 3_600_000);
+
+  return Math.max(0, durationMs - (Date.now() - toad.pregnancy.pregnancyStart));
+};
+
+/** Прогресс беременности (0…100) — полоса вместо старого прогресса ухаживания */
+const getPregnancyProgress = (toad: Toad): number => {
+  if (!toad.pregnancy) {
+    return 0;
+  }
+
+  const durationMs = Math.max(1, toad.pregnancy.pregnancyDuration * 3_600_000);
+
+  return Math.min(
+    100,
+    ((Date.now() - toad.pregnancy.pregnancyStart) / durationMs) * 100,
+  );
 };
 
 /** «5м 20с» — отдых жабы после спаривания */
@@ -113,7 +127,7 @@ const readinessNote = (toad: Toad): string => {
     return `нужно ⚡${cost}`;
   }
 
-  return "ухаживание доступно";
+  return "готова к паре";
 };
 
 /** Что слот ищет — подсказка вверху списка жаб */
@@ -151,7 +165,7 @@ export default function NestModal({
   const { openModal } = useModal();
   const { playSuccess, playError } = useSoundEffects();
   const gameState = useGameState();
-  const { powerGrid } = useColony();
+  const { powerGrid, releaseToad } = useColony();
   // Раз в секунду обновляем обратные отсчёты: ухаживание, отдых, статусы жаб
   const [, setTick] = useState(0);
   /** Состояние сектора: пары репродуктора (по умолчанию) или данные сектора */
@@ -215,27 +229,22 @@ export default function NestModal({
    */
   const extraNestAdults = nestAdults.filter((toad) => !slots.includes(toad));
 
-  /** Статус жабы в репродукторе: ухаживает / вынашивает / ждёт пару */
+  /** Статус жабы в репродукторе: вынашивает (до родов) / ждёт пару */
   const toadStatus = (toad: Toad): string => {
-    if (toad.mating) {
-      const partner = allToads.find(
-        (item) => item.id === toad.mating?.partnerId,
-      );
-
-      return ` ухаживает: ${formatWait(getMatingTimeLeft(toad))} с ${
-        partner?.name ?? "партнёром"
-      }`;
+    if (toad.pregnancy?.isPregnant) {
+      return ``;
     }
 
-    if (toad.pregnancy?.isPregnant) {
-      return " вынашивает потомство - можно отправить в биопод";
+    // Устаревшее ухаживание из старого сейва живёт до ближайшего тика
+    if (toad.mating) {
+      return "ухаживает";
     }
 
     if (toad.stage !== "adult") {
       return "головастик из этого репродуктора";
     }
 
-    return "ждёт пару";
+    return "готов";
   };
 
   /**
@@ -297,27 +306,28 @@ export default function NestModal({
   // Пара в репродукторе может быть неполной: по ней считаем цену ухаживания и подсказки
   const nestMale = nestAdults.find((toad) => toad.sex === "male") ?? null;
   const nestFemale = nestAdults.find((toad) => toad.sex === "female") ?? null;
-  const courtingToad = nestAdults.find((toad) => toad.mating) ?? null;
   const pregnantInNest =
     nestAdults.find((toad) => toad.pregnancy?.isPregnant) ?? null;
+  /** Сияющие мушки ✨ — цена ускорения беременности в репродукторе */
+  const sparkleFlys = account?.storage?.sparkleFlys || 0;
   const pairEnergyCost =
     (nestMale ? getEnergyCost(nestMale) : 0) +
     (nestFemale ? getEnergyCost(nestFemale) : 0);
   const pairBiomassCost =
     nestMale && nestFemale ? getBreedPairBiomassCost(nestMale, nestFemale) : 0;
-  const enoughBiomass = biomass >= pairBiomassCost;
 
   /** Пара репродуктора для кнопки ухаживания: активна ли кнопка и чего не хватает */
   const courtship = checkNestCourtship(roomId);
 
   /** Что сейчас происходит в репродукторе — подсказка рядом с кнопкой ухаживания */
   const nestHint = ((): string | null => {
-    if (courtingToad) {
-      return `Ухаживание запущено`;
+    if (pregnantInNest) {
+      return ``;
     }
 
-    if (pregnantInNest) {
-      return ` ${pregnantInNest.name} вынашивает потомство`;
+    // Устаревшее ухаживание из старого сейва: первый тик сразу даст беременность
+    if (nestAdults.some((toad) => toad.mating)) {
+      return "Ухаживание завершается";
     }
 
     if (nestAdults.length === 0) {
@@ -349,7 +359,7 @@ export default function NestModal({
     setTick((t) => t + 1);
   };
 
-  /** Кнопка «Начать ухаживание»: пара в репродукторе начинает ждать беременность */
+  /** Кнопка «Начать ухаживание»: ухаживание мгновенное — самка сразу беременеет */
   const handleStartCourtship = () => {
     const result = startNestCourtship(roomId, addNotification);
 
@@ -362,58 +372,56 @@ export default function NestModal({
     setTick((t) => t + 1);
   };
 
-  /** Вынести жабу из репродуктора домой — в её биопод (ухаживание при этом прерывается) */
+  /** Вынести жабу из репродуктора домой — в её биопод (беременную самку не выпускаем) */
   const handleRelease = (toad: Toad) => {
     if (isToadBusyOnExpedition(toad)) {
       addNotification({ type: "warn", content: EXPEDITION_TOAD_BUSY_REASON });
       return;
     }
 
-    const wasCourting = Boolean(toad.mating);
-
-    if (wasCourting) {
-      abortMating(toad.id);
+    // Самка остаётся в репродукторе до родов: ускорить их можно мушкой ✨
+    if (toad.pregnancy?.isPregnant) {
+      playError();
+      addNotification({
+        type: "warn",
+        content: `${toad.name} вынашивает потомство и останется в репродукторе до родов — ускорьте беременность Сияющей мушкой ✨ или дождитесь их.`,
+        timeout: 9000,
+      });
+      return;
     }
 
-    // Дом жабы помнит её биопод (`homeId`), но места там может уже не быть: пока пара жила
-    // в репродукторе, биопод мог заполниться — тогда жаба остаётся в репродукторе
-    const result = sendToadHome(toad.id);
+    // Дом жабы помнит её биопод (`homeId`), но места там может уже не быть: тогда
+    // releaseToad отправит её в любой свободный биопод под током.
+    const result = releaseToad(toad.id);
 
     if (!result.ok) {
       playError();
       addNotification({
         type: "warn",
-        content:
-          result.reason === "no-space"
-            ? `${toad.name} не вернулась: в биоподе «${result.scene?.name}» нет места — постройте биопод или переселите её в другой («🏠 Переместить» в карточке жабы).`
-            : `${toad.name} не вернулась: биопод, в котором она жила, не найден — переселите её в другой («🏠 Переместить» в карточке жабы).`,
+        content: "Свободных мест в биоподах нет",
         timeout: 9000,
       });
       setTick((t) => t + 1);
       return;
     }
 
-    if (wasCourting) {
-      addNotification({
-        type: "warn",
-        content: `${toad.name} в биоподе: ухаживание прервано`,
-        timeout: 4000,
-      });
-    }
-
     setTick((t) => t + 1);
   };
 
-  /** Прервать ухаживание: жабы перестают ухаживать, но остаются в репродукторе */
-  const handleAbortMating = (toad: Toad) => {
-    const result = abortMating(toad.id);
-
-    if (!result.success) {
-      addNotification({ type: "warn", content: result.message });
+  /** «Ускорить беременность»: 1 Сияющая мушка ✨ — и головастики рождаются сразу */
+  const handleAcceleratePregnancy = async () => {
+    if (!pregnantInNest) {
+      return;
     }
+
+    const result = await accelerateNestPregnancy(
+      pregnantInNest.id,
+      addNotification,
+    );
 
     if (result.success) {
       playSuccess();
+      addNotification({ type: "success", content: result.message });
     } else {
       playError();
     }
@@ -491,10 +499,10 @@ export default function NestModal({
                     showHp={false}
                     showEnergy
                     status={{
-                      icon: toad.mating
-                        ? "🫧"
-                        : toad.pregnancy?.isPregnant
-                          ? ""
+                      icon: toad.pregnancy?.isPregnant
+                        ? ""
+                        : toad.mating
+                          ? "🫧"
                           : "⏳",
                       label: toadStatus(toad).trim(),
                       className:
@@ -503,19 +511,16 @@ export default function NestModal({
                           : "text-slate-300",
                     }}
                     actions={
-                      !toad.mating ? (
+                      toad.pregnancy?.isPregnant ? (
+                        <span className="rounded-md border border-pink-500/50 bg-color-main px-2 py-1 text-2xs text-pink-200">
+                          Беременность
+                        </span>
+                      ) : (
                         <ClickButton
                           onClick={() => handleRelease(toad)}
                           className="rounded-md border border-slate-500/50 bg-color-main px-2 py-1 text-2xs text-slate-200"
                         >
                           Вернуть в биопод
-                        </ClickButton>
-                      ) : (
-                        <ClickButton
-                          onClick={() => handleAbortMating(toad)}
-                          className="rounded-md border border-amber-500/50 bg-color-main px-2 py-1 text-2xs text-amber-200"
-                        >
-                          Прервать
                         </ClickButton>
                       )
                     }
@@ -565,58 +570,59 @@ export default function NestModal({
               )}
             </div>
 
-            {/* Кнопка ухаживания: пару заводит игрок, а не репродуктор само (Часть 3.2) */}
-            <div className="bg-color-main rounded-xl px-3 py-2 border border-pink-500/40 flex flex-col gap-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-pink-200 font-semibold">
-                  Ухаживание
-                </span>
-                <span className="text-2xs text-slate-400">
-                  {MATING_MIN_MINUTES}–{MATING_MAX_MINUTES} мин
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between text-2xs">
-                <span className="text-lime-300">⚡ пара: {pairEnergyCost}</span>
-                <span
-                  className={enoughBiomass ? "text-cyan-300" : "text-amber-300"}
-                >
-                  🧪 {pairBiomassCost}
-                </span>
-              </div>
-
-              {courtingToad && (
+            {pregnantInNest && (
+              <>
                 <ProgressBar
-                  label="Прогресс"
-                  current={
-                    MATING_MAX_MINUTES * 60000 - getMatingTimeLeft(courtingToad)
-                  }
-                  max={MATING_MAX_MINUTES * 60000}
-                  color={"red"}
+                  label="Беременность"
+                  current={getPregnancyProgress(pregnantInNest)}
+                  max={100}
+                  color="red"
+                  valueLabel={`${Math.round(
+                    getPregnancyProgress(pregnantInNest),
+                  )} %`}
+                  action={{
+                    label: "Ускорить",
+                    handler: handleAcceleratePregnancy,
+                    timeLeft: Math.max(
+                      0,
+                      Math.ceil(getPregnancyTimeLeft(pregnantInNest) / 60_000),
+                    ),
+                    disabled: sparkleFlys < 1,
+                    disabledReason:
+                      sparkleFlys < 1
+                        ? "Нет Сияющей мушки ✨ — ускорение недоступно"
+                        : "Родить сразу: 1 Сияющая мушка ✨",
+                  }}
                 />
-              )}
 
-              {!courtingToad && (
-                <ClickButton
-                  disabled={!courtship.ready || !!extraNestAdults.length}
-                  onClick={handleStartCourtship}
-                  className={`w-full rounded-lg px-3 py-2 text-xs border transition-all ${
-                    courtship.ready
-                      ? "border-pink-500/60 text-pink-100 hover:border-pink-400"
-                      : "opacity-50 cursor-not-allowed border-slate-600/50 text-slate-400"
-                  }`}
-                >
-                  Начать ухаживание
-                </ClickButton>
-              )}
+                <p className="-mt-1 text-2xs text-slate-400">
+                  Ускорение стоит 1 Сияющую мушку ✨ · у вас: {sparkleFlys}
+                </p>
+              </>
+            )}
 
-              <div
-                className={`text-2xs leading-snug ${
-                  courtship.ready ? "text-emerald-200" : "text-amber-200"
+            {!pregnantInNest && (
+              <ClickButton
+                disabled={!courtship.ready || !!extraNestAdults.length}
+                onClick={handleStartCourtship}
+                className={`w-full rounded-lg px-3 py-2 text-xs border transition-all ${
+                  courtship.ready
+                    ? "border-pink-500/60 text-pink-100 hover:border-pink-400"
+                    : "opacity-50 cursor-not-allowed border-slate-600/50 text-slate-400"
                 }`}
               >
-                {courtship.message}
-              </div>
+                Начать ухаживание: (
+                <span className="text-lime-300">⚡ {pairEnergyCost}</span>{" "}
+                <span className="text-cyan-300">🧪 {pairBiomassCost}</span>)
+              </ClickButton>
+            )}
+
+            <div
+              className={`text-2xs leading-snug ${
+                courtship.ready ? "text-emerald-200" : "text-amber-200"
+              }`}
+            >
+              {courtship.message}
             </div>
 
             {/* Головастики, рождённые в репродукторе: переполнение разрешено, их выносит игрок */}
@@ -654,7 +660,7 @@ export default function NestModal({
                           disabled={(child.hp ?? 1) <= 0}
                           className="shrink-0 rounded-lg border border-slate-600/50 bg-color-main px-2 py-1 text-2xs text-slate-200 transition-colors hover:border-amber-400/60 disabled:cursor-not-allowed disabled:opacity-50"
                         >
-                          Вынести в биопод
+                          В биопод
                         </ClickButton>
                       }
                     />
@@ -662,30 +668,6 @@ export default function NestModal({
                 </div>
               </div>
             )}
-
-            {/* Цена ухаживания: её списывает кнопка «Начать ухаживание», когда пара готова */}
-            <div className="bg-color-main rounded-xl px-3 py-2 border border-slate-500/30 text-xs flex flex-col gap-1">
-              <div className="flex items-center justify-between">
-                <span className="text-slate-400">
-                  Энергия пары за ухаживание
-                </span>
-                <span className="text-lime-300">⚡ {pairEnergyCost}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-slate-400">Биомасса за пару</span>
-                <span
-                  className={
-                    enoughBiomass ? "text-emerald-300" : "text-red-400"
-                  }
-                >
-                  🧪 {pairBiomassCost}
-                </span>
-              </div>
-              <div className="text-2xs text-slate-500 leading-snug">
-                Списывается один раз — когда репродуктор начинает ухаживание.
-                Отдых после пары считается у каждой жабы отдельно.
-              </div>
-            </div>
           </div>
         </>
       )}

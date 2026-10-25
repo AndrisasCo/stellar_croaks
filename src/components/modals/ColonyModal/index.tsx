@@ -133,7 +133,7 @@ const ColonyModal = () => {
                 {feedableToads.length === 0
                   ? "В колонии нет жаб для кормления"
                   : unfedCount > 0
-                    ? `Не сыты жаб: ${unfedCount}`
+                    ? `Можно покормить: ${unfedCount}`
                     : "Все сыты — голодных нет"}
                 {expeditionCount > 0 && " · жабы в походе не кормятся"}
               </p>

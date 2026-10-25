@@ -60,7 +60,7 @@ export const CompactToadItem = ({
           {toad.mating && (
             <span
               className="text-pink-300 flex-shrink-0 text-xs"
-              title="Ухаживает в репродукторе: беременность стартует через 15–30 мин"
+              title="Устаревшее ухаживание в репродукторе: беременность начнётся на ближайшем тике"
             >
               🫧
             </span>

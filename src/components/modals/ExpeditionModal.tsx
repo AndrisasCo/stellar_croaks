@@ -40,18 +40,13 @@ import {
   canToadAffordExpedition,
   getContourPassReward,
   getEvacuationCost,
-  getExpeditionEventChance,
   getExpeditionSampleReward,
   getExpeditionSendCost,
   getExpeditionSuccessChance,
   getExpeditionToadEnergyCost,
-  getRolePower,
   getRoleStat,
   getSectorDamageMultiplier,
   getSpeedUpReturnCost,
-  getToadHp,
-  getToadHpStatusLabel,
-  getToadMaxHp,
   isAwaitingEvacuation,
   ROLE_CONFIG,
 } from "../../utils/expedition-config";
@@ -80,8 +75,6 @@ import {
 } from "../../utils/expedition-manager";
 import { getMaxExpeditions } from "../../utils/expedition-config";
 import {
-  PRODUCTION_HUNGRY_FACTOR,
-  PRODUCTION_MIN_HUNGER,
   getToadEnergy,
   getToadMaxEnergy,
 } from "../../utils/gamification-config";
@@ -597,6 +590,7 @@ const ExpeditionModal: React.FC<{
   /**
    * Вернуть жабу из «Разведки» в её биопод — та же кнопка, что в других секторах.
    * Место проверяет сам биопод: пока жаба была в походе или в секторе, его могли занять.
+   * Тогда `releaseToad` найдёт любой свободный биопод под током.
    */
   const handleSendHome = (toad: Toad) => {
     if (isToadBusyOnExpedition(toad, expeditions)) {
@@ -609,10 +603,7 @@ const ExpeditionModal: React.FC<{
     if (!result.ok) {
       addNotification({
         type: "warn",
-        content:
-          result.reason === "no-space"
-            ? `${toad.name}: в биоподе «${result.scene?.name}» нет места — постройте биопод или переселите её в другой («🏠 Переместить» в карточке жабы).`
-            : `${toad.name}: биопод, в котором она жила, не найден — переселите её в другой («🏠 Переместить» в карточке жабы).`,
+        content: "Свободных мест в биоподах нет",
         timeout: 9000,
       });
       return;

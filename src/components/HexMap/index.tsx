@@ -394,9 +394,7 @@ export default function HexMapScreen() {
           playError();
           addNotification({
             type: "warn",
-            content: `В биоподе «${
-              result.scene?.name ?? "биопод"
-            }» нет свободных мест — жаба осталась на месте.`,
+            content: "Свободных мест в биоподах нет",
           });
           return;
         }

@@ -12,7 +12,7 @@ import { InfoIcons } from "../../../assets/icons";
 import Modal from "../../shared/Header";
 import { useSoundEffects } from "../../../hooks/use-sound-effects";
 import { updateToadById, updateUserStorage } from "../../../backend";
-import { moveToadToAviary, sendToadHome } from "../../../backend/colony";
+import { moveToadToAviary } from "../../../backend/colony";
 import { getToadHomeId } from "../../../utils/toad-location";
 import { completeAchivement } from "../../../backend/achivements-manager";
 import { nameGenerator } from "../../../utils/name-generator";
@@ -111,7 +111,7 @@ export const ToadInfo = () => {
   const { closeModal } = useModal();
   // Секторы карты и сеть нужны, чтобы меню «Переместить» знало все места,
   // которые принимают жаб, а не только биоподы.
-  const { rooms, powerGrid, toadsByRoom, placeToad } = useColony();
+  const { rooms, powerGrid, toadsByRoom, placeToad, releaseToad } = useColony();
 
   /**
    * Жабы для листания карточки стрелками: вся колония, самые редкие — первыми.
@@ -378,7 +378,8 @@ export const ToadInfo = () => {
 
   /**
    * Вернуть жабу домой — в биопод, который она помнит (`homeId`). Дом не бронируется:
-   * пока жаба работала в секторе, места там могли закончиться — тогда она остаётся на месте.
+   * пока жаба работала в секторе, места там могли закончиться; тогда `releaseToad`
+   * отправит её в любой свободный биопод под током.
    */
   const handleSendHome = () => {
     if (onExpedition) {
@@ -386,16 +387,23 @@ export const ToadInfo = () => {
       return;
     }
 
-    const result = sendToadHome(toad.id);
+    // Беременная самка остаётся в репродукторе до родов — даже если кнопку вызвали мимо UI
+    if (isPregnant) {
+      playError();
+      addNotification({
+        type: "warn",
+        content: `${toad.name} вынашивает потомство и останется в репродукторе до родов — ускорьте беременность Сияющей мушкой ✨.`,
+      });
+      return;
+    }
+
+    const result = releaseToad(toad.id);
 
     if (!result.ok) {
       playError();
       addNotification({
         type: "warn",
-        content:
-          result.reason === "no-space"
-            ? `${toad.name}: в биоподе «${result.scene?.name}» нет места — постройте биопод или выберите другой («🏠 Переместить»).`
-            : `${toad.name}: биопод, в котором она жила, не найден — выберите другой («🏠 Переместить»).`,
+        content: "Свободных мест в биоподах нет",
         timeout: 9000,
       });
       return;
@@ -1046,13 +1054,15 @@ export const ToadInfo = () => {
               {typeof toad.scene_id === "string" && (
                 <button
                   onClick={handleSendHome}
-                  disabled={onExpedition}
+                  disabled={onExpedition || isPregnant}
                   title={
-                    onExpedition
-                      ? EXPEDITION_TOAD_BUSY_REASON
-                      : toadScene
-                        ? `Вернуть жабу в «${toadScene.name}»`
-                        : "Вернуть жабу в её биопод"
+                    isPregnant
+                      ? "Жаба вынашивает потомство и останется в репродукторе до родов — ускорьте беременность Сияющей мушкой ✨."
+                      : onExpedition
+                        ? EXPEDITION_TOAD_BUSY_REASON
+                        : toadScene
+                          ? `Вернуть жабу в «${toadScene.name}»`
+                          : "Вернуть жабу в её биопод"
                   }
                   className="col-span-2 bg-cyan-600/30 hover:bg-cyan-600/40 rounded-lg py-2 text-xs flex justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-cyan-600/30"
                 >

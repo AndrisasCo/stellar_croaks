@@ -253,8 +253,8 @@ export default function HospitalModal({ room }: HospitalModalProps) {
    * Выписать жабу из Медотсека домой — в её биопод (`homeId`).
    *
    * Жильё жаба не меняла (пока лежала на койке, места в биоподе она не занимала), но
-   * свободного места там может уже не быть — тогда она остаётся на койке, а игроку надо
-   * построить биопод или переселить её в другой.
+   * свободного места там может уже не быть — тогда `releaseToad` отправит её в любой
+   * свободный биопод под током.
    */
   const handleDischarge = (toad: Toad) => {
     const result = releaseToad(toad.id);
@@ -262,10 +262,7 @@ export default function HospitalModal({ room }: HospitalModalProps) {
     if (!result.ok) {
       addNotification({
         type: "warn",
-        content:
-          result.reason === "no-space"
-            ? `${toad.name} остаётся на койке: в биоподе «${result.scene?.name}» нет места — постройте биопод или переселите её в другой.`
-            : `${toad.name} остаётся на койке: биопод, в котором она жила, не найден — переселите её в другой.`,
+        content: "Свободных мест в биоподах нет",
         timeout: 9000,
       });
       return;

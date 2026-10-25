@@ -190,7 +190,7 @@ export default function PowerRoomModal({ room }: { room: RoomConfig }) {
     playCroakSmall();
   };
 
-  /** Вернуть жабу домой — в биопод, который она помнит (`homeId`) */
+  /** Вернуть жабу домой — в биопод, который она помнит (`homeId`), или в свободный под током */
   const handleRelease = (toad: Toad) => {
     if (isToadBusyOnExpedition(toad, expeditions)) {
       playError();
@@ -200,15 +200,13 @@ export default function PowerRoomModal({ room }: { room: RoomConfig }) {
 
     const result = releaseToad(toad.id);
 
-    // Место в биоподе не бронировалось: пока жаба работала в ⚡-секторе, его могли занять
+    // Место в биоподе не бронировалось: пока жаба работала в ⚡-секторе, его могли занять.
+    // releaseToad тогда найдёт любой свободный биопод под током.
     if (!result.ok) {
       playError();
       addNotification({
         type: "warn",
-        content:
-          result.reason === "no-space"
-            ? `${toad.name ?? "Жаба"} остаётся в секторе: в биоподе «${result.scene?.name}» нет места — постройте биопод или переселите её в другой («🏠 Переместить» в карточке жабы).`
-            : `${toad.name ?? "Жаба"} остаётся в секторе: биопод, в котором она жила, не найден — переселите её в другой («🏠 Переместить» в карточке жабы).`,
+        content: "Свободных мест в биоподах нет",
         timeout: 9000,
       });
       return;

@@ -1,15 +1,12 @@
-import {
-  getPregnancyDuration,
-  HOURS_TO_GROW_UP,
-  MatingState,
-  Toad,
-} from "../models/Toad";
+import { getPregnancyDuration, HOURS_TO_GROW_UP, Toad } from "../models/Toad";
+import { Items } from "../models/user";
 import { isToadSick } from "../models/disease";
 import {
   createToads,
   updateToadById,
   updateToadsByIds,
   updateUser,
+  updateUserStorage,
 } from "../backend";
 import { generateChildToad } from "./calculate-genetics";
 import { getHoursFromNow } from "./date";
@@ -22,21 +19,16 @@ import {
   getToadRoomId,
 } from "./toad-location";
 import { getToadGrowthInfo } from "./toad-growth";
-import { placeToadInRoom } from "../backend/colony";
 import { NEST_ROOM_ID } from "./constants";
 import {
   getBreedCooldownMs,
   getBreedPairBiomassCost,
   getEnergyCost,
-  getMatingMinutes,
   getToadEnergy,
   isToadReadyToBreed,
-  MATING_MAX_MINUTES,
-  MATING_MIN_MINUTES,
 } from "./gamification-config";
 import { isToadDown } from "./expedition-config";
 import { isToadBusyOnExpedition } from "./expedition-manager";
-import { getActiveNarratorTask } from "./narrator";
 
 /**
  * Голодающие головастики, о которых уже предупредили в этой сессии.
@@ -122,8 +114,8 @@ const processSceneBreeding = async (
     }
   });
 
-  // Ухаживание пары в репродукторе: тик либо завершает его беременностью (`finishMating`),
-  // либо срывает, если пара распалась (поход, выбывание, разбор партнёра).
+  // Устаревшее ухаживание из старых сейвов: тик сразу доигрывает его беременностью
+  // (`finishMating`) либо срывает, если пара распалась (поход, выбывание, разбор партнёра).
   sceneToads
     .filter((t) => t.mating)
     .forEach((toad) => processMating(toad, sceneToads, addNotification));
@@ -178,15 +170,15 @@ const processSceneBreeding = async (
 /**
  * Ухаживание в репродукторе (Часть 3.2).
  *
- * Жабы беременеют только в репродукторе: самец и самка сидят там парой, и ухаживание заводит игрок
- * — кнопкой «Начать ухаживание» в модалке репродуктора (`startNestCourtship`); само репродуктор пару не
- * берёт. Пара живёт в репродукторе (`scene_id` = id сектора-репродуктора) и ухаживает случайные 15–30 минут, после
- * чего у самки начинается беременность. Из репродуктора жабы не уходят сами: и после ухаживания,
- * и после родов их выносит только игрок. Пару «ведёт» самка — её таймер запускает
- * беременность, поэтому уведомление приходит один раз.
+ * Жабы беременеют только в репродукторе: самец и самка сидят там парой, и ухаживание заводит
+ * игрок — кнопкой «Начать ухаживание» в модалке репродуктора (`startNestCourtship`); само
+ * репродуктор пару не берёт. Ухаживание мгновенное: пара сразу беременеет, и дальше самка
+ * вынашивает потомство в репродукторе до родов. Её нельзя отселить до родов (только ускорить
+ * беременность мушкой ✨), а самца после ухаживания игрок может забрать в биопод — он больше
+ * не занят парой.
  *
- * Если кто-то из пары ушёл в поход, выбит или пропал (разбор/продажа), ухаживание
- * срывается с уведомлением: игрок не должен ждать беременность, которой не будет.
+ * `Toad.mating` остался только для старых сейвов: тик `processBreeding` доигрывает такую пару
+ * в беременность сразу (`processMating`), поэтому игрок не ждёт устаревший таймер.
  */
 
 /** Пол жаб, который «ведёт» пару: беременность стартует у самки */
@@ -217,45 +209,9 @@ const getMatingBreakReason = (toad: Toad, partner: Toad | null): string => {
 };
 
 /**
- * Низкоуровневый старт ухаживания: сажает пару в репродуктор и вешает обоим `mating`.
- * Энергия, биомасса и отдых списываются на входе (`startNestCourtship` — кнопка игрока),
- * а беременность стартует по таймеру (`processMating`). Возвращает минуты ожидания — их
- * показывают в интерфейсе.
- *
- * Наружу не отдаём: пару заводит только кнопка «Начать ухаживание» в модалке репродуктора.
+ * Старый сейв: ухаживание завершается сразу — у самки стартует беременность, оба остаются
+ * в репродукторе (из него жабу выносит игрок, сама она никуда не уходит).
  */
-const startMating = (
-  female: Toad,
-  male: Toad,
-  nestRoomId: string,
-): { minutes: number; startAt: number } => {
-  const now = Date.now();
-  const minutes = getMatingMinutes(female, male);
-  const startAt = now + minutes * 60_000;
-
-  const femaleMating: MatingState = {
-    startedAt: now,
-    startAt,
-    partnerId: male.id,
-  };
-  const maleMating: MatingState = {
-    startedAt: now,
-    startAt,
-    partnerId: female.id,
-  };
-
-  updateToadById(female.id, {
-    ...female,
-    mating: femaleMating,
-  });
-  updateToadById(male.id, { mating: maleMating });
-  placeToadInRoom(female.id, nestRoomId);
-  placeToadInRoom(male.id, nestRoomId);
-
-  return { minutes, startAt };
-};
-
-/** Время вышло: у самки стартует беременность, пара остаётся жить в репродукторе */
 const finishMating = (female: Toad, male: Toad) => {
   const mother: Toad = { ...female, mating: null };
 
@@ -266,13 +222,9 @@ const finishMating = (female: Toad, male: Toad) => {
 };
 
 /**
- * Тик ухаживания: пара ждёт в репродукторе. Завершает ухаживание по таймеру либо срывает
- * его, если жаба ушла в поход, выбита или партнёр пропал. Вызывается из
- * `processBreeding` (раз в минуту и при оффлайн-догоне).
- */
-/**
- * Тик ухаживания: пара ждёт в репродукторе 15–30 минут, потом у самки стартует беременность.
- * Срыв (поход, 0 HP, пропавший партнёр) гасит ухаживание у обоих, но жабы остаются в репродукторе.
+ * Тик устаревшего ухаживания (старые сейвы): пара больше не ждёт 15–30 минут — беременность
+ * стартует на первом же тике. Срыв (поход, 0 HP, пропавший партнёр) гасит ухаживание
+ * у обоих, но жабы остаются в репродукторе.
  */
 const processMating = (
   toad: Toad,
@@ -322,10 +274,7 @@ const processMating = (
     return;
   }
 
-  if (Date.now() < mating.startAt) {
-    return;
-  }
-
+  // Таймера больше нет: старое ухаживание доигрывается беременностью на первом тике
   finishMating(toad, partner);
 };
 
@@ -428,39 +377,44 @@ export const endPregnancy = async (toad: Toad, addNotification: any) => {
   finishBirth();
 };
 
-/** Результат действия в репродукторе (прерывание ухаживания) */
+/** Результат действия в репродукторе (ускорение беременности) */
 export interface NestActionResult {
   success: boolean;
   message: string;
 }
 
 /**
- * Досрочно прерывает ухаживание (кнопка «Прервать» в репродукторе): пара перестаёт
- * ухаживать, но остаётся в репродукторе — вынести жаб может только игрок.
- * Потраченные на спаривание энергия и биомасса не возвращаются.
+ * Досрочные роды в репродукторе: кнопка «Ускорить» в модалке репродуктора платит
+ * Сияющей мушкой ✨ со склада (`Items.sparkleFlys`) и сразу завершает беременность
+ * (`endPregnancy`). Без мушки действие не списывает ничего и возвращает причину —
+ * игрок не платит за пустое ускорение.
  */
-export const abortMating = (toadId: number): NestActionResult => {
+export const accelerateNestPregnancy = async (
+  toadId: number,
+  addNotification?: (notification: any) => void,
+): Promise<NestActionResult> => {
   const state = getGameState();
-  const toad = state.toads.find((t) => t.id === toadId);
-  const mating = toad?.mating;
+  const toad = state.toads.find((item) => item.id === toadId);
 
-  if (!toad || !mating) {
-    return { success: false, message: "Эта жаба не ухаживает в репродукторе" };
+  if (!toad?.pregnancy?.isPregnant) {
+    return { success: false, message: "Эта жаба не вынашивает потомство." };
   }
 
-  const partner = state.toads.find((t) => t.id === mating.partnerId);
+  const flies = state.user.storage?.[Items.sparkleFlys] || 0;
 
-  if (partner?.mating) {
-    clearMating(partner);
+  if (flies < 1) {
+    const message = "Для ускорения беременности нужна Сияющая мушка ✨.";
+    addNotification?.({ type: "warn", content: message });
+
+    return { success: false, message };
   }
 
-  clearMating(toad);
+  updateUserStorage({ [Items.sparkleFlys]: flies - 1 });
+  await endPregnancy(toad, addNotification);
 
   return {
     success: true,
-    message: `Ухаживание ${
-      toad.name ?? "жабы"
-    } прервано: жабы остались в репродукторе`,
+    message: `${toad.name ?? "Самка"} родила: головастики ждут рядом, в репродукторе.`,
   };
 };
 
@@ -618,9 +572,8 @@ const getNestPair = (
  * Готова ли пара в репродукторе к ухаживанию (кнопка «Начать ухаживание», Часть 3.2).
  *
  * Проверка без побочных эффектов: по ней кнопка решает, активна ли она, и объясняет,
- * чего не хватает — сил пары, биомассы, родильных слотов биопода. Пара берётся из тех,
- * кто ещё не ухаживает и не вынашивает, поэтому при идущем ухаживании (или уже
- * начавшейся беременности) кнопка ничего не запустит.
+ * чего не хватает — сил пары, биомассы, беременности. Пара берётся из тех, кто ещё
+ * не ухаживает и не вынашивает, поэтому при идущей беременности кнопка ничего не запустит.
  */
 export const checkNestCourtship = (roomId: string): CourtshipCheck => {
   const state = getGameState();
@@ -706,7 +659,7 @@ export const checkNestCourtship = (roomId: string): CourtshipCheck => {
 
   return {
     ready: true,
-    message: `Пара готова: ухаживание ${MATING_MIN_MINUTES}–${MATING_MAX_MINUTES} мин.`,
+    message: "Пара готова — ухаживание мгновенное: самка сразу забеременеет.",
     pair: { male, female },
   };
 };
@@ -715,9 +668,10 @@ export const checkNestCourtship = (roomId: string): CourtshipCheck => {
  * Кнопка «Начать ухаживание» (Часть 3.2).
  *
  * Пару заводит игрок: посадил в репродуктор самца и самку, нажал кнопку — здесь списываются
- * энергия, биомасса и отдых обоих, им вешается `mating` на случайные 15–30 минут
- * (`startMating`), после чего у самки стартует беременность (`processMating`). Само репродуктор
- * пару не заводит: без нажатия пара просто ждёт в репродукторе и ничего не тратит.
+ * энергия, биомасса и отдых обоих. Ухаживание мгновенное: самка сразу беременеет
+ * (`startPregnancy`), самец больше не занят парой и его можно отселить, а самка остаётся
+ * в репродукторе до родов — ускорить их можно мушкой ✨ (`accelerateNestPregnancy`).
+ * Само репродуктор пару не заводит: без нажатия пара просто ждёт и ничего не тратит.
  *
  * Проверяет то же, что показывает кнопка (`checkNestCourtship`): если пара не готова,
  * возвращаем причину и говорим о ней уведомлением — для вызовов мимо интерфейса.
@@ -740,52 +694,32 @@ export const startNestCourtship = (
   const biomassCost = getBreedPairBiomassCost(male, female);
   const biomass = state.user.biomass || 0;
 
+  // Старое ухаживание снимаем на всякий случай: пара могла прийти из сейва с `mating`
   const updatedMale: Toad = {
     ...male,
     energy: getToadEnergy(male) - getEnergyCost(male),
     breedCooldownUntil: now + getBreedCooldownMs(male),
+    mating: null,
   };
   const updatedFemale: Toad = {
     ...female,
     energy: getToadEnergy(female) - getEnergyCost(female),
     breedCooldownUntil: now + getBreedCooldownMs(female),
+    mating: null,
   };
 
   updateToadById(updatedMale.id, updatedMale, true);
   updateUser({ biomass: Math.round((biomass - biomassCost) * 100) / 100 });
 
-  // startMating дописывает обоим ухаживание и оставляет пару в её репродукторе
-  const { minutes } = startMating(updatedFemale, updatedMale, roomId);
-
-  /**
-   * Обучение ведёт игрока по всему циклу в одном проходе, поэтому не заставляет
-   * ждать 15–30 минут: пара беременеет сразу после нажатия «Начать ухаживание».
-   * Дальше рассказчик просит ускорить беременность мушкой и вырастить головастика.
-   */
-  const tutorialBreed = getActiveNarratorTask() === "breed";
-
-  if (tutorialBreed) {
-    // Жаб читаем заново: startMating уже перенёс пару в репродуктор (`scene_id`),
-    // и старая копия с прежним местом затёрла бы этот перенос в беременности.
-    const afterMating = getGameState();
-    const mother = afterMating.toads.find(
-      (toad) => toad.id === updatedFemale.id,
-    );
-    const father = afterMating.toads.find(
-      (toad) => toad.id === updatedMale.id,
-    );
-
-    if (mother && father) {
-      finishMating(mother, father);
-    }
-  }
+  // Ухаживание мгновенное: беременность пишется синхронно, ждать её старт не нужно.
+  // Оба остаются в репродукторе, но самец уже свободен — его можно забрать в биопод.
+  void startPregnancy(updatedFemale, updatedMale);
 
   completeAchivement("first-manual-breed");
 
   return {
     started: true,
-    message: tutorialBreed
-      ? "Ухаживание в репродукторе: самка сразу забеременела — ускорьте беременность в её карточке"
-      : `Ухаживание в репродукторе: беременность через ~${minutes} мин`,
+    message:
+      "Самка сразу забеременела — ускорьте беременность мушкой ✨ или дождитесь родов",
   };
 };

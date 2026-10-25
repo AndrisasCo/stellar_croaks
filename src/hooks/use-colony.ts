@@ -14,6 +14,7 @@ import {
   getPowerGrid,
   resolveColonyRooms,
 } from "../components/HexMap/colony-build";
+import { findFreePoweredAviary } from "../components/HexMap/aviary-release";
 import { PowerGrid } from "../components/HexMap/colony-power";
 import { getRoomToadLists } from "../components/HexMap/room-toad-lists";
 import { RoomConfig } from "../components/HexMap/rooms-config";
@@ -42,10 +43,12 @@ export interface ColonyController {
   placeToad: (toadId: number, roomId: string) => void;
   /**
    * Вернуть жабу из сектора в биопод. Без `sceneId` — домой: в биопод, который жаба
-   * помнит (`homeId`); с `sceneId` — переезд в указанный биопод (он становится её домом).
+   * помнит (`homeId`). Если дома места нет (или биопод пропал), жаба едет в любой
+   * свободный биопод под током; только когда такого нет — `no-space` и жаба остаётся
+   * где была. С `sceneId` — переезд в указанный биопод (он становится её домом).
    *
-   * Возвращаем результат: в полный биопод жаба не влезет (`no-space`) — она остаётся
-   * где была, а игроку надо сказать об ошибке.
+   * Возвращаем результат: если свободного биопода под током нет — `no-space`, жаба
+   * остаётся где была, а игроку надо сказать об ошибке.
    */
   releaseToad: (toadId: number, sceneId?: number | null) => ToadHomeResult;
 }
@@ -55,7 +58,10 @@ export const useColony = (): ColonyController => {
   const colony = state.colony ?? EMPTY_COLONY;
   const toads = state.toads;
   const scenes = state.scenes;
-  const expeditions = state.expeditions ?? [];
+  const expeditions = useMemo(
+    () => state.expeditions ?? [],
+    [state.expeditions],
+  );
 
   const rooms = useMemo(
     () => resolveColonyRooms(colony, scenes),
@@ -101,9 +107,39 @@ export const useColony = (): ColonyController => {
       }
 
       // Свой биопод (или адреса нет) — домой: место в нём проверяет сам биопод
-      return sendToadHome(toadId);
+      const homeResult = sendToadHome(toadId);
+
+      if (homeResult.ok) {
+        return homeResult;
+      }
+
+      // Дома места нет (или биопод пропал) — ищем любой свободный биопод под током.
+      // Сеть пересчитываем уже без этой жабы: если она работала в ⚡, её уход может
+      // обесточить соседний биопод, и селить её туда нельзя. Обесточенный биопод
+      // не годится и сам по себе: его жильцы не вырабатывают биомассу.
+      const fallbackGrid = getPowerGrid(
+        rooms,
+        getRoomToadLists(
+          rooms,
+          toads.filter((item) => item.id !== toadId),
+        ),
+        expeditions,
+      );
+      const fallback = findFreePoweredAviary({
+        rooms,
+        scenes,
+        toads,
+        powerGrid: fallbackGrid,
+        toadId,
+      });
+
+      if (fallback?.sceneId == null) {
+        return { ok: false, reason: "no-space", scene: null };
+      }
+
+      return moveToadToAviary(toadId, fallback.sceneId);
     },
-    [toads],
+    [expeditions, rooms, scenes, toads],
   );
 
   return {

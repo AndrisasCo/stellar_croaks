@@ -173,7 +173,7 @@ export const canSendToad = (
   if (toad.pregnancy?.isPregnant) {
     return { ok: false, reason: "вынашивает потомство" };
   }
-  // Пара в репродукторе: жаба занята ухаживанием (Часть 3.2)
+  // Устаревшее ухаживание из старого сейва: жаба занята до ближайшего тика (Часть 3.2)
   if (toad.mating) {
     return { ok: false, reason: "ухаживает в репродукторе" };
   }

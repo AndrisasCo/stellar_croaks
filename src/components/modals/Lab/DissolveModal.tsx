@@ -232,7 +232,7 @@ export default function DissolveModal({ room }: { room?: RoomConfig }) {
                               {toad.mating && (
                                 <span
                                   className="text-pink-300"
-                                  title="Ухаживает в репродукторе: беременность стартует через 15–30 мин"
+                                  title="Устаревшее ухаживание в репродукторе: беременность начнётся на ближайшем тике"
                                 >
                                   🫧
                                 </span>

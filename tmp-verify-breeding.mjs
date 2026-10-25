@@ -3,20 +3,21 @@
  *
  * Скрипт бандлит модули через esbuild и прогоняет их как обычный JS — проверяются
  * те же формулы, что работают в игре:
- *   1) окно ухаживания: случайные 15–30 минут, характер пары сдвигает окно;
+ *   1) ухаживание мгновенное: таймера 15–30 минут и множителей характера больше нет,
+ *      а `Toad.mating` из старых сейвов всё ещё считается занятостью;
  *   2) пару заводит кнопка «Начать ухаживание»: без готовой пары она не срабатывает и
- *      объясняет причину, а с парой — вешает ухаживание обоим (без кнопки пара просто ждёт);
- *   3) тик `processBreeding` пару сам не заводит, но доводит начатое ухаживание до
- *      беременности без всплывающих уведомлений (успехи в тостах не показываем),
- *      а уход в поход/выбывание срывает пару;
- *   4) слоты гнезда заняты ухаживанием и беременностью;
+ *      объясняет причину, а с парой — сразу беременеет самку (без кнопки пара просто ждёт);
+ *   3) старый сейв: первый же тик `processBreeding` доигрывает ухаживание в беременность
+ *      без всплывающих уведомлений, а уход в поход/выбывание срывает устаревшую пару;
+ *   4) слоты гнезда заняты беременностью; беременную самку не унести с карты, а самца
+ *      после ухаживания — можно;
  *   5) гнездо как комната: 2 взрослые жабы, обесточенная комната жаб не принимает,
- *      ухаживающую жабу с карты не унести, а каждый гекс-вольер показывает своих жильцов
- *      (`RoomConfig.sceneId`), а не один общий список жаб;
- *   6) астро-кваксы ускоряют ухаживание, «Прервать» оставляет пару в гнезде;
+ *      а каждый гекс-вольер показывает своих жильцов (`RoomConfig.sceneId`), а не один
+ *      общий список жаб;
+ *   6) беременность ускоряется Сияющей мушкой ✨ со склада (и астро-кваксами для старых
+ *      сейвов), после чего сразу идут роды;
  *   7) роды: в гнезде головастики остаются у матери, в вольере — расходятся по вольерам;
- *   8) в обучении пара беременеет сразу после «Начать ухаживание» (без ожидания
- *      15–30 минут), а вне обучения беременность по-прежнему ждёт таймер.
+ *   8) в обучении пара тоже беременеет сразу — отдельной ветки ожидания больше нет.
  *
  * Запуск: node tmp-verify-breeding.mjs
  */
@@ -105,7 +106,7 @@ const stubState = (patch = {}) => ({
     tokens: 500,
     astro_quax: 10,
     biomass: 500,
-    storage: { food: 10 },
+    storage: { food: 10, sparkleFlys: 1 },
   },
   scenes: [{ id: 1, name: "Био Под", capacity: 20, created_at: "" }],
   toads: [
@@ -252,36 +253,22 @@ const notes = [];
 const collect = (notification) => notes.push(notification);
 
 
-console.log("\n[1] Окно ухаживания (15–30 минут)");
+console.log("\n[1] Ухаживание мгновенное: таймера 15–30 минут больше нет");
 console.log("─".repeat(60));
-const samples = Array.from({ length: 3000 }, () =>
-  cfg.getMatingMinutes(toad({ sex: "female" }))
-);
-check("окно начинается с 15 минут (min)", Math.min(...samples), 15);
-check("окно заканчивается 30 минутами (max)", Math.max(...samples), 30);
-check("sleepy тянет окно", cfg.getMatingPersonalityFactor("sleepy"), 1.4);
-check("energetic ускоряет", cfg.getMatingPersonalityFactor("energetic"), 0.8);
+check("getMatingMinutes убран из конфига", "getMatingMinutes" in cfg, false);
+check("getMatingPersonalityFactor убран из конфига", "getMatingPersonalityFactor" in cfg, false);
+check("getMatingTimeLeft убран из конфига", "getMatingTimeLeft" in cfg, false);
+check("MATING_MIN_MINUTES убран из конфига", "MATING_MIN_MINUTES" in cfg, false);
+check("isToadCourting убран из конфига", "isToadCourting" in cfg, false);
 
-const fastSamples = Array.from({ length: 3000 }, () =>
-  cfg.getMatingMinutes(
-    toad({ sex: "female", genes: { personality: "energetic" } })
-  )
-);
-const slowSamples = Array.from({ length: 3000 }, () =>
-  cfg.getMatingMinutes(
-    toad({ sex: "female", genes: { personality: "sleepy" } })
-  )
-);
-checkIn("энергичная самка: не позже 24 мин", Math.max(...fastSamples), 12, 24);
-checkIn("сонная самка: не раньше 21 мин", Math.min(...slowSamples), 21, 42);
-
-const courting = toad({
+// Старый сейв: `mating` доигрывается тиком, но до тех пор жаба занята
+const legacyCourting = toad({
   sex: "female",
   mating: { startedAt: Date.now(), startAt: Date.now() + 600000, partnerId: 1 },
 });
 check(
-  "ухаживающая жаба не готова к новому спариванию",
-  cfg.isToadReadyToBreed(courting),
+  "старое ухаживание ещё считается занятостью",
+  cfg.isToadReadyToBreed(legacyCourting),
   false
 );
 
@@ -313,22 +300,31 @@ notes.length = 0;
 intoNest(2);
 const pairCheck = breeding.checkNestCourtship(constants.NEST_ROOM_ID);
 check("кнопка готова: пара в гнезде", pairCheck.ready, true);
-checkText("подсказка про срок", pairCheck.message, /ухаживание 15–30 мин/);
+checkText("подсказка про мгновенное ухаживание", pairCheck.message, /ухаживание мгновенное/);
 const breed = breeding.startNestCourtship(constants.NEST_ROOM_ID, collect);
-check("кнопка начала ухаживание", breed.started, true);
+check("кнопка запустила ухаживание", breed.started, true);
 check("старт ухаживания без тоста", notes.length, 0);
-const matingFemale = findToad(2);
-const matingMale = findToad(1);
-check("самка ухаживает", Boolean(matingFemale.mating), true);
-check("самец ухаживает", Boolean(matingMale.mating), true);
-check("самка в гнезде", matingFemale.scene_id, constants.NEST_ROOM_ID);
-check("самец в гнезде", matingMale.scene_id, constants.NEST_ROOM_ID);
-check("партнёр самца — самка", matingMale.mating.partnerId, 2);
-check("партнёр самки — самец", matingFemale.mating.partnerId, 1);
-check("одни и те же сроки у пары", matingFemale.mating.startAt, matingMale.mating.startAt);
-check("энергия самки списана", matingFemale.energy < 100, true);
+const mother = findToad(2);
+const father = findToad(1);
+check("самка сразу беременна", Boolean(mother.pregnancy?.isPregnant), true);
+check("в беременности записан отец", mother.pregnancy?.fatherId, father.id);
+check("самка больше не ухаживает", mother.mating, null);
+check("самец больше не ухаживает", father.mating, null);
+check("самка в гнезде", mother.scene_id, constants.NEST_ROOM_ID);
+check("самец в гнезде", father.scene_id, constants.NEST_ROOM_ID);
+check("энергия самки списана", mother.energy < 100, true);
+check("энергия самца списана", father.energy < 100, true);
 check("биомасса списана", gameState().user.biomass < 500, true);
-check("беременность ещё не началась", Boolean(matingFemale.pregnancy), false);
+
+// Женская особь остаётся в репродукторе до родов, самец после ухаживания свободен:
+// его можно забрать в биопод, и беременность от этого не срывается.
+check("беременную самку с карты не унести", typeof moveRules.getToadMoveIssue(mother), "string");
+checkText(
+  "причина: самка вынашивает потомство",
+  moveRules.getToadMoveIssue(mother),
+  /вынашивает потомство/
+);
+check("самца после ухаживания можно забрать", moveRules.getToadMoveIssue(father), null);
 
 const nestAdults = () =>
   gameState().toads.filter(
@@ -336,35 +332,39 @@ const nestAdults = () =>
   );
 check("пара занимает оба слота репродуктора", nestAdults().length, 2);
 
-// Третья жаба в гнезде новую пару не заводит: кнопка видит идущее ухаживание
+// Третья жаба в гнезде новую пару не заводит: кнопка видит беременность
 notes.length = 0;
 intoNest(3);
 const busyCheck = breeding.checkNestCourtship(constants.NEST_ROOM_ID);
 const secondPair = breeding.startNestCourtship(constants.NEST_ROOM_ID, collect);
-check("кнопка погасла: ухаживание уже идёт", busyCheck.ready, false);
+check("кнопка погасла: беременность уже идёт", busyCheck.ready, false);
 checkText(
-  "причина: пара уже ухаживает",
+  "причина: в репродукторе уже идёт беременность",
   busyCheck.message,
-  /Пара в процессе ухаживания/,
+  /уже идёт беременность/,
 );
 check("вторую пару кнопка не берёт", secondPair.started, false);
 check("третья жаба в гнезде не ухаживает", Boolean(findToad(3).mating), false);
+check("третья жаба в гнезде не беременна", Boolean(findToad(3).pregnancy), false);
 
 
 
-console.log("\n[3] Тик доводит ухаживание до беременности");
+console.log("\n[3] Старый сейв: первый тик сразу даёт беременность");
 console.log("─".repeat(60));
 reset();
-pairInNest();
-const startedMale = findToad(1).mating;
-const startedFemale = findToad(2).mating;
-const past = { startedAt: Date.now() - 900000, startAt: Date.now() - 1 };
-patchToad(1, { mating: { ...startedMale, ...past } });
-patchToad(2, { mating: { ...startedFemale, ...past } });
+intoNest(1);
+intoNest(2);
+// Таймер из старого сейва ещё «в будущем»: новый код его не ждёт
+const legacyMating = {
+  startedAt: Date.now(),
+  startAt: Date.now() + 600000,
+};
+patchToad(1, { mating: { ...legacyMating, partnerId: 2 } });
+patchToad(2, { mating: { ...legacyMating, partnerId: 1 } });
 notes.length = 0;
 breeding.processBreeding(collect);
 const born = findToad(2);
-check("самка беременна", born.pregnancy?.isPregnant, true);
+check("самка беременна на первом тике", born.pregnancy?.isPregnant, true);
 check("беременность без ухаживания", born.mating, null);
 check("самка осталась в гнезде", born.scene_id, constants.NEST_ROOM_ID);
 check("самец перестал ухаживать", findToad(1).mating, null);
@@ -372,15 +372,18 @@ check("самец остался в гнезде", findToad(1).scene_id, constan
 check("беременность без тоста об успехе", notes.length, 0);
 check("беременность заняла репродуктор", breeding.checkNestCourtship(constants.NEST_ROOM_ID).ready, false);
 
-console.log("\n[4] Срыв и отмена ухаживания");
+console.log("\n[4] Старый сейв: срыв ухаживания и независимость беременности");
 console.log("─".repeat(60));
 reset();
-pairInNest();
-patchToad(1, { status: "out" });
+intoNest(1);
+intoNest(2);
+patchToad(1, { mating: { ...legacyMating, partnerId: 2 }, status: "out" });
+patchToad(2, { mating: { ...legacyMating, partnerId: 1 } });
 notes.length = 0;
 breeding.processBreeding(collect);
 check("самка перестала ухаживать", findToad(2).mating, null);
 check("самец перестал ухаживать", findToad(1).mating, null);
+check("беременность не началась", Boolean(findToad(2).pregnancy), false);
 check("самка осталась в гнезде", findToad(2).scene_id, constants.NEST_ROOM_ID);
 check(
   "предупреждение о срыве",
@@ -388,13 +391,21 @@ check(
   true
 );
 
+// Беременность уже началась — уход самца из репродуктора её не срывает
 reset();
 pairInNest();
-const abort = breeding.abortMating(2);
-check("«Прервать» работает", abort.success, true);
-checkText("сообщение про репродуктор", abort.message, /остались в репродукторе/);
-check("самка осталась в репродукторе", findToad(2).scene_id, constants.NEST_ROOM_ID);
-check("самец остался в репродукторе", findToad(1).scene_id, constants.NEST_ROOM_ID);
+const pregnancyBefore = findToad(2).pregnancy;
+patchToad(1, { scene_id: 1 });
+notes.length = 0;
+breeding.processBreeding(collect);
+check("беременность не зависит от самца", findToad(2).pregnancy?.isPregnant, true);
+check(
+  "беременность не перезапустилась",
+  findToad(2).pregnancy?.pregnancyStart,
+  pregnancyBefore.pregnancyStart
+);
+check("самец вне репродуктора", findToad(1).scene_id, 1);
+check("роды не наступили раньше срока", notes.length, 0);
 
 
 console.log("\n[5] Гнездо как комната на карте");
@@ -468,9 +479,9 @@ checkText(
   /только взрослые жабы/
 );
 checkText(
-  "ухаживающую жабу не унести",
-  moveRules.getToadMoveIssue(courting),
-  /ухаживает в репродукторе/
+  "беременную жабу не унести",
+  moveRules.getToadMoveIssue(toad({ pregnancy: { isPregnant: true } })),
+  /вынашивает потомство/
 );
 
 // Гексы рисуют каждый своих жаб: вольер — жильцов своего вольера (`scene_id`),
@@ -550,9 +561,11 @@ checkText(
 console.log("\n[4.1] Отдых пары, кнопка и работа в комнатах");
 console.log("─".repeat(60));
 reset();
-pairInNest();
-patchToad(1, { mating: null });
-patchToad(2, { mating: null });
+intoNest(1);
+intoNest(2);
+// Пара после спаривания уходит на отдых: кнопка не берёт её, пока не пройдёт кулдаун
+patchToad(1, { breedCooldownUntil: Date.now() + 600000 });
+patchToad(2, { breedCooldownUntil: Date.now() + 600000 });
 const tooSoonCheck = breeding.checkNestCourtship(constants.NEST_ROOM_ID);
 const tooSoon = breeding.startNestCourtship(constants.NEST_ROOM_ID, collect);
 check("уставшую пару кнопка не берёт", tooSoon.started, false);
@@ -562,7 +575,7 @@ checkText("та же причина под кнопкой", tooSoonCheck.message
 // Тик пару не заводит: ухаживание всегда начинается кнопкой игрока
 notes.length = 0;
 breeding.processBreeding(collect);
-check("тик не заводит уставшую пару", Boolean(findToad(2).mating), false);
+check("тик не заводит уставшую пару", Boolean(findToad(2).pregnancy), false);
 check("тик молчит о причине", notes.length, 0);
 
 patchToad(1, { breedCooldownUntil: 0 });
@@ -572,11 +585,12 @@ check("после отдыха кнопка оживает", restedCheck.ready, 
 
 notes.length = 0;
 breeding.processBreeding(collect);
-check("тик молчит и у отдохнувшей пары", Boolean(findToad(1).mating), false);
+check("тик молчит и у отдохнувшей пары", Boolean(findToad(1).pregnancy), false);
 check("тик не шумит уведомлением", notes.length, 0);
 
 const byButton = breeding.startNestCourtship(constants.NEST_ROOM_ID, collect);
 check("отдохнувшую пару заводит кнопка", byButton.started, true);
+check("беременность началась сразу", findToad(2).pregnancy?.isPregnant, true);
 
 reset();
 patchToad(1, { scene_id: "outpost-3" });
@@ -585,16 +599,61 @@ const worker = breeding.startNestCourtship(constants.NEST_ROOM_ID, collect);
 check("жаба с работы в пару не встаёт", worker.started, false);
 checkText("причина: в гнезде нет пары", worker.message, /нужны самец и самка/);
 
-console.log("\n[6] Астро-кваксы и жильё");
+console.log("\n[6] Ускорение беременности мушкой ✨ и жильё");
 console.log("─".repeat(60));
 reset();
 pairInNest();
-const accelerated = astro.acceleratePregnancy(2);
-check("ухаживание ускоряется", accelerated.success, true);
-check("астро-кваксы списаны", gameState().user.astro_quax, 8);
+const fliesBefore = gameState().user.storage.sparkleFlys;
+check("сияющая мушка на складе есть", fliesBefore, 1);
+const flyAccelerated = await breeding.accelerateNestPregnancy(2, collect);
+check("беременность ускоряется мушкой", flyAccelerated.success, true);
+check("мушка списана со склада", gameState().user.storage.sparkleFlys, fliesBefore - 1);
+check("мать больше не беременна", Boolean(findToad(2).pregnancy), false);
+check("мать осталась в репродукторе", findToad(2).scene_id, constants.NEST_ROOM_ID);
+check(
+  "после ускорения родились головастики",
+  gameState().toads.filter(
+    (item) => item.stage === "toadpole" && item.scene_id === constants.NEST_ROOM_ID
+  ).length > 0,
+  true
+);
+
+// Мушка одна: повторное ускорение уже нечего ускорять
 notes.length = 0;
-breeding.processBreeding(collect);
-check("после ускорения самка беременна", findToad(2).pregnancy?.isPregnant, true);
+const noPregnancy = await breeding.accelerateNestPregnancy(2, collect);
+check("небеременную жабу не ускоряют", noPregnancy.success, false);
+checkText("причина: потомства нет", noPregnancy.message, /не вынашивает/);
+
+// Старый сейв с беременностью: астро-кваксы по-прежнему ускоряют её вдвое
+reset();
+patchToad(2, {
+  pregnancy: {
+    isPregnant: true,
+    pregnancyStart: Date.now(),
+    pregnancyDuration: 3600000,
+    fatherId: 1,
+    father: toad({ id: 1 }),
+    offspringCount: 1,
+  },
+});
+const astroAccelerated = astro.acceleratePregnancy(2);
+check("астро-кваксы ускоряют беременность", astroAccelerated.success, true);
+check("астро-кваксы списаны", gameState().user.astro_quax, 8);
+
+// Ухаживание ускорять больше нечем: оно мгновенное, а старый сейв доиграется сам
+reset();
+intoNest(1);
+intoNest(2);
+patchToad(1, {
+  mating: { startedAt: Date.now(), startAt: Date.now() + 600000, partnerId: 2 },
+});
+patchToad(2, {
+  mating: { startedAt: Date.now(), startAt: Date.now() + 600000, partnerId: 1 },
+});
+const astroCourtship = astro.acceleratePregnancy(2);
+check("астро не ускоряют устаревшее ухаживание", astroCourtship.success, false);
+checkText("причина: ухаживание мгновенное", astroCourtship.message, /мгновенное/);
+check("астро за пустое ускорение не списаны", gameState().user.astro_quax, 10);
 
 reset();
 pairInNest();
@@ -656,9 +715,8 @@ check(
   0
 );
 
-// В обучении самка беременеет сразу после кнопки: игрок проходит весь цикл
-// (беременность → кормление → рост) без ожидания таймеров.
-console.log("\n[8] Обучение: пара беременеет сразу после ухаживания");
+// В обучении отдельной ветки ожидания больше нет: пара тоже беременеет сразу.
+console.log("\n[8] Обучение: беременность тоже сразу после ухаживания");
 console.log("─".repeat(60));
 reset();
 narratorRaw = JSON.stringify({ status: "active", step: "breed" });
@@ -686,10 +744,10 @@ check(
 check("самец больше не ухаживает", findToad(1).mating, null);
 check("уведомлений об успехе нет", notes.length, 0);
 
-// Вне обучения всё по-прежнему: пара ждёт 15–30 минут до беременности.
+// Вне обучения поведение то же самое — таймеров ожидания нет
 reset();
 pairInNest();
-check("вне обучения беременность ждёт таймер", Boolean(findToad(2).pregnancy), false);
+check("вне обучения беременность тоже сразу", findToad(2).pregnancy?.isPregnant, true);
 
 console.log("\n" + "─".repeat(60));
 if (failures.length > 0) {
