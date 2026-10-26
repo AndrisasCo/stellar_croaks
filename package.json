@@ -19,6 +19,7 @@
     "start:bot": "npm run bot",
     "start:all": "node --env-file-if-exists=.env scripts/start-all.mjs",
     "db:push": "node --env-file-if-exists=.env scripts/db-push.mjs",
+    "db:cleanup-automated": "node --env-file-if-exists=.env scripts/cleanup-automated-accounts.mjs",
     "optimize:images": "node scripts/optimize-images.mjs",
     "verify:init-data": "node tmp-verify-init-data.mjs",
     "verify:stars": "node tmp-verify-stars.mjs",

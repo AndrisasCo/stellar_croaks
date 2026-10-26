@@ -1,4 +1,5 @@
 import { platform } from "../platform";
+import { isAutomatedBrowser } from "./automation";
 import { clearGameState } from "./localStorage";
 import { clearOfflineEvents } from "../utils/offline-events";
 import { isCloudSyncEnabled, supabase } from "./supabase";
@@ -293,12 +294,20 @@ const initAuth = async (): Promise<Account | null> => {
  * того, как вход либо удался, либо окончательно отложен, поэтому «ещё одно
  * обращение к облаку» на старте — это именно то, что нужно.
  *
- * @returns аккаунт или `null`, если облако не настроено/недоступно
+ * @returns аккаунт или `null`, если облако не настроено/недоступно, а также если
+ * страницу открыл автоматический браузер (краулер, скриншотер, headless)
  */
 export const ensureAccount = async (
   options: { force?: boolean } = {},
 ): Promise<Account | null> => {
   if (!isCloudSyncEnabled) {
+    return null;
+  }
+
+  // Бот игроком не станет: без этой проверки каждый обход сайта оставлял в базе
+  // анонимную сессию, строку `game_state` и профиль `user_<timestamp>`.
+  // Проверка дешёвая (строка userAgent), поэтому стоит до всех остальных условий.
+  if (isAutomatedBrowser()) {
     return null;
   }
 

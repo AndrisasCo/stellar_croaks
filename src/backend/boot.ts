@@ -12,6 +12,7 @@
  */
 import { detectPlatformName, getPlatform, type PlatformName } from "../platform";
 import { ensureAccount, type Account } from "./auth";
+import { isAutomatedBrowser } from "./automation";
 import { syncGameState } from "./db";
 import { isCloudSyncEnabled } from "./supabase";
 
@@ -119,6 +120,16 @@ export const waitForPlatform = async (): Promise<PlatformName> => {
  */
 const login = async (): Promise<Account | null> => {
   if (!isCloudSyncEnabled) {
+    return null;
+  }
+
+  // Краулер, скриншотер или headless-браузер игроком не станет: не создаём ему
+  // анонимную сессию на старте, иначе каждый обход сайта оставлял в базе
+  // «лишнего игрока» — строку `game_state` и профиль `user_<timestamp>`
+  // (см. ./automation). Без аккаунта синк и остальные облачные вызовы молчат.
+  if (isAutomatedBrowser()) {
+    console.info("[boot] автоматический браузер — играем без облака");
+
     return null;
   }
 

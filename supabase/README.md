@@ -69,6 +69,34 @@ SUPABASE_DB_URL=postgresql://postgres:...@db.<ref>.supabase.co:5432/postgres
 включите вручную: Authentication → Sign In / Providers → *Allow anonymous sign-ins*
 и *Email*.
 
+### «Лишние игроки» в `game_state` и `profiles`
+
+Веб-версия входит анонимно (`signInAnonymously`), и первая же сессия заводит строку
+`game_state` и профиль с ником `user_<timestamp>`. Для живого игрока это норма: так
+у устройства появляется свой uuid, синк и строка лидерборда. Но страницу исполняют
+и боты — скриншотер `HeadlessChrome`, `Reflectionbot`, SEO-краулеры: каждый их заход
+создавал ещё одного «игрока».
+
+Клиент больше не входит в облако из автоматических браузеров (`HeadlessChrome`,
+`Reflectionbot`, поисковые боты, `navigator.webdriver` — см.
+`src/backend/automation.ts`), поэтому новые такие строки не появляются: `game_state`,
+`profiles` и `leaderboard` пишутся только после настоящего входа.
+
+Уже накопившиеся аккаунты убирает `scripts/cleanup-automated-accounts.mjs`. Он
+удаляет **только анонимные** аккаунты, у которых **все** сессии ботовые; аккаунты
+Telegram, почты и живых браузеров не трогает. По умолчанию — проверка без изменений:
+
+```bash
+npm run db:cleanup-automated            # список аккаунтов и их строк
+npm run db:cleanup-automated -- --delete
+```
+
+Удаление `auth.users` каскадом чистит `game_state`, `profiles`, `leaderboard`,
+`credits` и сессии. Аккаунты, чьи сессии уже истекли и удалены Supabase, скрипт не
+найдёт — их можно убрать руками в Dashboard → Authentication → Users. Пустые
+анонимные аккаунты (без сейва и профиля) тоже занимают место в `auth.users`: скрипт
+показывает их вместе с остальными, в колонке `save` у них «—».
+
 Email нужен для входа и регистрации в браузере (модалка «Аккаунт» в меню игры,
 `src/backend/auth.ts` → `signUpWithEmail`/`signInWithEmail`). Пароли проверяет сам
 GoTrue, нам остаётся только показывать его ответ.

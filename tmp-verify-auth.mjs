@@ -24,7 +24,10 @@
  *  11) сохранённая анонимная сессия в Telegram обменивается на аккаунт по подписи;
  *  12) если Edge Function недоступна, анонимный аккаунт НЕ создаётся: игра идёт
  *      локально, повтор откладывается, старая анонимная сессия не подменяет вход;
- *  13) в обычном браузере (без Telegram) анонимная сессия по-прежнему создаётся.
+ *  13) в обычном браузере (без Telegram) анонимная сессия по-прежнему создаётся;
+ *  14) автоматический браузер (headless, краулер, `navigator.webdriver`) не создаёт
+ *      анонимную сессию: иначе каждый обход сайта оставлял в базе «лишнего игрока»
+ *      (`game_state` + `profiles`), а живой браузер входит как раньше.
  *
  * Запуск: node tmp-verify-auth.mjs
  */
@@ -78,6 +81,7 @@ const bundleAuth = (name, defines) => {
     [
       `export * from "${join(root, "src/backend/auth.ts")}";`,
       `export { supabase, isCloudSyncEnabled } from "${join(root, "src/backend/supabase.ts")}";`,
+      `export { isAutomatedBrowser } from "${join(root, "src/backend/automation.ts")}";`,
     ].join("\n")
   );
 
@@ -576,6 +580,84 @@ webBundle.supabase.auth.signInAnonymously = async () => {
 const webAccount = await webBundle.ensureAccount();
 check("Веб: анонимная сессия создана", webCalls.length, 1);
 check("Веб: аккаунт анонимный", webAccount?.isAnonymous, true);
+
+// 13. Автоматический браузер (headless-скриншотер, краулер, webdriver): анонимную
+//     сессию НЕ создаём. Иначе каждый обход сайта заводил «лишнего игрока» —
+//     строку `game_state` и профиль `user_<timestamp>`; в проде так и появились
+//     сохранения от HeadlessChrome и Reflectionbot. Обычный браузер входит как
+//     раньше — проверка не должна отключать облако живым игрокам.
+const botBundle = await bundleAuth("auth-bot", CLOUD_ENV);
+const botCalls = [];
+botBundle.supabase.auth.onAuthStateChange = () => ({
+  data: { subscription: { unsubscribe: () => {} } },
+});
+botBundle.supabase.auth.getSession = async () => ({ data: { session: null }, error: null });
+botBundle.supabase.auth.signInAnonymously = async () => {
+  botCalls.push("anonymously");
+  return { data: { user: webAnon }, error: null };
+};
+
+/** Подставить браузеру признаки автоматизации (как их видит `automation.ts`). */
+const probeBrowser = (probe) => {
+  Object.defineProperty(globalThis, "navigator", {
+    configurable: true,
+    value: probe,
+  });
+};
+
+probeBrowser({
+  userAgent:
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/141.0.7390.0 Safari/537.36",
+});
+check("headless: аккаунта нет", await botBundle.ensureAccount(), null);
+check("headless: анонимная сессия не создана", botCalls.length, 0);
+
+probeBrowser({
+  userAgent:
+    "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; Reflectionbot/1.0; +https://reflection.ai/bot) Chrome/151.0.0.0 Safari/537.36",
+});
+check("краулер: аккаунта нет", await botBundle.ensureAccount(), null);
+check("краулер: анонимная сессия не создана", botCalls.length, 0);
+
+probeBrowser({
+  userAgent:
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36",
+  webdriver: true,
+});
+check("webdriver (Playwright/Selenium): аккаунта нет", await botBundle.ensureAccount(), null);
+check("webdriver (Playwright/Selenium): сессия не создана", botCalls.length, 0);
+
+probeBrowser({
+  userAgent:
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36",
+  webdriver: false,
+});
+const humanAccount = await botBundle.ensureAccount();
+check("обычный браузер: анонимная сессия создана", botCalls.length, 1);
+check("обычный браузер: аккаунт анонимный", humanAccount?.isAnonymous, true);
+
+// Telegram WebView — не бот, хотя в UA есть слово Telegram: шаблон ищет
+// «TelegramBot» (боты-обходчики), а не «Telegram-Android» (живой мини-апп).
+check(
+  "Telegram WebView не считается ботом",
+  botBundle.isAutomatedBrowser({
+    userAgent:
+      "Mozilla/5.0 (Linux; Android 16; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.8059.43 Mobile Safari/537.36 Telegram-Android/13.1.1 (Samsung SM-F956B; Android 16; SDK 36; HIGH)",
+  }),
+  false
+);
+check(
+  "поисковые краулеры отсекаются",
+  botBundle.isAutomatedBrowser({
+    userAgent: "Mozilla/5.0 (compatible; YandexBot/3.0; +http://yandex.com/bots)",
+  }) &&
+    botBundle.isAutomatedBrowser({
+      userAgent: "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
+    }),
+  true
+);
+
+delete globalThis.navigator;
 
 
 
