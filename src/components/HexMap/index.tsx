@@ -5,7 +5,7 @@ import { useGameState } from "../../hooks/use-game-state";
 import { useNotifications } from "../../hooks/use-notification";
 import { useSoundEffects } from "../../hooks/use-sound-effects";
 import { Toad } from "../../models/Toad";
-import { getSceneProductionRate } from "../../utils/production-manager";
+import { getBiomassFarmStats } from "../../utils/production-manager";
 import { getHousingInfo } from "../../utils/housing";
 import {
   EXPEDITION_TOAD_BUSY_REASON,
@@ -16,6 +16,7 @@ import { platform } from "../../platform";
 import { useModal } from "../ModalContext";
 import { useToads } from "../ToadContext";
 import { BurgerMenu } from "../modals/BurgerMenuModal";
+import BiomassStatsModal from "../modals/BiomassStatsModal";
 import BuildRoomModal from "../modals/BuildRoomModal";
 import ColonyModal from "../modals/ColonyModal";
 import { ToadInfo } from "../modals/ToadInfoModal";
@@ -23,12 +24,11 @@ import { ClickButton } from "../shared/ClickButton";
 import { CurrencyIcon } from "../shared/CurrencyIcon";
 import { OfflineEventsButton } from "../shared/OfflineEventsButton";
 import { QuestJournalButton } from "../shared/QuestJournalButton";
-import { canBuildOnSlot, getUnpoweredAviarySceneIds } from "./colony-build";
+import { canBuildOnSlot } from "./colony-build";
 import HexMapCanvas from "./HexMapCanvas";
 import { openRoomModal } from "./open-room-modal";
 import { isRoomOpen, RoomConfig } from "./rooms-config";
 import { canMoveToadToRoom, ToadMoveCheck } from "./toad-move-rules";
-import { UPKEEP_PER_TOAD_HOUR } from "../../utils/gamification-config";
 
 /** Локальные часы колонии для HUD (показываются в шапке, обновляются раз в полминуты). */
 const formatClock = (date: Date) =>
@@ -68,7 +68,7 @@ const pluralizeHexes = (count: number): string => {
  *  - разведка    → походы: модалке передаётся гекс, а команду собирают из жаб этого сектора;
  *  - ⚡-сектор   → жабы-энергетики внутри;
  *  - свободный гекс → меню застройки (любой сектор — на любой гекс);
- *  - панель колонии в HUD → статистика биопода; кормление — из ядра.
+ *  - чип 🧪 в HUD → статистика биомассы: выработка и содержание по биоподам.
  *
  * Управление картой: тап открывает сектор, в приближенном виде тап по жабе — её
  * карточка, удержание жабы — перенос в другой сектор, двойной тап — приближение.
@@ -87,22 +87,6 @@ export default function HexMapScreen() {
   const { rooms, powerGrid, toadsByRoom, placeToad, releaseToad } = useColony();
   const gameState = useGameState();
   const expeditions = gameState.expeditions ?? [];
-
-  /**
-   * Жабы биоподов: те, кто не работает в секторах колонии (⚡, «Разведка», репродуктор,
-   * Медотсек) — жаба в секторе места в биоподе не занимает и в производстве не считается
-   * (`utils/toad-location.ts`).
-   * Свой список у каждого гекса-биопода — его собирает `useColony` (`getRoomToadLists`),
-   * потому что у каждого гекса «Биопод» свой биопод (`RoomConfig.sceneId`).
-   */
-
-  const aviaryToads = useMemo(() => {
-    const aviariesIds = ownedScenes.map((s) => s.id);
-
-    return allToads.filter((toad) =>
-      aviariesIds.includes(Number(toad.scene_id)),
-    );
-  }, [allToads, ownedScenes]);
 
   /**
    * Территория колонии растёт фронтом застройки: у нового сектора открываются все её соседние
@@ -137,27 +121,18 @@ export default function HexMapScreen() {
   }, [addNotification, unlockedCount]);
 
   /**
-   * Обесточенные биоподы: их жильцы остаются в списке, но в выработку не идут.
-   * Upkeep при этом не пропадает — жабы всё равно едят, поэтому HUD может показать минус.
+   * Ферма биомассы по биоподам — тот же расчёт, что открывает чип 🧪.
+   *
+   * Обесточенный биопод не производит, но его жабы продолжают есть (upkeep),
+   * поэтому HUD может показать минус. Жабы в походе не работают и не едят.
+   * Модалка статистики берёт `getBiomassFarmStats` с теми же аргументами, так что
+   * число в шапке и разбивка по биоподам не расходятся.
    */
-  const unpoweredAviarySceneIds = useMemo(
-    () => getUnpoweredAviarySceneIds(rooms, powerGrid),
-    [rooms, powerGrid],
+  const biomassFarm = useMemo(
+    () => getBiomassFarmStats(rooms, allToads, powerGrid, expeditions),
+    [rooms, allToads, powerGrid, expeditions],
   );
-
-  // Жабы, вернувшиеся из похода, ещё держат добычу и не работают до её разбора
-  const activeAviaryToads = aviaryToads.filter(
-    (toad) => !isToadBusyOnExpedition(toad, expeditions),
-  );
-
-  // Ферма считает только жаб биопода: жабы в энергосекторах не фармят биомассу
-  const sceneFarmRate =
-    getSceneProductionRate(
-      activeAviaryToads,
-      unpoweredAviarySceneIds,
-      expeditions,
-    ) -
-    activeAviaryToads.length * UPKEEP_PER_TOAD_HOUR;
+  const sceneFarmRate = biomassFarm.net;
 
   // Энергия колонии для HUD: сколько построенных секторов реально под током
   const poweredRooms = useMemo(
@@ -516,17 +491,37 @@ export default function HexMapScreen() {
 
         {/* Ресурсы колонии — плавающие чипы поверх карты; кормление живёт в ядре */}
         <div className="pointer-events-none flex w-[4.5rem] flex-col gap-1.5">
-          {resources.map((item) => (
-            <div
-              key={item.key}
-              className={`flex items-center gap-1 rounded-lg border border-white/5 bg-slate-950/55 px-2 py-1 text-2xs font-semibold backdrop-blur-md ${item.tone}`}
-            >
-              <span className="flex h-4 w-4 items-center justify-center text-xs leading-none">
-                {item.icon}
-              </span>
-              <span className="tabular-nums">{item.value}</span>
-            </div>
-          ))}
+          {resources.map((item) => {
+            const chipClass = `flex items-center gap-1 rounded-lg border border-white/5 bg-slate-950/55 px-2 py-1 text-2xs font-semibold backdrop-blur-md ${item.tone}`;
+
+            // 🧪 открывает статистику фермы: из чего складывается число в шапке
+            if (item.key === "biomass") {
+              return (
+                <ClickButton
+                  key={item.key}
+                  type="button"
+                  title="Статистика биомассы: выработка и содержание по биоподам"
+                  aria-label="Открыть статистику биомассы"
+                  onClick={() => openModal(() => <BiomassStatsModal />)}
+                  className={`pointer-events-auto cursor-pointer text-left transition-colors duration-300 hover:border-lime-300/30 hover:bg-slate-900/75 ${chipClass}`}
+                >
+                  <span className="flex h-4 w-4 items-center justify-center text-xs leading-none">
+                    {item.icon}
+                  </span>
+                  <span className="tabular-nums">{item.value}</span>
+                </ClickButton>
+              );
+            }
+
+            return (
+              <div key={item.key} className={chipClass}>
+                <span className="flex h-4 w-4 items-center justify-center text-xs leading-none">
+                  {item.icon}
+                </span>
+                <span className="tabular-nums">{item.value}</span>
+              </div>
+            );
+          })}
         </div>
       </header>
 

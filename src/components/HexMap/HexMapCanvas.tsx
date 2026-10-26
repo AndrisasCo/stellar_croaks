@@ -18,6 +18,7 @@ import {
   LONG_PRESS_MS,
   TapRecord,
   TAP_SLOP,
+  TOAD_TAP_TOUCH_SLOP,
 } from "./hex-input";
 import { createRoomView, RoomView } from "./hex-room";
 import { preloadRoomBackgrounds } from "./room-backgrounds";
@@ -580,8 +581,11 @@ export default function HexMapCanvas(props: HexMapCanvasProps) {
      * Радиус — её собственный плюс допуск пальца (см. getToadPickRadius): в обзорном
      * виде жабы мелкие, и без этого допуска удержание бы не срабатывало. Если под
      * пальцем сразу несколько жаб, берём ближайшую — так выбор всегда предсказуем.
+     *
+     * `precise` — для тапа в приближенном виде: допуск почти нулевой, поэтому промах
+     * рядом с жабой не открывает её карточку, а проваливается в сектор под пальцем.
      */
-    const findToadAt = (worldPoint: Point) => {
+    const findToadAt = (worldPoint: Point, precise = false) => {
       const scale = transformRef.current.scale;
       let best: {
         roomId: string;
@@ -594,7 +598,13 @@ export default function HexMapCanvas(props: HexMapCanvasProps) {
         for (const roomToad of flock.toads) {
           const dx = roomToad.container.x - worldPoint.x;
           const dy = roomToad.container.y - worldPoint.y;
-          const radius = getToadPickRadius(roomToad.hitRadius, scale);
+          const radius = precise
+            ? getToadPickRadius(
+                roomToad.hitRadius,
+                scale,
+                TOAD_TAP_TOUCH_SLOP,
+              )
+            : getToadPickRadius(roomToad.hitRadius, scale);
 
           if (Math.abs(dx) > radius || Math.abs(dy) > radius) {
             continue;
@@ -871,14 +881,15 @@ export default function HexMapCanvas(props: HexMapCanvasProps) {
     /**
      * Тап по карте.
      *
-     * Приближенный вид — тап по жабе открывает её карточку, остальное отдаём секторе.
-     * Обзорный вид — одиночный тап открывает интерфейс сектора, двойной приближает к
-     * ней. Пока открыто окно двойного тапа, одиночный тап ждёт: иначе первый тап успел
-     * бы открыть сектор раньше второго касания.
+     * Приближенный вид — тап точно по жабе открывает её карточку, а промах рядом
+     * (даже в паре пикселей) проваливается в сектор: игрок хочет посмотреть локацию,
+     * а не карточку соседней жабы. Обзорный вид — одиночный тап открывает интерфейс
+     * сектора, двойной приближает к ней. Пока открыто окно двойного тапа, одиночный
+     * тап ждёт: иначе первый тап успел бы открыть сектор раньше второго касания.
      */
     const handleTap = (worldPoint: Point, local: Point) => {
       if (isDetailView()) {
-        const toadHit = findToadAt(worldPoint);
+        const toadHit = findToadAt(worldPoint, true);
 
         if (toadHit) {
           toadHit.flock.react(toadHit.roomToad.toad.id);

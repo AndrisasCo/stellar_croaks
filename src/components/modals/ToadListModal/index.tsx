@@ -624,21 +624,15 @@ const ToadListModal: React.FC<{
                 </p>
               </div>
             ) : viewMode === "detailed" ? (
-              // Подробный режим (оставляем как было)
+              // Подробный режим: список без подсветки родни — цвет семейства
+              // остаётся только в компактной сетке, где карточки идут плиткой.
               <div className="space-y-2">
                 {filteredAndSortedToads.map((toad) => {
-                  const familyId = familyGroups.get(toad.id);
-                  const familyColor =
-                    familyId !== undefined
-                      ? getRelationshipColor(familyId)
-                      : undefined;
-
                   return (
                     <ToadListCard
                       key={toad.id}
                       id={(toad.id || 0).toString()}
                       toad={toad}
-                      familyColor={familyColor}
                       onOpen={() => handleToadClick(toad)}
                       variant="full"
                       showHunger

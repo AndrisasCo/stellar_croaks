@@ -16,7 +16,7 @@ import {
 import { Toad, ToadStatus } from "../models/Toad";
 import { buildLootboxToadFromTemplate } from "../models/Toad/lootbox";
 import { ToadTypes } from "../models/Toad/toad-species";
-import { getDiseaseIndex } from "../models/disease";
+import { getDiseaseIndex, isToadSick } from "../models/disease";
 import { Items } from "../models/user";
 import { createToads, updateToadById, updateUser } from "../backend";
 import { getGameState, updateGameState } from "../backend/localStorage";
@@ -169,6 +169,10 @@ export const canSendToad = (
   }
   if (isToadDown(toad)) {
     return { ok: false, reason: "выбита из строя (0 HP)" };
+  }
+  // Кибер-болезнь: больную жабу не берут в КОНТУР — сначала лечение в Медотсеке.
+  if (isToadSick(toad)) {
+    return { ok: false, reason: "больна — сначала вылечите её" };
   }
   if (toad.pregnancy?.isPregnant) {
     return { ok: false, reason: "вынашивает потомство" };

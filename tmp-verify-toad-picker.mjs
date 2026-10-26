@@ -14,10 +14,11 @@
  *   6) пол слотов и логика пары сходятся: жабы из списка дают пару, на которой кнопка
  *      «Начать ухаживание» активна;
  *   7) больная и выбитая жаба пару не образуют — кнопка объясняет причину;
- *   8) общий список жаб (`utils/toad-picker.ts`) — тот, что рисует выпадающий список
+ *   8) общий список жаб (`utils/toad-picker.ts`) — тот, что рисует список
  *      `shared/ToadPicker` во всех местах, где жабу сажают в слот: краткая информация
- *      (пол, стадия, силы ⚡, сытость 🍽), редкость строкой и раскладка на «можно взять»
- *      и «не подходят» с причинами — одна на репродуктор, энергосектор и роли похода.
+ *      (только силы ⚡), место жабы (сектор колонии или её биопод), редкость
+ *      строкой и раскладка на «можно взять» и «не подходят» с причинами — одна на
+ *      репродуктор, энергосектор и роли похода.
  *
  * Запуск: node tmp-verify-toad-picker.mjs
  */
@@ -464,12 +465,68 @@ check("стадия взрослого самца", list.getToadStageLabel("adul
 check("головастик словом", list.getToadStageLabel("toadpole", "female"), "головастик");
 check("редкость строкой", list.getToadRarityLine(rareFemale), "Необычная · 9.5");
 check(
-  "краткая информация: пол, стадия, силы, сытость",
+  "краткая информация: только силы",
   list.getToadPickerBrief(rareFemale),
-  "самка · взрослая · ⚡100 · 🍽100%",
+  "⚡100",
+);
+check(
+  "в краткой информации нет пола",
+  list.getToadPickerBrief(rareFemale).includes("самка"),
+  false,
+);
+check(
+  "в краткой информации нет стадии",
+  list.getToadPickerBrief(rareFemale).includes("взрослая"),
+  false,
 );
 checkText("в краткой информации есть силы", list.getToadPickerBrief(sickMale), /⚡\d+/);
-checkText("в краткой информации есть сытость", list.getToadPickerBrief(sickMale), /🍽\d+%/);
+check(
+  "в краткой информации нет сытости",
+  list.getToadPickerBrief(sickMale).includes("🍽"),
+  false,
+);
+
+const locationRooms = [
+  {
+    id: "breeding_100000001",
+    slotId: "breeding",
+    kind: "breeding",
+    name: "Репродуктор",
+    icon: "🥚",
+  },
+];
+const locationScenes = [{ id: 1, name: "Биопод #1" }];
+
+const biopodLocation = list.getToadPickerLocation(
+  rareFemale,
+  locationRooms,
+  locationScenes,
+);
+check("место жабы в биоподе: подпись дома", biopodLocation.label, "Биопод #1");
+check("место жабы в биоподе: значок дома", biopodLocation.icon, "🏠");
+
+const legacyLocation = list.getToadPickerLocation(
+  { ...rareFemale, homeId: undefined, scene_id: 1 },
+  locationRooms,
+  locationScenes,
+);
+check(
+  "старый сейв без homeId: место по числовому scene_id",
+  legacyLocation.label,
+  "Биопод #1",
+);
+
+const roomLocation = list.getToadPickerLocation(
+  { ...rareFemale, scene_id: "breeding_100000001" },
+  locationRooms,
+  locationScenes,
+);
+check(
+  "место жабы в секторе: имя сектора по slotId",
+  roomLocation.label,
+  "Репродуктор",
+);
+check("место жабы в секторе: значок сектора", roomLocation.icon, "🥚");
 
 /** Те же строки, что строит модалка слота: жаба, её место в списке и причина отказа */
 const mapped = list.splitToadPickerCandidates(

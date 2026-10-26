@@ -1,0 +1,209 @@
+import { useMemo } from "react";
+import Modal from "../shared/Header";
+import { useColony } from "../../hooks/use-colony";
+import { useGameState } from "../../hooks/use-game-state";
+import {
+  BiomassFarmRoomStat,
+  getBiomassFarmStats,
+} from "../../utils/production-manager";
+import { UPKEEP_PER_TOAD_HOUR } from "../../utils/gamification-config";
+
+/** Знак и один знак после запятой: темп фермы в HUD показывается так же. */
+const formatRate = (value: number): string =>
+  `${value > 0 ? "+" : ""}${value.toFixed(1)}`;
+
+/** Биомасса на складе может быть дробной: в модалке важен и остаток. */
+const formatBiomass = (value: number): string =>
+  Number.isInteger(value) ? String(value) : value.toFixed(1);
+
+/** Цвет темпа: плюс — зелёный, минус — красный, ноль — нейтральный. */
+const rateTone = (value: number): string =>
+  value > 0 ? "text-lime-300" : value < 0 ? "text-rose-300" : "text-slate-300";
+
+/** Маленькая цифра сводки: подпись сверху, значение снизу. */
+const BiomassStat = ({
+  label,
+  value,
+  hint,
+  tone = "text-white",
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+  tone?: string;
+}) => (
+  <div className="rounded-xl border border-white/10 bg-slate-950/40 px-2 py-2">
+    <p className="text-2xs leading-tight text-slate-400">{label}</p>
+    <p className={`mt-0.5 text-sm font-bold tabular-nums ${tone}`}>{value}</p>
+    {hint && (
+      <p className="mt-0.5 text-3xs leading-tight text-slate-500">{hint}</p>
+    )}
+  </div>
+);
+
+/** Строка биопода: кто живёт, сколько даёт и сколько стоит содержание. */
+const BiomassRoomRow = ({ room }: { room: BiomassFarmRoomStat }) => {
+  const unit = room.toads === 1 ? "жаба" : "жаб";
+
+  return (
+    <div className="rounded-xl border border-slate-600/40 bg-slate-950/35 px-2.5 py-2">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="truncate text-2xs font-semibold text-slate-100">
+            {room.icon} {room.name}
+          </p>
+          <p className="text-3xs leading-tight text-slate-400">
+            {room.toads} {unit} в биоподе
+            {room.awayToads > 0 && ` · ${room.awayToads} в походе`}
+          </p>
+        </div>
+        {!room.powered && (
+          <span className="shrink-0 rounded border border-rose-500/30 bg-rose-950/40 px-1.5 py-0.5 text-3xs text-rose-200">
+            без тока
+          </span>
+        )}
+      </div>
+
+      <div className="mt-1.5 grid grid-cols-3 gap-1.5 text-2xs">
+        <div>
+          <p className="text-3xs text-slate-500">Выработка</p>
+          <p className="font-semibold tabular-nums text-lime-300">
+            +{room.gross.toFixed(1)}
+          </p>
+        </div>
+        <div>
+          <p className="text-3xs text-slate-500">Содержание</p>
+          <p className="font-semibold tabular-nums text-rose-300">
+            −{room.upkeep.toFixed(1)}
+          </p>
+        </div>
+        <div>
+          <p className="text-3xs text-slate-500">Итог</p>
+          <p className={`font-semibold tabular-nums ${rateTone(room.net)}`}>
+            {formatRate(room.net)}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/**
+ * «Биомасса» — статистика фермы по тапу на чип 🧪 в HUD.
+ *
+ * HUD показывает одно число `🧪/ч`; здесь оно разложено по биоподам: сколько даёт
+ * каждая жаба, сколько уходит на содержание и почему биопод мог перестать
+ * производить (нет тока, жильцы в походе). Расчёт — `getBiomassFarmStats`,
+ * тот же, что у шапки карты, поэтому цифры сходятся.
+ */
+export default function BiomassStatsModal() {
+  const state = useGameState();
+  const { rooms, powerGrid } = useColony();
+  const stats = useMemo(
+    () =>
+      getBiomassFarmStats(
+        rooms,
+        state.toads ?? [],
+        powerGrid,
+        state.expeditions ?? [],
+      ),
+    [rooms, state.toads, powerGrid, state.expeditions],
+  );
+
+  const biomass = state.user.biomass || 0;
+  const hasRooms = stats.rooms.length > 0;
+
+  return (
+    <Modal title="Биомасса" icon="🧪">
+      <div className="space-y-3 pb-1">
+        <div className="rounded-2xl border border-lime-500/25 bg-lime-950/20 px-3 py-3">
+          <div className="flex items-end justify-between gap-3">
+            <div>
+              <p className="text-2xs uppercase tracking-wide text-lime-200/60">
+                На складе
+              </p>
+              <p className="text-2xl font-bold tabular-nums text-lime-200">
+                {formatBiomass(biomass)} 🧪
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-2xs uppercase tracking-wide text-slate-400">
+                Ферма
+              </p>
+              <p
+                className={`text-xl font-bold tabular-nums ${rateTone(stats.net)}`}
+              >
+                {formatRate(stats.net)} 🧪/ч
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-3 grid grid-cols-3 gap-1.5">
+            <BiomassStat
+              label="Выработка"
+              value={`+${stats.gross.toFixed(1)}`}
+              tone="text-lime-300"
+              hint="в час"
+            />
+            <BiomassStat
+              label="Содержание"
+              value={`−${stats.upkeep.toFixed(1)}`}
+              tone="text-rose-300"
+              hint="в час"
+            />
+            <BiomassStat
+              label="Итог"
+              value={formatRate(stats.net)}
+              tone={rateTone(stats.net)}
+              hint="в час"
+            />
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-x-3 gap-y-1 text-2xs text-slate-400">
+          <span>🐸 {stats.activeToads} работают на ферме</span>
+          {stats.awayToads > 0 && (
+            <span className="text-amber-200/80">
+              🥾 {stats.awayToads} в походе
+            </span>
+          )}
+          {stats.unpoweredToads > 0 && (
+            <span className="text-rose-200/90">
+              ⚡ {stats.unpoweredToads} без тока
+            </span>
+          )}
+        </div>
+
+        <div>
+          <h3 className="mb-1.5 text-2xs font-bold uppercase tracking-wide text-slate-400">
+            Откуда биомасса
+          </h3>
+
+          {hasRooms ? (
+            <div className="space-y-1.5">
+              {stats.rooms.map((room) => (
+                <BiomassRoomRow key={room.id} room={room} />
+              ))}
+            </div>
+          ) : (
+            <p className="rounded-xl border border-slate-600/40 bg-slate-950/35 px-3 py-2 text-2xs leading-snug text-slate-400">
+              Биоподов пока нет — биомассу никто не вырабатывает.
+            </p>
+          )}
+        </div>
+
+        <div className="rounded-xl border border-slate-600/40 bg-slate-950/35 px-3 py-2 text-2xs leading-snug text-slate-400">
+          <p>
+            Выработка жабы зависит от Качества, веса, характера, сытости и
+            здоровья; содержание — {UPKEEP_PER_TOAD_HOUR} 🧪/ч за работающую
+            жабу.
+          </p>
+          <p className="mt-1">
+            Обесточенный биопод не производит, но его жабы продолжают есть. Жабы
+            в походе не работают и содержания не требуют.
+          </p>
+        </div>
+      </div>
+    </Modal>
+  );
+}

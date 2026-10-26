@@ -26,6 +26,15 @@ export const DOUBLE_TAP_SLOP = 26;
  */
 export const TOAD_TOUCH_SLOP = 18;
 
+/**
+ * Допуск попадания для тапа в приближенном виде (экранные пиксели).
+ *
+ * Вблизи жабы крупные, и широкий «палец» нужен только для удержания/перетаскивания.
+ * Для тапа он вреден: промах рядом с жабой должен открывать сектор, а не карточку
+ * соседней жабы, поэтому допуск почти нулевой — попадает только сама жаба.
+ */
+export const TOAD_TAP_TOUCH_SLOP = 4;
+
 /** Тап, запомненный для распознавания двойного. */
 export interface TapRecord {
   /** Время тапа (performance.now, мс). */
@@ -61,5 +70,8 @@ export const isDoubleTap = (
  * Радиус попадания по жабе в мировых пикселях: её собственный радиус плюс допуск
  * пальца, пересчитанный из экранных пикселей в мировые тем же масштабом камеры.
  */
-export const getToadPickRadius = (hitRadius: number, scale: number) =>
-  hitRadius + TOAD_TOUCH_SLOP / Math.max(scale, 0.001);
+export const getToadPickRadius = (
+  hitRadius: number,
+  scale: number,
+  touchSlop: number = TOAD_TOUCH_SLOP
+) => hitRadius + touchSlop / Math.max(scale, 0.001);

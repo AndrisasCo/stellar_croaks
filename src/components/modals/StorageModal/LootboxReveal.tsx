@@ -203,7 +203,7 @@ export const LootboxReveal = ({
             />
             <StatCard
               icon={InfoIcons.weight}
-              label="Размер"
+              label="Вес"
               value={toad.genes.weight.toFixed(2)}
               colorClass="text-blue-400"
             />

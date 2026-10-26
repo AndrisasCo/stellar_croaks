@@ -105,7 +105,7 @@ export const Filters = ({
                 { key: "type", label: "Вид" },
                 { key: "fertility", label: "Плодовитость" },
                 { key: "appetite", label: "Аппетит" },
-                { key: "size", label: "Размер" },
+                { key: "size", label: "Вес" },
                 { key: "speed", label: "Скорость" },
                 { key: "genetic_fault", label: "Генетика" },
                 addHunger ? { key: "hunger", label: "Голод" } : {},

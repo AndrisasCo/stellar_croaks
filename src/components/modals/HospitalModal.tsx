@@ -23,7 +23,6 @@ import {
   isToadInHospital,
   needsHospitalCare,
 } from "../../utils/hospital";
-import { getToadHomeId } from "../../utils/toad-location";
 import {
   TOAD_PICKER_REJECTED_GROUP,
   splitToadPickerCandidates,
@@ -88,7 +87,6 @@ export default function HospitalModal({ room }: HospitalModalProps) {
 
   const expeditions = state.expeditions ?? [];
   const tokens = state.user.tokens || 0;
-  const scenes = state.scenes ?? [];
   const roomToads = toadsByRoom[room.id] ?? [];
 
   /** Все Медотсекы колонии: койки есть в каждом, а «быстро в Медотсек» ищет свободную */
@@ -173,23 +171,6 @@ export default function HospitalModal({ room }: HospitalModalProps) {
     }
 
     return { room: null, issue: firstIssue };
-  };
-
-  /** Где жаба живёт сейчас — строкой списка подсадки: сектор колонии или её биопод */
-  const locationOf = (toad: Toad) => {
-    if (typeof toad.scene_id === "string") {
-      const roomName = rooms.find(
-        (item) => item.id === toad.scene_id || item.slotId === toad.scene_id,
-      )?.name;
-
-      if (roomName) {
-        return `📍 ${roomName}`;
-      }
-    }
-
-    const scene = scenes.find((item) => item.id === getToadHomeId(toad));
-
-    return scene ? `🏠 ${scene.name}` : "🏠 биопод";
   };
 
   /**
@@ -436,7 +417,6 @@ export default function HospitalModal({ room }: HospitalModalProps) {
                 hint: "Сверху — жабы, которым нужна помощь. На койку берут взрослых жаб колонии, не в походе; за ток сектора отвечает энергосеть.",
                 emptyText:
                   "Свободных жаб нет: остальные в походе или уже лежат в Медотсеке.",
-                locationOf,
               })}
               onPick={(toad) => handleAdmit(toad, room)}
               onOpen={(toad) => openToadCard(toad)}

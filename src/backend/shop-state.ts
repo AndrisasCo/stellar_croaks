@@ -340,7 +340,7 @@ export const eliteOrders: EliteOrder[] = [
   {
     id: "elite_1",
     title: "Нежный гигант",
-    description: "Жаба размером более 35 с характером Романтик",
+    description: "Жаба весом более 35 с характером Романтик",
     requirement: (toad: Toad) =>
       toad.genes.weight > 35 && toad.genes.personality === "romantic",
     reward: 100, // размер 35+ И характер Романтик: почти недостижимая мечта селекции
@@ -373,7 +373,7 @@ export const eliteOrders: EliteOrder[] = [
   {
     id: "elite_5",
     title: "Исполин рассвета",
-    description: "Жаба Качеством 7 и больше размером более 40",
+    description: "Жаба Качеством 7 и больше весом более 40",
     requirement: (toad: Toad) =>
       toad.genes.weight > 40 && toad.genes.rarity >= 7,
     reward: 150, // масса 40+ И Качество 7+: экстремальная селекция
@@ -402,7 +402,7 @@ export const eliteOrders: EliteOrder[] = [
   {
     id: "elite_8",
     title: "Идеальный баланс",
-    description: "Жаба с размером 12-16, скоростью 0.6-0.8 и фертильностью 3+",
+    description: "Жаба с весом 12-16, скоростью 0.6-0.8 и фертильностью 3+",
     requirement: (toad: Toad) =>
       toad.genes.weight >= 12 &&
       toad.genes.weight <= 16 &&
@@ -426,7 +426,7 @@ export const eliteOrders: EliteOrder[] = [
   {
     id: "elite_10",
     title: "Ненасытный титан",
-    description: "Жаба с характером Обжора и размером более 25",
+    description: "Жаба с характером Обжора и весом более 25",
     requirement: (toad: Toad) =>
       toad.genes.personality === "glutton" && toad.genes.weight > 25,
     reward: 20, // Обжора И масса 25+: две линии селекции сразу

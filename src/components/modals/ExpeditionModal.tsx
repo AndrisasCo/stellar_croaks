@@ -47,6 +47,7 @@ import {
   getRoleStat,
   getSectorDamageMultiplier,
   getSpeedUpReturnCost,
+  getToadHp,
   isAwaitingEvacuation,
   ROLE_CONFIG,
 } from "../../utils/expedition-config";
@@ -486,15 +487,15 @@ const ExpeditionModal: React.FC<{
           const other = getAssignedRole(slots, toad.id);
           const own = other === role;
           const percent = getRolePowerPercent(toad, role);
+          const stat = getRoleStat(toad, role);
 
           return {
             toad,
-            rank: getRoleStat(toad, role),
+            rank: stat,
             tone: own ? "selected" : other ? "warn" : "default",
             note: (
               <>
-                {getRoleStat(toad, role).toFixed(2)} {config.statLabel}{" "}
-                {toad.hp} XP
+                ❤️ {Math.round(getToadHp(toad))}
                 {own
                   ? " · ✓ на этой роли"
                   : other
@@ -504,7 +505,12 @@ const ExpeditionModal: React.FC<{
                     : ""}
               </>
             ),
-            meter: { value: percent, label: `${percent}%` },
+            meter: {
+              value: percent,
+              label: `${percent}%`,
+              detail: `${config.statLabelShort} ${stat.toFixed(2)}`,
+              caption: percent > 40 ? "Подходит" : "Не подходит",
+            },
           };
         }),
       })),
@@ -1358,6 +1364,7 @@ const ExpeditionModal: React.FC<{
                   badge: picked
                     ? `${getRolePowerPercent(picked, role)}%`
                     : undefined,
+                  badgeLabel: picked ? "" : undefined,
                   disabledHint: `${config.label}: ${config.description}`,
                 };
               })}

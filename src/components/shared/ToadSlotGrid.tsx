@@ -35,8 +35,6 @@ export interface ToadSlotPickerConfig {
   hint?: React.ReactNode;
   /** Что сказать, когда взять некого */
   emptyText?: string;
-  /** Где жаба живёт сейчас — строкой списка */
-  locationOf?: (toad: Toad) => string | null;
 }
 
 /** Один слот сетки: жаба в нём (или пусто) и подпись места */
@@ -47,10 +45,12 @@ export interface ToadSlotItem {
   /** Значок слота перед подписью (♀, ♂, 🛏️) */
   icon?: React.ReactNode;
   /**
-   * Короткая подпись на занятом слоте поверх Качества: сила роли в КОНТУРе,
-   * готовность к паре и т.п. На пустом слоте не показывается.
+   * Короткая подпись на занятом слоте: сила роли в КОНТУРе, готовность к паре и т.п.
+   * На пустом слоте не показывается.
    */
   badge?: React.ReactNode;
+  /** Расшифровка подписи под ней: «Соответствует роли» у процента КОНТУРа */
+  badgeLabel?: React.ReactNode;
   /** Почему слот нельзя заполнить — подсказка пустого слота */
   disabledHint?: string;
 }
@@ -125,7 +125,6 @@ const ToadSlotPickerModal: React.FC<ToadSlotPickerModalProps> = ({
           rejected={picker.rejected}
           hint={picker.hint}
           emptyText={picker.emptyText}
-          locationOf={picker.locationOf}
           onPick={pick}
         />
       </div>
@@ -330,7 +329,12 @@ export const ToadSlotGrid: React.FC<ToadSlotGridProps> = ({
                   </div>
                   {slot.badge != null && (
                     <span className="max-w-full truncate text-3xs font-semibold text-amber-200">
-                      подходит {slot.badge}
+                      {slot.badge}
+                    </span>
+                  )}
+                  {slot.badgeLabel && (
+                    <span className="max-w-full truncate text-3xs leading-tight text-slate-400">
+                      {slot.badgeLabel}
                     </span>
                   )}
 

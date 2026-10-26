@@ -23,7 +23,6 @@ import {
   startNestCourtship,
 } from "../../utils/breeding-manager";
 import { placeToadInRoom } from "../../backend/colony";
-import { getToadHomeId, isToadInRoom } from "../../utils/toad-location";
 import {
   EXPEDITION_TOAD_BUSY_REASON,
   isToadBusyOnExpedition,
@@ -55,7 +54,7 @@ import { ProgressBar } from "./ToadInfoModal/ProgressBar";
  * открывает модалку выбора (`shared/ToadPicker` → `ToadPickerList`), куда слот зовёт всех
  * **своего пола** — взрослых, не в походе, не выбитых, не больных и без беременности
  * (`breeding-manager.ts` → `getNestSlotCandidates`).
- * У жабы в списке видно её краткую сводку (пол, стадия, силы ⚡, сытость 🍽, Качество)
+ * У жабы в списке видно её краткую сводку (только силы ⚡), Качество
  * и где она живёт сейчас, а жаб, которых слот не берёт, можно посмотреть с причиной отказа
  * (переключатель «Не подходят») — чтобы не искать ответ, почему жабы нет в списке.
  *
@@ -191,7 +190,6 @@ export default function NestModal({
     return () => clearInterval(id);
   }, []);
 
-  const scenes = gameState.scenes ?? [];
   /**
    * Сектора карты: у каждого гекса своё имя с номером экземпляра — «Репродуктор #2»
    * (`components/HexMap/room-names.ts`). Собираем ту же карту, что рисует экран колонии,
@@ -270,21 +268,6 @@ export default function NestModal({
       }))
       .filter((item) => Boolean(item.reason)),
   });
-
-  /** В каком секторе жаба живёт сейчас (для списка жаб) */
-  const roomLabelOf = (toad: Toad): string => {
-    if (!isToadInRoom(toad)) {
-      const scene = scenes.find((s) => s.id === getToadHomeId(toad));
-      return scene?.name ?? "Биопод";
-    }
-
-    // Сектора с таким id в карте нет только у сейва со снесённым гексом — тогда имя общее
-    return (
-      mapRooms.find(
-        (room) => room.id === toad.scene_id || room.slotId === toad.scene_id,
-      )?.name || "Сектор колонии"
-    );
-  };
 
   /**
    * Открыть карточку жабы поверх репродуктора: модалки складываются в стек,
@@ -479,7 +462,6 @@ export default function NestModal({
                     },
                     hint: slotHint(index),
                     emptyText: slotEmptyText(index),
-                    locationOf: roomLabelOf,
                   };
                 }}
                 onPick={(toad) => handlePlace(toad)}

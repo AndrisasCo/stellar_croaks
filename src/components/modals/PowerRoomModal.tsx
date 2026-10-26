@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { isToadSick } from "../../models/disease";
 import { Toad } from "../../models/Toad";
 import { useColony } from "../../hooks/use-colony";
 import { useGameState } from "../../hooks/use-game-state";
@@ -9,7 +10,6 @@ import {
   EXPEDITION_TOAD_BUSY_REASON,
   isToadBusyOnExpedition,
 } from "../../utils/expedition-manager";
-import { getToadHomeId } from "../../utils/toad-location";
 import {
   TOAD_PICKER_REJECTED_GROUP,
   splitToadPickerCandidates,
@@ -38,8 +38,8 @@ import RoomDataTab, { ROOM_DATA_TAB, RoomDataTabId } from "./RoomDataTab";
  *
  * Внутри до 6 жаб (по одной на каждую сторону гекса): кормлённая взрослая жаба
  * даёт одну единицу тока одной соседнем секторе, значит 6 жаб закрывают все 6
- * соседей. Голодная жаба ток не даёт, а сектор без работающих жаб никого не
- * питает — но внешнее питание ей и не нужно: ток ей дают сами жабы.
+ * соседей. Голодная или больная жаба ток не даёт, а сектор без работающих жаб никого
+ * не питает — но внешнее питание ей и не нужно: ток ей дают сами жабы.
  *
  * Табы — общие для всех секторов (`shared/ModalTabs`): работающие жабы первым, «Данные
  * сектора» (`modals/RoomDataTab.tsx`) — последним: описание, улучшения и снос, то есть всё,
@@ -75,9 +75,26 @@ export default function PowerRoomModal({ room }: { room: RoomConfig }) {
   // Ток сектора считает сеть: у ⚡ с работающими жабами он есть даже без подачи извне
   const powered = isRoomPowered(room, powerGrid);
   const output = getToadPowerCapacity(activeRoomToads, expeditions);
-  const hungryToads = activeRoomToads.filter(
+  /** Жабы, которые стоят в секторе, но ток не дают: больные и голодные */
+  const idleToads = activeRoomToads.filter(
     (toad) => !isToadPowering(toad, expeditions),
   );
+  const sickToads = idleToads.filter(isToadSick);
+  const hungryToads = idleToads.filter((toad) => !isToadSick(toad));
+  const idleLabel =
+    activeRoomToads.length === 0 && roomToads.length > 0
+      ? "Жабы в походе — ток не вырабатывают до разбора добычи"
+      : idleToads.length === 0
+        ? "Все жабы здоровы, сыты и вырабатывают ток"
+        : sickToads.length > 0
+          ? `Не вырабатывают ток: ${idleToads.length} (больных: ${
+              sickToads.length
+            }${
+              hungryToads.length > 0
+                ? `, голодных: ${hungryToads.length}`
+                : ""
+            })`
+          : `Не вырабатывают ток: ${idleToads.length} (нужна сытость выше ${POWER_MIN_HUNGER})`;
   const freeSlots = POWER_ROOM_TOAD_SLOTS - roomToads.length;
   /** Слоты энергосектора: жаба на месте или пустой квадрат с «+» — как в Медотсеке */
   const powerSlots = Array.from(
@@ -114,35 +131,27 @@ export default function PowerRoomModal({ room }: { room: RoomConfig }) {
           .filter((toad) => toad.scene_id !== room.id)
           .map((toad) => {
             const onExpedition = isToadBusyOnExpedition(toad, expeditions);
+            const issue = getToadPowerIssue(toad, expeditions);
 
             return {
               toad,
               // Сверху — те, кто уже даёт ток: сытые взрослые на своих местах
               rank:
-                !onExpedition && isToadPowering(toad, expeditions) ? 1 : 0,
+                !issue && !onExpedition && isToadPowering(toad, expeditions)
+                  ? 1
+                  : 0,
               reason: onExpedition
                 ? EXPEDITION_TOAD_BUSY_REASON
-                : typeof toad.scene_id === "string"
-                  ? `Жаба уже работает в секторе «${getRoomName(toad.scene_id)}»`
-                  : getToadPowerIssue(toad, expeditions),
+                : issue
+                  ? issue
+                  : typeof toad.scene_id === "string"
+                    ? `Жаба уже работает в секторе «${getRoomName(toad.scene_id)}»`
+                    : null,
             };
           })
       ),
     [allToads, room.id, rooms, expeditions]
   );
-
-  /** Где жаба живёт сейчас — строкой списка: сектор колонии или её биопод */
-  const locationOf = (toad: Toad): string => {
-    if (typeof toad.scene_id === "string") {
-      return getRoomName(toad.scene_id);
-    }
-
-    const scene = (gameState.scenes ?? []).find(
-      (item) => item.id === getToadHomeId(toad)
-    );
-
-    return scene?.name ?? "Биопод";
-  };
 
   /**
    * Открыть карточку жабы поверх энергосектора: модалки складываются в стек,
@@ -258,11 +267,7 @@ export default function PowerRoomModal({ room }: { room: RoomConfig }) {
             </div>
             <div className="mt-2 flex items-center justify-between gap-2">
               <span className="text-2xs leading-snug text-slate-400">
-                {activeRoomToads.length === 0 && roomToads.length > 0
-                  ? "Жабы в походе — ток не вырабатывают до разбора добычи"
-                  : hungryToads.length > 0
-                    ? `Не вырабатывают ток: ${hungryToads.length} (нужна сытость выше ${POWER_MIN_HUNGER})`
-                    : "Все жабы сыты и вырабатывают ток"}
+                {idleLabel}
               </span>
               <ClickButton
                 onClick={handleFeed}
@@ -301,10 +306,9 @@ export default function PowerRoomModal({ room }: { room: RoomConfig }) {
                 label: TOAD_PICKER_REJECTED_GROUP,
                 items: candidates.rejected,
               },
-              hint: `Сверху — жабы, которые уже дают ток: взрослые, живые и сытые выше ${POWER_MIN_HUNGER}. Энергосектор — рабочий сектор всей колонии, поэтому взять можно жабу из любого биопода. Жабу из другого сектора выбор перенесёт сюда.`,
+              hint: `Сверху — жабы, которые уже дают ток: взрослые, живые, здоровые и сытые выше ${POWER_MIN_HUNGER}. Энергосектор — рабочий сектор всей колонии, поэтому взять можно жабу из любого биопода. Жабу из другого сектора выбор перенесёт сюда. Больных жаб сначала лечат в Медотсеке.`,
               emptyText:
-                "Свободных взрослых жаб нет: остальные в походе, выбиты или уже работают в секторе колонии.",
-              locationOf,
+                "Свободных здоровых взрослых жаб нет: остальные в походе, больны, выбиты или уже работают в секторе колонии.",
             })}
             onPick={(toad) => handlePlace(toad)}
             onOpen={(toad) => openToadCard(toad)}
@@ -325,6 +329,7 @@ export default function PowerRoomModal({ room }: { room: RoomConfig }) {
             <div className="mt-2 space-y-1.5">
               {roomToads.map((toad) => {
                 const onExpedition = isToadBusyOnExpedition(toad, expeditions);
+                const sick = isToadSick(toad);
                 const powering =
                   !onExpedition && isToadPowering(toad, expeditions);
 
@@ -340,12 +345,20 @@ export default function PowerRoomModal({ room }: { room: RoomConfig }) {
                       onExpedition ? "warn" : powering ? "success" : "warn"
                     }
                     status={{
-                      icon: onExpedition ? "🧭" : powering ? "⚡" : "🔌",
+                      icon: onExpedition
+                        ? "🧭"
+                        : sick
+                          ? "🦠"
+                          : powering
+                            ? "⚡"
+                            : "🔌",
                       label: onExpedition
                         ? "в походе"
-                        : powering
-                          ? "даёт ток"
-                          : `не даёт ток: сытость ≤ ${POWER_MIN_HUNGER}`,
+                        : sick
+                          ? "больна — ток не даёт"
+                          : powering
+                            ? "даёт ток"
+                            : `не даёт ток: сытость ≤ ${POWER_MIN_HUNGER}`,
                       className: onExpedition
                         ? "text-amber-300"
                         : powering

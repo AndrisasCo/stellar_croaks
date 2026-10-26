@@ -1,11 +1,17 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { getRarityConfig, Toad } from "../../models/Toad";
+import { useColony } from "../../hooks/use-colony";
+import { useGameState } from "../../hooks/use-game-state";
 import {
+  ToadPickerLocation,
   getToadPickerBrief,
+  getToadPickerLocation,
   getToadRarityLine,
   getToadSexIcon,
 } from "../../utils/toad-picker";
 import { ClickButton } from "./ClickButton";
+import { ToadAvatar } from "./ToadAvatar";
+import { getToadEnergy } from "../../utils/gamification-config";
 
 /**
  * Общий список жаб и выпадающая панель со всеми доступными жабами.
@@ -19,10 +25,12 @@ import { ClickButton } from "./ClickButton";
  * краткая информация и поведение списка — здесь, одни на всех.
  *
  * Строка слота — кнопка: жаба в слоте (имя, Качество, `pickedSummary`) или приглашение; тап
- * раскрывает панель. В строке списка у каждой жабы одна и та же краткая информация
- * (`utils/toad-picker.ts` → `getToadPickerBrief`: пол, стадия, силы ⚡ и сытость 🍽), Качество
- * строкой и место в колонии (📍, если место передало `locationOf`), а ниже — своя заметка
- * слота (сила роли, готовность к паре) и, если нужно, полоска-показатель.
+ * раскрывает панель. В строке списка у каждой жабы слева её аватар, одна и та же краткая
+ * информация (`utils/toad-picker.ts` → `getToadPickerBrief`: силы ⚡), Качество строкой и
+ * место в колонии (`getToadPickerLocation`: сектор или биопод), а ниже — своя заметка слота
+ * (здоровье, готовность к паре) и, если нужно, показатель с подписью
+ * (процент соответствия роли и характеристика). Место видно у всех мест одинаково,
+ * поэтому список не теряет его, когда модалка передаёт свои правила отбора.
  *
  * Жабы, которых взять нельзя, из панели не исчезают: они спрятаны за переключателем
  * «Не подходят» **с причиной отказа** у каждой — игрок видит, почему его жабы нет в списке,
@@ -41,10 +49,17 @@ export interface ToadPickerItem {
    * Без места строка остаётся там, куда её поставил слот (порядок не переставляется).
    */
   rank?: number;
-  /** Текст под именем: своё у каждого места (сила роли, готовность к паре, сытость) */
+  /** Текст под именем: своё у каждого места (здоровье, готовность к паре, сытость) */
   note?: React.ReactNode;
   /** Показатель справа: полоска с подписью (проценты силы роли) */
-  meter?: { value: number; label: string };
+  meter?: {
+    value: number;
+    label: string;
+    /** Характеристика рядом с процентом: «Скорость 1.55» */
+    detail?: string;
+    /** Подпись под полоской: «Соответствует роли» */
+    caption?: string;
+  };
   /** Подсветка строки: жаба в слоте или занята другим слотом */
   tone?: "default" | "selected" | "warn";
   /** Почему жабу взять нельзя: строка гаснет и не нажимается */
@@ -77,13 +92,13 @@ const ToadPickerRow: React.FC<{
   item: ToadPickerItem;
   /** Название слота — идёт в подсказку строки */
   label: string;
-  locationOf?: (toad: Toad) => string | null;
+  /** Где жаба живёт сейчас: сектор колонии или её биопод */
+  location: ToadPickerLocation;
   onPick: (toad: Toad) => void;
-}> = ({ item, label, locationOf, onPick }) => {
+}> = ({ item, label, location, onPick }) => {
   const { toad } = item;
   const rarity = getRarityConfig(toad.genes.rarity);
   const blocked = Boolean(item.reason);
-  const location = locationOf?.(toad) ?? null;
   const percent = item.meter ? Math.max(0, Math.min(100, item.meter.value)) : 0;
   const tone = blocked
     ? ""
@@ -101,47 +116,78 @@ const ToadPickerRow: React.FC<{
       title={
         blocked
           ? `${toad.name}: ${item.reason}`
-          : `Взять ${toad.name} в «${label}»`
+          : `Взять ${toad.name} в «${label}» · сейчас: ${location.label}`
       }
-      className={`flex w-full items-center gap-2 border-b border-slate-700/30 px-2 py-1.5 text-left transition-colors duration-300 last:border-0 ${
+      className={`flex w-full items-start gap-2 border-b border-slate-700/30 px-2 py-1.5 text-left transition-colors duration-300 last:border-0 ${
         blocked ? "cursor-not-allowed opacity-60" : tone
       }`}
     >
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center justify-between gap-2">
+      <div className="shrink-0 flex flex-col gap-1">
+        <ToadAvatar toad={toad} size={8} />
+        <span className=" text-xs">⚡ {Math.round(getToadEnergy(toad))}</span>
+      </div>
+
+      <div className="min-w-0 flex flex-col gap-1 flex-1">
+        <div className="flex h-8 items-center justify-between gap-2">
           <span
-            className={`truncate text-2xs font-semibold ${
+            className={`truncate text-xs font-semibold ${
               blocked ? "text-slate-400" : "text-slate-100"
             }`}
           >
             {getToadSexIcon(toad.sex)} {toad.name}
           </span>
+          {/* Место живёт отдельной плашкой: длинное имя сектора не вытесняет его из строки */}
+          <span
+            className="inline-flex max-w-[55%] shrink-0 items-center gap-1 rounded bg-slate-800/80 px-1 py-0.5 text-slate-300"
+            title={`Сейчас: ${location.label}`}
+          >
+            <span aria-hidden>{location.icon}</span>
+            <span className="truncate text-xs">{location.label}</span>
+          </span>
+        </div>
+
+        <div className="flex min-w-0 items-center gap-1 text-2xs text-slate-400">
+          <span className="min-w-0 flex-1 truncate">
+            {blocked && item.reason}
+            {/* Заметка места — своя разметка (здоровье, готовность к паре), поэтому держим её блоком */}
+            {item.note && (
+              <div className="mr-0.5 text-left min-w-0 truncate text-2xs text-slate-400">
+                {item.note}
+              </div>
+            )}
+          </span>
           <span className={`shrink-0 text-2xs ${rarity.color}`}>
             {getToadRarityLine(toad)}
           </span>
         </div>
-
-        <div className="flex items-center gap-1 text-2xs text-slate-400">
-          <div className="truncate">
-            {blocked ? item.reason : getToadPickerBrief(toad)}
-          </div>
-          {location && <div className="shrink-0">· 📍{location}</div>}
-          {/* Заметка места — своя разметка (сила роли, полоски), поэтому держим её блоком */}
-          {item.note && <div className="min-w-0 flex-1">· {item.note}</div>}
-        </div>
       </div>
 
       {item.meter && (
-        <div className="w-12 shrink-0 text-right">
-          <p className="text-2xs font-bold text-amber-200">
-            {item.meter.label}
-          </p>
+        <div className="mt-0.5 w-28 shrink-0 text-right">
+          <div className="flex w-full items-baseline justify-end gap-1">
+            {item.meter.detail && (
+              <span
+                className="min-w-0 flex-1 truncate text-3xs text-slate-400"
+                title={item.meter.detail}
+              >
+                {item.meter.detail}
+              </span>
+            )}
+            <span className="shrink-0 text-2xs font-bold text-amber-200">
+              {item.meter.label}
+            </span>
+          </div>
           <div className="mt-0.5 h-1 w-full overflow-hidden rounded-full bg-slate-700">
             <div
               className={`h-full rounded-full ${getMeterColor(percent)}`}
               style={{ width: `${percent}%` }}
             />
           </div>
+          {item.meter.caption && (
+            <p className="mt-0.5 text-3xs leading-tight text-slate-400">
+              {item.meter.caption}
+            </p>
+          )}
         </div>
       )}
     </ClickButton>
@@ -162,8 +208,6 @@ export interface ToadPickerListProps {
   emptyText?: string;
   /** Пункт «убрать жабу из слота» (показывается, когда жаба выбрана) */
   clear?: { label: string; onClear: () => void };
-  /** Где жаба живёт сейчас — строкой списка (нет функции — места не видно) */
-  locationOf?: (toad: Toad) => string | null;
   /** Куда сообщить выбор жабы */
   onPick: (toad: Toad) => void;
 }
@@ -182,9 +226,11 @@ export const ToadPickerList: React.FC<ToadPickerListProps> = ({
   hint,
   emptyText = "Свободных жаб нет.",
   clear,
-  locationOf,
   onPick,
 }) => {
+  /** Место жабы — общее для всех списков: сектор карты или её биопод */
+  const { rooms } = useColony();
+  const { scenes = [] } = useGameState();
   /** Отсеянные жабы спрятаны: список открывается теми, кого можно взять */
   const [showRejected, setShowRejected] = useState(false);
 
@@ -241,7 +287,7 @@ export const ToadPickerList: React.FC<ToadPickerListProps> = ({
               key={item.toad.id}
               item={item}
               label={label}
-              locationOf={locationOf}
+              location={getToadPickerLocation(item.toad, rooms, scenes)}
               onPick={onPick}
             />
           ))}
@@ -267,7 +313,7 @@ export const ToadPickerList: React.FC<ToadPickerListProps> = ({
                 key={`rejected-${item.toad.id}`}
                 item={item}
                 label={label}
-                locationOf={locationOf}
+                location={getToadPickerLocation(item.toad, rooms, scenes)}
                 onPick={onPick}
               />
             ))}
@@ -305,8 +351,6 @@ export interface ToadPickerProps {
   emptyText?: string;
   /** Пункт «убрать жабу из слота» (показывается, когда жаба выбрана) */
   clear?: { label: string; onClear: () => void };
-  /** Где жаба живёт сейчас — строкой списка (нет функции — места не видно) */
-  locationOf?: (toad: Toad) => string | null;
   /** Куда сообщить выбор жабы */
   onPick: (toad: Toad) => void;
   /** Слот недоступен: строка гаснет и не раскрывается */
@@ -328,7 +372,6 @@ export const ToadPicker: React.FC<ToadPickerProps> = ({
   hint,
   emptyText = "Свободных жаб нет.",
   clear,
-  locationOf,
   onPick,
   disabled = false,
   className,
@@ -467,7 +510,6 @@ export const ToadPicker: React.FC<ToadPickerProps> = ({
                   }
                 : undefined
             }
-            locationOf={locationOf}
             onPick={pick}
           />
         </div>

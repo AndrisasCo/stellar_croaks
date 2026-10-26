@@ -6,7 +6,8 @@
  *   2) жаба в пути (`status: "out"`) не даёт ток, не видна в секторе и не переносится;
  *   3) вернувшаяся жаба, пока добыча не разобрана, всё ещё занята походом —
  *      тот же запрет действует без статуса `out`;
- *   4) после разбора добычи (запись похода убрана) запреты снимаются.
+ *   4) после разбора добычи (запись похода убрана) запреты снимаются;
+ *   5) больная жаба не идёт в поход и не вырабатывает ток.
  *
  * Запуск: node tmp-verify-expedition-busy.mjs
  */
@@ -221,6 +222,31 @@ check(
   production.getSceneProductionRate([returned]) > 0,
   true,
 );
+
+console.log("\n[5] Больная жаба: в поход нельзя и ток не даёт");
+const sick = toad({
+  state: {
+    hunger: 100,
+    hp: 100,
+    energy: 100,
+    diseaseId: 0,
+    diseaseUntil: Date.now() + 60 * 60 * 1000,
+  },
+});
+setState({ toads: [sick], expeditions: [] });
+check("в поход не берут", manager.canSendToad(sick, []).ok, false);
+check(
+  "причина отказа в походе",
+  manager.canSendToad(sick, []).reason,
+  "больна — сначала вылечите её",
+);
+check(
+  "причина энергосектора",
+  power.getToadPowerIssue(sick),
+  "Жаба больна — ток не вырабатывает",
+);
+check("ток не даёт", power.isToadPowering(sick), false);
+check("мощность", power.getToadPowerCapacity([sick]), 0);
 
 if (failures.length > 0) {
   console.error(`\n❌ Провалено проверок: ${failures.length}`);

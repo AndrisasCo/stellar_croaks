@@ -9,7 +9,9 @@ import {
   getUnpoweredAviarySceneIds,
   resolveColonyRooms,
 } from "../components/HexMap/colony-build";
+import type { PowerGrid } from "../components/HexMap/colony-power";
 import { getRoomToadLists } from "../components/HexMap/room-toad-lists";
+import type { RoomConfig } from "../components/HexMap/rooms-config";
 import { EMPTY_COLONY } from "../models/colony";
 import { Expedition } from "../models/expedition";
 import { Toad } from "../models/Toad";
@@ -71,6 +73,135 @@ export const getSceneProductionRate = (
 
     return sum + getBiomassRate(toad) * getInjuryFactor(toad);
   }, 0);
+
+/** Один биопод в разбивке фермы: откуда берётся и куда уходит биомасса. */
+export interface BiomassFarmRoomStat {
+  /** id гекса биопода (`RoomConfig.id`) — по нему модалка отличает строки. */
+  id: string;
+  /** id биопода (`Scene.id`), чьи жильцы считаются в этой строке. */
+  sceneId: number;
+  name: string;
+  icon: string;
+  /** Есть ли ток: без него жильцы остаются, но биомассу не дают. */
+  powered: boolean;
+  /** Все жильцы биопода, включая тех, кто в походе. */
+  toads: number;
+  /** Жильцы, которые работают на ферме сейчас (не в походе). */
+  activeToads: number;
+  /** Жильцы в походе: не работают и не едят, пока команда не вернётся. */
+  awayToads: number;
+  /** Выработка биопода в час (0 без тока). */
+  gross: number;
+  /** Содержание работающих жильцов в час. */
+  upkeep: number;
+  /** Итог биопода в час: выработка минус содержание. */
+  net: number;
+}
+
+/** Разбивка фермы биомассы по биоподам — то же, что показывает HUD, но по строкам. */
+export interface BiomassFarmStats {
+  gross: number;
+  upkeep: number;
+  net: number;
+  /** Все жабы в биоподах, включая ушедших в поход. */
+  toads: number;
+  /** Жабы, которые сейчас работают на ферме (не в походе). */
+  activeToads: number;
+  /** Жабы в походе: апкипинг за них не списывается, выработки тоже нет. */
+  awayToads: number;
+  /** Работающие жильцы обесточенных биоподов: едят, но не производят. */
+  unpoweredToads: number;
+  rooms: BiomassFarmRoomStat[];
+}
+
+/**
+ * Ферма биомассы по биоподам: выработка, содержание и итог по каждому гексу.
+ *
+ * Считаем теми же функциями, что и часовой тик (`getSceneProductionRate` +
+ * `UPKEEP_PER_TOAD_HOUR`), и с теми же правилами, что у HUD:
+ *  - в ферме участвуют жильцы биоподов: кто сейчас в нём (числовой `scene_id`), и
+ *    ушедшие в поход из него (дом `homeId` помнит биопод);
+ *  - жабы в походе не работают и не едят;
+ *  - обесточенный биопод остаётся жилым: выработки нет, содержание есть.
+ *
+ * Поэтому сумма строк сходится с числом `🧪/ч` в шапке карты, а модалка объясняет
+ * игроку, из чего это число сложилось. Апкипинг здесь — оценка текущего часа, а не
+ * бухгалтерия выплат: `processProduction` округляет результат только при записи.
+ */
+export const getBiomassFarmStats = (
+  rooms: RoomConfig[],
+  toads: Toad[],
+  powerGrid: PowerGrid,
+  expeditions: Expedition[] = getExpeditions(),
+): BiomassFarmStats => {
+  const unpoweredSceneIds = getUnpoweredAviarySceneIds(rooms, powerGrid);
+  const roomStats = rooms
+    .filter(
+      (room): room is RoomConfig & { sceneId: number } =>
+        room.kind === "aviary" && room.sceneId != null,
+    )
+    .map((room): BiomassFarmRoomStat => {
+      const residents = toads.filter(
+        (toad) => toad.scene_id === room.sceneId,
+      );
+      const residentIds = new Set(residents.map((toad) => toad.id));
+      // В походе место в биоподе свободно (`scene_id` пуст), но дом жаба помнит:
+      // такие жильцы возвращаются сюда и в списке биопода стоят отдельной плашкой.
+      const awayResidents = toads.filter(
+        (toad) =>
+          !residentIds.has(toad.id) &&
+          toad.homeId === room.sceneId &&
+          isToadAway(toad, expeditions),
+      );
+      const activeToads = residents.filter(
+        (toad) => !isToadAway(toad, expeditions),
+      );
+      const powered = !unpoweredSceneIds.has(room.sceneId);
+      const gross = powered
+        ? getSceneProductionRate(activeToads, unpoweredSceneIds, expeditions)
+        : 0;
+      const upkeep = activeToads.length * UPKEEP_PER_TOAD_HOUR;
+
+      return {
+        id: room.id,
+        sceneId: room.sceneId,
+        name: room.name,
+        icon: room.icon,
+        powered,
+        toads: residents.length + awayResidents.length,
+        activeToads: activeToads.length,
+        awayToads:
+          residents.length - activeToads.length + awayResidents.length,
+        gross,
+        upkeep,
+        net: gross - upkeep,
+      };
+    });
+
+  const totals = roomStats.reduce(
+    (sum, room) => ({
+      gross: sum.gross + room.gross,
+      upkeep: sum.upkeep + room.upkeep,
+      net: sum.net + room.net,
+      toads: sum.toads + room.toads,
+      activeToads: sum.activeToads + room.activeToads,
+      awayToads: sum.awayToads + room.awayToads,
+      unpoweredToads:
+        sum.unpoweredToads + (room.powered ? 0 : room.activeToads),
+    }),
+    {
+      gross: 0,
+      upkeep: 0,
+      net: 0,
+      toads: 0,
+      activeToads: 0,
+      awayToads: 0,
+      unpoweredToads: 0,
+    },
+  );
+
+  return { ...totals, rooms: roomStats };
+};
 
 /**
  * Начисляет биомассу и вычитает апкипинг за `hoursPassed` часов.

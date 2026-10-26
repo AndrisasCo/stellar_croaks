@@ -187,7 +187,7 @@ export const ToadItem = ({
           </div>
 
           <div className="text-slate-300">
-            <span className="text-slate-500">Размер:</span>{" "}
+            <span className="text-slate-500">Вес:</span>{" "}
             {toad.genes?.weight.toFixed(1)}
           </div>
           <div className="text-slate-300">

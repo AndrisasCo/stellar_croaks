@@ -68,6 +68,7 @@ export interface ExpeditionRoleConfig {
   icon: string;
   /** Характеристика, которая решает исход событий роли */
   statLabel: string;
+  statLabelShort: string;
   description: string;
   /** Верхняя граница характеристики: выше — сила роли = 1 */
   statCap: number;
@@ -78,13 +79,15 @@ export const ROLE_CONFIG: Record<ExpeditionRole, ExpeditionRoleConfig> = {
     label: "Скаут",
     icon: "🏃",
     statLabel: "Скорость",
+    statLabelShort: "Скор.",
     description: "Уклоняется, разведывает путь, находит обходы.",
     statCap: EXPEDITION_RESERVE_REQUIREMENTS.scout.speed,
   },
   tank: {
     label: "Щитоносец",
     icon: "🛡️",
-    statLabel: "Масса / HP",
+    statLabel: "Вес",
+    statLabelShort: "Вес",
     description: "Принимает урон на себя и прикрывает команду.",
     statCap: EXPEDITION_RESERVE_REQUIREMENTS.tank.weight,
   },
@@ -92,6 +95,7 @@ export const ROLE_CONFIG: Record<ExpeditionRole, ExpeditionRoleConfig> = {
     label: "Ремонтник",
     icon: "🔧",
     statLabel: "Плодовитость",
+    statLabelShort: "Плод.",
     description: "Починяет и подлечивает жаб прямо в рейде.",
     statCap: EXPEDITION_RESERVE_REQUIREMENTS.medic.fertility,
   },
@@ -99,6 +103,7 @@ export const ROLE_CONFIG: Record<ExpeditionRole, ExpeditionRoleConfig> = {
     label: "Оператор",
     icon: "💻",
     statLabel: "Качество",
+    statLabelShort: "Кач.",
     description: "Вскрывает сейфы, обходит турели, выкачивает данные.",
     statCap: EXPEDITION_RESERVE_REQUIREMENTS.hacker.rarity,
   },
@@ -106,6 +111,7 @@ export const ROLE_CONFIG: Record<ExpeditionRole, ExpeditionRoleConfig> = {
     label: "Снабженец",
     icon: "🍎",
     statLabel: "Аппетит",
+    statLabelShort: "Апп.",
     description: "Договаривается с местной органикой, добывает образцы.",
     statCap: EXPEDITION_RESERVE_REQUIREMENTS.negotiator.hungerRate,
   },

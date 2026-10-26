@@ -11,6 +11,7 @@ import {
   getRarityConfig,
   getGeneticFaultConfig,
 } from "../../../models/Toad";
+import { isToadSick } from "../../../models/disease";
 import { ToadTypes } from "../../../models/Toad/toad-species";
 import { itemsFull, Items } from "../../../models/user";
 import { BreedingResult } from "../../../models/types";
@@ -141,9 +142,11 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
   ];
 
   // Часть 5: жабы в походе недоступны для коллайдера (они на Периметре).
+  // Больных жаб тоже не берут: сначала лечение в Медотсеке.
   // Список — вся колония: коллайдер работает с генами, а не с биоподом.
   const availableToads = allToads.filter(
-    (t) => t.stage === "adult" && !isToadBusyOnExpedition(t),
+    (t) =>
+      t.stage === "adult" && !isToadBusyOnExpedition(t) && !isToadSick(t),
   );
   /** Гибрид в колбе блокирует новое смешивание, пока его не заберут в биопод. */
   const incubatingChild =
@@ -172,6 +175,15 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
   const handlePickToad = (toad: Toad, slotIndex: number) => {
     if (isToadBusyOnExpedition(toad)) {
       addNotification({ type: "warn", content: EXPEDITION_TOAD_BUSY_REASON });
+      return;
+    }
+
+    if (isToadSick(toad)) {
+      addNotification({
+        type: "warn",
+        content:
+          "Больная жаба не может участвовать в смешивании — сначала вылечите её.",
+      });
       return;
     }
 
@@ -223,15 +235,17 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
               ? "уже в коллайдере"
               : toad.stage !== "adult"
                 ? "в коллайдер берут только взрослых жаб"
-                : isToadBusyOnExpedition(toad)
-                  ? EXPEDITION_TOAD_BUSY_REASON
-                  : null,
+                : isToadSick(toad)
+                  ? "больная жаба не может участвовать в смешивании — сначала вылечите её"
+                  : isToadBusyOnExpedition(toad)
+                    ? EXPEDITION_TOAD_BUSY_REASON
+                    : null,
           }))
           .filter((item) => Boolean(item.reason)),
       },
-      hint: "Сверху — самые редкие. В коллайдер берут взрослых жаб колонии: не в походе и не занятых в другой колбе.",
+      hint: "Сверху — самые редкие. В коллайдер берут здоровых взрослых жаб колонии: не в походе и не занятых в другой колбе.",
       emptyText:
-        "Свободных жаб нет: все взрослые жабы колонии уже в коллайдере.",
+        "Свободных здоровых жаб нет: все взрослые жабы колонии уже в коллайдере или больны.",
     };
   };
 
@@ -245,9 +259,19 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
       return;
     }
 
-    // Жабу могли отправить в поход, пока модалка открыта: смешивание ждёт возвращения
+    // Жабу могли отправить в поход или заразить, пока модалка открыта:
+    // смешивание ждёт возвращения и лечения.
     if (currentToads.some((toad) => isToadBusyOnExpedition(toad))) {
       addNotification({ type: "warn", content: EXPEDITION_TOAD_BUSY_REASON });
+      return;
+    }
+
+    if (currentToads.some(isToadSick)) {
+      addNotification({
+        type: "warn",
+        content:
+          "Больная жаба не может участвовать в смешивании — сначала вылечите её.",
+      });
       return;
     }
 
@@ -641,7 +665,7 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
                 {/* Таблица характеристик */}
                 <div className="grid grid-cols-2 gap-2 text-sm mb-3">
                   <div className="text-slate-300 bg-slate-600/30 rounded-lg p-2 text-center">
-                    <div className="text-slate-500 text-xs mb-1">Размер</div>
+                    <div className="text-slate-500 text-xs mb-1">Вес</div>
                     <div className="font-semibold">
                       {breedingResult.child!.genes.weight.toFixed(1)}
                     </div>

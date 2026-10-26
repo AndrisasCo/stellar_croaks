@@ -1,6 +1,9 @@
 import { getRarityConfig, Toad } from "../models/Toad";
+import type { Scene } from "../models/scene";
+import type { RoomConfig } from "../components/HexMap/rooms-config";
 import { getToadEnergy } from "./gamification-config";
 import { TYPE_ICONS } from "./constants";
+import { getToadHomeId, isToadInRoom } from "./toad-location";
 
 /**
  * Общий список жаб: одна «краткая информация» и одно правило отбора строк на все места,
@@ -8,7 +11,7 @@ import { TYPE_ICONS } from "./constants";
  *
  * Список рисует `components/shared/ToadPicker.tsx` (выпадающий список), а этот модуль
  * держит то, что можно проверить без React: подписи пола/стадии, строку редкости, краткую
- * сводку жабы и разделение жаб на «можно взять» и «не подходят» с причинами отказа.
+ * сводку жабы (только силы ⚡) и разделение жаб на «можно взять» и «не подходят» с причинами отказа.
  * Местам остаются только их собственные правила (`getNestSlotRejectReason`,
  * `getToadPowerIssue`, `canSendToad`) — вид строки у всех один.
  */
@@ -46,16 +49,58 @@ export const getToadRarityLine = (toad: Toad): string => {
 };
 
 /**
- * Краткая сводка жабы строкой списка: пол, стадия, силы и сытость.
- * Одна и та же у всех мест — по ней игрок сравнивает жаб, не открывая карточку.
+ * Краткая сводка жабы строкой списка: только силы ⚡.
+ *
+ * Пол и стадию в списке не дублируем: пол уже виден значком рядом с именем, а в слоты
+ * и так берут только взрослых — строка нужна для выбора, а не для паспорта. Сытость
+ * сюда тоже не входит: в списке жаб сажают в слот, и голод — не то, по чему выбирают
+ * пару или работника. Сытость остаётся в карточке жабы, а причины отказа (голодная
+ * жаба не даёт ток и т.п.) места по-прежнему объясняют сами.
  */
 export const getToadPickerBrief = (toad: Toad): string =>
-  [
-    getToadSexLabel(toad.sex),
-    getToadStageLabel(toad.stage, toad.sex),
-    `⚡${Math.round(getToadEnergy(toad))}`,
-    `🍽${Math.round(toad.state?.hunger ?? 0)}%`,
-  ].join(" · ");
+  `⚡${Math.round(getToadEnergy(toad))}`;
+
+/** Откуда жаба: иконка и название места — сектора колонии или её биопода. */
+export interface ToadPickerLocation {
+  icon: string;
+  label: string;
+}
+
+/**
+ * Где жаба живёт сейчас — строкой списка.
+ *
+ * Место — общее для всех списков, поэтому его считает не каждая модалка, а этот
+ * хелпер: сектор ищем по id и по id гекса (`scene_id` у жабы в секторе — id гекса),
+ * а жильца биопода подписываем именем его дома (`homeId`), а если адрес дома
+ * потерян — текущего числового `scene_id`. Снесённый сектор и старый сейв без
+ * биопода не остаются без подписи: у них есть общее название.
+ */
+export const getToadPickerLocation = (
+  toad: Toad,
+  rooms: RoomConfig[],
+  scenes: Scene[],
+): ToadPickerLocation => {
+  if (isToadInRoom(toad)) {
+    const room = rooms.find(
+      (item) => item.id === toad.scene_id || item.slotId === toad.scene_id,
+    );
+
+    return {
+      icon: room?.icon ?? "📍",
+      label: room?.name || "Сектор колонии",
+    };
+  }
+
+  const sceneId =
+    getToadHomeId(toad) ??
+    (typeof toad.scene_id === "number" ? toad.scene_id : null);
+  const scene = scenes.find((item) => item.id === sceneId);
+
+  return {
+    icon: "🏠",
+    label: scene?.name || "Биопод",
+  };
+};
 
 /** Заголовок группы жаб, которых можно взять в слот */
 export const TOAD_PICKER_AVAILABLE_GROUP = "Можно взять";
