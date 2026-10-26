@@ -87,10 +87,25 @@ export const upgradeColonyRoom = (
   return upgraded;
 };
 
+/**
+ * Свободный id биопода. `Date.now()` может совпасть у двух построек, сделанных подряд
+ * (или в одном кадре автосборки): два гекса получили бы один `Scene`, а вместе с ним —
+ * одни жильцы и один таб «Данные сектора». Поэтому сдвигаем id до первого свободного.
+ */
+const createSceneId = (scenes: Scene[]): number => {
+  let id = Date.now();
+
+  while (scenes.some((scene) => scene.id === id)) {
+    id += 1;
+  }
+
+  return id;
+};
+
 /** Новый биопод для построенной на гексе сектора «Биопод» */
 const createEnclosureScene = (scenes: Scene[]): Scene => ({
   ...DEFAULT_SCENE,
-  id: Date.now(),
+  id: createSceneId(scenes),
   name: `Биопод #${scenes.length + 1}`,
   description: "Биопод, построенный на карте колонии",
   capacity: INITIAL_CAPACITY,

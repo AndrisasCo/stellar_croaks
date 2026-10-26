@@ -201,7 +201,7 @@ const TeamStatusList: React.FC<{ expedition: Expedition }> = ({
 
 /**
  * Группа жаб в списке роли: «В «Разведке»» / «Жабы колонии».
- * Строки списка рисует общий `shared/ToadPickerList` — здесь только состав групп.
+ * Плитки списка рисует общий `shared/ToadPickerList` — здесь только состав групп.
  */
 interface RoleToadGroup {
   label: string;
@@ -474,7 +474,7 @@ const ExpeditionModal: React.FC<{
 
   /**
    * Список жаб для модалки роли: тот же набор, что был у выпадающего списка, плюс
-   * «Не подходят» с причиной. Строки рисует общий `ToadPickerList`; роль передаёт
+   * «Не подходят» с причиной. Плитки рисует общий `ToadPickerList`; роль передаёт
    * только своё: силу характеристики, проценты и пометку «уже в команде».
    */
   const getRolePicker = (role: ExpeditionRole): ToadSlotPickerConfig => {

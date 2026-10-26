@@ -233,14 +233,6 @@ const check = (label, actual, expected, tolerance = 1e-9) => {
   );
 };
 
-const checkIn = (label, value, min, max) => {
-  const ok = value >= min && value <= max;
-  if (!ok) {
-    failures.push(`${label}: получили ${value}, ждали ${min}…${max}`);
-  }
-  console.log(`${ok ? "✅" : "❌"} ${label}: ${value} (${min}…${max})`);
-};
-
 const checkText = (label, value, pattern) => {
   const ok = typeof value === "string" && pattern.test(value);
   if (!ok) {

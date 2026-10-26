@@ -4,6 +4,7 @@ import { useColony } from "../../hooks/use-colony";
 import { useGameState } from "../../hooks/use-game-state";
 import {
   BiomassFarmRoomStat,
+  BiomassUpkeepRoomStat,
   getBiomassFarmStats,
 } from "../../utils/production-manager";
 import { UPKEEP_PER_TOAD_HOUR } from "../../utils/gamification-config";
@@ -89,6 +90,30 @@ const BiomassRoomRow = ({ room }: { room: BiomassFarmRoomStat }) => {
 };
 
 /**
+ * Строка сектора вне фермы: тут только содержание — его жабы едят, но биомассу
+ * не вырабатывают (лазарет, репродуктор, ⚡-сектор, «Разведка»).
+ */
+const BiomassUpkeepRow = ({ room }: { room: BiomassUpkeepRoomStat }) => {
+  const unit = room.toads === 1 ? "жаба" : "жаб";
+
+  return (
+    <div className="flex items-center justify-between gap-2 rounded-xl border border-slate-600/40 bg-slate-950/35 px-2.5 py-1.5">
+      <div className="min-w-0">
+        <p className="truncate text-2xs font-semibold text-slate-100">
+          {room.icon} {room.name}
+        </p>
+        <p className="text-3xs leading-tight text-slate-400">
+          {room.toads} {unit} · биомассу не дают
+        </p>
+      </div>
+      <p className="shrink-0 text-2xs font-semibold tabular-nums text-rose-300">
+        −{room.upkeep.toFixed(1)}
+      </p>
+    </div>
+  );
+};
+
+/**
  * «Биомасса» — статистика фермы по тапу на чип 🧪 в HUD.
  *
  * HUD показывает одно число `🧪/ч`; здесь оно разложено по биоподам: сколько даёт
@@ -162,9 +187,19 @@ export default function BiomassStatsModal() {
 
         <div className="flex flex-wrap gap-x-3 gap-y-1 text-2xs text-slate-400">
           <span>🐸 {stats.activeToads} работают на ферме</span>
+          {stats.serviceToads > 0 && (
+            <span className="text-sky-200/80">
+              🏥 {stats.serviceToads} в других секторах
+            </span>
+          )}
           {stats.awayToads > 0 && (
             <span className="text-amber-200/80">
               🥾 {stats.awayToads} в походе
+            </span>
+          )}
+          {stats.unplacedToads > 0 && (
+            <span className="text-amber-200/80">
+              ❔ {stats.unplacedToads} без гекса
             </span>
           )}
           {stats.unpoweredToads > 0 && (
@@ -192,15 +227,47 @@ export default function BiomassStatsModal() {
           )}
         </div>
 
+        {(stats.serviceRooms.length > 0 || stats.unplacedToads > 0) && (
+          <div>
+            <h3 className="mb-1.5 text-2xs font-bold uppercase tracking-wide text-slate-400">
+              Содержание вне фермы
+            </h3>
+            <div className="space-y-1.5">
+              {stats.serviceRooms.map((room) => (
+                <BiomassUpkeepRow key={room.id} room={room} />
+              ))}
+              {stats.unplacedToads > 0 && (
+                <div className="flex items-center justify-between gap-2 rounded-xl border border-amber-500/25 bg-amber-950/20 px-2.5 py-1.5">
+                  <div className="min-w-0">
+                    <p className="truncate text-2xs font-semibold text-amber-100">
+                      ❔ Без гекса
+                    </p>
+                    <p className="text-3xs leading-tight text-slate-400">
+                      {stats.unplacedToads}{" "}
+                      {stats.unplacedToads === 1 ? "жаба" : "жаб"} · биомассу не
+                      дают
+                    </p>
+                  </div>
+                  <p className="shrink-0 text-2xs font-semibold tabular-nums text-rose-300">
+                    −
+                    {(stats.unplacedToads * UPKEEP_PER_TOAD_HOUR).toFixed(1)}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         <div className="rounded-xl border border-slate-600/40 bg-slate-950/35 px-3 py-2 text-2xs leading-snug text-slate-400">
           <p>
             Выработка жабы зависит от Качества, веса, характера, сытости и
-            здоровья; содержание — {UPKEEP_PER_TOAD_HOUR} 🧪/ч за работающую
-            жабу.
+            здоровья. Содержание — {UPKEEP_PER_TOAD_HOUR} 🧪/ч за каждую жабу
+            колонии, кроме ушедших в поход.
           </p>
           <p className="mt-1">
             Обесточенный биопод не производит, но его жабы продолжают есть. Жабы
-            в походе не работают и содержания не требуют.
+            в походе не работают и содержания не требуют. Жабы в лазарете,
+            репродукторе, ⚡-секторе и «Разведке» едят, но биомассу не дают.
           </p>
         </div>
       </div>

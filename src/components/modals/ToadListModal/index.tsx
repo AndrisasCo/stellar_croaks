@@ -108,12 +108,24 @@ const ToadListModal: React.FC<{
   );
 
   /**
+   * «Данные сектора» относим к показанному гексу, а не к тому, с которого модалку
+   * открыли. Иначе после стрелок таб продолжает править стартовый биопод: его
+   * апгрейды выглядят купленными у всех подряд, а снос бьёт не по тому гексу.
+   * Таб остаётся только у списков, открытых с карты (`room`), как и раньше.
+   */
+  const roomDataRoom = room ? enclosureRoom : null;
+
+  /**
    * Питание текущего биопода. Стрелки листают биоподы, не закрывая модалку, поэтому
    * ориентируемся на показанный гекс, а не на тот, с которого модалку открыли.
+   * Запасной `powerIssue` годится, только пока показан тот же гекс: у сейва может не
+   * найтись `RoomConfig`, но чужому биоподу чужое питание приписывать нельзя.
    */
   const currentPowerIssue = enclosureRoom
     ? getRoomPowerIssue(enclosureRoom, powerGrid)
-    : powerIssue;
+    : room?.sceneId === scene?.id
+      ? powerIssue
+      : null;
 
   /**
    * Без тока рабочие вкладки недоступны. Если стрелки привели на обесточенный биопод,
@@ -124,12 +136,12 @@ const ToadListModal: React.FC<{
       return;
     }
 
-    if (tab === "toads" || (tab === "room-data" && room)) {
+    if (tab === "toads" || (tab === "room-data" && roomDataRoom)) {
       return;
     }
 
-    setTab(room ? "room-data" : "toads");
-  }, [currentPowerIssue, room, setTab, tab]);
+    setTab(roomDataRoom ? "room-data" : "toads");
+  }, [currentPowerIssue, roomDataRoom, setTab, tab]);
 
   /**
    * Жабы открытого биопода — только те, кто в нём **сейчас** (`scene_id`). Жаба в секторе
@@ -194,7 +206,7 @@ const ToadListModal: React.FC<{
             disabledHint: currentPowerIssue ?? undefined,
           },
     ),
-    ...(room ? [{ ...ROOM_DATA_TAB }] : []),
+    ...(roomDataRoom ? [{ ...ROOM_DATA_TAB }] : []),
   ];
   const [selectedToads, setSelectedToads] = useState<Set<number>>(new Set());
   const [showMoveTooltip, setShowMoveTooltip] = useState(false);
@@ -780,11 +792,11 @@ const ToadListModal: React.FC<{
         />
       )}
 
-      {/* ВКЛАДКА «Данные сектора»: описание, улучшения и снос того же гекса карты — по
+      {/* ВКЛАДКА «Данные сектора»: описание, улучшения и снос показанного гекса карты — по
           ней видно, что это за биопод и что с ним можно сделать. */}
-      {tab === "room-data" && room && (
+      {tab === "room-data" && roomDataRoom && (
         <RoomDataTab
-          room={room}
+          room={roomDataRoom}
           stats={
             <div className="grid grid-cols-3 gap-1.5 text-center text-2xs">
               <div className="rounded-lg bg-slate-900/40 px-1 py-1">

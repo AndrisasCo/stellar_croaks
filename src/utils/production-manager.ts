@@ -25,6 +25,7 @@ import {
   getExpeditions,
   isToadBusyOnExpedition,
 } from "./expedition-manager";
+import { isToadInEnclosure } from "./toad-location";
 
 /**
  * Часть 3.3 — активная ферма.
@@ -53,7 +54,10 @@ const getInjuryFactor = (toad: Toad): number => {
 
 /**
  * Суммарная выработка биомассы (за час) всеми переданными жабами.
- * Жабы, живущие в секторах колонии (⚡-сектор, «Разведка»), биомассу не вырабатывают.
+ *
+ * Работают на ферме только жильцы биоподов: у них числовой `scene_id`. Жабы в секторах
+ * колонии (лазарет, репродуктор, ⚡-сектор, «Разведка») биомассу не вырабатывают, хотя
+ * содержание с них берут — поэтому строковый `scene_id` здесь отсеивается.
  * Жильцы обесточенного биопода тоже стоят без выработки — их сцены приходят набором
  * `unpoweredSceneIds`, чтобы HUD и тик фермы считали одинаково.
  */
@@ -63,9 +67,12 @@ export const getSceneProductionRate = (
   expeditions: Expedition[] = getExpeditions(),
 ): number =>
   toads.reduce((sum, toad) => {
-    const inUnpoweredScene =
-      typeof toad.scene_id === "number" &&
-      unpoweredSceneIds?.has(toad.scene_id);
+    // Жаба в секторе колонии: место есть, но ферме она не помогает
+    if (!isToadInEnclosure(toad)) {
+      return sum;
+    }
+
+    const inUnpoweredScene = unpoweredSceneIds?.has(toad.scene_id);
 
     if (isToadAway(toad, expeditions) || inUnpoweredScene) {
       return sum;
@@ -98,9 +105,30 @@ export interface BiomassFarmRoomStat {
   net: number;
 }
 
+/**
+ * Сектор колонии, который биомассу не даёт, но его жабы её едят: лазарет, репродуктор,
+ * ⚡-энергосектор, «Разведка» и остальные не-биоподы. Нужен, чтобы игрок видел, куда
+ * уходит содержание помимо фермы.
+ */
+export interface BiomassUpkeepRoomStat {
+  /** id гекса (`RoomConfig.id`) — по нему модалка отличает строки. */
+  id: string;
+  name: string;
+  icon: string;
+  /** Жабы сектора, которые не в походе и поэтому едят. */
+  toads: number;
+  /** Содержание этих жаб в час. */
+  upkeep: number;
+}
+
 /** Разбивка фермы биомассы по биоподам — то же, что показывает HUD, но по строкам. */
 export interface BiomassFarmStats {
+  /** Выработка биоподов в час (жабы в секторах колонии не производят). */
   gross: number;
+  /**
+   * Содержание **всех** жаб колонии в час, кроме ушедших в поход: ферма, лазарет,
+   * репродуктор, ⚡-сектор, «Разведка» и остальные гексы.
+   */
   upkeep: number;
   net: number;
   /** Все жабы в биоподах, включая ушедших в поход. */
@@ -111,7 +139,20 @@ export interface BiomassFarmStats {
   awayToads: number;
   /** Работающие жильцы обесточенных биоподов: едят, но не производят. */
   unpoweredToads: number;
+  /**
+   * Жабы в других секторах колонии: они не работают на ферме, но содержание с них
+   * берут (`serviceRooms` раскладывает это число по гексам).
+   */
+  serviceToads: number;
+  /**
+   * Жабы вне гексов карты (старые сейвы, потерянный дом): числового биопода у них нет,
+   * но пока они не в походе — они тоже едят.
+   */
+  unplacedToads: number;
+  /** Строки биоподов: выработка, содержание жильцов и итог по каждому. */
   rooms: BiomassFarmRoomStat[];
+  /** Строки остальных секторов — только содержание: выработки там нет. */
+  serviceRooms: BiomassUpkeepRoomStat[];
 }
 
 /**
@@ -119,13 +160,17 @@ export interface BiomassFarmStats {
  *
  * Считаем теми же функциями, что и часовой тик (`getSceneProductionRate` +
  * `UPKEEP_PER_TOAD_HOUR`), и с теми же правилами, что у HUD:
- *  - в ферме участвуют жильцы биоподов: кто сейчас в нём (числовой `scene_id`), и
+ *  - вырабатывают только жильцы биоподов: кто сейчас в нём (числовой `scene_id`), и
  *    ушедшие в поход из него (дом `homeId` помнит биопод);
+ *  - жабы в секторах колонии (лазарет, репродуктор, ⚡, «Разведка») биомассу не дают,
+ *    но содержание с них берут — так же, как и с жаб без гекса;
  *  - жабы в походе не работают и не едят;
  *  - обесточенный биопод остаётся жилым: выработки нет, содержание есть.
  *
- * Поэтому сумма строк сходится с числом `🧪/ч` в шапке карты, а модалка объясняет
- * игроку, из чего это число сложилось. Апкипинг здесь — оценка текущего часа, а не
+ * Поэтому `upkeep` — это все не ушедшие в поход жабы колонии, а не только ферма.
+ * Разбивка показывает, откуда он сложился: строки биоподов (`rooms`), строки остальных
+ * секторов (`serviceRooms`) и жабы вне гексов (`unplacedToads`). Сумма `gross` сходится
+ * с числом `🧪/ч` в шапке карты. Апкипинг здесь — оценка текущего часа, а не
  * бухгалтерия выплат: `processProduction` округляет результат только при записи.
  */
 export const getBiomassFarmStats = (
@@ -135,6 +180,16 @@ export const getBiomassFarmStats = (
   expeditions: Expedition[] = getExpeditions(),
 ): BiomassFarmStats => {
   const unpoweredSceneIds = getUnpoweredAviarySceneIds(rooms, powerGrid);
+  /** Жабы, с которых берут содержание: все, кто не в походе */
+  const upkeepToads = toads.filter(
+    (toad) => !isToadAway(toad, expeditions),
+  );
+  const aviarySceneIds = new Set(
+    rooms
+      .filter((room) => room.kind === "aviary" && room.sceneId != null)
+      .map((room) => room.sceneId as number),
+  );
+
   const roomStats = rooms
     .filter(
       (room): room is RoomConfig & { sceneId: number } =>
@@ -178,11 +233,54 @@ export const getBiomassFarmStats = (
       };
     });
 
+  /**
+   * Остальные секторы: жабы там биомассу не вырабатывают, но едят. Место жабы в
+   * секторе колонии — строковый `scene_id`; принимаем и id гекса, и канонический id
+   * постройки, как это делает карта (`room-toad-lists.ts`).
+   */
+  const servedToadIds = new Set<number>();
+  const serviceRoomStats = rooms
+    .filter(
+      (room) =>
+        room.kind !== "aviary" &&
+        room.kind !== "core" &&
+        room.kind !== "empty",
+    )
+    .map((room): BiomassUpkeepRoomStat => {
+      const residents = upkeepToads.filter(
+        (toad) =>
+          toad.scene_id === room.id || toad.scene_id === room.slotId,
+      );
+
+      residents.forEach((toad) => servedToadIds.add(toad.id));
+
+      return {
+        id: room.id,
+        name: room.name,
+        icon: room.icon,
+        toads: residents.length,
+        upkeep: residents.length * UPKEEP_PER_TOAD_HOUR,
+      };
+    })
+    .filter((room) => room.toads > 0);
+
+  /** Жабы на ферме: числовой `scene_id`, который принадлежит гексу-биоподу */
+  const farmToadIds = new Set(
+    upkeepToads
+      .filter(
+        (toad) =>
+          isToadInEnclosure(toad) && aviarySceneIds.has(toad.scene_id),
+      )
+      .map((toad) => toad.id),
+  );
+  const unplacedToads = upkeepToads.filter(
+    (toad) => !farmToadIds.has(toad.id) && !servedToadIds.has(toad.id),
+  );
+
+  const gross = roomStats.reduce((sum, room) => sum + room.gross, 0);
+  const upkeep = upkeepToads.length * UPKEEP_PER_TOAD_HOUR;
   const totals = roomStats.reduce(
     (sum, room) => ({
-      gross: sum.gross + room.gross,
-      upkeep: sum.upkeep + room.upkeep,
-      net: sum.net + room.net,
       toads: sum.toads + room.toads,
       activeToads: sum.activeToads + room.activeToads,
       awayToads: sum.awayToads + room.awayToads,
@@ -190,9 +288,6 @@ export const getBiomassFarmStats = (
         sum.unpoweredToads + (room.powered ? 0 : room.activeToads),
     }),
     {
-      gross: 0,
-      upkeep: 0,
-      net: 0,
       toads: 0,
       activeToads: 0,
       awayToads: 0,
@@ -200,7 +295,16 @@ export const getBiomassFarmStats = (
     },
   );
 
-  return { ...totals, rooms: roomStats };
+  return {
+    gross,
+    upkeep,
+    net: gross - upkeep,
+    ...totals,
+    serviceToads: servedToadIds.size,
+    unplacedToads: unplacedToads.length,
+    rooms: roomStats,
+    serviceRooms: serviceRoomStats,
+  };
 };
 
 /**
@@ -213,21 +317,27 @@ export const processProduction = (
   const state = getGameState();
   const expeditions = state.expeditions ?? [];
 
-  const sceneToads = state.toads.filter(
+  /**
+   * Содержание берут все жабы колонии, кроме ушедших в поход: и жильцы биоподов,
+   * и те, кто работает в лазарете, репродукторе, ⚡-секторе или «Разведке».
+   * Выработку же `getSceneProductionRate` оставляет только жильцам биоподов —
+   * место в секторе колонии ферме не помогает, а корм там всё равно нужен.
+   */
+  const upkeepToads = state.toads.filter(
     (toad) => !isToadAway(toad, expeditions),
   );
 
   // Обесточенный биопод остаётся жилым, но биомассу не производит. Содержание жаб
-  // при этом не исчезает: они по-прежнему едят, поэтому upkeep считаем по всем жильцам.
+  // при этом не исчезает: они по-прежнему едят, поэтому upkeep считаем по всем.
   const rooms = resolveColonyRooms(state.colony ?? EMPTY_COLONY, state.scenes);
   const toadsByRoom = getRoomToadLists(rooms, state.toads);
   const powerGrid = getPowerGrid(rooms, toadsByRoom, expeditions);
   const unpoweredSceneIds = getUnpoweredAviarySceneIds(rooms, powerGrid);
 
   const gross =
-    getSceneProductionRate(sceneToads, unpoweredSceneIds, expeditions) *
+    getSceneProductionRate(upkeepToads, unpoweredSceneIds, expeditions) *
     hoursPassed;
-  const upkeep = sceneToads.length * UPKEEP_PER_TOAD_HOUR * hoursPassed;
+  const upkeep = upkeepToads.length * UPKEEP_PER_TOAD_HOUR * hoursPassed;
   const net = gross - upkeep;
 
   const currentBiomass = state.user.biomass || 0;
