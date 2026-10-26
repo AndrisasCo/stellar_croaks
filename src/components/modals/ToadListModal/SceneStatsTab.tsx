@@ -1,10 +1,14 @@
 import React, { useEffect, useState } from "react";
 import { Toad } from "../../../models/Toad";
 import { Scene } from "../../../models/scene";
-import { getGameState, updateGameState } from "../../../backend/localStorage";
+import { updateScene } from "../../../backend";
 import { InfoIcons } from "../../../assets/icons";
 
 import { PRODUCTION_MIN_HUNGER } from "../../../utils/gamification-config";
+import {
+  normalizeSceneName,
+  SCENE_NAME_MAX_LENGTH,
+} from "../../../utils/scene-name";
 
 /**
  * «Статистика биопода» — вторая вкладка модалки списка жаб (`ToadListModal/index.tsx`).
@@ -37,34 +41,27 @@ export const SceneStatsTab: React.FC<{
   /**
    * Стрелки листают биоподы, не закрывая вкладку: чужое имя в поле ввода недопустимо,
    * а недописанное — тем более (имя сохраняется только кнопкой «Сохранить»).
+   * Имя в зависимостях — на случай правки из другой вкладки: поле не должно остаться
+   * со старым названием.
    */
   useEffect(() => {
     setSceneName(scene.name || "");
     setIsEditing(false);
-  }, [scene.id]);
+  }, [scene.id, scene.name]);
 
   // Обработчик сохранения названия
   const handleSaveName = () => {
-    if (!sceneName.trim() || sceneName === scene.name) {
+    const name = normalizeSceneName(sceneName);
+
+    if (!name || name === scene.name) {
       setIsEditing(false);
       setSceneName(scene.name || "");
       return;
     }
 
-    try {
-      const allScenes = getGameState().scenes;
-      const foundScene = allScenes.find((item) => item.id === scene.id);
-      if (!foundScene) {
-        return;
-      }
-      foundScene.name = sceneName.trim();
-      updateGameState({ scenes: allScenes });
+    updateScene(scene.id, { name });
 
-      setIsEditing(false);
-    } catch (error) {
-      console.error("Ошибка при обновлении названия:", error);
-      setSceneName(scene.name || ""); // Возвращаем старое название при ошибке
-    }
+    setIsEditing(false);
   };
 
   // Обработчик отмены редактирования
@@ -166,6 +163,7 @@ export const SceneStatsTab: React.FC<{
                 value={sceneName}
                 onChange={(e) => setSceneName(e.target.value)}
                 onKeyDown={handleKeyPress}
+                maxLength={SCENE_NAME_MAX_LENGTH}
                 className="flex-1 bg-slate-600/50 border border-blue-500/50 rounded px-2 py-1 text-white text-sm focus:outline-none focus:border-blue-400"
                 placeholder="Введите название биопода"
                 autoFocus

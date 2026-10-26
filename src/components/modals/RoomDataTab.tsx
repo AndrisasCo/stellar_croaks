@@ -1,11 +1,22 @@
-import { ReactNode, useMemo } from "react";
-import { updateUser } from "../../backend";
+import {
+  KeyboardEvent,
+  ReactNode,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import { updateScene, updateUser } from "../../backend";
 import { getRoomUpgrades, upgradeColonyRoom } from "../../backend/colony";
+import { InfoIcons } from "../../assets/icons";
 import { useColony } from "../../hooks/use-colony";
 import { useNotifications } from "../../hooks/use-notification";
 import { useSoundEffects } from "../../hooks/use-sound-effects";
 import { processAutoFeeders } from "../../utils/auto-feeder";
 import { CURRENCY_CONFIG, DEMOLISH_ROOM_COST } from "../../utils/constants";
+import {
+  normalizeSceneName,
+  SCENE_NAME_MAX_LENGTH,
+} from "../../utils/scene-name";
 import {
   hasUpgrade,
   ROOM_UPGRADES,
@@ -37,6 +48,9 @@ import RoomDemolishModal from "./RoomDemolishModal";
  * статистика места (`stats` — её передаёт модалка, у которой она есть: биопод показывает
  * статистику биопода, Медотсек — койки, «Разведка» — походы), а также то, что раньше жило
  * в отдельной модалке улучшения: покупка апгрейдов и снос сектора.
+ *
+ * У биопода здесь же правится имя (`Scene.name`) — оно общее для шапки списка жаб,
+ * этой карточки и списка переезда, поэтому разбор ввода вынесен в `utils/scene-name.ts`.
  *
  * Модалка улучшения (`RoomUpgradeModal`) удалена: клик по ядру карты больше ничего не
  * открывает, а улучшения и снос переехали сюда — к самим секторам, которых они касаются.
@@ -86,6 +100,68 @@ export default function RoomDataTab({ room, stats }: RoomDataTabProps) {
     ? (ownedScenes.find((item) => item.id === room.sceneId) ?? null)
     : null;
   const demolishIssue = getRoomDemolishIssue(room, roomToads);
+
+  /**
+   * Правка имени биопода прямо в «О секторе»: имя — это `Scene.name`, поэтому после
+   * сохранения оно меняется и в шапке списка жаб, и в переезде. Гекс без биопода
+   * (`scene === null`) поля не получает.
+   */
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [sceneName, setSceneName] = useState(scene?.name ?? "");
+
+  // Биопод может смениться (стрелки листают их в модалке) или имя прийти из облака:
+  // незаконченная правка не должна переезжать на чужой биопод.
+  useEffect(() => {
+    setSceneName(scene?.name ?? "");
+    setIsEditingName(false);
+  }, [scene?.id, scene?.name]);
+
+  /** Сохранить имя биопода: пустой ввод не принимаем, неизменённое имя просто закрываем */
+  const handleSaveName = () => {
+    if (!scene) {
+      return;
+    }
+
+    const name = normalizeSceneName(sceneName);
+
+    if (!name) {
+      playError();
+      addNotification({
+        type: "warn",
+        content: "Название биопода не может быть пустым.",
+      });
+      return;
+    }
+
+    if (name !== scene.name) {
+      updateScene(scene.id, { name });
+      playSuccess();
+      addNotification({
+        type: "success",
+        content: `Биопод переименован: «${name}»`,
+      });
+    }
+
+    setIsEditingName(false);
+  };
+
+  const handleCancelName = () => {
+    setIsEditingName(false);
+    setSceneName(scene?.name ?? "");
+  };
+
+  /** Enter сохраняет имя, Esc отменяет правку, а не закрывает окно (см. ModalProvider) */
+  const handleNameKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Enter") {
+      handleSaveName();
+      return;
+    }
+
+    if (event.key === "Escape") {
+      event.preventDefault();
+      handleCancelName();
+    }
+  };
 
   /** Покупка апгрейда: списываем Кваксы, пишем апгрейд сектору и сразу кормим жаб */
   const handleBuy = (option: RoomUpgradeOption) => {
@@ -151,12 +227,50 @@ export default function RoomDataTab({ room, stats }: RoomDataTabProps) {
               <span className="text-sm font-semibold text-amber-100">
                 {room.name}
               </span>
-              {scene && (
-                <span className="text-2xs text-slate-400">
-                  биопод «{scene.name}»
+              {scene && !isEditingName && (
+                <span className="inline-flex items-center gap-1 text-2xs text-slate-400">
+                  биопод «{scene.name || "Биопод"}»
+                  <button
+                    onClick={() => setIsEditingName(true)}
+                    className="text-slate-400 transition-colors hover:text-cyan-300"
+                    title="Переименовать биопод"
+                    aria-label="Переименовать биопод"
+                  >
+                    {InfoIcons.pencil}
+                  </button>
                 </span>
               )}
             </div>
+
+            {/* Имя биопода: Enter сохраняет, Esc отменяет правку и не закрывает окно */}
+            {scene && isEditingName && (
+              <div className="mt-1.5 flex items-center gap-1">
+                <input
+                  value={sceneName}
+                  onChange={(event) => setSceneName(event.target.value)}
+                  onKeyDown={handleNameKeyDown}
+                  maxLength={SCENE_NAME_MAX_LENGTH}
+                  placeholder="Название биопода"
+                  aria-label="Название биопода"
+                  autoFocus
+                  className="min-w-0 flex-1 rounded-lg border border-cyan-400/40 bg-slate-950/60 px-2 py-1 text-xs text-white outline-none transition-colors placeholder-slate-500 focus:border-cyan-400"
+                />
+                <button
+                  onClick={handleSaveName}
+                  className="rounded-lg border border-emerald-500/40 px-2 py-1 text-xs text-emerald-300 transition-colors hover:bg-emerald-500/15"
+                  title="Сохранить название"
+                >
+                  ✓
+                </button>
+                <button
+                  onClick={handleCancelName}
+                  className="rounded-lg border border-rose-500/40 px-2 py-1 text-xs text-rose-300 transition-colors hover:bg-rose-500/15"
+                  title="Отменить переименование"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
             <p className="ui-caption">{room.subtitle}</p>
           </div>
         </div>

@@ -39,6 +39,7 @@
     "verify:place": "node tmp-verify-toad-place.mjs",
     "verify:toad-move-menu": "node tmp-verify-toad-move-menu.mjs",
     "verify:names": "node tmp-verify-room-names.mjs",
+    "verify:biopod-rename": "node tmp-verify-biopod-rename.mjs",
     "verify:toad-picker": "node tmp-verify-toad-picker.mjs",
     "verify:biomass": "node tmp-verify-biomass-sell.mjs",
     "verify:biomass-upkeep": "node tmp-verify-biomass-upkeep.mjs",
@@ -52,7 +53,7 @@
     "verify:tutorial-flow": "node tmp-verify-tutorial-flow.mjs",
     "verify:bot-keyboard": "node tmp-verify-bot-keyboard.mjs",
     "verify:quest-journal": "node tmp-verify-quest-journal.mjs",
-    "verify": "npm run verify:init-data && npm run verify:stars && npm run verify:platform && npm run verify:breeding && npm run verify:touch && npm run verify:colony && npm run verify:crew && npm run verify:expedition-busy && npm run verify:expedition-aggression && npm run verify:expedition-role-power && npm run verify:expedition-offline && npm run verify:expedition-extract && npm run verify:expedition-evacuation && npm run verify:expedition-origin && npm run verify:assets && npm run verify:place && npm run verify:toad-move-menu && npm run verify:names && npm run verify:toad-picker && npm run verify:biomass && npm run verify:biomass-upkeep && npm run verify:gene-dust && npm run verify:auth && npm run verify:boot && npm run verify:cloud-flush && npm run verify:contour && npm run verify:energy && npm run verify:tutorial-build && npm run verify:tutorial-flow && npm run verify:bot-keyboard && npm run verify:quest-journal",
+    "verify": "npm run verify:init-data && npm run verify:stars && npm run verify:platform && npm run verify:breeding && npm run verify:touch && npm run verify:colony && npm run verify:crew && npm run verify:expedition-busy && npm run verify:expedition-aggression && npm run verify:expedition-role-power && npm run verify:expedition-offline && npm run verify:expedition-extract && npm run verify:expedition-evacuation && npm run verify:expedition-origin && npm run verify:assets && npm run verify:place && npm run verify:toad-move-menu && npm run verify:names && npm run verify:biopod-rename && npm run verify:toad-picker && npm run verify:biomass && npm run verify:biomass-upkeep && npm run verify:gene-dust && npm run verify:auth && npm run verify:boot && npm run verify:cloud-flush && npm run verify:contour && npm run verify:energy && npm run verify:tutorial-build && npm run verify:tutorial-flow && npm run verify:bot-keyboard && npm run verify:quest-journal",
     "bot:check": "node --env-file-if-exists=.env scripts/check-bot-token.mjs"
   },
   "dependencies": {
