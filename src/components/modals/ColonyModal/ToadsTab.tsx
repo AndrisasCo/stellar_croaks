@@ -3,9 +3,18 @@ import { Toad } from "../../../models/Toad";
 import { getToadHomeId } from "../../../utils/toad-location";
 import { Scene } from "../../../models/scene";
 import { useFilters } from "../../../hooks/use-filters";
-import { isToadBusyOnExpedition } from "../../../utils/expedition-manager";
+import {
+  EXPEDITION_TOAD_BUSY_REASON,
+  isToadBusyOnExpedition,
+} from "../../../utils/expedition-manager";
 import { useModal } from "../../ModalContext";
 import { useToads } from "../../ToadContext";
+import { completeAchivement } from "../../../backend/achivements-manager";
+import { useSoundEffects } from "../../../hooks/use-sound-effects";
+import {
+  HospitalAdmission,
+  useHospitalAdmission,
+} from "../../../hooks/use-hospital-admission";
 import { Filters } from "../../shared/Filters";
 import {
   ToadListCard,
@@ -91,23 +100,63 @@ const getToadPlace = (
 const ColonyToadCard = ({
   toad,
   place,
+  admission,
   onOpen,
+  onFeed,
+  onAdmit,
 }: {
   toad: Toad;
   place: ToadListPlace;
+  /** Куда и можно ли отправить жабу в Медотсек: кнопка «✚» рядом с HP */
+  admission: HospitalAdmission;
   onOpen: () => void;
-}) => (
-  <ToadListCard
-    toad={toad}
-    place={place}
-    onOpen={onOpen}
-    variant="full"
-    showHunger
-    showHp
-    showEnergy
-    diseaseStyle="bar"
-  />
-);
+  onFeed: () => void;
+  onAdmit: () => void;
+}) => {
+  const canFeed = !isToadBusyOnExpedition(toad);
+  const canAdmit = Boolean(admission.room);
+
+  return (
+    <ToadListCard
+      toad={toad}
+      place={place}
+      onOpen={onOpen}
+      variant="full"
+      showHunger
+      showHp
+      showEnergy
+      diseaseStyle="bar"
+      hungerAction={
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            onFeed();
+          }}
+          disabled={!canFeed}
+          className="rounded-md border border-green-500/30 bg-green-500/20 px-2 py-1 text-2xs font-medium leading-none text-green-300 transition-all hover:bg-green-500/30 disabled:cursor-not-allowed disabled:border-slate-600/30 disabled:bg-slate-700/20 disabled:text-slate-500"
+          title={canFeed ? "Покормить" : EXPEDITION_TOAD_BUSY_REASON}
+        >
+          🍎
+        </button>
+      }
+      healthAction={
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            onAdmit();
+          }}
+          disabled={!canAdmit}
+          className="rounded-md border border-rose-500/30 bg-rose-500/20 px-2 py-0.5 text-sm font-bold leading-none text-rose-300 transition-all hover:bg-rose-500/30 disabled:cursor-not-allowed disabled:border-slate-600/30 disabled:bg-slate-700/20 disabled:text-slate-500"
+          title={admission.issue ?? "Отправить в Медотсек"}
+        >
+          ✚
+        </button>
+      }
+    />
+  );
+};
 
 /**
  * Вкладка «Жабы»: вся колония одним списком, без деления на биоподы.
@@ -127,7 +176,10 @@ const ToadsTab = ({
   scenes: Scene[];
 }) => {
   const { openModal } = useModal();
-  const { selectToad } = useToads();
+  const { selectToad, handleFeedToads } = useToads();
+  const { playCrunchShort } = useSoundEffects();
+  /** Быстрая отправка на койку из списка: правила те же, что у карты */
+  const { getAdmission, admit } = useHospitalAdmission();
 
   const roomsById = useMemo(
     () => new Map(rooms.map((room) => [room.id, room])),
@@ -141,6 +193,12 @@ const ToadsTab = ({
   const openToad = (toad: Toad) => {
     selectToad(toad.id);
     openModal(() => <ToadInfo />);
+  };
+
+  const feedToad = (toad: Toad) => {
+    playCrunchShort();
+    handleFeedToads([toad.id]);
+    completeAchivement("feed-one");
   };
 
   /**
@@ -177,6 +235,7 @@ const ToadsTab = ({
         sortBy={sortBy}
         sortDirection={sortDirection}
         addHunger
+        addHealth
       />
 
       {filteredAndSortedToads.length === 0 ? (
@@ -189,7 +248,10 @@ const ToadsTab = ({
             key={toad.id}
             toad={toad}
             place={getToadPlace(toad, roomsById, scenesById)}
+            admission={getAdmission(toad)}
             onOpen={() => openToad(toad)}
+            onFeed={() => feedToad(toad)}
+            onAdmit={() => admit(toad)}
           />
         ))
       )}

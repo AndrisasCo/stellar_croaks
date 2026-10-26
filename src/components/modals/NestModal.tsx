@@ -444,6 +444,8 @@ export default function NestModal({
                   icon: getToadSexIcon(NEST_SLOT_SEXES[index]),
                 }))}
                 columns={2}
+                // Занятый слот: качество, силы и болезнь — сытость и HP паре не нужны
+                vitals={{ rarity: true, energy: true, disease: true }}
                 title="Слоты репродуктора"
                 headerRight={nestRoomTitle}
                 pickerFor={(index) => {

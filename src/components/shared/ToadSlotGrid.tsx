@@ -1,28 +1,40 @@
 import React from "react";
-import { Toad } from "../../models/Toad";
+import {
+  getGeneticFaultConfig,
+  getPersonalityLabel,
+  getRarityConfig,
+  Toad,
+} from "../../models/Toad";
+import { getToadDisease, isToadSick } from "../../models/disease";
 import {
   getToadHp,
   getToadHpStatusLabel,
   getToadMaxHp,
 } from "../../utils/expedition-config";
-import { getToadEnergy, getToadMaxEnergy } from "../../utils/gamification-config";
+import {
+  getToadEnergy,
+  getToadMaxEnergy,
+  PRODUCTION_MIN_HUNGER,
+} from "../../utils/gamification-config";
+import { getToadRarityLine } from "../../utils/toad-picker";
+import { getHungerBarColor, getHungerTextColor } from "../../utils/hunger";
 import { useModal } from "../ModalContext";
 import { ClickButton } from "./ClickButton";
 import Modal from "./Header";
 import { ToadAvatar } from "./ToadAvatar";
-import { ToadPickerGroup, ToadPickerList } from "./ToadPicker";
+import { getMeterColor, ToadPickerGroup, ToadPickerList } from "./ToadPicker";
 
 /**
  * Сетка слотов для жаб — один вид на репродуктор, коллайдер, Медотсек, энергосектор и КОНТУР.
  *
  * Пустой слот — квадрат с пунктирной обводкой и «+» по центру; занятый — аватар жабы,
- * её имя и Качество, а в углу крестик, если жабу можно убрать. Тап по пустому слоту
- * открывает модалку выбора (`ToadPickerList`), тап по занятому — карточку жабы.
- * Выпадающих списков внутри этих модалок больше нет: список жаб живёт в отдельном окне,
- * где ему хватает места и на группы, и на причины отказа.
+ * её имя и характеристики, важные именно этому месту (`vitals`), а в углу крестик, если
+ * жабу можно убрать. Тап по пустому слоту открывает модалку выбора (`ToadPickerList`),
+ * тап по занятому — карточку жабы. Выпадающих списков внутри этих модалок больше нет:
+ * список жаб живёт в отдельном окне, где ему хватает места и на группы, и на причины отказа.
  *
- * Место описывает только свои правила выбора (`pickerFor`) и свои действия (`onPick`,
- * `onOpen`, `onRemove`), а вид слотов и модалки — здесь, один на всех.
+ * Место описывает только свои правила выбора (`pickerFor`), свои характеристики (`vitals`)
+ * и свои действия (`onPick`, `onOpen`, `onRemove`), а вид слотов и модалки — здесь, один на всех.
  */
 
 /** Правила выбора жаб для слота: те же группы, что у выпадающего списка */
@@ -37,6 +49,43 @@ export interface ToadSlotPickerConfig {
   emptyText?: string;
 }
 
+/** Какие характеристики показывает занятый слот: у каждого места они свои */
+export interface ToadSlotVitals {
+  /** ❤️ здоровье с полоской */
+  hp?: boolean;
+  /** ⚡ силы с полоской */
+  energy?: boolean;
+  /** 🍽 сытость с полоской (энергосектор: по ней жаба даёт ток) */
+  hunger?: boolean;
+  /** Качество строкой (репродуктор: пару собирают из лучших жаб) */
+  rarity?: boolean;
+  /**
+   * Полный набор характеристик (коллайдер: по ним сравнивают жаб):
+   * качество, поломка, поколение, вес, скорость, аппетит, плодовитость и характер.
+   * Качество уже входит в набор, поэтому вместе с `rarity` его не дублируем.
+   */
+  genetics?: boolean;
+  /** Болезнь: плашка с названием, если жаба болеет */
+  disease?: boolean;
+}
+
+/**
+ * Показатель под характеристиками слота: подпись, проценты и полоска — тот же вид,
+ * что у плитки в списке выбора (`shared/ToadPicker`), чтобы сила роли читалась одинаково.
+ */
+export interface ToadSlotMeter {
+  /** Заполнение полоски, 0..100 */
+  value: number;
+  /** Подпись справа: «68%» */
+  label: string;
+  /** Характеристика слева, обычно сокращённо: «Скор. 1.55» */
+  detail?: string;
+  /** Полное название характеристики для подсказки: «Скорость 1.55» */
+  detailTitle?: string;
+  /** Подпись под полоской: «Подходит» */
+  caption?: string;
+}
+
 /** Один слот сетки: жаба в нём (или пусто) и подпись места */
 export interface ToadSlotItem {
   toad: Toad | null;
@@ -44,13 +93,8 @@ export interface ToadSlotItem {
   label: string;
   /** Значок слота перед подписью (♀, ♂, 🛏️) */
   icon?: React.ReactNode;
-  /**
-   * Короткая подпись на занятом слоте: сила роли в КОНТУРе, готовность к паре и т.п.
-   * На пустом слоте не показывается.
-   */
-  badge?: React.ReactNode;
-  /** Расшифровка подписи под ней: «Соответствует роли» у процента КОНТУРа */
-  badgeLabel?: React.ReactNode;
+  /** Показатель с полоской на занятом слоте: сила роли в КОНТУРе и т.п. */
+  meter?: ToadSlotMeter;
   /** Почему слот нельзя заполнить — подсказка пустого слота */
   disabledHint?: string;
 }
@@ -59,6 +103,8 @@ export interface ToadSlotGridProps {
   slots: ToadSlotItem[];
   /** Колонок на широком экране; на телефоне сетка переносит слоты сама */
   columns?: 2 | 3 | 4 | 5 | 6;
+  /** Что показывать на занятом слоте: без набора — HP и силы, как было у всех мест */
+  vitals?: ToadSlotVitals;
   /** Заголовок блока */
   title?: React.ReactNode;
   /** Подпись справа от заголовка: имя сектора, свободные места */
@@ -93,6 +139,9 @@ const GRID_COLUMNS: Record<
   5: "grid-cols-2 sm:grid-cols-3 md:grid-cols-5",
   6: "grid-cols-3 sm:grid-cols-6",
 };
+
+/** Без набора характеристик слот показывает то же, что и раньше: здоровье и силы */
+const DEFAULT_VITALS: ToadSlotVitals = { hp: true, energy: true };
 
 interface ToadSlotPickerModalProps {
   /** Подпись слота: «Слот самки», «Койка 3» */
@@ -174,12 +223,93 @@ const SlotVital: React.FC<{
 };
 
 /**
+ * Одна характеристика в блоке генетики: подпись слева, значение справа.
+ *
+ * Слот узкий, поэтому длинные строки (плодовитость, характер) занимают обе
+ * колонки, а полное значение всегда доступно в подсказке.
+ */
+const SlotGene: React.FC<{
+  label: string;
+  value: React.ReactNode;
+  title: string;
+  valueClassName?: string;
+  className?: string;
+}> = ({
+  label,
+  value,
+  title,
+  valueClassName = "text-slate-200",
+  className = "",
+}) => (
+  <span
+    title={title}
+    className={`flex min-w-0 items-baseline justify-between gap-1 ${className}`}
+  >
+    <span className="shrink-0 text-slate-500">{label}</span>
+    <span
+      className={`min-w-0 truncate text-right font-semibold tabular-nums ${valueClassName}`}
+    >
+      {value}
+    </span>
+  </span>
+);
+
+/**
+ * Полная генетика жабы для коллайдера: то, по чему игрок сравнивает жаб перед
+ * смешиванием. Здоровье и силы сюда не входят — их место в других секторах.
+ */
+const SlotGenetics: React.FC<{ toad: Toad }> = ({ toad }) => {
+  const rarity = getRarityConfig(toad.genes.rarity);
+  const fault = getGeneticFaultConfig(toad.state?.genetic_fault);
+  const faultValue = toad.state?.genetic_fault ?? 0;
+
+  return (
+    <div className="grid w-full grid-cols-2 gap-x-2 gap-y-0.5 text-xs text-slate-400">
+      <SlotGene
+        label="Кач."
+        value={toad.genes.rarity.toFixed(1)}
+        title={`Качество: ${rarity.icon} ${rarity.label} · ${toad.genes.rarity.toFixed(1)}`}
+        valueClassName={rarity.color}
+      />
+      <SlotGene
+        label="Пол."
+        value={`${faultValue}%`}
+        title={`Поломка: ${fault.icon} ${fault.label} · ${faultValue}%`}
+        valueClassName={fault.color}
+      />
+
+      <SlotGene
+        label="Вес"
+        value={toad.genes.weight.toFixed(1)}
+        title={`Вес: ${toad.genes.weight.toFixed(1)}`}
+      />
+      <SlotGene
+        label="Скор."
+        value={toad.genes.speed.toFixed(1)}
+        title={`Скорость: ${toad.genes.speed.toFixed(1)}`}
+      />
+      <SlotGene
+        label="Апп."
+        value={toad.genes.hungerRate.toFixed(1)}
+        title={`Аппетит: ${toad.genes.hungerRate.toFixed(1)}`}
+      />
+      <SlotGene
+        label="Плод."
+        value={toad.genes.fertility.toFixed(1)}
+        title={`Плодовитость: ${toad.genes.fertility.toFixed(1)}`}
+      />
+    </div>
+  );
+};
+
+/**
  * Сетка слотов: пустой слот открывает модалку выбора, занятый — карточку жабы,
  * крестик убирает жабу из слота. Все модалки секторов описывают только правила.
  */
 export const ToadSlotGrid: React.FC<ToadSlotGridProps> = ({
   slots,
   columns = 2,
+  vitals: slotVitals,
   title,
   headerRight,
   pickerFor,
@@ -244,6 +374,19 @@ export const ToadSlotGrid: React.FC<ToadSlotGridProps> = ({
           const maxHp = toad ? getToadMaxHp(toad) : 0;
           const energy = toad ? Math.round(getToadEnergy(toad)) : 0;
           const maxEnergy = toad ? getToadMaxEnergy(toad) : 0;
+          /** Характеристики места: без набора — прежние HP и силы */
+          const vitals = slotVitals ?? DEFAULT_VITALS;
+          const hunger = toad
+            ? Math.max(0, Math.min(100, toad.state?.hunger ?? 0))
+            : 0;
+          const disease =
+            toad && vitals.disease && isToadSick(toad)
+              ? getToadDisease(toad)
+              : null;
+          const rarity = toad ? getRarityConfig(toad.genes.rarity) : null;
+          const meterPercent = slot.meter
+            ? Math.max(0, Math.min(100, slot.meter.value))
+            : 0;
 
           // HP: та же шкала, что у `HpBar` и полоски в карточке жабы (зелёный → жёлтый → красный)
           const hpRatio = maxHp > 0 ? Math.max(0, Math.min(1, hp / maxHp)) : 0;
@@ -278,6 +421,10 @@ export const ToadSlotGrid: React.FC<ToadSlotGridProps> = ({
                 ? "text-amber-300"
                 : "text-rose-300";
 
+          // Сытость: те же цвета и пороги, что у полоски в карточке жабы
+          const hungerBarClass = getHungerBarColor(hunger);
+          const hungerValueClass = getHungerTextColor(hunger);
+
           return (
             <ClickButton
               key={`toad-slot-${index}`}
@@ -309,33 +456,99 @@ export const ToadSlotGrid: React.FC<ToadSlotGridProps> = ({
                   <span className="w-full truncate text-center text-2xs font-semibold text-slate-100">
                     {toad.name}
                   </span>
-                  <div className="flex w-full items-stretch gap-1">
-                    <SlotVital
-                      icon="❤️"
-                      value={hp}
-                      max={maxHp}
-                      barClassName={hpBarClass}
-                      valueClassName={hpValueClass}
-                      title={`Здоровье: ${hp} / ${maxHp} · ${getToadHpStatusLabel(toad)}`}
-                    />
-                    <SlotVital
-                      icon="⚡️"
-                      value={energy}
-                      max={maxEnergy}
-                      barClassName={energyBarClass}
-                      valueClassName={energyValueClass}
-                      title={`Силы: ${energy} / ${maxEnergy}`}
-                    />
-                  </div>
-                  {slot.badge != null && (
-                    <span className="max-w-full truncate text-3xs font-semibold text-amber-200">
-                      {slot.badge}
+
+                  {/* Болезнь: название важнее остальных показателей — её лечат первой */}
+                  {disease && (
+                    <span
+                      title={`${disease.name}: ${disease.description}`}
+                      className="flex w-full min-w-0 items-center justify-center gap-0.5 rounded border border-orange-400/30 bg-orange-500/10 px-1 py-0.5 text-3xs leading-none text-orange-200"
+                    >
+                      <span aria-hidden>{disease.icon}</span>
+                      <span className="truncate">{disease.name}</span>
                     </span>
                   )}
-                  {slot.badgeLabel && (
-                    <span className="max-w-full truncate text-3xs leading-tight text-slate-400">
-                      {slot.badgeLabel}
+
+                  {/* Качество строкой: репродуктор и списки сравнивают жаб по нему */}
+                  {vitals.rarity && !vitals.genetics && rarity && (
+                    <span
+                      className={`w-full truncate text-center text-3xs leading-tight ${rarity.color}`}
+                    >
+                      {getToadRarityLine(toad)}
                     </span>
+                  )}
+
+                  {/* Коллайдер: все гены и происхождение, без здоровья и сил */}
+                  {vitals.genetics && <SlotGenetics toad={toad} />}
+
+                  {(vitals.hp || vitals.energy || vitals.hunger) && (
+                    <div className="flex w-full items-stretch gap-1">
+                      {vitals.hp && (
+                        <SlotVital
+                          icon="❤️"
+                          value={hp}
+                          max={maxHp}
+                          barClassName={hpBarClass}
+                          valueClassName={hpValueClass}
+                          title={`Здоровье: ${hp} / ${maxHp} · ${getToadHpStatusLabel(toad)}`}
+                        />
+                      )}
+                      {vitals.energy && (
+                        <SlotVital
+                          icon="⚡️"
+                          value={energy}
+                          max={maxEnergy}
+                          barClassName={energyBarClass}
+                          valueClassName={energyValueClass}
+                          title={`Силы: ${energy} / ${maxEnergy}`}
+                        />
+                      )}
+                      {vitals.hunger && (
+                        <SlotVital
+                          icon="🍽"
+                          value={hunger}
+                          max={100}
+                          barClassName={hungerBarClass}
+                          valueClassName={hungerValueClass}
+                          title={
+                            hunger <= PRODUCTION_MIN_HUNGER
+                              ? `Сытость: ${hunger} / 100 · ниже ${PRODUCTION_MIN_HUNGER}% жаба не даёт ток и хуже вырабатывает биомассу`
+                              : `Сытость: ${hunger} / 100`
+                          }
+                        />
+                      )}
+                    </div>
+                  )}
+
+                  {/* Показатель места: та же полоска, что у плитки в списке выбора */}
+                  {slot.meter && (
+                    <div className="mt-auto flex w-full flex-col gap-0.5">
+                      <div className="flex w-full items-baseline justify-between gap-1">
+                        {slot.meter.detail && (
+                          <span
+                            title={slot.meter.detailTitle ?? slot.meter.detail}
+                            className="min-w-0 flex-1 truncate text-3xs text-slate-400"
+                          >
+                            {slot.meter.detail}
+                          </span>
+                        )}
+                        <span className="shrink-0 text-2xs font-bold text-amber-200">
+                          {slot.meter.label}
+                        </span>
+                      </div>
+                      <div className="h-1 w-full overflow-hidden rounded-full bg-slate-700">
+                        <div
+                          className={`h-full rounded-full ${getMeterColor(
+                            meterPercent,
+                          )}`}
+                          style={{ width: `${meterPercent}%` }}
+                        />
+                      </div>
+                      {slot.meter.caption && (
+                        <p className="w-full truncate text-center text-3xs leading-tight text-slate-400">
+                          {slot.meter.caption}
+                        </p>
+                      )}
+                    </div>
                   )}
 
                   {canRemove && (

@@ -287,6 +287,8 @@ export default function PowerRoomModal({ room }: { room: RoomConfig }) {
           <ToadSlotGrid
             slots={powerSlots}
             columns={6}
+            // Занятый слот: болезнь и сытость — по ним видно, даёт ли жаба ток
+            vitals={{ hunger: true, disease: true }}
             title={`⚡ В «${room.name}» (${roomToads.length}/${POWER_ROOM_TOAD_SLOTS})`}
             headerRight={`свободно мест: ${freeSlots}`}
             pickerFor={() => ({

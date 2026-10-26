@@ -18,14 +18,11 @@ import { getFamilyGroups, getRelationshipColor } from "./utils";
 import { CompactToadItem } from "./CompactToadItem";
 import { ToadInfo } from "../ToadInfoModal";
 import { useModal } from "../../ModalContext";
-import { DissolveConfirm } from "../../shared/DissolveConfirm";
-import { DissolveBlockedModal } from "../../shared/DissolveBlockedModal";
-import { useDissociator } from "../../../hooks/use-dissociator";
-import { dissolveToads } from "../../../utils/dissolve-manager";
 import { getHousingInfo } from "../../../utils/housing";
 import { getRoomUpgrades } from "../../../backend/colony";
 import { useColony } from "../../../hooks/use-colony";
 import { useGameState } from "../../../hooks/use-game-state";
+import { useHospitalAdmission } from "../../../hooks/use-hospital-admission";
 import { useRoomPowerTab } from "../../../hooks/use-room-power-tab";
 import { isToadAwayFromEnclosure } from "../../../utils/toad-location";
 import {
@@ -72,12 +69,14 @@ const ToadListModal: React.FC<{
   room?: RoomConfig;
 }> = ({ sceneId, room }) => {
   const { openModal } = useModal();
-  const { playCrunchShort, playClick } = useSoundEffects();
+  const { playCrunchShort } = useSoundEffects();
   const { handleFeedToads, ownedScenes, selectToad, allToads, selectedToad } =
     useToads();
   const { addNotification } = useNotifications();
   const { expeditions = [] } = useGameState();
   const { rooms, powerGrid } = useColony();
+  /** Быстрая отправка на койку из списка: правила те же, что у карты */
+  const { getAdmission, admit } = useHospitalAdmission();
   /**
    * Обесточенный биопод открывается на данных сектора, но список жаб остаётся живым:
    * смотреть и кормить жильцов можно, а биомассу такой биопод не вырабатывает.
@@ -210,19 +209,12 @@ const ToadListModal: React.FC<{
   ];
   const [selectedToads, setSelectedToads] = useState<Set<number>>(new Set());
   const [showMoveTooltip, setShowMoveTooltip] = useState(false);
-  /** Жабы, отправленные в диссоциатор: ждут подтверждения разбора */
-  const [dissolveTargets, setDissolveTargets] = useState<Toad[]>([]);
-  /** Диссоциатор не готов: вместо подтверждения показываем окно-подсказку */
-  const [showBlockedDissolve, setShowBlockedDissolve] = useState(false);
   const [familyGroups, setFamilyGroups] = useState<Map<number, number>>(
     new Map(),
   );
 
   /** Места в биоподах колонии: склада жаб больше нет, поэтому это единственный дом */
   const housing = getHousingInfo();
-
-  // Диссоциатор принимает жаб, только когда его сектор построен и под током
-  const { ready: dissociatorReady, built: dissociatorBuilt } = useDissociator();
 
   /**
    * Автокормушка биопода: апгрейд стоит у гекса (`getRoomUpgrades`), и легаси-бонус
@@ -240,19 +232,6 @@ const ToadListModal: React.FC<{
       ),
     [enclosureRoom, scene?.id],
   );
-
-  const handleDissolveConfirm = () => {
-    const ids = dissolveTargets.map((toad) => toad.id);
-    const result = dissolveToads(ids);
-    setDissolveTargets([]);
-
-    if (!result.success) {
-      addNotification({ type: "warn", content: result.message });
-      return;
-    }
-
-    addNotification({ type: "success", content: result.message });
-  };
 
   useEffect(() => {
     if (!selectedToad) {
@@ -513,6 +492,7 @@ const ToadListModal: React.FC<{
             sortBy={sortBy}
             sortDirection={sortDirection}
             addHunger
+            addHealth
           />
 
           {/* Режим вида: подробные карточки или сетка (по центру — стрелки биоподов) */}
@@ -640,6 +620,8 @@ const ToadListModal: React.FC<{
               // остаётся только в компактной сетке, где карточки идут плиткой.
               <div className="space-y-2">
                 {filteredAndSortedToads.map((toad) => {
+                  const admission = getAdmission(toad);
+
                   return (
                     <ToadListCard
                       key={toad.id}
@@ -650,35 +632,34 @@ const ToadListModal: React.FC<{
                       showHunger
                       showHp
                       showEnergy
-                      actions={
-                        <div className="flex gap-1">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              playClick();
-                              if (dissociatorReady) {
-                                setDissolveTargets([toad]);
-                              } else {
-                                setShowBlockedDissolve(true);
-                              }
-                            }}
-                            className="rounded-lg border border-amber-500/30 bg-amber-500/20 px-3 py-2 text-xs font-medium text-amber-200 transition-all hover:bg-amber-500/30"
-                            title="Разобрать на биомассу (освободит место)"
-                          >
-                            ♻️
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              playCrunchShort();
-                              handleFeedToads([toad.id]);
-                              completeAchivement("feed-one");
-                            }}
-                            className="rounded-lg border border-green-500/30 bg-green-500/20 px-3 py-2 text-xs font-medium text-green-300 transition-all hover:bg-green-500/30"
-                          >
-                            🍎
-                          </button>
-                        </div>
+                      hungerAction={
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            playCrunchShort();
+                            handleFeedToads([toad.id]);
+                            completeAchivement("feed-one");
+                          }}
+                          className="rounded-md border border-green-500/30 bg-green-500/20 px-2 py-1 text-2xs font-medium leading-none text-green-300 transition-all hover:bg-green-500/30"
+                          title="Покормить"
+                        >
+                          🍎
+                        </button>
+                      }
+                      healthAction={
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            admit(toad);
+                          }}
+                          disabled={!admission.room}
+                          className="rounded-md border border-rose-500/30 bg-rose-500/20 px-2 py-0.5 text-sm font-bold leading-none text-rose-300 transition-all hover:bg-rose-500/30 disabled:cursor-not-allowed disabled:border-slate-600/30 disabled:bg-slate-700/20 disabled:text-slate-500"
+                          title={admission.issue ?? "Отправить в Медотсек"}
+                        >
+                          ✚
+                        </button>
                       }
                     />
                   );
@@ -819,23 +800,6 @@ const ToadListModal: React.FC<{
               </div>
             </div>
           }
-        />
-      )}
-
-      {/* Подтверждение: жабы уйдут в биомассу навсегда */}
-      {dissolveTargets.length > 0 && (
-        <DissolveConfirm
-          toads={dissolveTargets}
-          onCancel={() => setDissolveTargets([])}
-          onConfirm={handleDissolveConfirm}
-        />
-      )}
-
-      {/* Диссоциатор ещё не готов: окно-подсказка вместо подтверждения разбора */}
-      {showBlockedDissolve && (
-        <DissolveBlockedModal
-          unpowered={dissociatorBuilt && !dissociatorReady}
-          onClose={() => setShowBlockedDissolve(false)}
         />
       )}
     </Modal>

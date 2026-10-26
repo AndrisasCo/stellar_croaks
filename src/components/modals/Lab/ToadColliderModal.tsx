@@ -538,6 +538,7 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
                     icon: "🧪",
                   }))}
                   columns={5}
+                  vitals={{ genetics: true }}
                   title="Колбы коллайдера"
                   headerRight={`${currentToads.length}/5`}
                   pickerFor={getPickerFor}

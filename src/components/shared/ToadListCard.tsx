@@ -17,26 +17,34 @@ import {
   PRODUCTION_HUNGRY_FACTOR,
   PRODUCTION_MIN_HUNGER,
 } from "../../utils/gamification-config";
+import {
+  getHungerBarColor,
+  getHungerTextColor,
+} from "../../utils/hunger";
 import { getToadSexLabel, getToadStageLabel } from "../../utils/toad-picker";
 import { DiseaseBar } from "./DiseaseBar";
 import { ToadAvatar } from "./ToadAvatar";
 import { ToadGender } from "./ToadGender";
+import { ToadLocationBadge } from "./ToadLocationBadge";
 
 /**
  * Общая карточка жабы для списков секторов: ядро, биопод, энергосектор, Медотсек,
  * репродуктор. Места отличаются только набором характеристик и своими действиями,
  * поэтому вид строки живёт здесь, а не в каждой модалке отдельно.
  *
- * Каркас один: аватар, имя с полом и стадией, редкость, место/статус жабы. Ниже —
- * то, что нужно конкретному сектору: `variant="full"` добавляет генетику (ядро,
- * биопод, репродуктор), `brief` оставляет имя, редкость, HP и болезнь (Медотсек).
- * Сытость включают там, где она решает дело — в энергосекторе и рабочих списках.
+ * Каркас один: аватар, имя с полом и стадией, редкость, место/статус жабы. Место
+ * живёт плашкой в правом верхнем углу, а действия, привязанные к показателям
+ * («Покормить» у сытости, «✚» у HP), — в строках самих показателей: там игрок и решает,
+ * кормить жабу или нести её в Медотсек. Ниже — то, что нужно
+ * конкретному сектору: `variant="full"` добавляет генетику (ядро, биопод, репродуктор),
+ * `brief` оставляет имя, редкость, HP и болезнь (Медотсек). Сытость включают там,
+ * где она решает дело — в энергосекторе и рабочих списках.
  *
  * Клик по карточке открывает карточку жабы (`onOpen`), но клики по кнопкам действий,
  * названию болезни и её подсказке карточку не открывают: у них своя работа.
  */
 
-/** Где жаба находится — строка под именем (сектор, биопод, поход) */
+/** Где жаба находится — плашка в правом верхнем углу (сектор, биопод, поход) */
 export interface ToadListPlace {
   icon: string;
   label: string;
@@ -58,8 +66,12 @@ export interface ToadListCardProps {
   toad: Toad;
   /** Открыть карточку жабы поверх текущей модалки */
   onOpen?: () => void;
-  /** Кнопки сектора: «В биопод», «Прервать», «Покормить» и т.п. */
+  /** Кнопки сектора: «В биопод», «Прервать» и т.п. — в правом верхнем углу */
   actions?: ReactNode;
+  /** Кнопка рядом с сытостью: «Покормить» в списках жаб */
+  hungerAction?: ReactNode;
+  /** Кнопка рядом с HP: «Отправить в Медотсек» в списках жаб */
+  healthAction?: ReactNode;
   /** `full` — с генетикой, `brief` — только имя, редкость, HP и болезнь */
   variant?: "brief" | "full";
   /** Сытость: важна в энергосекторе и рабочих секторах */
@@ -139,6 +151,8 @@ export const ToadListCard = ({
   toad,
   onOpen,
   actions,
+  hungerAction,
+  healthAction,
   variant = "brief",
   showHunger = false,
   showHp = true,
@@ -193,23 +207,8 @@ export const ToadListCard = ({
     }
   };
 
-  const hungerColor =
-    hunger >= 80
-      ? "bg-green-500"
-      : hunger >= 50
-        ? "bg-yellow-500"
-        : hunger >= PRODUCTION_MIN_HUNGER
-          ? "bg-orange-500"
-          : "bg-red-500";
-
-  const hungerText =
-    hunger >= 80
-      ? "text-green-400"
-      : hunger >= 50
-        ? "text-yellow-400"
-        : hunger >= PRODUCTION_MIN_HUNGER
-          ? "text-orange-400"
-          : "text-red-400";
+  const hungerColor = getHungerBarColor(hunger);
+  const hungerText = getHungerTextColor(hunger);
 
   return (
     <div
@@ -283,18 +282,6 @@ export const ToadListCard = ({
               {getToadStageLabel(toad.stage, toad.sex)}
             </span>
 
-            {place && (
-              <span
-                className={`inline-flex min-w-0 items-center gap-1 ${
-                  place.className ?? "text-slate-400"
-                }`}
-                title={place.hint}
-              >
-                <span className="shrink-0">{place.icon}</span>
-                <span className="truncate">{place.label}</span>
-              </span>
-            )}
-
             {status && (
               <span
                 className={`inline-flex items-center gap-1 ${
@@ -323,7 +310,18 @@ export const ToadListCard = ({
           </div>
         </div>
 
-        <div className="flex shrink-0 items-start gap-1.5">
+        {/* Правый угол: где жаба сейчас (плашка места) и кнопки без привязки к сытости */}
+        <div className="flex max-w-[9rem] shrink-0 flex-col items-end gap-1">
+          {place && (
+            <ToadLocationBadge
+              icon={place.icon}
+              label={place.label}
+              title={place.hint}
+              className={place.className ?? "text-slate-400"}
+              textClassName="text-2xs"
+            />
+          )}
+
           {actions && (
             <div
               className="flex items-center gap-1"
@@ -361,44 +359,72 @@ export const ToadListCard = ({
         <DiseaseBar toad={toad} inHospital={diseaseInHospital} />
       )}
 
-      {/* HP: в Медотсеке — главный показатель, в остальных списках — состояние жабы */}
+      {/* HP: в Медотсеке — главный показатель, в остальных списках — состояние жабы.
+          Кнопка «✚» стоит рядом с HP: туда жабу и несут, когда здоровье просело */}
       {showHp && (
-        <div className="flex flex-col gap-0.5">
-          <ToadMeter
-            label="❤️ HP"
-            value={hp}
-            max={maxHp}
-            barClassName={
-              hpRatio <= 0
-                ? "bg-red-600"
-                : hpRatio < 0.35
-                  ? "bg-red-500"
-                  : hpRatio < 0.7
-                    ? "bg-yellow-500"
-                    : "bg-green-500"
-            }
-            valueClassName={hpRatio < 0.7 ? "text-rose-200" : "text-slate-300"}
-            title={`Здоровье: ${getToadHpStatusLabel(toad)}`}
-          />
+        <div className="flex items-center gap-2">
+          <div className="min-w-0 flex-1">
+            <ToadMeter
+              label="❤️ HP"
+              value={hp}
+              max={maxHp}
+              barClassName={
+                hpRatio <= 0
+                  ? "bg-red-600"
+                  : hpRatio < 0.35
+                    ? "bg-red-500"
+                    : hpRatio < 0.7
+                      ? "bg-yellow-500"
+                      : "bg-green-500"
+              }
+              valueClassName={hpRatio < 0.7 ? "text-rose-200" : "text-slate-300"}
+              title={`Здоровье: ${getToadHpStatusLabel(toad)}`}
+            />
+          </div>
+
+          {healthAction && (
+            <div
+              className="shrink-0"
+              data-toad-card-stop
+              onClick={(event) => event.stopPropagation()}
+            >
+              {healthAction}
+            </div>
+          )}
         </div>
       )}
 
-      {/* Сытость: в энергосекторе по ней решают, даёт ли жаба ток */}
+      {/* Сытость: в энергосекторе по ней решают, даёт ли жаба ток. Кнопка кормления
+          стоит здесь же — рядом с показателем, который она меняет */}
       {showHunger && (
-        <ToadMeter
-          label="🍽 Сытость"
-          value={hunger}
-          max={100}
-          barClassName={hungerColor}
-          valueClassName={hungerText}
-          title={
-            hunger <= PRODUCTION_MIN_HUNGER
-              ? `Голодный минимум: ниже ${PRODUCTION_MIN_HUNGER}% жаба вырабатывает лишь ${Math.round(
-                  PRODUCTION_HUNGRY_FACTOR * 100,
-                )}% биомассы`
-              : "Сытость умножает выработку биомассы и даёт ток в энергосекторе"
-          }
-        />
+        <div className="flex items-center gap-2">
+          <div className="min-w-0 flex-1">
+            <ToadMeter
+              label="🍽 Сытость"
+              value={hunger}
+              max={100}
+              barClassName={hungerColor}
+              valueClassName={hungerText}
+              title={
+                hunger <= PRODUCTION_MIN_HUNGER
+                  ? `Голодный минимум: ниже ${PRODUCTION_MIN_HUNGER}% жаба вырабатывает лишь ${Math.round(
+                      PRODUCTION_HUNGRY_FACTOR * 100,
+                    )}% биомассы`
+                  : "Сытость умножает выработку биомассы и даёт ток в энергосекторе"
+              }
+            />
+          </div>
+
+          {hungerAction && (
+            <div
+              className="shrink-0"
+              data-toad-card-stop
+              onClick={(event) => event.stopPropagation()}
+            >
+              {hungerAction}
+            </div>
+          )}
+        </div>
       )}
 
       {children}

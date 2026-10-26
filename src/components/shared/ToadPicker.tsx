@@ -10,6 +10,7 @@ import {
 } from "../../utils/toad-picker";
 import { ClickButton } from "./ClickButton";
 import { ToadAvatar } from "./ToadAvatar";
+import { ToadLocationBadge } from "./ToadLocationBadge";
 import { getToadEnergy } from "../../utils/gamification-config";
 
 /**
@@ -79,8 +80,11 @@ const MENU_HEIGHT = 240;
 const sortItems = (items: ToadPickerItem[]): ToadPickerItem[] =>
   [...items].sort((a, b) => (b.rank ?? 0) - (a.rank ?? 0));
 
-/** Цвет полоски-показателя: зелёный — хорошо, янтарный — середина, красный — плохо */
-const getMeterColor = (percent: number): string =>
+/**
+ * Цвет полоски-показателя: зелёный — хорошо, янтарный — середина, красный — плохо.
+ * Один на список выбора и слоты секторов: силу роли сравнивают по одной шкале.
+ */
+export const getMeterColor = (percent: number): string =>
   percent >= 70
     ? "bg-emerald-400"
     : percent >= 40
@@ -158,18 +162,16 @@ const ToadPickerCard: React.FC<{
         </span>
       </div>
 
-      {/* Силы и место: место отдельной плашкой, чтобы длинное имя сектора её не вытесняло */}
+      {/* Силы и место: место общей плашкой (`ToadLocationBadge`), как в списках жаб */}
       <div className="flex min-w-0 items-center justify-between gap-1">
         <span className="shrink-0 text-2xs font-semibold text-lime-300">
           ⚡ {Math.round(getToadEnergy(toad))}
         </span>
-        <span
-          className="inline-flex min-w-0 items-center gap-1 rounded bg-slate-800/80 px-1 py-0.5 text-slate-300"
+        <ToadLocationBadge
+          icon={location.icon}
+          label={location.label}
           title={`Сейчас: ${location.label}`}
-        >
-          <span aria-hidden>{location.icon}</span>
-          <span className="truncate text-3xs">{location.label}</span>
-        </span>
+        />
       </div>
 
       {/* Причина отказа важнее заметки места: у отсеянной жабы показываем её */}

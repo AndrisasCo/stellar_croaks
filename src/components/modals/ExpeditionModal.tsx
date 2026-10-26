@@ -81,7 +81,10 @@ import {
 } from "../../utils/gamification-config";
 import { RoomConfig } from "../HexMap/rooms-config";
 import { ToadSlotGrid } from "../shared/ToadSlotGrid";
-import type { ToadSlotPickerConfig } from "../shared/ToadSlotGrid";
+import type {
+  ToadSlotMeter,
+  ToadSlotPickerConfig,
+} from "../shared/ToadSlotGrid";
 import type { ToadPickerItem } from "../shared/ToadPicker";
 import { TOAD_PICKER_REJECTED_GROUP } from "../../utils/toad-picker";
 import {
@@ -114,6 +117,24 @@ const formatDuration = (ms: number): string => {
     return `${minutes}м ${seconds}с`;
   }
   return `${seconds}с`;
+};
+
+/**
+ * Показатель силы роли: одна и та же характеристика, проценты и полоска
+ * и в списке выбора, и на занятом слоте команды.
+ */
+const getRoleMeter = (toad: Toad, role: ExpeditionRole): ToadSlotMeter => {
+  const config = ROLE_CONFIG[role];
+  const percent = getRolePowerPercent(toad, role);
+  const stat = getRoleStat(toad, role);
+
+  return {
+    value: percent,
+    label: `${percent}%`,
+    detail: `${config.statLabelShort} ${stat.toFixed(2)}`,
+    detailTitle: `${config.statLabel}: ${stat.toFixed(2)}`,
+    caption: percent > 40 ? "Подходит" : "Не подходит",
+  };
 };
 
 /**
@@ -486,7 +507,6 @@ const ExpeditionModal: React.FC<{
         items: group.toads.map((toad): ToadPickerItem => {
           const other = getAssignedRole(slots, toad.id);
           const own = other === role;
-          const percent = getRolePowerPercent(toad, role);
           const stat = getRoleStat(toad, role);
 
           return {
@@ -505,12 +525,7 @@ const ExpeditionModal: React.FC<{
                     : ""}
               </>
             ),
-            meter: {
-              value: percent,
-              label: `${percent}%`,
-              detail: `${config.statLabelShort} ${stat.toFixed(2)}`,
-              caption: percent > 40 ? "Подходит" : "Не подходит",
-            },
+            meter: getRoleMeter(toad, role),
           };
         }),
       })),
@@ -1361,10 +1376,8 @@ const ExpeditionModal: React.FC<{
                   toad: picked,
                   label: config.label,
                   icon: config.icon,
-                  badge: picked
-                    ? `${getRolePowerPercent(picked, role)}%`
-                    : undefined,
-                  badgeLabel: picked ? "" : undefined,
+                  // Сила роли и её характеристика — той же полоской, что в модалке выбора
+                  meter: picked ? getRoleMeter(picked, role) : undefined,
                   disabledHint: `${config.label}: ${config.description}`,
                 };
               })}

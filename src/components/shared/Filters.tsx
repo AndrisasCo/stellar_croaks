@@ -15,7 +15,8 @@ export type SortByType =
   | "fertility"
   | "price"
   | "genetic_fault"
-  | "appetite";
+  | "appetite"
+  | "health";
 
 export type FilterByType = "all" | "males" | "females" | "toadpoles";
 
@@ -29,6 +30,8 @@ export interface FilterProps {
   sortDirection: SortDirection;
   addPrice?: boolean;
   addHunger?: boolean;
+  /** Сортировка по HP: включают списки, где видно здоровье жабы */
+  addHealth?: boolean;
 }
 export const Filters = ({
   toads,
@@ -40,6 +43,7 @@ export const Filters = ({
   sortDirection,
   addPrice,
   addHunger,
+  addHealth,
 }: FilterProps) => {
   // Обработчик сортировки
   const handleSort = (
@@ -52,13 +56,15 @@ export const Filters = ({
       | "speed"
       | "fertility"
       | "appetite"
-      | "hunger",
+      | "hunger"
+      | "health",
   ) => {
     if (sortBy === type) {
       setSortDirection(sortDirection === "asc" ? "desc" : "asc");
     } else {
       setSortBy(type);
-      setSortDirection("desc");
+      // HP по умолчанию от худшего к лучшему: первыми идут раненые и больные
+      setSortDirection(type === "health" ? "asc" : "desc");
     }
   };
 
@@ -109,6 +115,7 @@ export const Filters = ({
                 { key: "speed", label: "Скорость" },
                 { key: "genetic_fault", label: "Генетика" },
                 addHunger ? { key: "hunger", label: "Голод" } : {},
+                addHealth ? { key: "health", label: "HP" } : {},
               ]
                 .filter((i) => i.key)
                 .map((item, index) => (

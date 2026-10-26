@@ -2,6 +2,21 @@ import { useState } from "react";
 import { SortByType, FilterByType } from "../components/shared/Filters";
 import { calculateSellPrice, Toad } from "../models/Toad";
 import { ToadTypes } from "../models/Toad/toad-species";
+import { getToadHpRatio } from "../utils/expedition-config";
+import { needsHospitalCare } from "../utils/hospital";
+
+/**
+ * Ключ сортировки «HP»: раненые и больные идут впереди здоровых.
+ *
+ * HP сравниваем долей от максимума (у жаб разный запас), а группу «нужна помощь»
+ * держим ниже любой здоровой жабы: больная с полным HP всё равно важнее здоровой,
+ * а внутри группы порядок решает остаток HP — самые выбитые первые.
+ */
+const getHealthSortValue = (toad: Toad, now: number): number => {
+  const hpRatio = getToadHpRatio(toad);
+
+  return needsHospitalCare(toad, now) ? hpRatio : hpRatio + 1;
+};
 
 /**
  * Сортировка и фильтрация списка жаб.
@@ -14,6 +29,9 @@ export const useFilters = (toads: Toad[]) => {
   const [filterBy, setFilterBy] = useState<FilterByType>("all");
   // Сортировка жаб
   const getSortedToads = (toads: Toad[]) => {
+    // Один момент времени на весь проход: срок болезни не истечёт посреди сортировки
+    const now = Date.now();
+
     return [...toads].sort((a, b) => {
       let aValue: any, bValue: any;
 
@@ -62,8 +80,18 @@ export const useFilters = (toads: Toad[]) => {
           aValue = a.genes.hungerRate;
           bValue = b.genes.hungerRate;
           break;
+        case "health":
+          aValue = getHealthSortValue(a, now);
+          bValue = getHealthSortValue(b, now);
+          break;
         default:
           return 0;
+      }
+
+      // Равные значения сохраняют исходный порядок списка (у здоровья здоровых жаб
+      // значения совпадают, и без этого их порядок «дёргался» бы при пересортировке).
+      if (aValue === bValue) {
+        return 0;
       }
 
       if (sortDirection === "desc") {
