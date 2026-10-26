@@ -407,13 +407,6 @@ export const achievementGroups: AchievementGroup[] = [
         completed: false,
       },
       {
-        id: "quarantine-cure",
-        icon: "🛡️",
-        name: "Санитарный день",
-        description: "Провести карантин и вылечить заражённых жаб",
-        completed: false,
-      },
-      {
         id: "first-dissolve",
         icon: "♻️",
         name: "Первый разбор",

@@ -595,7 +595,7 @@ const mediumQuests: QuestDef[] = [
     sphere: "medicine",
     chainId: "colony",
     title: "Профилактика",
-    description: "Вылечите трёх жаб: карантин и Медотсек сокращают вспышки.",
+    description: "Вылечите трёх жаб: поместите их в Медотсек",
     trigger: { type: "chain", parentId: "q15-hospital" },
     goal: {
       metric: "curedToads",
