@@ -404,8 +404,7 @@ const ORIGIN: AxialCoord = { q: 0, r: 0 };
 
 /**
  * Центр колонии — белое ядро: у него нет черновика, второго ядра не построить.
- * Тап по ядру открывает улучшение секторов: апгрейдов в игре пока один — автокормушка,
- * а ставится он жилом секторе, поэтому модалка сначала спрашивает, какой именно гекс улучшаем.
+ * Улучшения ставятся на самих секторах — во вкладке «О секторе» (`RoomDataTab`).
  */
 const CORE_ROOM: RoomConfig = {
   id: CORE_ROOM_ID,
@@ -627,13 +626,6 @@ export const getBuiltRoomKind = (room: RoomConfig): ColonyRoomKind | null => {
  * «жабьих» секторах (`HexMapCanvas` создаёт стайку только для `isToadRoom`).
  */
 export const isToadRoom = (room: RoomConfig) =>
-  room.kind === "aviary" ||
-  room.kind === "breeding" ||
-  room.kind === "power" ||
-  room.kind === "scout" ||
-  room.kind === "hospital";
-
-export const hasAutofeeder = (room: RoomConfig) =>
   room.kind === "aviary" ||
   room.kind === "breeding" ||
   room.kind === "power" ||

@@ -20,6 +20,7 @@ import { ToadInfo } from "../ToadInfoModal";
 import { useModal } from "../../ModalContext";
 import { getHousingInfo } from "../../../utils/housing";
 import { getRoomUpgrades } from "../../../backend/colony";
+import { isUpgradeActive } from "../../../utils/room-upgrades";
 import { useColony } from "../../../hooks/use-colony";
 import { useGameState } from "../../../hooks/use-game-state";
 import { useHospitalAdmission } from "../../../hooks/use-hospital-admission";
@@ -221,17 +222,25 @@ const ToadListModal: React.FC<{
    * биопода читается там же, поэтому спрашиваем про гекс, а не про `Scene`.
    * Если гекс не нашёлся (сейв знает биопод, но не карту), проверяем биопод напрямую —
    * так старая покупка тоже видна.
+   *
+   * Покупка и выключатель — разные вещи: жабам помогает только включённая кормушка,
+   * а в шапке видно, что улучшение вообще есть (см. `isUpgradeActive`).
    */
-  const hasAutoFeeder = React.useMemo(
+  const autoFeederSceneId = scene?.id;
+  const roomUpgrades = React.useMemo(
     () =>
-      Boolean(
-        scene &&
-        getRoomUpgrades(
-          enclosureRoom ?? { id: `enclosure-${scene.id}`, sceneId: scene.id },
-        ).autoFeeder,
-      ),
-    [enclosureRoom, scene?.id],
+      autoFeederSceneId == null
+        ? {}
+        : getRoomUpgrades(
+            enclosureRoom ?? {
+              id: `enclosure-${autoFeederSceneId}`,
+              sceneId: autoFeederSceneId,
+            },
+          ),
+    [enclosureRoom, autoFeederSceneId],
   );
+  const hasAutoFeeder = Boolean(roomUpgrades.autoFeeder);
+  const autoFeederActive = isUpgradeActive(roomUpgrades, "autoFeeder");
 
   useEffect(() => {
     if (!selectedToad) {
@@ -398,7 +407,7 @@ const ToadListModal: React.FC<{
             <span
               className={`text-2xs font-medium [-webkit-text-fill-color:currentColor] text-lime-300`}
             >
-              Улучшение: автокормушка
+              Улучшение: автокормушка{autoFeederActive ? "" : " · выключена"}
             </span>
           )}
         </span>
@@ -770,6 +779,7 @@ const ToadListModal: React.FC<{
           scene={scene}
           toads={toads}
           hasAutoFeeder={hasAutoFeeder}
+          autoFeederActive={autoFeederActive}
         />
       )}
 
@@ -795,7 +805,11 @@ const ToadListModal: React.FC<{
               <div className="rounded-lg bg-slate-900/40 px-1 py-1">
                 <p className="text-slate-400">🍽 Автокормушка</p>
                 <p className="font-bold text-white">
-                  {hasAutoFeeder ? "есть" : "нет"}
+                  {hasAutoFeeder
+                    ? autoFeederActive
+                      ? "есть"
+                      : "выключена"
+                    : "нет"}
                 </p>
               </div>
             </div>

@@ -26,6 +26,8 @@
     "verify:platform": "node tmp-verify-platform.mjs",
     "verify:breeding": "node tmp-verify-breeding.mjs",
     "verify:auto-feeder": "node tmp-verify-auto-feeder.mjs",
+    "verify:repatriator": "node tmp-verify-repatriator.mjs",
+    "verify:quarantine": "node tmp-verify-quarantine.mjs",
     "verify:touch": "node tmp-verify-touch.mjs",
     "verify:colony": "node tmp-verify-colony-growth.mjs",
     "verify:crew": "node tmp-verify-expedition-crew.mjs",
@@ -56,7 +58,7 @@
     "verify:quest-journal": "node tmp-verify-quest-journal.mjs",
     "verify:achievements": "node tmp-verify-achievements.mjs",
     "verify:elite-orders": "node tmp-verify-elite-orders.mjs",
-    "verify": "npm run verify:init-data && npm run verify:stars && npm run verify:platform && npm run verify:breeding && npm run verify:auto-feeder && npm run verify:touch && npm run verify:colony && npm run verify:crew && npm run verify:expedition-busy && npm run verify:expedition-aggression && npm run verify:expedition-role-power && npm run verify:expedition-offline && npm run verify:expedition-extract && npm run verify:expedition-evacuation && npm run verify:expedition-origin && npm run verify:assets && npm run verify:place && npm run verify:toad-move-menu && npm run verify:names && npm run verify:biopod-rename && npm run verify:toad-picker && npm run verify:biomass && npm run verify:biomass-upkeep && npm run verify:gene-dust && npm run verify:auth && npm run verify:boot && npm run verify:cloud-flush && npm run verify:contour && npm run verify:energy && npm run verify:tutorial-build && npm run verify:tutorial-flow && npm run verify:bot-keyboard && npm run verify:quest-journal && npm run verify:achievements && npm run verify:elite-orders",
+    "verify": "npm run verify:init-data && npm run verify:stars && npm run verify:platform && npm run verify:breeding && npm run verify:auto-feeder && npm run verify:repatriator && npm run verify:quarantine && npm run verify:touch && npm run verify:colony && npm run verify:crew && npm run verify:expedition-busy && npm run verify:expedition-aggression && npm run verify:expedition-role-power && npm run verify:expedition-offline && npm run verify:expedition-extract && npm run verify:expedition-evacuation && npm run verify:expedition-origin && npm run verify:assets && npm run verify:place && npm run verify:toad-move-menu && npm run verify:names && npm run verify:biopod-rename && npm run verify:toad-picker && npm run verify:biomass && npm run verify:biomass-upkeep && npm run verify:gene-dust && npm run verify:auth && npm run verify:boot && npm run verify:cloud-flush && npm run verify:contour && npm run verify:energy && npm run verify:tutorial-build && npm run verify:tutorial-flow && npm run verify:bot-keyboard && npm run verify:quest-journal && npm run verify:achievements && npm run verify:elite-orders",
     "bot:check": "node --env-file-if-exists=.env scripts/check-bot-token.mjs"
   },
   "dependencies": {

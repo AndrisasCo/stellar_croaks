@@ -19,6 +19,8 @@ import { EMPTY_COLONY } from "../../models/colony";
 import { resolveColonyRooms } from "../HexMap/colony-build";
 import { getRoomToadLists } from "../HexMap/room-toad-lists";
 import { processAutoFeeders } from "../../utils/auto-feeder";
+import { processQuarantineCatchers } from "../../utils/quarantine-catcher";
+import { processRepatriators } from "../../utils/repatriator";
 import {
   processExpeditions,
   processHpRegen,
@@ -103,6 +105,28 @@ const runHungerTick = (hoursPassed: number, newbornSince?: number | null) => {
   processAutoFeeders(rooms, getRoomToadLists(rooms, state.toads), {
     newbornSince,
   });
+};
+
+/**
+ * Тик автоматики Медотсека: репатриатор освобождает койки, уловитель занимает их больными.
+ *
+ * Идёт после лечения: сначала болезнь/HP меняются, потом Медотсек выписывает тех, кого
+ * уже нечего лечить (`utils/repatriator.ts`), а карантин-уловитель
+ * (`utils/quarantine-catcher.ts`) забирает оставшихся больных. Порядок важен: выписка
+ * освобождает койку, и уловитель может занять её в том же тике. Списки жильцов между
+ * шагами пересчитываем — после репатриатора пациентов в них уже нет.
+ */
+const runHospitalAutomationTick = () => {
+  const state = getGameState();
+  const rooms = resolveColonyRooms(state.colony ?? EMPTY_COLONY, state.scenes);
+
+  processRepatriators(rooms, getRoomToadLists(rooms, state.toads));
+
+  const afterRepatriation = getGameState();
+  processQuarantineCatchers(
+    rooms,
+    getRoomToadLists(rooms, afterRepatriation.toads),
+  );
 };
 
 /**
@@ -197,6 +221,9 @@ export default function ToadGame() {
       // а жабы дома восстанавливают HP
       processExpeditions(collectOfflineEvent);
       processHpRegen(offlineHours);
+      // Выздоровевшие за оффлайн ждут выписки: репатриатор отправляет их домой сразу,
+      // а уловитель занимает освободившиеся койки заболевшими
+      runHospitalAutomationTick();
 
       updateLeaderbord();
 
@@ -226,6 +253,8 @@ export default function ToadGame() {
         window.setInterval(() => {
           processDiseases(1);
           processCyberEvents(1, addNotification);
+          // Болезнь прошла — репатриатор выписывает, уловитель изолирует новых больных
+          runHospitalAutomationTick();
         }, 60 * 60 * 1000),
       );
 
@@ -242,6 +271,9 @@ export default function ToadGame() {
         window.setInterval(() => {
           processExpeditions(addNotification);
           processHpRegen(0.25);
+          // HP доросло до полного — репатриатор освобождает койку,
+          // а заболевшую в походе жабу уловитель сразу изолирует
+          runHospitalAutomationTick();
         }, 5 * 60 * 1000),
       );
 

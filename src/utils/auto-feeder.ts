@@ -9,6 +9,7 @@ import { Toad } from "../models/Toad";
 import { toTimestamp } from "./date";
 import { isToadBusyOnExpedition } from "./expedition-manager";
 import { PRODUCTION_MIN_HUNGER } from "./gamification-config";
+import { isUpgradeActive } from "./room-upgrades";
 import { getGrowthStartedAt, startToadGrowth } from "./toad-growth";
 
 /**
@@ -68,8 +69,10 @@ export const processAutoFeeders = (
   toadsByRoom: Record<string, Toad[]>,
   options: AutoFeedOptions = {},
 ): AutoFeedResult => {
-  const autoFeederRooms = rooms.filter(
-    (room) => getRoomUpgrades(room).autoFeeder,
+  // Выключенная автокормушка остаётся купленной, но не кормит: переключатель живёт
+  // в тех же `RoomUpgrades` (`utils/room-upgrades.ts` → `isUpgradeActive`).
+  const autoFeederRooms = rooms.filter((room) =>
+    isUpgradeActive(getRoomUpgrades(room), "autoFeeder"),
   );
 
   if (autoFeederRooms.length === 0) {

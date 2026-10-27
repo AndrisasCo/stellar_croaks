@@ -7,19 +7,25 @@ import {
 } from "react";
 import { updateScene, updateUser } from "../../backend";
 import { getRoomUpgrades, upgradeColonyRoom } from "../../backend/colony";
+import { getGameState } from "../../backend/localStorage";
 import { InfoIcons } from "../../assets/icons";
 import { useColony } from "../../hooks/use-colony";
 import { useNotifications } from "../../hooks/use-notification";
 import { useSoundEffects } from "../../hooks/use-sound-effects";
 import { processAutoFeeders } from "../../utils/auto-feeder";
+import { processQuarantineCatchers } from "../../utils/quarantine-catcher";
+import { processRepatriators } from "../../utils/repatriator";
 import { CURRENCY_CONFIG, DEMOLISH_ROOM_COST } from "../../utils/constants";
 import {
   normalizeSceneName,
   SCENE_NAME_MAX_LENGTH,
 } from "../../utils/scene-name";
 import {
+  getRoomUpgradeOptions,
+  getUpgradePurchasePatch,
+  getUpgradeTogglePatch,
   hasUpgrade,
-  ROOM_UPGRADES,
+  isUpgradeActive,
   RoomUpgradeOption,
 } from "../../utils/room-upgrades";
 import { useModal } from "../ModalContext";
@@ -33,9 +39,9 @@ import {
 import {
   getBuiltRoomKind,
   getRoomBlueprint,
-  hasAutofeeder,
   RoomConfig,
 } from "../HexMap/rooms-config";
+import { getRoomToadLists } from "../HexMap/room-toad-lists";
 import { ClickButton } from "../shared/ClickButton";
 import { CurrencyIcon } from "../shared/CurrencyIcon";
 import RoomDemolishModal from "./RoomDemolishModal";
@@ -89,10 +95,14 @@ export default function RoomDataTab({ room, stats }: RoomDataTabProps) {
     [room.id, colony],
   );
   const powered = isRoomPowered(room, powerGrid);
-  /** Апгрейды есть только у жилых секторов: остальным кормушка ни к чему */
-  const canUpgrade = hasAutofeeder(room);
-  const installed = ROOM_UPGRADES.filter((option) =>
-    hasUpgrade(upgrades, option.upgrade),
+  /**
+   * У каждого вида сектора свой список апгрейдов: у Медотсека — кормушка,
+   * репатриатор и карантин-уловитель
+   */
+  const availableUpgrades = getRoomUpgradeOptions(room.kind);
+  const canUpgrade = availableUpgrades.length > 0;
+  const installed = availableUpgrades.filter((option) =>
+    hasUpgrade(upgrades, option.key),
   ).length;
   const kind = getBuiltRoomKind(room);
   const description = kind ? getRoomBlueprint(kind).description : room.subtitle;
@@ -150,6 +160,19 @@ export default function RoomDataTab({ room, stats }: RoomDataTabProps) {
     setSceneName(scene?.name ?? "");
   };
 
+  /**
+   * Свежий список жильцов нужен автоматике: после репатриатора или включения
+   * уловителя места на койках уже другие, а состояние в React ещё не перерисовано.
+   */
+  const catchSickToads = () => {
+    const current = getGameState();
+
+    return processQuarantineCatchers(
+      rooms,
+      getRoomToadLists(rooms, current.toads),
+    );
+  };
+
   /** Enter сохраняет имя, Esc отменяет правку, а не закрывает окно (см. ModalProvider) */
   const handleNameKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === "Enter") {
@@ -163,9 +186,12 @@ export default function RoomDataTab({ room, stats }: RoomDataTabProps) {
     }
   };
 
-  /** Покупка апгрейда: списываем Кваксы, пишем апгрейд сектору и сразу кормим жаб */
+  /**
+   * Покупка апгрейда: списываем Кваксы, пишем апгрейд сектору (сразу включённым)
+   * и тут же применяем его — игрок видит работу, не дожидаясь тика.
+   */
   const handleBuy = (option: RoomUpgradeOption) => {
-    if (!canUpgrade || hasUpgrade(upgrades, option.upgrade)) {
+    if (!canUpgrade || hasUpgrade(upgrades, option.key)) {
       playError();
       return;
     }
@@ -179,19 +205,51 @@ export default function RoomDataTab({ room, stats }: RoomDataTabProps) {
       return;
     }
 
-    upgradeColonyRoom(room.id, option.upgrade);
+    upgradeColonyRoom(room.id, getUpgradePurchasePatch(option));
     updateUser({ tokens: tokens - option.cost });
 
-    // Кормушка включается сразу: игрок видит её работу, не дожидаясь следующего тика голода
     const { fed } = processAutoFeeders(rooms, toadsByRoom);
+    const { sent } =
+      option.key === "repatriator"
+        ? processRepatriators(rooms, toadsByRoom)
+        : { sent: 0 };
+    // Применяем отлов сразу: покупка не должна ждать следующего тика Медотсека.
+    const { caught } = catchSickToads();
 
     playSuccess();
     addNotification({
       type: "success",
-      content: `«${option.title}» установлена в «${room.name}»${
-        fed > 0 ? `: кормушка сразу покормила ${fed} жаб(ы)` : ""
-      } 🍎`,
+      content: `Апгрейд «${option.title}» установлен в «${room.name}»${
+        fed > 0 ? `: кормушка сразу покормила ${fed} жаб(ы) 🍎` : ""
+      }${sent > 0 ? `: репатриатор сразу отправил домой ${sent} жаб(ы) 🛬` : ""}${
+        caught > 0 ? `: карантин-уловитель сразу забрал на койки ${caught} 🐸` : ""
+      }`,
     });
+  };
+
+  /** Переключатель купленного апгрейда: покупка остаётся, меняется только её работа */
+  const handleToggle = (option: RoomUpgradeOption) => {
+    if (!hasUpgrade(upgrades, option.key)) {
+      return;
+    }
+
+    const enabled = !isUpgradeActive(upgrades, option.key);
+
+    upgradeColonyRoom(room.id, getUpgradeTogglePatch(option.key, enabled));
+    playSuccess();
+
+    // Включённый уловитель не должен ждать следующего тика: сразу забираем тех, кому
+    // уже нужна койка. При выключении, наоборот, никого не трогаем.
+    if (enabled && option.key === "quarantineCatcher") {
+      const { caught } = catchSickToads();
+
+      if (caught > 0) {
+        addNotification({
+          type: "success",
+          content: `Карантин-уловитель «${room.name}» сразу забрал на койки ${caught} 🐸`,
+        });
+      }
+    }
   };
 
   return (
@@ -293,7 +351,7 @@ export default function RoomDataTab({ room, stats }: RoomDataTabProps) {
           <div className="rounded-lg bg-slate-950/40 px-1 py-1">
             <p className="text-slate-400">Улучшения</p>
             <p className="font-bold text-white">
-              {canUpgrade ? `${installed}/${ROOM_UPGRADES.length}` : "—"}
+              {canUpgrade ? `${installed}/${availableUpgrades.length}` : "—"}
             </p>
           </div>
         </div>
@@ -313,13 +371,14 @@ export default function RoomDataTab({ room, stats }: RoomDataTabProps) {
         )}
 
         {canUpgrade &&
-          ROOM_UPGRADES.map((option) => {
-            const bought = hasUpgrade(upgrades, option.upgrade);
+          availableUpgrades.map((option) => {
+            const bought = hasUpgrade(upgrades, option.key);
+            const active = isUpgradeActive(upgrades, option.key);
             const enough = tokens >= option.cost;
 
             return (
               <div
-                key={option.title}
+                key={option.key}
                 className={`rounded-xl border p-2 ${
                   bought
                     ? "border-emerald-500/40 bg-emerald-900/20"
@@ -336,27 +395,53 @@ export default function RoomDataTab({ room, stats }: RoomDataTabProps) {
                   </div>
                 </div>
 
-                <ClickButton
-                  disabled={bought || !enough}
-                  onClick={() => handleBuy(option)}
-                  className={`mt-2 w-full rounded-lg border px-3 py-2 text-xs font-bold transition-colors duration-300 ${
-                    bought
-                      ? "border-emerald-500/40 text-emerald-300"
-                      : enough
+                {bought ? (
+                  <div className="mt-2 flex items-center justify-between gap-2 rounded-lg border border-emerald-500/20 bg-slate-950/30 px-2 py-1.5">
+                    <span
+                      className={`text-2xs font-bold ${
+                        active ? "text-emerald-300" : "text-slate-400"
+                      }`}
+                    >
+                      {active
+                        ? "✓ Установлено · работает"
+                        : "Установлено · выключено"}
+                    </span>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={active}
+                      aria-label={`${option.title}: ${
+                        active ? "включён" : "выключен"
+                      }`}
+                      onClick={() => handleToggle(option)}
+                      className={`relative h-6 w-12 shrink-0 rounded-full border border-white/10 transition-all duration-300 ${
+                        active
+                          ? "bg-emerald-500 shadow-lg shadow-emerald-500/30"
+                          : "bg-slate-600"
+                      }`}
+                    >
+                      <div
+                        className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-md transition-all duration-300 ${
+                          active ? "translate-x-7" : "translate-x-1"
+                        }`}
+                      />
+                    </button>
+                  </div>
+                ) : (
+                  <ClickButton
+                    disabled={!enough}
+                    onClick={() => handleBuy(option)}
+                    className={`mt-2 w-full rounded-lg border px-3 py-2 text-xs font-bold transition-colors duration-300 ${
+                      enough
                         ? "border-amber-500/50 text-amber-100 hover:bg-amber-800/40"
                         : "border-slate-600/40 text-slate-500"
-                  }`}
-                >
-                  {bought ? (
-                    "✓ Установлено"
-                  ) : (
-                    <>
-                      Установить · {option.cost}{" "}
-                      <CurrencyIcon currency="tokens" className="h-3 w-3" />
-                      {enough ? "" : " — не хватает Кваксов"}
-                    </>
-                  )}
-                </ClickButton>
+                    }`}
+                  >
+                    Установить · {option.cost}{" "}
+                    <CurrencyIcon currency="tokens" className="h-3 w-3" />
+                    {enough ? "" : " — не хватает Кваксов"}
+                  </ClickButton>
+                )}
               </div>
             );
           })}

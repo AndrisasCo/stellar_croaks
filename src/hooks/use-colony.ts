@@ -4,9 +4,7 @@ import { ColonyRoomKind, ColonyState, EMPTY_COLONY } from "../models/colony";
 import {
   buildColonyRoom,
   demolishColonyRoom,
-  moveToadToAviary,
   placeToadInRoom,
-  sendToadHome,
   ToadHomeResult,
 } from "../backend/colony";
 import { useGameState } from "./use-game-state";
@@ -14,11 +12,10 @@ import {
   getPowerGrid,
   resolveColonyRooms,
 } from "../components/HexMap/colony-build";
-import { findFreePoweredAviary } from "../components/HexMap/aviary-release";
 import { PowerGrid } from "../components/HexMap/colony-power";
 import { getRoomToadLists } from "../components/HexMap/room-toad-lists";
 import { RoomConfig } from "../components/HexMap/rooms-config";
-import { getToadHomeId } from "../utils/toad-location";
+import { releaseToadToHome } from "../utils/toad-release";
 
 /**
  * Состояние колонии для экрана карты: построенные секторы, энергосеть и жабы,
@@ -98,47 +95,12 @@ export const useColony = (): ColonyController => {
   );
 
   const releaseToad = useCallback(
-    (toadId: number, sceneId?: number | null): ToadHomeResult => {
-      const toad = toads.find((item) => item.id === toadId);
-
-      // Другой биопод — переезд: он становится новым домом жабы, сектор освобождается
-      if (sceneId != null && toad && sceneId !== getToadHomeId(toad)) {
-        return moveToadToAviary(toadId, sceneId);
-      }
-
-      // Свой биопод (или адреса нет) — домой: место в нём проверяет сам биопод
-      const homeResult = sendToadHome(toadId);
-
-      if (homeResult.ok) {
-        return homeResult;
-      }
-
-      // Дома места нет (или биопод пропал) — ищем любой свободный биопод под током.
-      // Сеть пересчитываем уже без этой жабы: если она работала в ⚡, её уход может
-      // обесточить соседний биопод, и селить её туда нельзя. Обесточенный биопод
-      // не годится и сам по себе: его жильцы не вырабатывают биомассу.
-      const fallbackGrid = getPowerGrid(
-        rooms,
-        getRoomToadLists(
-          rooms,
-          toads.filter((item) => item.id !== toadId),
-        ),
-        expeditions,
-      );
-      const fallback = findFreePoweredAviary({
-        rooms,
-        scenes,
-        toads,
-        powerGrid: fallbackGrid,
+    (toadId: number, sceneId?: number | null): ToadHomeResult =>
+      releaseToadToHome(
         toadId,
-      });
-
-      if (fallback?.sceneId == null) {
-        return { ok: false, reason: "no-space", scene: null };
-      }
-
-      return moveToadToAviary(toadId, fallback.sceneId);
-    },
+        { rooms, scenes, toads, expeditions },
+        sceneId,
+      ),
     [expeditions, rooms, scenes, toads],
   );
 
