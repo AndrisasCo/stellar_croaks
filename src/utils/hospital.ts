@@ -7,6 +7,7 @@ import {
   getToadMaxHp,
   HP_REGEN_PER_HOUR,
 } from "./expedition-config";
+import { HOUR_MS } from "./date";
 
 /**
  * Медотсек: койки, скорость выздоровления и выборки жаб для интерфейса.
@@ -32,9 +33,6 @@ export const HOSPITAL_ROOM_TOAD_SLOTS = 6;
 export const HOSPITAL_HP_REGEN_PER_HOUR = 24;
 /** Во сколько раз быстрее идёт срок болезни под присмотром Медотсека */
 export const HOSPITAL_DISEASE_SPEED = 3;
-
-/** Час в миллисекундах — для пересчёта срока болезни в прогноз выздоровления */
-const HOUR_MS = 60 * 60 * 1000;
 
 /**
  * id построенных Медотсеков колонии (по карте: их может быть несколько).

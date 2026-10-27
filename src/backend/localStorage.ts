@@ -9,6 +9,8 @@ import {
 import { ColonyState, EMPTY_COLONY } from "../models/colony";
 import { platform } from "../platform";
 import { NEST_ROOM_ID } from "../utils/constants";
+import { HUNGER_MAX } from "../utils/hunger";
+import { toTimestamp } from "../utils/date";
 
 // Интерфейс для всего состояния игры
 export interface GameState {
@@ -133,6 +135,155 @@ const normalizeLegacyRoomId = (roomId: string): string =>
 const getLegacyRoomId = (toad: LegacyToad): string | null =>
   typeof toad.roomId === "string" ? normalizeLegacyRoomId(toad.roomId) : null;
 
+/** Поля жабы, которые ушли из игры: сейчас это только устаревшее ухаживание */
+type LegacyToadFields = { mating?: unknown };
+
+/** Что поправить в жабе при загрузке (`dropMating` — удалить поле, а не записать `null`) */
+type ToadPatches = Partial<Toad> & { dropMating?: boolean };
+
+/**
+ * Что в жабе из старого сейва не по текущим правилам (`null` — всё в порядке).
+ *
+ * Миграции живут здесь, а не в игровом тике: тик идёт раз в минуту, и «доигрывание»
+ * старых состояний в нём было вечным — код старых механик оставался в игре навсегда.
+ */
+const collectToadPatches = (
+  toad: Toad & LegacyToadFields,
+  now: number,
+): ToadPatches | null => {
+  const patches: ToadPatches = {};
+  let touched = false;
+
+  // 1. Ухаживание 15–30 минут: родов «по таймеру ухаживания» больше нет, пару
+  //    заводит кнопка в репродукторе. Старая запись только занимает жабу.
+  if ("mating" in toad) {
+    patches.dropMating = true;
+    touched = true;
+  }
+
+  // 2. Сытость: битая или вне 0…100. Жаба без `state` (очень старый сейв) получает
+  //    голодного головастика — покормить её можно как обычно.
+  const hunger = toad.state?.hunger;
+  const normalizedHunger = Number.isFinite(hunger)
+    ? Math.min(HUNGER_MAX, Math.max(0, hunger as number))
+    : 0;
+
+  if (!toad.state || normalizedHunger !== hunger) {
+    patches.state = { ...(toad.state ?? {}), hunger: normalizedHunger };
+    touched = true;
+  }
+
+  // 3. Таймер роста головастика. Раньше его запускал тик, теперь — первое кормление:
+  //    сытому головастику из старого сейва ставим метку на загрузку (его уже кормили),
+  //    а голодному — нет, его покормят кормушка или игрок.
+  if (toad.stage === "toadpole") {
+    const startedAt = toTimestamp(toad.growthStartedAt ?? null);
+
+    if (startedAt != null) {
+      if (startedAt !== toad.growthStartedAt) {
+        patches.growthStartedAt = startedAt;
+        touched = true;
+      }
+    } else if (toad.growthStartedAt != null) {
+      patches.growthStartedAt = null;
+      touched = true;
+    } else if (normalizedHunger > 0) {
+      patches.growthStartedAt = now;
+      touched = true;
+    }
+  }
+
+  // 4. Срок беременности: ISO-строка старого сейва → мс. Битая запись получает
+  //    нулевой срок, чтобы ближайший тик родил, а не оставил жабу беременной навсегда.
+  const pregnancy = toad.pregnancy;
+
+  if (pregnancy && !pregnancy.isPregnant) {
+    patches.pregnancy = null;
+    touched = true;
+  } else if (pregnancy) {
+    const startedAt = toTimestamp(pregnancy.pregnancyStart);
+    const duration = Number(pregnancy.pregnancyDuration);
+
+    if (startedAt == null || !Number.isFinite(duration) || duration < 0) {
+      patches.pregnancy = {
+        ...pregnancy,
+        pregnancyStart: now,
+        pregnancyDuration: 0,
+      };
+      touched = true;
+    } else if (
+      startedAt !== pregnancy.pregnancyStart ||
+      duration !== pregnancy.pregnancyDuration
+    ) {
+      patches.pregnancy = {
+        ...pregnancy,
+        pregnancyStart: startedAt,
+        pregnancyDuration: duration,
+      };
+      touched = true;
+    }
+  }
+
+  return touched ? patches : null;
+};
+
+/** Перенести поля жабы из старого сейва; без изменений возвращает тот же объект */
+function migrateToadFields(state: GameState): GameState {
+  if (!state.toads?.length) {
+    return state;
+  }
+
+  const now = Date.now();
+  let changed = false;
+  let droppedMating = 0;
+  let startedGrowth = 0;
+
+  const toads = state.toads.map((toad) => {
+    const patches = collectToadPatches(toad, now);
+
+    if (!patches) {
+      return toad;
+    }
+
+    changed = true;
+
+    if (patches.dropMating) {
+      droppedMating += 1;
+    }
+
+    if (patches.growthStartedAt != null && toad.growthStartedAt == null) {
+      startedGrowth += 1;
+    }
+
+    const { dropMating, ...fields } = patches;
+    const next = { ...toad, ...fields } as Toad & LegacyToadFields;
+
+    if (dropMating) {
+      delete next.mating;
+    }
+
+    return next as Toad;
+  });
+
+  if (!changed) {
+    return state;
+  }
+
+  if (droppedMating > 0) {
+    console.info(
+      `[localStorage] Устаревшее ухаживание снято: ${droppedMating} жаб`,
+    );
+  }
+
+  if (startedGrowth > 0) {
+    console.info(
+      `[localStorage] Рост головастиков из старого сейва запущен: ${startedGrowth}`,
+    );
+  }
+
+  return { ...state, toads };
+}
+
 /**
  * Приведение старых сейвов к правилу «у жабы одно место» (`utils/toad-location.ts`):
  *
@@ -150,7 +301,7 @@ const getLegacyRoomId = (toad: LegacyToad): string | null =>
  *     старого дома нет в сейве, подбираем свободный (или первый) биопод. Место в секторе
  *     при этом не меняется.
  */
-function migrateGameState(state: GameState): GameState {
+function migrateToadPlaces(state: GameState): GameState {
   if (!state.toads?.length || !state.scenes?.length) {
     return state;
   }
@@ -296,13 +447,26 @@ function migrateGameState(state: GameState): GameState {
   return changed ? { ...state, toads } : state;
 }
 
+/**
+ * Все миграции сейва при загрузке: сначала поля жабы (устаревшие механики),
+ * затем места (дом, сектор, склад). Порядок важен — расселение в
+ * `migrateToadPlaces` опирается на актуальные `scene_id`/`homeId`.
+ */
+function migrateGameState(state: GameState): GameState {
+  return migrateToadPlaces(migrateToadFields(state));
+}
+
 // Сохранение всего состояния
-export const saveGameState = (state: GameState, syntetic: boolean): void => {
+/** `keepLastSaved` — служебная запись: `lastSaved` не двигается, оффлайн не «съедается» */
+export const saveGameState = (
+  state: GameState,
+  keepLastSaved: boolean,
+): void => {
   try {
     const stateToSave = {
       ...state,
       // не обновляем время, если событие было вызвано gameLoop
-      lastSaved: syntetic ? state.lastSaved : new Date().toISOString(),
+      lastSaved: keepLastSaved ? state.lastSaved : new Date().toISOString(),
     };
     storage.set(LS_KEY, JSON.stringify(stateToSave));
 
@@ -323,12 +487,12 @@ export const saveGameState = (state: GameState, syntetic: boolean): void => {
 // Обновление состояния (частичное)
 export const updateGameState = (
   updates: Partial<GameState>,
-  syntetic = false,
+  keepLastSaved = false,
 ): GameState => {
   const currentState = getGameState();
   const newState = { ...currentState, ...updates };
 
-  saveGameState(newState, syntetic);
+  saveGameState(newState, keepLastSaved);
   return newState;
 };
 
@@ -385,7 +549,7 @@ export const attachIdentity = (accountId?: string | null): GameState => {
 
   console.info(`[localStorage] Аккаунт обновлён: ${changes.join(", ")}`);
 
-  // `syntetic = true`: привязка аккаунта — не игровой прогресс. Иначе `lastSaved`
+  // `keepLastSaved = true`: привязка аккаунта — не игровой прогресс. Иначе `lastSaved`
   // обновлялся бы прямо перед синком (`backend/db.ts` → `resolveAccountId`), и
   // локальный сейв всегда выглядел бы новее облачного: прогресс, сохранённый на
   // другом устройстве, не применялся бы никогда.

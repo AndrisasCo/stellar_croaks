@@ -229,14 +229,6 @@ export default function DissolveModal({ room }: { room?: RoomConfig }) {
                               {toad.pregnancy?.isPregnant && (
                                 <span className="text-pink-300">🍼</span>
                               )}
-                              {toad.mating && (
-                                <span
-                                  className="text-pink-300"
-                                  title="Устаревшее ухаживание в репродукторе: беременность начнётся на ближайшем тике"
-                                >
-                                  🫧
-                                </span>
-                              )}
                               {isToadSick(toad) && (
                                 <span title="Кибер-заражение: выход биомассы снижен">
                                   🦠

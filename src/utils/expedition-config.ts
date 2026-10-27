@@ -727,8 +727,8 @@ export const getReturnRemainingHours = (
     return 0;
   }
   const leftMs =
-    expedition.returnStartedAt + expedition.returnHours * 60 * 60 * 1000 - now;
-  return Math.max(0, leftMs / (60 * 60 * 1000));
+    expedition.returnStartedAt + expedition.returnHours * HOUR_MS - now;
+  return Math.max(0, leftMs / HOUR_MS);
 };
 
 /** Цена ускорения возврата в биомассе (вдвое ближе к дому) */

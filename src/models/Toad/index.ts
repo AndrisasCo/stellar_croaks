@@ -3,22 +3,6 @@ import { toadTypeMap, ToadTypes } from "./toad-species";
 /** Статус жабы (используется разведкой/экспедициями) */
 export type ToadStatus = "ok" | "injured" | "out";
 
-/**
- * Устаревшее ухаживание в репродукторе (Часть 3.2). Раньше после посадки пары беременность
- * стартовала через случайные 15–30 минут. Теперь ухаживание мгновенное: пара беременеет
- * сразу (`breeding-manager.startNestCourtship`), а `mating` осталось только для старых
- * сейвов — первый тик `processBreeding` доигрывает такую пару в беременность.
- * Поле есть у обеих жаб пары: `partnerId` у самки — самец, у самца — самка.
- */
-export interface MatingState {
-  /** Когда началось ухаживание (мс) */
-  startedAt: number;
-  /** Когда стартовала бы беременность (мс) — устаревшее, тик больше не ждёт этот момент */
-  startAt: number;
-  /** Партнёр: у самки — самец, у самца — самка */
-  partnerId: number;
-}
-
 export interface Toad {
   id: number;
   stage: string; // 'toadpole' | 'adult'
@@ -63,6 +47,11 @@ export interface Toad {
     diseaseUntil?: number;
     // добавить потом болезни, которые дают дебаффы к голоду/цене/размножению + нельзя в коллайдер
   };
+  /**
+   * Беременность самки: срок в часах (`pregnancyDuration`) от `pregnancyStart` (мс).
+   * Роды доигрывает тик `processBreeding`, а `created_at` детей — реальное время
+   * родов: по нему автокормушка ставит таймер роста новорождённым.
+   */
   pregnancy: null | {
     isPregnant: boolean;
     pregnancyStart: number;
@@ -71,8 +60,6 @@ export interface Toad {
     father: Toad;
     offspringCount: number;
   };
-  /** Ухаживание в репродукторе: беременность стартует по таймеру (см. `MatingState`) */
-  mating?: MatingState | null;
   genes: {
     hungerRate: number;
     fertility: number;
@@ -756,9 +743,11 @@ export const RARITY_CONFIG = {
   },
 };
 
-export const getPregnancyDuration = () => Math.floor(Math.random() * 5); // 0 - 0.5 часов реальных
-
-export const HOURS_TO_GROW_UP = 2;
+/**
+ * Базовая беременность в часах — до бонуса за качество и деления на два.
+ * Итоговый срок считает `startPregnancy` (`utils/breeding-manager.ts`): 0–4 часа.
+ */
+export const getPregnancyDuration = () => Math.floor(Math.random() * 5);
 
 // Функции для работы с Качеством
 export const getRarityGroup = (rarity: number): keyof typeof RARITY_CONFIG => {

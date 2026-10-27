@@ -104,9 +104,9 @@ const isTaskComplete = (task: NarratorTaskId, state: GameState): boolean => {
         } else if (toad.sex === "female") {
           room.female = true;
         }
-        // Ухаживание уже началось и сразу дало беременность (ухаживание мгновенное);
-        // `mating` проверяем для старых сейвов.
-        if (toad.mating || toad.pregnancy?.isPregnant) {
+        // Ухаживание мгновенное: пара сразу беременеет, поэтому шаг обучения
+        // закрывает именно беременность в репродукторе.
+        if (toad.pregnancy?.isPregnant) {
           room.courtship = true;
         }
         pairs.set(roomId, room);

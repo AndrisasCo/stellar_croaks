@@ -24,6 +24,7 @@ import {
   completeAchivement,
   completeAchivementCounter,
 } from "../backend/achivements-manager";
+import { HOUR_MS } from "./date";
 import { getIncubatingToadIds } from "./dissolve-manager";
 import { getToadDisease, infectToad } from "./disease-manager";
 import {
@@ -116,8 +117,6 @@ import { getHpRegenPerHour, getHospitalRoomIds } from "./hospital";
  * вызов лишь «догоняет» те шаги пути, которые уже наступили по часам.
  */
 
-const HOUR_MS = 60 * 60 * 1000;
-
 export interface ExpeditionActionResult {
   success: boolean;
   message: string;
@@ -176,10 +175,6 @@ export const canSendToad = (
   }
   if (toad.pregnancy?.isPregnant) {
     return { ok: false, reason: "вынашивает потомство" };
-  }
-  // Устаревшее ухаживание из старого сейва: жаба занята до ближайшего тика (Часть 3.2)
-  if (toad.mating) {
-    return { ok: false, reason: "ухаживает в репродукторе" };
   }
   if (getIncubatingToadIds().includes(toad.id)) {
     return { ok: false, reason: "в инкубаторе" };

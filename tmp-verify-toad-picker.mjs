@@ -84,7 +84,6 @@ const toad = (over = {}) => ({
   status: "ok",
   state: { hunger: 100 },
   pregnancy: null,
-  mating: null,
   genes: {
     colors: ["#000000"],
     pattern: "smooth",
@@ -423,8 +422,8 @@ check("в паре самка из списка слота самки", ready.pa
 const started = breeding.startNestCourtship(NEST, collect);
 check("ухаживание началось", started.started, true);
 check("самка сразу беременна", findToad(2).pregnancy?.isPregnant, true);
-check("самка больше не ухаживает", findToad(2).mating, null);
-check("самец больше не ухаживает (его можно забрать)", findToad(1).mating, null);
+check("у самки нет устаревшего ухаживания", "mating" in findToad(2), false);
+check("у самца нет устаревшего ухаживания", "mating" in findToad(1), false);
 
 console.log("\n[7] Больная и выбитая жаба пару не образуют");
 console.log("─".repeat(60));

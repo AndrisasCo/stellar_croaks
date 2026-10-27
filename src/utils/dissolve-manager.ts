@@ -99,15 +99,6 @@ export const getDissolveWarnings = (toads: Toad[]): DissolveWarning[] => {
     });
   }
 
-  const courtingCount = toads.filter((toad) => toad.mating).length;
-
-  if (courtingCount > 0) {
-    warnings.push({
-      icon: "🫧",
-      text: `Ухаживающих жаб в репродукторе: ${courtingCount} — ухаживание прервётся`,
-    });
-  }
-
   // Часть 5: раненых жаб жалко разбирать — их можно подлечить в разведке
   const woundedCount = toads.filter((toad) => toad.status === "injured").length;
 

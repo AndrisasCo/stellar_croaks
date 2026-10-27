@@ -1,5 +1,6 @@
 import { personalities } from "../models/Toad";
 import type { Toad } from "../models/Toad";
+import { DAY_MS } from "../utils/date";
 import { isColorableToadType } from "../models/Toad/toad-species";
 import {
   TOAD_COLOR_GROUP_BY_ID,
@@ -46,8 +47,6 @@ const SCRIPTED_ID_PREFIX = "scripted_v1";
 /** Потолок награды после ребаланса: дороже самого редкого кураторского заказа. */
 const MAX_SCRIPTED_REWARD = 100;
 /** Старые id (до ребаланса) содержат награды до ~460 💎 — их принимаем, но урезаем. */
-const DAY_MS = 24 * 60 * 60 * 1000;
-
 const PERSONALITY_TITLES = [
   "Охота за характером",
   "Редкая натура",

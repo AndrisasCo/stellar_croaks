@@ -1,9 +1,9 @@
 import { updateToadsBulkHunger } from "../backend";
 
-// `getHunger` живёт в чистом модуле, но реэкспортируется отсюда: у него уже были
-// потребители (`backend/index.ts`), и им не нужно менять импорт.
-export { getHunger } from "./hunger";
-
+/**
+ * Тик голода: `hoursPassed` — сколько реальных часов прошло. Формула сытости
+ * живёт в чистом модуле `utils/hunger.ts`; здесь только запись в сейв.
+ */
 export const processHunger = (hoursPassed: number) => {
   updateToadsBulkHunger(hoursPassed, true);
 };

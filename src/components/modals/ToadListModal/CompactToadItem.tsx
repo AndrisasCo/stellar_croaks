@@ -57,14 +57,6 @@ export const CompactToadItem = ({
               <PregnancyIcon />
             </span>
           )}
-          {toad.mating && (
-            <span
-              className="text-pink-300 flex-shrink-0 text-xs"
-              title="Устаревшее ухаживание в репродукторе: беременность начнётся на ближайшем тике"
-            >
-              🫧
-            </span>
-          )}
           {toad.stage === "toadpole" && (
             <span className="text-blue-400 flex-shrink-0 text-xs">
               <ToadpoleIcon />

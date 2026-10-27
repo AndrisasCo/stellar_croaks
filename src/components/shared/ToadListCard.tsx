@@ -258,14 +258,6 @@ export const ToadListCard = ({
             <span className="truncate text-sm font-semibold text-white">
               {toad.name ?? "Безымянная"}
             </span>
-            {toad.mating && (
-              <span
-                className="shrink-0 text-2xs text-pink-300"
-                title="Ухаживание в репродукторе"
-              >
-                🫧
-              </span>
-            )}
             {toad.stage !== "adult" && (
               <span
                 className="shrink-0 text-2xs text-blue-300"

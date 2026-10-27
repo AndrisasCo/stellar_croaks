@@ -1,7 +1,7 @@
 import { Scene } from "../models/scene";
 import { Toad } from "../models/Toad";
 import { User } from "../models/user";
-import { getHunger } from "../utils/state-manager";
+import { getHunger } from "../utils/hunger";
 import { getSceneWithFreeSlot } from "../utils/housing";
 import { regenToadEnergy } from "../utils/energy";
 import {
@@ -99,7 +99,7 @@ export const createToad = (toadData: Partial<Toad>): Toad[] => {
 
 export const createToads = (
   toadsData: Partial<Toad>[],
-  syntetic?: boolean,
+  keepLastSaved?: boolean,
 ): Toad[] => {
   const state = getGameState();
   const newToads: Toad[] = toadsData.map((toadData) => {
@@ -118,7 +118,7 @@ export const createToads = (
   });
 
   const allToads = [...state.toads, ...newToads];
-  updateGameState({ toads: allToads }, syntetic);
+  updateGameState({ toads: allToads }, keepLastSaved);
 
   return newToads;
 };
@@ -158,14 +158,14 @@ export const updateUserStorage = (userData: Record<string, number>) => {
 export const updateToadById = (
   toadId: number,
   toadData: Partial<Toad>,
-  syntetic?: boolean,
+  keepLastSaved?: boolean,
 ): Toad[] => {
   const state = getGameState();
   const updatedToads = state.toads.map((toad) =>
     toad.id === toadId ? { ...toad, ...toadData } : toad,
   );
 
-  updateGameState({ toads: updatedToads }, syntetic);
+  updateGameState({ toads: updatedToads }, keepLastSaved);
   const updatedToad = updatedToads.find((t) => t.id === toadId);
 
   return updatedToad ? [updatedToad] : [];
@@ -174,14 +174,14 @@ export const updateToadById = (
 export const updateToadsByIds = (
   toadIds: number[],
   toadData: Partial<Toad>,
-  syntetic?: boolean,
+  keepLastSaved?: boolean,
 ): Toad[] => {
   const state = getGameState();
   const updatedToads = state.toads.map((toad) =>
     toadIds.includes(toad.id) ? { ...toad, ...toadData } : toad,
   );
 
-  updateGameState({ toads: updatedToads }, syntetic);
+  updateGameState({ toads: updatedToads }, keepLastSaved);
   const updatedToadsList = updatedToads.filter((t) => toadIds.includes(t.id));
 
   return updatedToadsList;
@@ -190,7 +190,7 @@ export const updateToadsByIds = (
 export const updateToadStateByIds = (
   toadIds: number[],
   toadStateData: Record<string, number>,
-  syntetic?: boolean,
+  keepLastSaved?: boolean,
 ): Toad[] => {
   const state = getGameState();
   const updatedToads = state.toads.map((toad) =>
@@ -199,7 +199,7 @@ export const updateToadStateByIds = (
       : toad,
   );
 
-  updateGameState({ toads: updatedToads }, syntetic);
+  updateGameState({ toads: updatedToads }, keepLastSaved);
   const updatedToadsList = updatedToads.filter((t) => toadIds.includes(t.id));
 
   return updatedToadsList;
@@ -207,28 +207,27 @@ export const updateToadStateByIds = (
 
 export const updateToadsBulkHunger = (
   hoursPassed: number,
-  syntetic?: boolean,
+  keepLastSaved?: boolean,
 ) => {
   const state = getGameState();
   // Голод идёт у всех жаб колонии — и дома, и в секторе (репродуктор, ⚡, Медотсек):
-  // место (`scene_id`)
-  const updatedToads = state.toads.map((toad) =>
-    toad.state?.hunger
-      ? {
-          ...toad,
-          state: {
-            ...toad.state,
-            hunger: getHunger(
-              toad.state.hunger,
-              toad.genes.hungerRate,
-              hoursPassed,
-            ),
-          },
-        }
-      : toad,
-  );
+  // место (`scene_id`) на него не влияет.
+  //
+  // Голодного головастика (0) тик тоже обновляет: `getHunger` сам держит сытость
+  // в границах, а проверка «есть ли `state`» больше не путает 0 с отсутствием поля.
+  const updatedToads = state.toads.map((toad) => ({
+    ...toad,
+    state: {
+      ...toad.state,
+      hunger: getHunger(
+        toad.state?.hunger ?? 0,
+        toad.genes?.hungerRate ?? 1,
+        hoursPassed,
+      ),
+    },
+  }));
 
-  updateGameState({ toads: updatedToads }, syntetic);
+  updateGameState({ toads: updatedToads }, keepLastSaved);
 };
 
 /**
@@ -240,14 +239,14 @@ export const updateToadsBulkHunger = (
  */
 export const updateToadsBulkEnergy = (
   hoursPassed: number,
-  syntetic?: boolean,
+  keepLastSaved?: boolean,
 ) => {
   const state = getGameState();
   const updatedToads = state.toads.map((toad) =>
     regenToadEnergy(toad, state.colony, hoursPassed),
   );
 
-  updateGameState({ toads: updatedToads }, syntetic);
+  updateGameState({ toads: updatedToads }, keepLastSaved);
 };
 
 export const deleteToadsByIds = (toadIds: number[]): Toad[] => {

@@ -233,11 +233,6 @@ export default function NestModal({
       return ``;
     }
 
-    // Устаревшее ухаживание из старого сейва живёт до ближайшего тика
-    if (toad.mating) {
-      return "ухаживает";
-    }
-
     if (toad.stage !== "adult") {
       return "головастик из этого репродуктора";
     }
@@ -306,11 +301,6 @@ export default function NestModal({
   const nestHint = ((): string | null => {
     if (pregnantInNest) {
       return ``;
-    }
-
-    // Устаревшее ухаживание из старого сейва: первый тик сразу даст беременность
-    if (nestAdults.some((toad) => toad.mating)) {
-      return "Ухаживание завершается";
     }
 
     if (nestAdults.length === 0) {
@@ -483,16 +473,11 @@ export default function NestModal({
                     showHp={false}
                     showEnergy
                     status={{
-                      icon: toad.pregnancy?.isPregnant
-                        ? ""
-                        : toad.mating
-                          ? "🫧"
-                          : "⏳",
+                      icon: toad.pregnancy?.isPregnant ? "" : "⏳",
                       label: toadStatus(toad).trim(),
-                      className:
-                        toad.mating || toad.pregnancy?.isPregnant
-                          ? "text-pink-300"
-                          : "text-slate-300",
+                      className: toad.pregnancy?.isPregnant
+                        ? "text-pink-300"
+                        : "text-slate-300",
                     }}
                     actions={
                       toad.pregnancy?.isPregnant ? (

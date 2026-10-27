@@ -10,6 +10,7 @@ import {
   getToadDisease,
   isToadSick,
 } from "../models/disease";
+import { HOUR_MS } from "./date";
 import {
   getHospitalDiseaseHours,
   getHospitalRoomIds,
@@ -30,9 +31,6 @@ import { isToadInEnclosure } from "./toad-location";
  * и `utils/hospital.ts`. Реэкспорт оставлен, чтобы привычные пути импорта не менялись.
  */
 export { getToadDisease, isToadSick };
-
-/** Час в миллисекундах — для сдвига срока болезни в Медотсеке */
-const HOUR_MS = 60 * 60 * 1000;
 
 /** Множитель выработки биомассы с учётом болезни (1 = здорова) */
 export const getDiseaseProductionMultiplier = (toad: Toad): number =>
@@ -55,7 +53,7 @@ export const infectToad = (toadId: number, diseaseId?: string): boolean => {
       state: {
         ...toad.state,
         diseaseId: getDiseaseIndex(disease.id),
-        diseaseUntil: Date.now() + disease.durationHours * 60 * 60 * 1000,
+        diseaseUntil: Date.now() + disease.durationHours * HOUR_MS,
       },
     },
     true,

@@ -1,5 +1,6 @@
 import { getPersonalityMultipliers, Toad } from "../models/Toad";
 import { getDiseasePenaltyMultiplier } from "../models/disease";
+import { MINUTE_MS } from "./date";
 
 // === Размножение: энергия и cooldown (Часть 3.2) ===
 
@@ -17,18 +18,28 @@ export const BREED_ENERGY_BASE = 25;
 /** Базовый расход биомассы на одно спаривание */
 export const BREED_BIOMASS_BASE = 8;
 /** Базовый отдых после скрещивания — 10 минут */
-export const BREED_COOLDOWN_BASE_MS = 10 * 60 * 1000;
+export const BREED_COOLDOWN_BASE_MS = 10 * MINUTE_MS;
 /** Сколько жаб влезает в гекс «Репродуктор»: пара (самец + самка) на ухаживание */
 export const NEST_ROOM_TOAD_SLOTS = 2;
 
 // === Ухаживание в репродукторе: мгновенное (Часть 3.2) ===
 //
-// Окно ухаживания на 15–30 минут убрано: пара беременеет сразу после нажатия
+// Окна ухаживания на 15–30 минут больше нет: пара беременеет сразу после нажатия
 // «Начать ухаживание», а всё ожидание перенесено на беременность в репродукторе
-// (`utils/breeding-manager.ts`). Поле `Toad.mating` осталось только для старых
-// сейвов: тик `processBreeding` доигрывает такую пару в беременность сразу.
+// (`utils/breeding-manager.ts`). Пару заводит только игрок — сама она не
+// стартует, поэтому родов «по таймеру» без его действия в игре нет.
+
+// === Рост головастика ===
+
+/**
+ * Сколько часов растёт головастик от первого кормления.
+ * Таймер запускает кормление (`utils/toad-growth.ts`), а не роды: новорождённый
+ * выходит с `hunger: 0` и без еды не растёт.
+ */
+export const HOURS_TO_GROW_UP = 2;
 
 // === Фарм биомассы (Часть 3.3) ===
+
 
 /** Мягкое выгорание голода за реальные сутки */
 export const HUNGER_PER_DAY = 40;
@@ -137,8 +148,6 @@ export const getBreedCooldownMs = (toad: Toad): number => {
 export const isToadReadyToBreed = (toad: Toad, now = Date.now()): boolean => {
   if (toad.stage !== "adult") return false;
   if (toad.pregnancy?.isPregnant) return false;
-  // Устаревшее ухаживание из старого сейва: пока оно не доиграно тиком, жаба занята (Часть 3.2)
-  if (toad.mating) return false;
   if ((toad.breedCooldownUntil ?? 0) > now) return false;
   return getToadEnergy(toad) >= getEnergyCost(toad);
 };

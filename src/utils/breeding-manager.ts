@@ -1,4 +1,4 @@
-import { getPregnancyDuration, HOURS_TO_GROW_UP, Toad } from "../models/Toad";
+import { getPregnancyDuration, Toad } from "../models/Toad";
 import { Items } from "../models/user";
 import { isToadSick } from "../models/disease";
 import {
@@ -9,7 +9,7 @@ import {
   updateUserStorage,
 } from "../backend";
 import { generateChildToad } from "./calculate-genetics";
-import { getHoursFromNow } from "./date";
+import { MINUTE_MS, hoursSince } from "./date";
 import { getGameState } from "../backend/localStorage";
 import { completeAchivement } from "../backend/achivements-manager";
 import { assignToadsToScenes } from "./housing";
@@ -19,8 +19,10 @@ import {
   getToadRoomId,
 } from "./toad-location";
 import { getToadGrowthInfo } from "./toad-growth";
+import { getPregnancyDueAt, getPregnancyInfo } from "./pregnancy";
 import { NEST_ROOM_ID } from "./constants";
 import {
+  HOURS_TO_GROW_UP,
   getBreedCooldownMs,
   getBreedPairBiomassCost,
   getEnergyCost,
@@ -45,102 +47,76 @@ const warnStarvingToadpole = (toad: Toad, addNotification: any) => {
 
   warnedStarvingToadpoles.add(toad.id);
   addNotification({
-    content: `${toad.name} не растёт: головастик голоден. Покормите его!`,
+    content: `${toad.name ?? "Головастик"} не растёт: головастик голоден. Покормите его!`,
     type: "warn",
     timeout: 9000,
   });
 };
 
-export class TimeManager {
-  lastPlayTime: string | number;
-  currentTime: number;
-
-  constructor() {
-    this.lastPlayTime = new Date(
-      getGameState().lastSaved || Date.now(),
-    ).getTime();
-    this.currentTime = Date.now();
-  }
-
-  getTimePassed() {
-    const realTimeDiff = this.currentTime - +this.lastPlayTime;
-    const gameDaysPassed =
-      Math.floor((realTimeDiff / (60 * 60 * 1000)) * 100) / 100; // 1 час
-
-    return Math.min(gameDaysPassed, 90); // максимум 90 "дней" оффлайн
-  }
+export interface BreedingTickOptions {
+  /**
+   * Не проверять рост в этом тике. Оффлайн-догон сначала рожает, затем кормит
+   * новорождённых автокормушкой и только потом растит (`MainScreen` → `catchUp`):
+   * иначе головастик, родившийся в оффлайне, успел бы «проголодаться» до кормления
+   * и получил бы ложное предупреждение.
+   */
+  skipGrowth?: boolean;
 }
 
-export const processBreeding = (addNotification: any) => {
-  const toadsByScene = groupToadsByScene(getGameState().toads);
-
-  // Обрабатываем каждую сцену отдельно
-  Object.values(toadsByScene).forEach((sceneToads) => {
-    processSceneBreeding(sceneToads, addNotification);
-  });
-};
-
-/** Жабы по домам: id биопода (`homeId`) → его жабы */
-const groupToadsByScene = (toads: Toad[]): Record<string, Toad[]> => {
-  return toads
-    .filter((toad) => getToadHomeId(toad) != null)
-    .reduce(
-      (groups, toad) => {
-        const sceneId = String(getToadHomeId(toad));
-        if (!groups[sceneId]) {
-          groups[sceneId] = [];
-        }
-        groups[sceneId].push(toad);
-        return groups;
-      },
-      {} as Record<string, Toad[]>,
-    );
-};
-
-const processSceneBreeding = async (
-  sceneToads: Toad[],
+export const processBreeding = (
   addNotification: any,
+  options: BreedingTickOptions = {},
 ) => {
-  const pregnant = sceneToads.filter((t) => t.pregnancy);
+  const { toads } = getGameState();
 
-  // Роды идут по таймеру беременности: где бы самка ни ждала, она родит в свой сектор
-  pregnant.forEach((toad) => {
-    if (
-      toad.pregnancy &&
-      getHoursFromNow(toad.pregnancy.pregnancyStart) >= // часы
-        toad.pregnancy.pregnancyDuration
-    ) {
+  // Роды: срок беременности считается у каждой жабы, где бы она ни ждала. Дом
+  // (`homeId`) для этого не нужен — жаба из старого сейва без дома тоже рожает,
+  // а потомство раскладывается по биоподам в `endPregnancy`.
+  toads.forEach((toad) => {
+    if (getPregnancyInfo(toad)?.isDue) {
       endPregnancy(toad, addNotification);
     }
   });
 
-  // Устаревшее ухаживание из старых сейвов: тик сразу доигрывает его беременностью
-  // (`finishMating`) либо срывает, если пара распалась (поход, выбывание, разбор партнёра).
-  sceneToads
-    .filter((t) => t.mating)
-    .forEach((toad) => processMating(toad, sceneToads, addNotification));
+  // Рост идёт после родов и по всем жабам: новорождённые этого тика тоже попадают
+  // в проверку (без кормления они просто ждут кормушку или игрока).
+  if (!options.skipGrowth) {
+    processToadpoleGrowth(addNotification);
+  }
+};
 
-  // смотрим нужно ли жабе вырасти
-  const toadpoles = sceneToads.filter((t) => t.stage === "toadpole");
-
-  // Рост без ускорений: бонусы биопода («ускоренный рост») — легаси и удалены.
-  // Таймер запускает первое кормление (`growthStartedAt`): новорождённый появляется
-  // с hunger: 0, поэтому без кормления он не начнёт расти (`getToadGrowthInfo`).
+/**
+ * Тик роста головастиков.
+ *
+ * Таймер запускает первое кормление (`growthStartedAt`), а не роды. Ходим по всем
+ * жабам, а не по домам: рост не зависит от места, и головастик без `homeId` (старый
+ * сейв) иначе не вырос бы никогда.
+ *
+ * Вызывается и отдельно от родов (`MainScreen` → `catchUp`), потому что оффлайн-догон
+ * сначала рожает, затем кормит новорождённых автокормушкой (она ставит таймер роста
+ * на время рождения), и только потом проверяет, не вырос ли головастик за оффлайн.
+ *
+ * Рост без ускорений: бонусы биопода («ускоренный рост») — легаси и удалены.
+ */
+export const processToadpoleGrowth = (
+  addNotification: any,
+  now = Date.now(),
+): void => {
+  const { toads } = getGameState();
   const grownToadpoles: number[] = [];
-  const startedToadpoles: number[] = [];
-  toadpoles.forEach((t) => {
-    const growth = getToadGrowthInfo(t);
+
+  toads.forEach((toad) => {
+    const growth = getToadGrowthInfo(toad, now);
 
     if (!growth) {
       return;
     }
 
     if (growth.notStarted) {
-      if (!growth.hungry) {
-        // Старый сейв или головастик из Торговая Капсулаа: он уже сыт, можно запускать таймер.
-        startedToadpoles.push(t.id);
-      } else if (getHoursFromNow(t.created_at) >= HOURS_TO_GROW_UP) {
-        warnStarvingToadpole(t, addNotification);
+      // Головастика ещё не кормили — он и не растёт. Предупреждаем, когда он уже
+      // мог бы вырасти: новорождённый с `hunger: 0` не должен ругаться сразу.
+      if (hoursSince(toad.created_at, now) >= HOURS_TO_GROW_UP) {
+        warnStarvingToadpole(toad, addNotification);
       }
       return;
     }
@@ -150,17 +126,13 @@ const processSceneBreeding = async (
     }
 
     if (growth.hungry) {
-      warnStarvingToadpole(t, addNotification);
+      warnStarvingToadpole(toad, addNotification);
       return;
     }
 
-    warnedStarvingToadpoles.delete(t.id);
-    grownToadpoles.push(t.id);
+    warnedStarvingToadpoles.delete(toad.id);
+    grownToadpoles.push(toad.id);
   });
-
-  if (startedToadpoles.length > 0) {
-    updateToadsByIds(startedToadpoles, { growthStartedAt: Date.now() }, true);
-  }
 
   if (grownToadpoles.length > 0) {
     updateToadsByIds(grownToadpoles, { stage: "adult" }, true);
@@ -170,129 +142,45 @@ const processSceneBreeding = async (
 /**
  * Ухаживание в репродукторе (Часть 3.2).
  *
- * Жабы беременеют только в репродукторе: самец и самка сидят там парой, и ухаживание заводит
- * игрок — кнопкой «Начать ухаживание» в модалке репродуктора (`startNestCourtship`); само
- * репродуктор пару не берёт. Ухаживание мгновенное: пара сразу беременеет, и дальше самка
- * вынашивает потомство в репродукторе до родов. Её нельзя отселить до родов (только ускорить
- * беременность мушкой ✨), а самца после ухаживания игрок может забрать в биопод — он больше
- * не занят парой.
+ * Жабы беременеют только в репродукторе: самец и самка сидят там парой, и ухаживание
+ * заводит игрок — кнопкой «Начать ухаживание» в модалке репродуктора
+ * (`startNestCourtship`). Само репродуктор пару не берёт, а ухаживание мгновенное:
+ * пара сразу беременеет, и дальше самка вынашивает потомство до родов. Её нельзя
+ * отселить до родов (только ускорить мушкой ✨), а самец после ухаживания свободен.
  *
- * `Toad.mating` остался только для старых сейвов: тик `processBreeding` доигрывает такую пару
- * в беременность сразу (`processMating`), поэтому игрок не ждёт устаревший таймер.
+ * Старого таймера ухаживания (`Toad.mating`, 15–30 минут) больше нет: такие записи
+ * старых сейвов снимает миграция при загрузке (`backend/localStorage.ts`). Поэтому
+ * роды не могут начаться «сами» — только после действия игрока.
  */
 
-/** Пол жаб, который «ведёт» пару: беременность стартует у самки */
-const MATING_LEAD_SEX = "female";
+/** Больше пяти головастиков за роды не бывает */
+const MAX_OFFSPRING = 5;
 
 /**
- * Жаба перестала ухаживать, но осталась в репродукторе: выносит её только игрок
- * (перенос на карте или кнопка в модалке «Репродуктор»).
+ * Забеременеть. Срок пишется в сейв сразу, поэтому тик родов и карточка жабы читают
+ * одно и то же поле.
+ *
+ * Беременность без ускорений: бонусы биопода («ускоренная беременность») — легаси
+ * и удалены. Срок — 0–4 часа: база 0–4 ч плюс качество, но не больше 8 «половин».
  */
-const clearMating = (toad: Toad) =>
-  updateToadById(toad.id, { mating: null }, true);
-
-/** Почему пара распалась — текст для уведомления */
-const getMatingBreakReason = (toad: Toad, partner: Toad | null): string => {
-  if (!partner) {
-    return "партнёр пропал";
-  }
-
-  if (isToadBusyOnExpedition(toad) || isToadBusyOnExpedition(partner)) {
-    return "жаба ушла в поход";
-  }
-
-  if ((toad.hp ?? 1) <= 0 || (partner.hp ?? 1) <= 0) {
-    return "жаба выбита из строя";
-  }
-
-  return "партнёр больше не ухаживает";
-};
-
-/**
- * Старый сейв: ухаживание завершается сразу — у самки стартует беременность, оба остаются
- * в репродукторе (из него жабу выносит игрок, сама она никуда не уходит).
- */
-const finishMating = (female: Toad, male: Toad) => {
-  const mother: Toad = { ...female, mating: null };
-
-  // startPregnancy пишет мать синхронно; `scene_id` у обоих не трогаем: из репродуктора
-  // жабу выносит игрок, сама она никуда не уходит
-  void startPregnancy(mother, male);
-  clearMating(male);
-};
-
-/**
- * Тик устаревшего ухаживания (старые сейвы): пара больше не ждёт 15–30 минут — беременность
- * стартует на первом же тике. Срыв (поход, 0 HP, пропавший партнёр) гасит ухаживание
- * у обоих, но жабы остаются в репродукторе.
- */
-const processMating = (
-  toad: Toad,
-  sceneToads: Toad[],
-  addNotification: any,
-) => {
-  const mating = toad.mating;
-
-  if (!mating) {
-    return;
-  }
-
-  const partner = sceneToads.find((t) => t.id === mating.partnerId) ?? null;
-  const pairBroken =
-    !partner || !partner.mating || partner.mating.partnerId !== toad.id;
-  const unavailable =
-    isToadBusyOnExpedition(toad) ||
-    (toad.hp ?? 1) <= 0 ||
-    !partner ||
-    isToadBusyOnExpedition(partner) ||
-    (partner.hp ?? 1) <= 0;
-
-  if (pairBroken || unavailable) {
-    // Уведомляем один раз на пару: говорит тот, кто её ведёт (самка)
-    const leads = toad.sex === MATING_LEAD_SEX || !partner;
-    const reason = getMatingBreakReason(toad, partner);
-    const names = [toad.name, partner?.name].filter(Boolean).join(" ♥ ");
-
-    if (partner?.mating) {
-      clearMating(partner);
-    }
-
-    clearMating(toad);
-
-    if (leads) {
-      addNotification?.({
-        type: "warn",
-        content: `Ухаживание ${names} прервано: ${reason}.`,
-        timeout: 6000,
-      });
-    }
-
-    return;
-  }
-
-  if (toad.sex !== MATING_LEAD_SEX) {
-    return;
-  }
-
-  // Таймера больше нет: старое ухаживание доигрывается беременностью на первом тике
-  finishMating(toad, partner);
-};
-
-export const startPregnancy = async (toad: Toad, father: Toad) => {
-  // Беременность без ускорений: бонус биопода («ускоренная беременность») — легаси
+export const startPregnancy = (toad: Toad, father: Toad): void => {
   const pregnancyDuration =
     Math.min(getPregnancyDuration() + toad.genes.rarity / 2, 8) / 2;
 
-  toad.pregnancy = {
-    isPregnant: true,
-    pregnancyStart: Date.now(),
-    pregnancyDuration: Math.round(pregnancyDuration * 100) / 100,
-    fatherId: father.id,
-    father,
-    offspringCount: calculateOffspringCount(toad),
-  };
-
-  updateToadById(toad.id, toad, true);
+  updateToadById(
+    toad.id,
+    {
+      pregnancy: {
+        isPregnant: true,
+        pregnancyStart: Date.now(),
+        pregnancyDuration: Math.round(pregnancyDuration * 100) / 100,
+        fatherId: father.id,
+        father,
+        offspringCount: calculateOffspringCount(toad),
+      },
+    },
+    true,
+  );
 };
 
 const calculateOffspringCount = (female: Toad): number => {
@@ -301,29 +189,50 @@ const calculateOffspringCount = (female: Toad): number => {
   const bonusCount =
     Math.random() < Math.min(female.genes.fertility / 4, 1) ? 1 : 0;
 
-  return Math.min(baseCount + bonusCount, 5);
+  return Math.min(baseCount + bonusCount, MAX_OFFSPRING);
 };
 
-export const endPregnancy = async (toad: Toad, addNotification: any) => {
-  if (!toad.pregnancy) {
+/**
+ * Роды: дети появляются на свет, беременность снимается.
+ *
+ * `created_at` детей — **реальное** время родов: срок мог выйти, пока игра была
+ * закрыта, и тогда роды «доигрываются» на входе, но родились дети раньше. По этой
+ * метке считается возраст и оффлайн-рост головастика — автокормушка ставит таймер
+ * роста на время рождения (`utils/auto-feeder.ts`), а не на вход в игру.
+ *
+ * Началом родов считается только что вышедший срок беременности: иначе
+ * новорождённый «моложе» собственных родов и не растёт, пока его не накормят.
+ */
+export const endPregnancy = (toad: Toad, addNotification: any): void => {
+  const pregnancy = toad.pregnancy;
+
+  if (!pregnancy) {
     return;
   }
-  const { offspringCount } = toad.pregnancy;
 
-  const father = toad.pregnancy.father;
+  const father = pregnancy.father;
+  const dueAt = getPregnancyDueAt(pregnancy);
+  const bornAt = new Date(
+    dueAt == null ? Date.now() : Math.min(Date.now(), dueAt),
+  ).toISOString();
 
   // Мать остаётся там, где рожала: из репродуктора её выносит игрок, а не игра
-  const finishBirth = () =>
-    updateToadById(toad.id, { ...toad, pregnancy: null, mating: null }, true);
+  const finishBirth = () => updateToadById(toad.id, { pregnancy: null }, true);
 
+  // Битой записи (нет отца) рожать некого: снимаем беременность, а не зависаем в ней
   if (!father) {
     finishBirth();
     return;
   }
 
-  const children = new Array(offspringCount)
-    .fill(1)
-    .map(() => generateChildToad([toad, father], false));
+  const offspring = Number.isFinite(pregnancy.offspringCount)
+    ? Math.min(Math.max(Math.floor(pregnancy.offspringCount), 0), MAX_OFFSPRING)
+    : 0;
+
+  const children = new Array(offspring).fill(1).map(() => ({
+    ...generateChildToad([toad, father], false),
+    created_at: bornAt,
+  }));
 
   const currentSceneId = getToadEnclosureId(toad) ?? getToadHomeId(toad);
 
@@ -410,7 +319,7 @@ export const accelerateNestPregnancy = async (
   }
 
   updateUserStorage({ [Items.sparkleFlys]: flies - 1 });
-  await endPregnancy(toad, addNotification);
+  endPregnancy(toad, addNotification);
 
   return {
     success: true,
@@ -549,14 +458,15 @@ export interface CourtshipCheck {
 }
 
 /**
- * Жабы репродуктора: все взрослые (по ним видно, что ухаживание или беременность уже идут)
- * и свободная пара — самец и самка без ухаживания и беременности. Ходим через неё и в
- * проверке кнопки, и в запуске пары, чтобы проверки и старт не разъезжались.
+ * Жабы репродуктора: все взрослые (по ним видно, идёт ли беременность) и свободная
+ * пара — самец и самка без беременности. Ходим через неё и в проверке кнопки, и в
+ * запуске пары, чтобы проверки и старт не разъезжались.
  */
 const getNestPair = (
   roomId: string,
 ): { adults: Toad[]; male: Toad | null; female: Toad | null } => {
-  const free = (toad: Toad) => !toad.mating && !toad.pregnancy?.isPregnant;
+  const free = (toad: Toad) => !toad.pregnancy?.isPregnant;
+
   const adults = getGameState().toads.filter(
     (toad) => toad.scene_id === roomId && toad.stage === "adult",
   );
@@ -568,12 +478,27 @@ const getNestPair = (
   };
 };
 
+/** Сколько ещё отдыхать паре: «7 мин», «1 ч 10 мин» */
+const formatBreedCooldown = (msLeft: number): string => {
+  const minutes = Math.max(0, Math.ceil(msLeft / MINUTE_MS));
+
+  if (minutes < 60) {
+    return `${minutes} мин`;
+  }
+
+  const rest = minutes % 60;
+
+  return rest === 0
+    ? `${Math.floor(minutes / 60)} ч`
+    : `${Math.floor(minutes / 60)} ч ${rest} мин`;
+};
+
 /**
  * Готова ли пара в репродукторе к ухаживанию (кнопка «Начать ухаживание», Часть 3.2).
  *
  * Проверка без побочных эффектов: по ней кнопка решает, активна ли она, и объясняет,
  * чего не хватает — сил пары, биомассы, беременности. Пара берётся из тех, кто ещё
- * не ухаживает и не вынашивает, поэтому при идущей беременности кнопка ничего не запустит.
+ * не вынашивает, поэтому при идущей беременности кнопка ничего не запустит.
  */
 export const checkNestCourtship = (roomId: string): CourtshipCheck => {
   const state = getGameState();
@@ -583,14 +508,6 @@ export const checkNestCourtship = (roomId: string): CourtshipCheck => {
     return {
       ready: false,
       message: "Репродуктор пуст: посадите сюда самца и самку.",
-      pair: null,
-    };
-  }
-
-  if (adults.some((toad) => toad.mating)) {
-    return {
-      ready: false,
-      message: "Пара в процессе ухаживания.",
       pair: null,
     };
   }
@@ -637,9 +554,17 @@ export const checkNestCourtship = (roomId: string): CourtshipCheck => {
   }
 
   if (!isToadReadyToBreed(male) || !isToadReadyToBreed(female)) {
+    const restMs =
+      Math.max(male.breedCooldownUntil ?? 0, female.breedCooldownUntil ?? 0) -
+      Date.now();
+
     return {
       ready: false,
-      message: `Пара ещё восстанавливает силы — ухаживание будет доступно спустя время: ${Math.round(((male.breedCooldownUntil || female.breedCooldownUntil || 0) - Date.now()) / 1000)} с`,
+      // Отдых и силы — разные причины: иначе игрок видел бы «через -12 с»
+      message:
+        restMs > 0
+          ? `Пара ещё восстанавливает силы — ухаживание будет доступно через ${formatBreedCooldown(restMs)}.`
+          : "Паре не хватает сил на ухаживание — покормите жаб и дождитесь отдыха.",
       pair: null,
     };
   }
@@ -694,26 +619,26 @@ export const startNestCourtship = (
   const biomassCost = getBreedPairBiomassCost(male, female);
   const biomass = state.user.biomass || 0;
 
-  // Старое ухаживание снимаем на всякий случай: пара могла прийти из сейва с `mating`
+  // Пара из сейва могла прийти с устаревшим `mating`: миграция его уже сняла,
+  // а оплата и отдых пишутся только по текущим полям
   const updatedMale: Toad = {
     ...male,
     energy: getToadEnergy(male) - getEnergyCost(male),
     breedCooldownUntil: now + getBreedCooldownMs(male),
-    mating: null,
   };
   const updatedFemale: Toad = {
     ...female,
     energy: getToadEnergy(female) - getEnergyCost(female),
     breedCooldownUntil: now + getBreedCooldownMs(female),
-    mating: null,
   };
 
   updateToadById(updatedMale.id, updatedMale, true);
+  updateToadById(updatedFemale.id, updatedFemale, true);
   updateUser({ biomass: Math.round((biomass - biomassCost) * 100) / 100 });
 
   // Ухаживание мгновенное: беременность пишется синхронно, ждать её старт не нужно.
   // Оба остаются в репродукторе, но самец уже свободен — его можно забрать в биопод.
-  void startPregnancy(updatedFemale, updatedMale);
+  startPregnancy(updatedFemale, updatedMale);
 
   completeAchivement("first-manual-breed");
 

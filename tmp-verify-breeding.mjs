@@ -4,20 +4,24 @@
  * Скрипт бандлит модули через esbuild и прогоняет их как обычный JS — проверяются
  * те же формулы, что работают в игре:
  *   1) ухаживание мгновенное: таймера 15–30 минут и множителей характера больше нет,
- *      а `Toad.mating` из старых сейвов всё ещё считается занятостью;
+ *      а устаревшее `Toad.mating` из старых сейвов снимает миграция при загрузке;
  *   2) пару заводит кнопка «Начать ухаживание»: без готовой пары она не срабатывает и
  *      объясняет причину, а с парой — сразу беременеет самку (без кнопки пара просто ждёт);
- *   3) старый сейв: первый же тик `processBreeding` доигрывает ухаживание в беременность
- *      без всплывающих уведомлений, а уход в поход/выбывание срывает устаревшую пару;
- *   4) слоты гнезда заняты беременностью; беременную самку не унести с карты, а самца
+ *   3) миграция старого сейва: сытому головастику запускается таймер роста, голод
+ *      и срок беременности приводятся к текущим правилам;
+ *   4) рост головастика: `hungry` считается на остаток роста, а не на все 2 часа;
+ *   5) срок беременности и оффлайн-время считаются одним модулем (`utils/pregnancy.ts`,
+ *      `utils/date.ts`) — тик, карточка жабы и вход в игру видят одно и то же;
+ *   6) слоты гнезда заняты беременностью; беременную самку не унести с карты, а самца
  *      после ухаживания — можно;
- *   5) гнездо как комната: 2 взрослые жабы, обесточенная комната жаб не принимает,
+ *   7) гнездо как комната: 2 взрослые жабы, обесточенная комната жаб не принимает,
  *      а каждый гекс-вольер показывает своих жильцов (`RoomConfig.sceneId`), а не один
  *      общий список жаб;
- *   6) беременность ускоряется Сияющей мушкой ✨ со склада (и астро-кваксами для старых
+ *   8) беременность ускоряется Сияющей мушкой ✨ со склада (и астро-кваксами для старых
  *      сейвов), после чего сразу идут роды;
- *   7) роды: в гнезде головастики остаются у матери, в вольере — расходятся по вольерам;
- *   8) в обучении пара тоже беременеет сразу — отдельной ветки ожидания больше нет.
+ *   9) роды: в гнезде головастики остаются у матери, в вольере — расходятся по вольерам,
+ *      а жаба без дома всё равно рожает (тик идёт по всем, а не по домам);
+ *  10) в обучении пара тоже беременеет сразу — отдельной ветки ожидания больше нет.
  *
  * Запуск: node tmp-verify-breeding.mjs
  */
@@ -83,7 +87,6 @@ const toad = (over = {}) => ({
   status: "ok",
   state: { hunger: 100 },
   pregnancy: null,
-  mating: null,
   genes: {
     colors: ["#000000"],
     pattern: "smooth",
@@ -206,8 +209,22 @@ const patchToad = (id, patch) => {
   );
   raw = JSON.stringify(state);
 };
+/** Добавить жаб в сейв (у миграций и таймеров должны быть свои подопытные) */
+const addToads = (...items) => {
+  const state = gameState();
+  state.toads = [...state.toads, ...items];
+  raw = JSON.stringify(state);
+};
+
+/** ISO-момент, сдвинутый от «сейчас» на `hours` часов назад */
+const isoAgo = (hours) => new Date(Date.now() - hours * 3600000).toISOString();
+
 const cfg = bundle("src/utils/gamification-config.ts", "gamification-config");
 const breeding = bundle("src/utils/breeding-manager.ts", "breeding-manager");
+const storage = bundle("src/backend/localStorage.ts", "local-storage");
+const growth = bundle("src/utils/toad-growth.ts", "toad-growth");
+const pregnancyLib = bundle("src/utils/pregnancy.ts", "pregnancy");
+const dateLib = bundle("src/utils/date.ts", "date");
 const astro = bundle("src/utils/astro-shop.ts", "astro-shop");
 const housing = bundle("src/utils/housing.ts", "housing");
 const constants = bundle("src/utils/constants.tsx", "constants");
@@ -244,6 +261,16 @@ const checkText = (label, value, pattern) => {
 const notes = [];
 const collect = (notification) => notes.push(notification);
 
+/**
+ * Уведомления, не связанные с голодом новорождённых.
+ *
+ * `created_at` головастика — реальное время родов, поэтому у просроченной
+ * беременности (сейв из оффлайна) новорождённые честно попадают в предупреждение
+ * «головастик голоден»: они и правда ждали кормления всё это время. Сами роды
+ * по-прежнему не дают тостов — это и проверяет `notesWithoutHunger`.
+ */
+const notesWithoutHunger = (items) =>
+  items.filter((item) => !/головастик голоден/.test(item.content ?? ""));
 
 console.log("\n[1] Ухаживание мгновенное: таймера 15–30 минут больше нет");
 console.log("─".repeat(60));
@@ -253,16 +280,31 @@ check("getMatingTimeLeft убран из конфига", "getMatingTimeLeft" in
 check("MATING_MIN_MINUTES убран из конфига", "MATING_MIN_MINUTES" in cfg, false);
 check("isToadCourting убран из конфига", "isToadCourting" in cfg, false);
 
-// Старый сейв: `mating` доигрывается тиком, но до тех пор жаба занята
-const legacyCourting = toad({
-  sex: "female",
+// Старый сейв: устаревшее ухаживание снимает миграция при загрузке, а не тик родов
+reset();
+patchToad(1, {
+  mating: { startedAt: Date.now(), startAt: Date.now() + 600000, partnerId: 2 },
+});
+patchToad(2, {
   mating: { startedAt: Date.now(), startAt: Date.now() + 600000, partnerId: 1 },
 });
+const migratedMating = storage.getGameState();
+check("у самца поле mating снято", "mating" in migratedMating.toads[0], false);
+check("у самки поле mating снято", "mating" in migratedMating.toads[1], false);
 check(
-  "старое ухаживание ещё считается занятостью",
-  cfg.isToadReadyToBreed(legacyCourting),
+  "после миграции жаба снова готова к размножению",
+  cfg.isToadReadyToBreed(migratedMating.toads[1]),
+  true
+);
+check(
+  "миграция не выдумывает беременность",
+  Boolean(migratedMating.toads[1].pregnancy),
   false
 );
+
+// Миграция идёт один раз: повторная загрузка уже ничего не меняет
+const migratedAgain = storage.getGameState();
+check("повторная загрузка стабильна", "mating" in migratedAgain.toads[0], false);
 
 /** Посадить жабу в гнездо — так же, как это делает игрок на карте колонии */
 const intoNest = (id) => patchToad(id, { scene_id: constants.NEST_ROOM_ID });
@@ -300,8 +342,8 @@ const mother = findToad(2);
 const father = findToad(1);
 check("самка сразу беременна", Boolean(mother.pregnancy?.isPregnant), true);
 check("в беременности записан отец", mother.pregnancy?.fatherId, father.id);
-check("самка больше не ухаживает", mother.mating, null);
-check("самец больше не ухаживает", father.mating, null);
+check("в сейве нет устаревшего поля ухаживания", "mating" in mother, false);
+check("у самца тоже нет устаревшего поля", "mating" in father, false);
 check("самка в гнезде", mother.scene_id, constants.NEST_ROOM_ID);
 check("самец в гнезде", father.scene_id, constants.NEST_ROOM_ID);
 check("энергия самки списана", mother.energy < 100, true);
@@ -336,68 +378,188 @@ checkText(
   /уже идёт беременность/,
 );
 check("вторую пару кнопка не берёт", secondPair.started, false);
-check("третья жаба в гнезде не ухаживает", Boolean(findToad(3).mating), false);
 check("третья жаба в гнезде не беременна", Boolean(findToad(3).pregnancy), false);
 
 
 
-console.log("\n[3] Старый сейв: первый тик сразу даёт беременность");
+console.log("\n[3] Миграция старого сейва: рост головастика, голод и срок беременности");
 console.log("─".repeat(60));
-reset();
-intoNest(1);
-intoNest(2);
-// Таймер из старого сейва ещё «в будущем»: новый код его не ждёт
-const legacyMating = {
-  startedAt: Date.now(),
-  startAt: Date.now() + 600000,
-};
-patchToad(1, { mating: { ...legacyMating, partnerId: 2 } });
-patchToad(2, { mating: { ...legacyMating, partnerId: 1 } });
-notes.length = 0;
-breeding.processBreeding(collect);
-const born = findToad(2);
-check("самка беременна на первом тике", born.pregnancy?.isPregnant, true);
-check("беременность без ухаживания", born.mating, null);
-check("самка осталась в гнезде", born.scene_id, constants.NEST_ROOM_ID);
-check("самец перестал ухаживать", findToad(1).mating, null);
-check("самец остался в гнезде", findToad(1).scene_id, constants.NEST_ROOM_ID);
-check("беременность без тоста об успехе", notes.length, 0);
-check("беременность заняла репродуктор", breeding.checkNestCourtship(constants.NEST_ROOM_ID).ready, false);
 
-console.log("\n[4] Старый сейв: срыв ухаживания и независимость беременности");
-console.log("─".repeat(60));
+// Головастик из старого сейва: таймера роста ещё нет, но он уже сыт — его кормили
 reset();
-intoNest(1);
-intoNest(2);
-patchToad(1, { mating: { ...legacyMating, partnerId: 2 }, status: "out" });
-patchToad(2, { mating: { ...legacyMating, partnerId: 1 } });
-notes.length = 0;
-breeding.processBreeding(collect);
-check("самка перестала ухаживать", findToad(2).mating, null);
-check("самец перестал ухаживать", findToad(1).mating, null);
-check("беременность не началась", Boolean(findToad(2).pregnancy), false);
-check("самка осталась в гнезде", findToad(2).scene_id, constants.NEST_ROOM_ID);
+addToads(
+  toad({ id: 10, stage: "toadpole", state: { hunger: 80 }, created_at: isoAgo(3) }),
+  toad({ id: 11, stage: "toadpole", state: { hunger: 0 }, created_at: isoAgo(3) })
+);
+const growthMigrated = storage.getGameState();
+const fedTadpole = growthMigrated.toads.find((item) => item.id === 10);
+const starvingTadpole = growthMigrated.toads.find((item) => item.id === 11);
 check(
-  "предупреждение о срыве",
-  notes.some((item) => item.type === "warn" && /прервано/.test(item.content)),
-  true
+  "сытому головастику миграция запустила рост",
+  typeof fedTadpole.growthStartedAt,
+  "number"
+);
+check(
+  "голодному головастику таймер не ставят",
+  starvingTadpole.growthStartedAt ?? null,
+  null
 );
 
-// Беременность уже началась — уход самца из репродуктора её не срывает
+// Сытость: вне 0…100 и битая метка роста приводятся к правилам игры
 reset();
-pairInNest();
-const pregnancyBefore = findToad(2).pregnancy;
-patchToad(1, { scene_id: 1 });
-notes.length = 0;
-breeding.processBreeding(collect);
-check("беременность не зависит от самца", findToad(2).pregnancy?.isPregnant, true);
+patchToad(1, { state: { hunger: 150 } });
+patchToad(2, { state: { hunger: -20 } });
+patchToad(3, { stage: "toadpole", growthStartedAt: "мусор", state: { hunger: 0 } });
+const hungerMigrated = storage.getGameState();
+check("сытость выше 100 обрезана", hungerMigrated.toads[0].state.hunger, 100);
+check("отрицательная сытость поднята до нуля", hungerMigrated.toads[1].state.hunger, 0);
 check(
-  "беременность не перезапустилась",
-  findToad(2).pregnancy?.pregnancyStart,
-  pregnancyBefore.pregnancyStart
+  "битая метка роста снята",
+  hungerMigrated.toads[2].growthStartedAt ?? null,
+  null
 );
-check("самец вне репродуктора", findToad(1).scene_id, 1);
-check("роды не наступили раньше срока", notes.length, 0);
+
+// Срок беременности: ISO-строка старого сейва → мс, битый срок — сразу роды
+reset();
+patchToad(2, {
+  pregnancy: {
+    isPregnant: true,
+    pregnancyStart: isoAgo(1),
+    pregnancyDuration: 2,
+    fatherId: 1,
+    father: toad({ id: 1 }),
+    offspringCount: 1,
+  },
+});
+const pregnancyMigrated = storage.getGameState().toads.find((item) => item.id === 2);
+check(
+  "ISO-срок беременности стал числом мс",
+  typeof pregnancyMigrated.pregnancy.pregnancyStart,
+  "number"
+);
+const migratedTimer = pregnancyLib.getPregnancyInfo(pregnancyMigrated);
+check("половина срока прошла", migratedTimer.progress, 50, 0.5);
+check("до родов остался час", migratedTimer.timeLeft, 60);
+check("роды ещё не наступили", migratedTimer.isDue, false);
+
+const brokenPregnancy = pregnancyLib.getPregnancyInfo({
+  pregnancy: {
+    isPregnant: true,
+    pregnancyStart: "мусор",
+    pregnancyDuration: 2,
+    fatherId: 1,
+    father: toad({ id: 1 }),
+    offspringCount: 1,
+  },
+});
+check("битый срок считается вышедшим", brokenPregnancy.isDue, true);
+
+console.log("\n[4] Рост головастика: сытость считается на остаток");
+console.log("─".repeat(60));
+const growthNow = Date.now();
+
+// Прожорливый головастик: 20 сытости в час, прошло 1.8 ч из 2 — осталось 12 минут и 4 сытости
+const almostGrown = growth.getToadGrowthInfo(
+  toad({
+    id: 20,
+    stage: "toadpole",
+    growthStartedAt: growthNow - 1.8 * 3600000,
+    state: { hunger: 19 },
+    genes: { hungerRate: 12 },
+  }),
+  growthNow
+);
+check("до конца роста 12 минут", almostGrown.timeLeft, 12);
+check("прогресс роста 90%", almostGrown.progress, 90, 0.5);
+check("на остаток роста еды хватает", almostGrown.hungry, false);
+check("к концу роста останется 15 сытости", almostGrown.hungerAfterGrowth, 15, 0.1);
+check("рост ещё не готов", almostGrown.isDue, false);
+
+// Старое правило брало все 2 часа и считало этого головастика голодным
+const oldFormulaHunger = 19 - (2 / 24) * 40 * 12;
+check("по старой формуле сытости не хватило бы", Math.max(0, oldFormulaHunger), 0);
+
+const dueTadpole = growth.getToadGrowthInfo(
+  toad({
+    id: 21,
+    stage: "toadpole",
+    growthStartedAt: growthNow - 3 * 3600000,
+    state: { hunger: 5 },
+    genes: { hungerRate: 12 },
+  }),
+  growthNow
+);
+check("таймер роста вышел", dueTadpole.isDue, true);
+check("остатка времени нет", dueTadpole.timeLeft, 0);
+check("выеденный срок не мешает взрослеть", dueTadpole.hungry, false);
+
+const futureStart = growth.getToadGrowthInfo(
+  toad({
+    id: 22,
+    stage: "toadpole",
+    growthStartedAt: growthNow + 3600000,
+    state: { hunger: 50 },
+  }),
+  growthNow
+);
+check("метка из будущего не даёт отрицательный прогресс", futureStart.progress, 0);
+check("метка из будущего держит полный срок", futureStart.timeLeft, 120);
+
+// Тик роста: сытый взрослеет, голодный ждёт кормления
+reset();
+addToads(
+  toad({
+    id: 30,
+    stage: "toadpole",
+    growthStartedAt: Date.now() - 3 * 3600000,
+    state: { hunger: 90 },
+  })
+);
+notes.length = 0;
+breeding.processToadpoleGrowth(collect);
+check("сытый головастик вырос", findToad(30).stage, "adult");
+check("рост без тостов", notes.length, 0);
+
+reset();
+addToads(
+  toad({
+    id: 31,
+    stage: "toadpole",
+    growthStartedAt: Date.now() - 3 * 3600000,
+    state: { hunger: 0 },
+  })
+);
+notes.length = 0;
+breeding.processToadpoleGrowth(collect);
+check("голодный головастик не вырос", findToad(31).stage, "toadpole");
+checkText("и получил предупреждение", notes.at(-1)?.content, /головастик голоден/);
+
+console.log("\n[4.1] Время: оффлайн-догон и общий тик");
+console.log("─".repeat(60));
+const timeNow = Date.now();
+check("нет метки сейва — оффлайна нет", dateLib.getOfflineTime("", timeNow).hours, 0);
+check(
+  "два часа отсутствия",
+  dateLib.getOfflineTime(new Date(timeNow - 2 * 3600000).toISOString(), timeNow).hours,
+  2
+);
+check(
+  "потолок оффлайна — 90 часов",
+  dateLib.getOfflineTime(new Date(timeNow - 500 * 3600000).toISOString(), timeNow).hours,
+  90
+);
+check(
+  "часы устройства ушли назад — оффлайна нет",
+  dateLib.getOfflineTime(new Date(timeNow + 3600000).toISOString(), timeNow).hours,
+  0
+);
+check(
+  "момент закрытия игры не сдвигается",
+  dateLib.getOfflineTime(new Date(timeNow - 2 * 3600000).toISOString(), timeNow).since,
+  timeNow - 2 * 3600000
+);
+check("игровой тик — пять минут в часах", dateLib.GAME_TICK_HOURS, 5 / 60, 1e-9);
+check("игровой тик — пять минут в мс", dateLib.GAME_TICK_MS, 5 * 60000);
 
 
 console.log("\n[5] Гнездо как комната на карте");
@@ -632,19 +794,13 @@ const astroAccelerated = astro.acceleratePregnancy(2);
 check("астро-кваксы ускоряют беременность", astroAccelerated.success, true);
 check("астро-кваксы списаны", gameState().user.astro_quax, 8);
 
-// Ухаживание ускорять больше нечем: оно мгновенное, а старый сейв доиграется сам
+// Ухаживание ускорять нечем: беременность начинается сразу после кнопки
 reset();
 intoNest(1);
 intoNest(2);
-patchToad(1, {
-  mating: { startedAt: Date.now(), startAt: Date.now() + 600000, partnerId: 2 },
-});
-patchToad(2, {
-  mating: { startedAt: Date.now(), startAt: Date.now() + 600000, partnerId: 1 },
-});
 const astroCourtship = astro.acceleratePregnancy(2);
-check("астро не ускоряют устаревшее ухаживание", astroCourtship.success, false);
-checkText("причина: ухаживание мгновенное", astroCourtship.message, /мгновенное/);
+check("астро не ускоряют ухаживание", astroCourtship.success, false);
+checkText("причина: потомства нет", astroCourtship.message, /не вынашивает/);
 check("астро за пустое ускорение не списаны", gameState().user.astro_quax, 10);
 
 reset();
@@ -659,9 +815,6 @@ console.log("\n[7] Роды: гнездо оставляет головасти�
 console.log("─".repeat(60));
 reset();
 pairInNest();
-const waited = { startedAt: Date.now() - 900000, startAt: Date.now() - 1 };
-patchToad(1, { mating: { ...findToad(1).mating, ...waited } });
-patchToad(2, { mating: { ...findToad(2).mating, ...waited } });
 breeding.processBreeding(collect);
 const pregnancy = findToad(2).pregnancy;
 check("самка беременна в гнезде", Boolean(pregnancy?.isPregnant), true);
@@ -677,7 +830,7 @@ const bornInNest = gameState().toads.filter(
   (item) => item.stage === "toadpole" && item.scene_id === constants.NEST_ROOM_ID
 );
 check("головастики родились в репродукторе", bornInNest.length > 0, true);
-check("роды в репродукторе без тоста", notes.length, 0);
+check("роды в репродукторе без тоста", notesWithoutHunger(notes).length, 0);
 check("мать осталась в репродукторе", findToad(2).scene_id, constants.NEST_ROOM_ID);
 check("мать больше не беременна", Boolean(findToad(2).pregnancy), false);
 
@@ -698,7 +851,7 @@ notes.length = 0;
 breeding.processBreeding(collect);
 await new Promise((resolve) => setTimeout(resolve, 30));
 check("мать из вольера осталась в своём биоподе", findToad(2).scene_id, 1);
-check("роды в вольере без тоста", notes.length, 0);
+check("роды в вольере без тоста", notesWithoutHunger(notes).length, 0);
 check(
   "головастики вольера остались в биоподах",
   gameState().toads.filter(
@@ -722,7 +875,7 @@ checkText(
 );
 const tutorialMother = findToad(2);
 check("самка сразу беременна", tutorialMother.pregnancy?.isPregnant, true);
-check("ухаживание не висит", tutorialMother.mating, null);
+check("беременность без устаревшего поля", "mating" in tutorialMother, false);
 check(
   "самка осталась в репродукторе",
   tutorialMother.scene_id,
@@ -733,7 +886,6 @@ check(
   findToad(1).scene_id,
   constants.NEST_ROOM_ID
 );
-check("самец больше не ухаживает", findToad(1).mating, null);
 check("уведомлений об успехе нет", notes.length, 0);
 
 // Вне обучения поведение то же самое — таймеров ожидания нет

@@ -3,7 +3,15 @@ import MusicPlayer from "../shared/MusicPlayer";
 import LoadingScreen from "../shared/LoadingScreen";
 import HexMapScreen from "../HexMap";
 import Narrator from "../Narrator";
-import { processBreeding, TimeManager } from "../../utils/breeding-manager";
+import {
+  processBreeding,
+  processToadpoleGrowth,
+} from "../../utils/breeding-manager";
+import {
+  GAME_TICK_HOURS,
+  GAME_TICK_MS,
+  getOfflineTime,
+} from "../../utils/date";
 import { processDiseases } from "../../utils/disease-manager";
 import { processCyberEvents } from "../../utils/events-manager";
 import { syncColonyScenes } from "../../backend/colony";
@@ -82,14 +90,19 @@ const BOOT_STEPS: Record<
  * Автокормушка кормит жаб сектора со склада, едва их голод доходит до 20 % (`utils/auto-feeder.ts`),
  * поэтому она идёт сразу за тиком голода — и при оффлайн-догоне, и в игровом цикле. Жильцов
  * секторов считает карта, а состояние берём из сейва, а не из React: таймеры живут вне рендера.
+ *
+ * `newbornSince` — момент закрытия игры: по нему кормушка понимает, что головастик родился
+ * в оффлайне, и ставит таймер роста на время рождения, а не на вход в игру.
  */
-const runHungerTick = (hoursPassed: number) => {
+const runHungerTick = (hoursPassed: number, newbornSince?: number | null) => {
   processHunger(hoursPassed);
 
   const state = getGameState();
   const rooms = resolveColonyRooms(state.colony ?? EMPTY_COLONY, state.scenes);
 
-  processAutoFeeders(rooms, getRoomToadLists(rooms, state.toads));
+  processAutoFeeders(rooms, getRoomToadLists(rooms, state.toads), {
+    newbornSince,
+  });
 };
 
 /**
@@ -138,8 +151,9 @@ export default function ToadGame() {
       // Биоподы строятся гексами: приводим карту колонии и список биоподов в согласие
       syncColonyScenes();
 
-      const timeManager = new TimeManager();
-      const offlineHours = timeManager.getTimePassed();
+      const { hours: offlineHours, since: lastPlayTime } = getOfflineTime(
+        getGameState().lastSaved,
+      );
 
       /**
        * События оффлайн-догона не показываем обычными тостами внизу: игрок мог
@@ -159,10 +173,14 @@ export default function ToadGame() {
         ]);
       };
 
-      processBreeding(collectOfflineEvent);
+      // Роды без проверки роста: оффлайн-догон сначала кормит новорождённых
+      // автокормушкой, и только потом растит их (`processToadpoleGrowth` ниже).
+      processBreeding(collectOfflineEvent, { skipGrowth: true });
 
-      if (offlineHours > 0.09) {
-        runHungerTick(offlineHours);
+      if (offlineHours >= GAME_TICK_HOURS) {
+        // `lastPlayTime` — момент закрытия игры: головастики, родившиеся позже него,
+        // родились в оффлайне, и их таймер роста идёт с рождения, а не с входа в игру.
+        runHungerTick(offlineHours, lastPlayTime);
         // Оффлайн-доход фермы и восстановление сил жаб (Часть 3.3)
         processProduction(offlineHours);
         processEnergyRegen(offlineHours);
@@ -170,6 +188,10 @@ export default function ToadGame() {
         processDiseases(offlineHours);
         processCyberEvents(offlineHours, collectOfflineEvent);
       }
+
+      // Рост после кормления: если головастик родился в оффлайне и его уже накормили,
+      // он мог вырасти, пока игра была закрыта — взрослеет сразу на входе.
+      processToadpoleGrowth(collectOfflineEvent);
 
       // Разведка (Часть 5): походы идут по реальному времени, команды возвращаются,
       // а жабы дома восстанавливают HP
@@ -186,14 +208,17 @@ export default function ToadGame() {
       // Ферма (Часть 3.3): выработка биомассы, апкипинг и восстановление сил жаб
       intervals.push(
         window.setInterval(() => {
-          processProduction(0.08);
-          processEnergyRegen(0.08);
-        }, 5 * 60 * 1000),
+          processProduction(GAME_TICK_HOURS);
+          processEnergyRegen(GAME_TICK_HOURS);
+        }, GAME_TICK_MS),
       );
 
-      // Голод и автокормушки (см. `runHungerTick`): раз в 5 минут, как и ферма
+      // Голод и автокормушки (см. `runHungerTick`): тот же тик, что у фермы
       intervals.push(
-        window.setInterval(() => runHungerTick(0.08), 5 * 60 * 1000),
+        window.setInterval(
+          () => runHungerTick(GAME_TICK_HOURS),
+          GAME_TICK_MS,
+        ),
       );
 
       // Кибер-события и болезни (Часть 3.6): раз в час игрового времени

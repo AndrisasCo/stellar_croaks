@@ -130,7 +130,7 @@ export const ToadInfo = () => {
 
   // Logic Hooks
   const { relatives, inbreedingRisk } = useToadRelatives(toad, allToads);
-  const { age, pregnancy, mating, growth } = useToadTimers(toad);
+  const { age, pregnancy, growth } = useToadTimers(toad);
 
   // Диссоциатор принимает жаб, только когда его сектор построен и под током
   const { ready: dissociatorReady, built: dissociatorBuilt } = useDissociator();
@@ -198,19 +198,16 @@ export const ToadInfo = () => {
   const energyCost = getEnergyCost(toad);
   const cooldownLeft = Math.max(0, (toad.breedCooldownUntil ?? 0) - Date.now());
   const isPregnant = Boolean(toad.pregnancy?.isPregnant);
-  const isCourting = Boolean(toad.mating);
   const cooldownMult = getPersonalityCooldownMultiplier(
     toad.genes?.personality,
   );
   const breedStatus = isPregnant
     ? "🍼 вынашивает"
-    : isCourting
-      ? `🫧 ухаживает${mating ? ` ${mating.timeLeft} мин` : ""}`
-      : cooldownLeft > 0
-        ? `🛏️ отдых ${formatCooldownLeft(cooldownLeft)}`
-        : energy >= energyCost
-          ? "✅ возможно"
-          : `нужно ⚡${energyCost}`;
+    : cooldownLeft > 0
+      ? `🛏️ отдых ${formatCooldownLeft(cooldownLeft)}`
+      : energy >= energyCost
+        ? "✅ возможно"
+        : `нужно ⚡${energyCost}`;
 
   // Разведка (Часть 5): HP жабы, состояние и стоимость лечения
   const hpValue = Math.round(getToadHp(toad));
@@ -273,7 +270,7 @@ export const ToadInfo = () => {
       if (type === "growth") {
         updateToadById(toad.id, { stage: "adult" });
       } else {
-        updateToadById(toad.id, { stage: "adult" }); // Ensure adult before birth?
+        // Мать уже взрослая: беременность не меняет стадию — только рожает
         endPregnancy(toad, addNotification);
       }
     } else {
@@ -678,7 +675,7 @@ export const ToadInfo = () => {
                 label="Разведение"
                 value={breedStatus}
                 colorClass={
-                  isPregnant || isCourting || cooldownLeft > 0
+                  isPregnant || cooldownLeft > 0
                     ? "text-amber-400"
                     : energy >= energyCost
                       ? "text-green-400"
@@ -897,15 +894,6 @@ export const ToadInfo = () => {
                   </p>
                 )}
               </>
-            )}
-
-            {mating && (
-              <ProgressBar
-                label="Ухаживание"
-                current={mating.progress}
-                max={100}
-                color="pink"
-              />
             )}
 
             {pregnancy && (

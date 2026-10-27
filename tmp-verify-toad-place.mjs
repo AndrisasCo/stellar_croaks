@@ -83,7 +83,6 @@ const toad = (over = {}) => ({
   status: "ok",
   state: { hunger: 100 },
   pregnancy: null,
-  mating: null,
   genes: {
     colors: ["#000000"],
     pattern: "smooth",

@@ -11,7 +11,6 @@ import { ColliderState } from "../models/types";
 import { Scene } from "../models/scene";
 import {
   createToad,
-  updateToadsByIds,
   updateToadStateByIds,
   updateUser,
 } from "../backend";
@@ -26,6 +25,7 @@ import {
 } from "../backend/collider-manager";
 import { TOADS_FED_EVENT } from "../utils/narrator";
 import { getFeedCost } from "../utils/feeding";
+import { getGrowthStartIds, startToadGrowth } from "../utils/toad-growth";
 import { recordQuestEvent } from "../backend/quests-manager";
 import { pickSceneForNewToad } from "../utils/housing";
 import { getToadHomeId } from "../utils/toad-location";
@@ -250,15 +250,7 @@ export const ToadProvider: React.FC<ToadProviderProps> = ({ children }) => {
     );
     // Головастик рождается с hunger: 0, и именно первое кормление запускает
     // его таймер роста (см. `utils/toad-growth.ts`). Уже начатый рост не сбрасываем.
-    const growthStartIds = fedToads
-      .filter(
-        (toad) => toad.stage === "toadpole" && toad.growthStartedAt == null,
-      )
-      .map((toad) => toad.id);
-
-    if (growthStartIds.length > 0) {
-      updateToadsByIds(growthStartIds, { growthStartedAt: Date.now() });
-    }
+    startToadGrowth(getGrowthStartIds(fedToads));
 
     updateUser({
       storage: { ...account.storage, food: newFood },

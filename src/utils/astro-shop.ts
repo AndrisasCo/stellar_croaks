@@ -2,6 +2,7 @@ import { updateToadById, updateUser } from "../backend";
 import { getGameState } from "../backend/localStorage";
 import { Toad } from "../models/Toad";
 import { CURRENCY_CONFIG } from "./constants";
+import { getPregnancyDueAt } from "./pregnancy";
 
 export const ASTRO_PRICES = {
   /** Сброс отдыха (cooldown) после спаривания */
@@ -59,8 +60,8 @@ export const resetBreedCooldown = (toadId: number): AstroPurchaseResult => {
 /**
  * Ускорение беременности вдвое за астро-кваксы.
  *
- * Ухаживания здесь больше нет: оно мгновенное, и старый сейв с `mating` доигрывается
- * беременностью на ближайшем тике `processBreeding` — платить за его ускорение нечего.
+ * Ухаживания здесь больше нет: пара беременеет сразу после кнопки в репродукторе,
+ * поэтому ускорять можно только саму беременность.
  */
 export const acceleratePregnancy = (toadId: number): AstroPurchaseResult => {
   const state = getGameState();
@@ -73,9 +74,7 @@ export const acceleratePregnancy = (toadId: number): AstroPurchaseResult => {
   if (!toad.pregnancy?.isPregnant) {
     return {
       success: false,
-      message: toad.mating
-        ? "Ухаживание мгновенное: беременность начнётся на ближайшем тике"
-        : "Эта жаба не вынашивает потомство",
+      message: "Эта жаба не вынашивает потомство",
     };
   }
   if (!spendAstro(ASTRO_PRICES.acceleratePregnancy)) {
@@ -85,18 +84,18 @@ export const acceleratePregnancy = (toadId: number): AstroPurchaseResult => {
     };
   }
 
-  const { pregnancyStart, pregnancyDuration } = toad.pregnancy;
-  // pregnancyDuration хранится в часах (см. getHoursFromNow в breeding-manager)
-  const durationMs = pregnancyDuration * 60 * 60 * 1000;
-  const elapsed = Date.now() - pregnancyStart;
-  const remaining = Math.max(0, durationMs - elapsed);
+  // Срок беременности считается в часах (`utils/pregnancy.ts`); ускорение вдвое
+  // сдвигает начало так, чтобы до родов осталась половина остатка.
+  const now = Date.now();
+  const dueAt = getPregnancyDueAt(toad.pregnancy) ?? now;
+  const remaining = Math.max(0, dueAt - now);
 
   updateToadById(
     toadId,
     {
       pregnancy: {
         ...toad.pregnancy,
-        pregnancyStart: Date.now() - (durationMs - remaining / 2),
+        pregnancyStart: dueAt - remaining / 2,
       },
     },
     true,

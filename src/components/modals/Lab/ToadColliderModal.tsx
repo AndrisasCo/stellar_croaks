@@ -812,11 +812,6 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
                             🍼 потомство пропадёт
                           </span>
                         )}
-                        {toad.mating && (
-                          <span className="text-2xs text-pink-300 shrink-0">
-                            🫧 ухаживание прервётся
-                          </span>
-                        )}
                       </li>
                     ))}
                   </ul>

@@ -4,6 +4,7 @@ import { normalizeExpeditionStats, SECTORS } from "../../models/expedition";
 import { getCoveredExpeditionReserveRoles } from "../../utils/expedition-config";
 import { isToadSick } from "../../models/disease";
 import { Items } from "../../models/user";
+import { DAY_MS, MINUTE_MS } from "../../utils/date";
 import {
   QUESTS,
   QuestDef,
@@ -79,9 +80,6 @@ export interface ClaimQuestResult {
   quest?: QuestDef;
   rewards?: QuestReward;
 }
-
-const DAY_MS = 24 * 60 * 60 * 1000;
-const MINUTE_MS = 60 * 1000;
 
 const countRooms = (state: GameState, kind: string): number =>
   (state.colony?.rooms ?? []).filter((room) => room.kind === kind).length;

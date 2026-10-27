@@ -1,5 +1,6 @@
 import { personalities, Toad } from "../models/Toad";
 import { ToadTypes } from "../models/Toad/toad-species";
+import { HOUR_MS } from "./date";
 import { getToadHomeId } from "./toad-location";
 
 const getSum = (arr: number[]) => arr.reduce((a, b) => a + b, 0);
@@ -120,13 +121,16 @@ export const calculateBreedingRarity = (parents: number[]): number => {
   );
 };
 
+/**
+ * Сколько держать гибрида в колбе коллайдера: час на средней редкости (50),
+ * дольше — за качество, быстрее — от улучшений коллайдера (биопод не влияет).
+ */
 export const calculateBreedingTime = (
   rarity: number,
   speedMultiplier: number = 1,
 ): number => {
-  // Базовое время: 2 часов для средней редкости (50)
-  const baseTime = 60 * 60 * 1000; // 1 часов в миллисекундах
-  const rarityFactor = rarity / 50; // Чем выше Качество, тем дольше
+  const baseTime = HOUR_MS;
+  const rarityFactor = rarity / 50;
   const time = baseTime * rarityFactor;
 
   return time / speedMultiplier;

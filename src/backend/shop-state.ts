@@ -1,6 +1,7 @@
 import { Toad } from "../models/Toad";
 import { ToadTypes } from "../models/Toad/toad-species";
 import { Items } from "../models/user";
+import { DAY_MS, HOUR_MS, MINUTE_MS } from "../utils/date";
 import { randomizeToadCharacteristics } from "../utils/randomize-toad-characteristics";
 import {
   createScriptedEliteOrder,
@@ -323,17 +324,17 @@ export const mergeCloudEliteClaims = (
   claims?: Record<string, string[]> | null,
 ): Record<string, string[]> => mergeEliteClaims(claims);
 
-export const REFRESH_COOLDOWN = 3 * 60 * 60 * 1000; // 3 часа в миллисекундах
+export const REFRESH_COOLDOWN = 3 * HOUR_MS;
 /** Витрина элитных заказов обновляется реже рынка — раз в сутки */
-export const ELITE_REFRESH_COOLDOWN = 24 * 60 * 60 * 1000;
+export const ELITE_REFRESH_COOLDOWN = DAY_MS;
 /** Мгновенное обновление рынка: цена в Кваксах 🔷 */
 export const INSTANT_REFRESH_COST = 50;
 /** Кулдаун после платного обновления рынка — чтобы обновления не фармили бесконечно */
-export const INSTANT_REFRESH_COOLDOWN = 30 * 60 * 1000;
+export const INSTANT_REFRESH_COOLDOWN = 30 * MINUTE_MS;
 /** Мгновенная витрина элитных заказов: цена в Кваксах 🔷 */
 export const INSTANT_REFRESH_ELITE_COST = 150;
 /** Кулдаун после платного обновления витрины заказов */
-export const INSTANT_REFRESH_ELITE_COOLDOWN = 60 * 60 * 1000;
+export const INSTANT_REFRESH_ELITE_COOLDOWN = HOUR_MS;
 
 // Функции для работы с localStorage
 export const getShopState = (): ShopState => {
@@ -710,8 +711,7 @@ export const eliteOrders: EliteOrder[] = [
     description: "Жаба с характером Свободный дух и возрастом более 3 дней",
     requirement: (toad: Toad) =>
       toad.genes.personality === "freeSpirit" &&
-      Date.now() - new Date(toad.created_at).getTime() >
-        3 * 24 * 60 * 60 * 1000,
+      Date.now() - new Date(toad.created_at).getTime() > 3 * DAY_MS,
     reward: 5, // Свободный дух и возраст 3+ дня: чистое ожидание
     difficulty: "medium",
   },
@@ -747,8 +747,7 @@ export const eliteOrders: EliteOrder[] = [
     title: "Он видел все",
     description: "Жаба возрастом более 10 дней",
     requirement: (toad: Toad) =>
-      Date.now() - new Date(toad.created_at).getTime() >
-      10 * 24 * 60 * 60 * 1000,
+      Date.now() - new Date(toad.created_at).getTime() > 10 * DAY_MS,
     reward: 5, // возраст 10+ дней: ждать долго, но делать ничего не надо
     difficulty: "extreme",
   },
