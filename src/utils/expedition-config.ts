@@ -154,7 +154,7 @@ export const getRolePower = (toad: Toad, role: ExpeditionRole): number => {
  * - ремонтник: плодовитость — сила роли;
  * - Снабженец: аппетит — сила роли.
  *
- * Значения синхронизированы с описанием `m13-expedition-reserve`.
+ * Значения синхронизированы с подзадачами резерва `m13a`–`m13e`.
  */
 export interface ExpeditionReserveRequirement {
   maxEnergy?: number;
@@ -209,14 +209,10 @@ export const getExpeditionReserveRoles = (toad: Toad): ExpeditionRole[] => {
 export const isExpeditionReserveToad = (toad: Toad): boolean =>
   getExpeditionReserveRoles(toad).length > 0;
 
-/**
- * Сколько ролей экспедиционного резерва закрыто колонией.
- *
- * Роль засчитывается, если хотя бы одна взрослая жаба из селекции/коллайдера
- * проходит её порог. Одна жаба может закрыть несколько ролей сразу, поэтому
- * универсал со всеми статами даёт максимальные 5/5.
- */
-export const countExpeditionReserveRoles = (toads: readonly Toad[]): number => {
+/** Какие роли экспедиционного резерва закрывает колония. */
+export const getCoveredExpeditionReserveRoles = (
+  toads: readonly Toad[],
+): Set<ExpeditionRole> => {
   const covered = new Set<ExpeditionRole>();
 
   for (const toad of toads) {
@@ -225,8 +221,18 @@ export const countExpeditionReserveRoles = (toads: readonly Toad[]): number => {
     }
   }
 
-  return covered.size;
+  return covered;
 };
+
+/**
+ * Сколько ролей экспедиционного резерва закрыто колонией.
+ *
+ * Роль засчитывается, если хотя бы одна взрослая жаба из селекции/коллайдера
+ * проходит её порог. Одна жаба может закрыть несколько ролей сразу, поэтому
+ * универсал со всеми статами даёт максимальные 5/5.
+ */
+export const countExpeditionReserveRoles = (toads: readonly Toad[]): number =>
+  getCoveredExpeditionReserveRoles(toads).size;
 
 // === HP (Часть 2: hp, урон и утилизация) ===
 

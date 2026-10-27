@@ -1,7 +1,7 @@
 import { updateUser } from "../index";
 import { getGameState, GameState } from "../localStorage";
 import { normalizeExpeditionStats, SECTORS } from "../../models/expedition";
-import { countExpeditionReserveRoles } from "../../utils/expedition-config";
+import { getCoveredExpeditionReserveRoles } from "../../utils/expedition-config";
 import { isToadSick } from "../../models/disease";
 import { Items } from "../../models/user";
 import {
@@ -106,6 +106,7 @@ export const getQuestMetrics = (
   const stats = normalizeExpeditionStats(state.expeditionStats);
   const journal = getQuestJournalState();
   const createdAt = Date.parse(state.createdAt);
+  const reserveRoles = getCoveredExpeditionReserveRoles(state.toads);
 
   return {
     toads: state.toads.length,
@@ -115,7 +116,12 @@ export const getQuestMetrics = (
     toadsWithParents: state.toads.filter(
       (toad) => Array.isArray(toad.parents) && toad.parents.length > 0,
     ).length,
-    expeditionReserveRoles: countExpeditionReserveRoles(state.toads),
+    expeditionReserveRoles: reserveRoles.size,
+    reserveRoleHacker: reserveRoles.has("hacker") ? 1 : 0,
+    reserveRoleScout: reserveRoles.has("scout") ? 1 : 0,
+    reserveRoleTank: reserveRoles.has("tank") ? 1 : 0,
+    reserveRoleMedic: reserveRoles.has("medic") ? 1 : 0,
+    reserveRoleNegotiator: reserveRoles.has("negotiator") ? 1 : 0,
     rooms: (state.colony?.rooms ?? []).length,
     aviaryRooms: countRooms(state, "aviary"),
     breedingRooms: countRooms(state, "breeding"),

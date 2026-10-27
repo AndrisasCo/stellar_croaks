@@ -280,13 +280,13 @@ const processMating = (
 
 export const startPregnancy = async (toad: Toad, father: Toad) => {
   // Беременность без ускорений: бонус биопода («ускоренная беременность») — легаси
+  const pregnancyDuration =
+    Math.min(getPregnancyDuration() + toad.genes.rarity / 2, 8) / 2;
+
   toad.pregnancy = {
     isPregnant: true,
     pregnancyStart: Date.now(),
-    pregnancyDuration: Math.min(
-      getPregnancyDuration() + toad.genes.rarity / 2,
-      8,
-    ),
+    pregnancyDuration: Math.round(pregnancyDuration * 100) / 100,
     fatherId: father.id,
     father,
     offspringCount: calculateOffspringCount(toad),
@@ -297,10 +297,10 @@ export const startPregnancy = async (toad: Toad, father: Toad) => {
 
 const calculateOffspringCount = (female: Toad): number => {
   // Базовое количество + влияние fertility
-  const baseCount = Math.ceil(female.genes.fertility / female.genes.rarity);
-  const bonusCount = Math.floor(
-    Math.random() * 1 + female.genes.fertility / 10,
-  );
+  const baseCount = Math.floor(Math.random() * 4) + 1;
+  const bonusCount =
+    Math.random() < Math.min(female.genes.fertility / 4, 1) ? 1 : 0;
+
   return Math.min(baseCount + bonusCount, 5);
 };
 

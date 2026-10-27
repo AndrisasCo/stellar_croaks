@@ -2,7 +2,7 @@
  * Проверка журнала заданий на РЕАЛЬНОМ коде проекта.
  *
  * Скрипт бандлит движок и каталог через esbuild и проверяет:
- *   1) каталог: 33 задания (16 быстрых, 13 средних, 4 долгих), все цепочки
+ *   1) каталог: 37 заданий (16 быстрых, 17 средних, 4 долгих), все цепочки
  *      ссылаются на существующие задания, у каждого есть награда;
  *   2) старт: видны только задания с триггером `always` — два быстрых и
  *      первый сектор магистрали;
@@ -109,9 +109,9 @@ const journal = () =>
   };
 
 console.log("── 1. Каталог заданий ───────────────────────────────────────");
-check("всего заданий", catalog.QUESTS.length, 33);
+check("всего заданий", catalog.QUESTS.length, 37);
 check("быстрых", catalog.QUESTS.filter((q) => q.type === "quick").length, 16);
-check("средних", catalog.QUESTS.filter((q) => q.type === "medium").length, 13);
+check("средних", catalog.QUESTS.filter((q) => q.type === "medium").length, 17);
 check("долгих", catalog.QUESTS.filter((q) => q.type === "long").length, 4);
 check(
   "во всех шести сферах есть задания",
@@ -128,7 +128,7 @@ checkTrue(
 check(
   "все средние задания входят ровно в одну цепочку",
   catalog.QUEST_CHAINS.reduce((sum, chain) => sum + chain.taskIds.length, 0),
-  13,
+  17,
 );
 checkTrue(
   "у каждого задания есть хотя бы одна награда",
@@ -142,7 +142,7 @@ gameStorage.updateGameState(gameStorage.getDefaultGameState());
 const start = snapshot();
 check("журнал отдельный от сейва игры", store.has(JOURNAL_KEY), true);
 check("стартовых заданий открыто", start.counts.active, 3);
-check("заданий закрыто", start.counts.locked, 30);
+check("заданий закрыто", start.counts.locked, 34);
 check("q01 открыто", entry("q01-first-sector").status, "active");
 check("q04 открыто", entry("q04-first-feed").status, "active");
 check("магистраль l01 открыта", entry("l01-first-contour").status, "active");
@@ -366,18 +366,18 @@ const reserveToad = (id, genes, overrides = {}) => ({
   ...overrides,
 });
 const operatorToad = reserveToad(9001, { rarity: 10 });
-const scoutToad = reserveToad(9002, { speed: 1.2 });
-const tankToad = reserveToad(9003, { weight: 18 });
-const medicToad = reserveToad(9004, { fertility: 1.2 });
-const cookToad = reserveToad(9005, { hungerRate: 1.2 });
+const scoutToad = reserveToad(9002, { speed: 2 });
+const tankToad = reserveToad(9003, { weight: 30 });
+const medicToad = reserveToad(9004, { fertility: 2 });
+const cookToad = reserveToad(9005, { hungerRate: 2 });
 const allRoundToad = reserveToad(9006, {
   rarity: 10,
-  speed: 1.2,
-  weight: 18,
-  fertility: 1.2,
-  hungerRate: 1.2,
+  speed: 2,
+  weight: 30,
+  fertility: 2,
+  hungerRate: 2,
 });
-const wildScout = reserveToad(9007, { speed: 1.2 }, { parents: null });
+const wildScout = reserveToad(9007, { speed: 2 }, { parents: null });
 const reserveRoles = (toad) => expedition.getExpeditionReserveRoles(toad);
 
 check(
@@ -403,7 +403,7 @@ check(
   expedition.countExpeditionReserveRoles([allRoundToad]),
   5,
 );
-const doubleRoleToad = reserveToad(9008, { rarity: 10, speed: 1.2 });
+const doubleRoleToad = reserveToad(9008, { rarity: 10, speed: 2 });
 check(
   "одна жаба закрывает две роли",
   expedition.countExpeditionReserveRoles([doubleRoleToad]),
@@ -442,8 +442,28 @@ store.set(
   }),
 );
 check(
-  "m13 открылось после m09",
-  entry("m13-expedition-reserve").status,
+  "m13a открылось после m09",
+  entry("m13a-operator").status,
+  "active",
+);
+check(
+  "m13b открылось одновременно с m13a",
+  entry("m13b-scout").status,
+  "active",
+);
+check(
+  "m13c открылось одновременно с m13a",
+  entry("m13c-tank").status,
+  "active",
+);
+check(
+  "m13d открылось одновременно с m13a",
+  entry("m13d-medic").status,
+  "active",
+);
+check(
+  "m13e открылось одновременно с m13a",
+  entry("m13e-negotiator").status,
   "active",
 );
 
@@ -464,18 +484,74 @@ check(
   4,
 );
 check(
-  "m13 не готово без пятой роли",
-  entry("m13-expedition-reserve").status,
-  "active",
+  "оператор закрыт отдельной метрикой",
+  snapshot().metrics.reserveRoleHacker,
+  1,
 );
+check(
+  "скаут закрыт отдельной метрикой",
+  snapshot().metrics.reserveRoleScout,
+  1,
+);
+check(
+  "щитоносец закрыт отдельной метрикой",
+  snapshot().metrics.reserveRoleTank,
+  1,
+);
+check(
+  "ремонтник закрыт отдельной метрикой",
+  snapshot().metrics.reserveRoleMedic,
+  1,
+);
+check(
+  "снабженец пока не закрыт",
+  snapshot().metrics.reserveRoleNegotiator,
+  0,
+);
+check("m13a готово к награде", entry("m13a-operator").status, "ready");
+check("m13b готово к награде", entry("m13b-scout").status, "ready");
+check("m13c готово к награде", entry("m13c-tank").status, "ready");
+check("m13d готово к награде", entry("m13d-medic").status, "ready");
+check("m13e ждёт снабженца", entry("m13e-negotiator").status, "active");
 
 setState((state) => ({ ...state, toads: [...state.toads, cookToad] }));
 check("пять ролей резерва закрыты", snapshot().metrics.expeditionReserveRoles, 5);
-check("m13 готово к награде", entry("m13-expedition-reserve").status, "ready");
+check("снабженец закрыт", snapshot().metrics.reserveRoleNegotiator, 1);
+check("m13e готово к награде", entry("m13e-negotiator").status, "ready");
 
+const universalJournal = journal();
+store.set(
+  JOURNAL_KEY,
+  JSON.stringify({
+    ...universalJournal,
+    activated: [
+      ...new Set([
+        ...universalJournal.activated,
+        "m08-bloodline",
+        "m09-genetic-diversity",
+      ]),
+    ].filter((id) => !id.startsWith("m13")),
+    completed: [
+      ...new Set([
+        ...universalJournal.completed,
+        "m08-bloodline",
+        "m09-genetic-diversity",
+      ]),
+    ].filter((id) => !id.startsWith("m13")),
+  }),
+);
 setState((state) => ({ ...state, toads: [allRoundToad] }));
-check("один универсал закрывает m13", snapshot().metrics.expeditionReserveRoles, 5);
-check("m13 готово с одним универсалом", entry("m13-expedition-reserve").status, "ready");
+check("один универсал закрывает пять ролей", snapshot().metrics.expeditionReserveRoles, 5);
+checkTrue(
+  "универсал закрывает все пять подзадач",
+  [
+    "m13a-operator",
+    "m13b-scout",
+    "m13c-tank",
+    "m13d-medic",
+    "m13e-negotiator",
+  ].every((id) => entry(id).status === "ready"),
+);
 
 console.log("\n────────────────────────────────────────────────────────────");
 if (failures.length > 0) {

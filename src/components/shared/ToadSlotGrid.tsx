@@ -1,7 +1,6 @@
 import React from "react";
 import {
   getGeneticFaultConfig,
-  getPersonalityLabel,
   getRarityConfig,
   Toad,
 } from "../../models/Toad";

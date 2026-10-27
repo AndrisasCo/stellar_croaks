@@ -36,6 +36,11 @@ export type QuestMetric =
   | "generation2Plus"
   | "toadsWithParents"
   | "expeditionReserveRoles"
+  | "reserveRoleHacker"
+  | "reserveRoleScout"
+  | "reserveRoleTank"
+  | "reserveRoleMedic"
+  | "reserveRoleNegotiator"
   | "rooms"
   | "aviaryRooms"
   | "breedingRooms"
@@ -224,7 +229,11 @@ export const QUEST_CHAINS: QuestChain[] = [
     taskIds: [
       "m08-bloodline",
       "m09-genetic-diversity",
-      "m13-expedition-reserve",
+      "m13a-operator",
+      "m13b-scout",
+      "m13c-tank",
+      "m13d-medic",
+      "m13e-negotiator",
       "m10-sample-archive",
     ],
   },
@@ -637,20 +646,84 @@ const mediumQuests: QuestDef[] = [
     priority: 38,
   }),
   medium({
-    id: "m13-expedition-reserve",
+    id: "m13a-operator",
     sphere: "selection",
     chainId: "selection",
-    title: "Экспедиционный резерв",
+    title: "Оператор резерва",
     description:
-      "Закройте пять экспедиционных ролей взрослыми жабами из селекции или коллайдера: оператор с силами 150+ и качеством 10+, скаут со скоростью 1.2+, щитоносец с размером 18+, ремонтник с плодовитостью 1.2+ и Снабженец с аппетитом 1.2+. Одна жаба может закрыть несколько ролей сразу.",
+      "Вырастите взрослую жабу из селекции или коллайдера с качеством 10+ для экспедиционного резерва.",
     trigger: { type: "chain", parentId: "m09-genetic-diversity" },
     goal: {
-      metric: "expeditionReserveRoles",
-      target: 5,
-      label: "Ролей для походов",
+      metric: "reserveRoleHacker",
+      target: 1,
+      label: "Оператор в резерве",
     },
-    rewards: { tokens: 100, lootboxes: 3 },
+    rewards: { tokens: 20 },
     priority: 39,
+  }),
+  medium({
+    id: "m13b-scout",
+    sphere: "selection",
+    chainId: "selection",
+    title: "Скаут резерва",
+    description:
+      "Вырастите взрослую жабу из селекции или коллайдера со скоростью 2+ для экспедиционного резерва.",
+    trigger: { type: "chain", parentId: "m09-genetic-diversity" },
+    goal: {
+      metric: "reserveRoleScout",
+      target: 1,
+      label: "Скаут в резерве",
+    },
+    rewards: { tokens: 20 },
+    priority: 40,
+  }),
+  medium({
+    id: "m13c-tank",
+    sphere: "selection",
+    chainId: "selection",
+    title: "Щитоносец резерва",
+    description:
+      "Вырастите взрослую жабу из селекции или коллайдера с весом 30+ для экспедиционного резерва.",
+    trigger: { type: "chain", parentId: "m09-genetic-diversity" },
+    goal: {
+      metric: "reserveRoleTank",
+      target: 1,
+      label: "Щитоносец в резерве",
+    },
+    rewards: { tokens: 20, lootboxes: 1 },
+    priority: 41,
+  }),
+  medium({
+    id: "m13d-medic",
+    sphere: "selection",
+    chainId: "selection",
+    title: "Ремонтник резерва",
+    description:
+      "Вырастите взрослую жабу из селекции или коллайдера с плодовитостью 2+ для экспедиционного резерва.",
+    trigger: { type: "chain", parentId: "m09-genetic-diversity" },
+    goal: {
+      metric: "reserveRoleMedic",
+      target: 1,
+      label: "Ремонтник в резерве",
+    },
+    rewards: { tokens: 20, lootboxes: 1 },
+    priority: 42,
+  }),
+  medium({
+    id: "m13e-negotiator",
+    sphere: "selection",
+    chainId: "selection",
+    title: "Снабженец резерва",
+    description:
+      "Вырастите взрослую жабу из селекции или коллайдера с аппетитом 2+ для экспедиционного резерва.",
+    trigger: { type: "chain", parentId: "m09-genetic-diversity" },
+    goal: {
+      metric: "reserveRoleNegotiator",
+      target: 1,
+      label: "Снабженец в резерве",
+    },
+    rewards: { tokens: 20, lootboxes: 1 },
+    priority: 43,
   }),
   medium({
     id: "m10-sample-archive",
@@ -665,7 +738,7 @@ const mediumQuests: QuestDef[] = [
       label: "Открыто лутбоксов",
     },
     rewards: { lootboxes: 2, astroQuax: 10 },
-    priority: 40,
+    priority: 44,
   }),
   medium({
     id: "m11-depth-three",
@@ -680,7 +753,7 @@ const mediumQuests: QuestDef[] = [
       label: "Секторов пройдено",
     },
     rewards: { astroQuax: 50, lootboxes: 1 },
-    priority: 41,
+    priority: 45,
   }),
   medium({
     id: "m12-unknown-pass",
@@ -696,7 +769,7 @@ const mediumQuests: QuestDef[] = [
       label: "Секторов открыто",
     },
     rewards: { lootboxes: 2 },
-    priority: 42,
+    priority: 46,
   }),
 ];
 
