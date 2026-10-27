@@ -10,8 +10,10 @@ import type { QuestEvent } from "./quests-list";
  * поэтому отдельного «счётчика комнат» в сохранении нет — он не может разойтись
  * с игрой.
  *
- * Ключ отдельный от `Game_State6`: журнал не участвует в облачном синке игры
- * и не должен увеличивать сейв. Хранилище — через платформу, как и у игры.
+ * Ключ отдельный от `Game_State6`: журнал не раздувает сейв игры и не участвует
+ * в оффлайн-догоне. В облако он уезжает отдельной колонкой `game_state.quests`
+ * и сливается монотонно при старте (см. `docs/quest-journal.md`, D2).
+ * Хранилище — через платформу, как и у игры.
  */
 
 export const QUEST_JOURNAL_KEY = "quest_journal";
@@ -154,6 +156,110 @@ export const normalizeQuestJournalState = (
         ? Math.floor(source.sessions)
         : 0,
   };
+};
+
+/** Объединение двух списков id без дублей. */
+const unionIds = (local: string[], cloud: string[]): string[] =>
+  Array.from(new Set([...local, ...cloud]));
+
+/**
+ * Слияние временных меток. Для `activatedAt`/`completedAt`/`claimedAt` берём
+ * минимум: первое реальное событие важнее повторного «клейма» с другого
+ * устройства, где журнал начался позже.
+ */
+const mergeTimestampMaps = (
+  local: Record<string, number>,
+  cloud: Record<string, number>,
+  mode: "min" | "max",
+): Record<string, number> => {
+  const merged = { ...local };
+
+  Object.entries(cloud).forEach(([id, stamp]) => {
+    const current = merged[id];
+
+    merged[id] =
+      current === undefined
+        ? stamp
+        : mode === "min"
+          ? Math.min(current, stamp)
+          : Math.max(current, stamp);
+  });
+
+  return merged;
+};
+
+/** Счётчики только растут: переключение устройств не откатывает прогресс. */
+const mergeCounters = (
+  local: Partial<Record<QuestEvent, number>>,
+  cloud: Partial<Record<QuestEvent, number>>,
+): Partial<Record<QuestEvent, number>> =>
+  EVENT_NAMES.reduce<Partial<Record<QuestEvent, number>>>((acc, event) => {
+    const count = Math.max(local[event] ?? 0, cloud[event] ?? 0);
+
+    if (count > 0) {
+      acc[event] = count;
+    }
+
+    return acc;
+  }, {});
+
+/**
+ * Сливает журнал устройства с журналом из облака.
+ *
+ * Слияние монотонное, а не «побеждает более свежий сейв»: `claimed` и
+ * `completed` объединяются, счётчики берут максимум. Иначе устройство со старым
+ * локальным сейвом затёрло бы облачный архив, и награду можно было бы получить
+ * повторно (`docs/quest-journal.md`, D2).
+ *
+ * Облачное значение приходит из jsonb и может быть чем угодно: его прогоняет
+ * `normalizeQuestJournalState`, поэтому битые данные не ломают игру.
+ */
+export const mergeQuestJournalStates = (
+  local: QuestJournalState,
+  cloud: unknown,
+): QuestJournalState => {
+  const cloudState = normalizeQuestJournalState(cloud);
+  const completed = unionIds(local.completed, cloudState.completed);
+  const claimed = unionIds(local.claimed, cloudState.claimed).filter((id) =>
+    completed.includes(id),
+  );
+
+  return normalizeQuestJournalState({
+    version: QUEST_JOURNAL_VERSION,
+    activated: unionIds(local.activated, cloudState.activated),
+    completed,
+    claimed,
+    counters: mergeCounters(local.counters, cloudState.counters),
+    activatedAt: mergeTimestampMaps(
+      local.activatedAt,
+      cloudState.activatedAt,
+      "min",
+    ),
+    completedAt: mergeTimestampMaps(
+      local.completedAt,
+      cloudState.completedAt,
+      "min",
+    ),
+    claimedAt: mergeTimestampMaps(local.claimedAt, cloudState.claimedAt, "min"),
+    firstSeenAt: Math.min(local.firstSeenAt, cloudState.firstSeenAt),
+    lastSeenAt: Math.max(local.lastSeenAt, cloudState.lastSeenAt),
+    sessions: Math.max(local.sessions, cloudState.sessions),
+  });
+};
+
+/** Применяет журнал из облака к локальному и сохраняет результат. */
+export const mergeCloudQuestJournal = (cloud: unknown): QuestJournalState =>
+  saveQuestJournalState(mergeQuestJournalStates(getQuestJournalState(), cloud));
+
+/**
+ * Стирает журнал с устройства при выходе из аккаунта.
+ *
+ * Сам журнал не теряется: он уже в облаке аккаунта и вернётся при следующем
+ * входе. Без очистки следующий игрок на этом браузере унаследовал бы чужой
+ * архив наград и счётчики событий.
+ */
+export const clearQuestJournalState = (): void => {
+  platform.storage.remove(QUEST_JOURNAL_KEY);
 };
 
 /** Читает состояние журнала. Битое сохранение заменяется чистым. */

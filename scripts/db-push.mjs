@@ -94,6 +94,21 @@ union all
 select 'authenticated может менять game_state.user_id'
 where has_column_privilege('authenticated', 'public.game_state', 'user_id', 'UPDATE')
 union all
+select 'в game_state нет колонки quests: примените schema.sql'
+where not exists (
+  select 1
+  from information_schema.columns
+  where table_schema = 'public'
+    and table_name = 'game_state'
+    and column_name = 'quests'
+)
+union all
+select 'authenticated не может писать game_state.quests'
+where not coalesce(
+  has_column_privilege('authenticated', 'public.game_state', 'quests', 'UPDATE'),
+  false
+)
+union all
 select 'authenticated может менять leaderboard.user_id'
 where has_column_privilege('authenticated', 'public.leaderboard', 'user_id', 'UPDATE')
 union all

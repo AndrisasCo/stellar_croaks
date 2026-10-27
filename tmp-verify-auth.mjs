@@ -664,12 +664,58 @@ delete globalThis.navigator;
 // 7. Выход: сессия погашена, сейв прошлого игрока убран, игра перезапущена
 // Ключ тот же, что пишет `backend/localStorage.ts` (LS_KEY).
 const LS_KEY = "Game_State6";
+const ACCOUNT_LOCAL_KEYS = [
+  // Достижения, витрина, коллайдер и гарантии лутбоксов принадлежат аккаунту.
+  "achivements",
+  "toad_shop_state9",
+  "toad_elite_claims",
+  "toadColliderState",
+  "toad_lootbox_pity",
+  "Stellar_Croak_Narrator_v1",
+  "tutorial_read",
+];
 browser.store.set(LS_KEY, JSON.stringify({ user: { userId: "old-player" } }));
+ACCOUNT_LOCAL_KEYS.forEach((key) => browser.store.set(key, "{}"));
 
 await auth.signOutAccount();
 check("выход ушёл в Supabase", calls.some(([name]) => name === "signOut"), true);
 check("аккаунт сброшен", auth.getAccount(), null);
 check("сейв прошлого игрока убран", browser.store.has(LS_KEY), false);
+check(
+  "достижения прошлого игрока убраны",
+  browser.store.has("achivements"),
+  false
+);
+check(
+  "витрина прошлого игрока убрана",
+  browser.store.has("toad_shop_state9"),
+  false
+);
+check(
+  "журнал элитных заказов прошлого игрока убран",
+  browser.store.has("toad_elite_claims"),
+  false
+);
+check(
+  "коллайдер прошлого игрока убран",
+  browser.store.has("toadColliderState"),
+  false
+);
+check(
+  "гарантии лутбоксов прошлого игрока сброшены",
+  browser.store.has("toad_lootbox_pity"),
+  false
+);
+check(
+  "прогресс обучения прошлого игрока убран",
+  browser.store.has("Stellar_Croak_Narrator_v1"),
+  false
+);
+check(
+  "старая метка обучения убрана",
+  browser.store.has("tutorial_read"),
+  false
+);
 check("игра перезапущена", browser.reloads.length, 1);
 
 // 7. Если выход не удался (например, пропала сеть), сессия остаётся в силе: сейв
@@ -677,10 +723,16 @@ check("игра перезапущена", browser.reloads.length, 1);
 //    но уже без локального прогресса (supabase-js при ошибке сессию не удаляет).
 signOutResponse = { error: { message: "network down" } };
 browser.store.set(LS_KEY, "{}");
+browser.store.set("achivements", "{}");
 
 const failedSignOut = await auth.signOutAccount();
 check("неудачный выход не выдаётся за успех", failedSignOut.ok, false);
 check("неудачный выход: сейв на месте", browser.store.has(LS_KEY), true);
+check(
+  "неудачный выход: достижения на месте",
+  browser.store.has("achivements"),
+  true
+);
 check("неудачный выход: без перезагрузки", browser.reloads.length, 1);
 check(
   "неудачный выход: игроку предложено повторить",

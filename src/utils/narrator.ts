@@ -275,10 +275,21 @@ export const hasReadLegacyTutorial = (): boolean =>
   localStorage.getItem("tutorial_read") === "true";
 
 /**
+ * Убирает прогресс обучения при смене аккаунта.
+ *
+ * `tutorial_read` — метка старого обучения: без её удаления следующий игрок на
+ * устройстве считался бы «уже обученным» и пропустил вступление.
+ */
+export const clearNarratorState = (): void => {
+  localStorage.removeItem(NARRATOR_STORAGE_KEY);
+  localStorage.removeItem("tutorial_read");
+};
+
+/**
  * Сбрасывает рассказчика и сообщает об этом открытому интерфейсу.
  * Полная очистка игры в настройках вызывает его следом за `localStorage.clear()`.
  */
 export const restartNarrator = (): void => {
-  localStorage.removeItem(NARRATOR_STORAGE_KEY);
+  clearNarratorState();
   window.dispatchEvent(new Event(NARRATOR_RESTART_EVENT));
 };

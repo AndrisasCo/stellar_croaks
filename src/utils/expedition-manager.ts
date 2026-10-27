@@ -1798,6 +1798,45 @@ export const finishExpedition = (
   let message = "";
   let biomassGained: number | undefined;
 
+  /**
+   * Списывает разобранный поход ДО выдачи добычи.
+   *
+   * Добыча уходит в `GameState` (`updateUser`), а поход убирается отдельной
+   * записью. Если сначала выдать лут, сбой между записями или повторный клик
+   * оставят завершённый поход на месте — и добычу можно забрать ещё раз.
+   * Обратный порядок при сбое теряет лут, но не создаёт бесконечный источник.
+   *
+   * @returns `false`, если поход уже разобран другой вкладкой/кликом.
+   */
+  const claimExpedition = (): boolean => {
+    const current = getGameState();
+    const currentExpeditions = current.expeditions ?? [];
+    const remaining = currentExpeditions.filter(
+      (item) => item.id !== expedition.id,
+    );
+
+    if (remaining.length === currentExpeditions.length) {
+      return false;
+    }
+
+    updateGameState(
+      {
+        expeditions: remaining,
+        expeditionArchive: [
+          expedition,
+          ...(current.expeditionArchive ?? []),
+        ].slice(0, EXPEDITION_ARCHIVE_LIMIT),
+      },
+      true,
+    );
+
+    // `saveGameState` глотает ошибки записи: если сейв не лёг, поход остался
+    // на месте — добычу не выдаём, иначе её можно было бы забрать повторно.
+    return !(getGameState().expeditions ?? []).some(
+      (item) => item.id === expedition.id,
+    );
+  };
+
   if (mode === "storage") {
     const check = getExpeditionStorageCheck(expedition);
     if (!check.ok) {
@@ -1805,6 +1844,10 @@ export const finishExpedition = (
         success: false,
         message: `На складе нет места: нужно ${check.needed}, свободно ${check.free} — постройте «Склад» или переработайте лут в биомассу`,
       };
+    }
+
+    if (!claimExpedition()) {
+      return { success: false, message: "Поход уже разобран" };
     }
 
     const storage = { ...state.user.storage };
@@ -1866,6 +1909,10 @@ export const finishExpedition = (
       message += `. ${requestedSamples - samples.length} образц(ов) осталось в секторе — нет мест в биоподах`;
     }
   } else if (mode === "biomass") {
+    if (!claimExpedition()) {
+      return { success: false, message: "Поход уже разобран" };
+    }
+
     biomassGained = getLootBiomassValue(expedition.loot);
     updateUser({
       biomass:
@@ -1877,18 +1924,6 @@ export const finishExpedition = (
   }
 
   const returned = returnTeamToScout(expedition);
-  const remaining = getExpeditions().filter(
-    (item) => item.id !== expedition.id,
-  );
-  /**
-   * Разобранный поход уходит в архив: карточка больше не блокирует отправку
-   * новой команды, но журнал и итоговая добыча остаются доступны в «Все походы».
-   */
-  const expeditionArchive = [
-    expedition,
-    ...(state.expeditionArchive ?? []),
-  ].slice(0, EXPEDITION_ARCHIVE_LIMIT);
-  updateGameState({ expeditions: remaining, expeditionArchive }, true);
 
   if (returned.rejoined > 0) {
     message += `. Жабы вернулись в «Разведку»: ${returned.rejoined}`;

@@ -265,6 +265,9 @@ check("добыча разобрана", finished.success, true);
 check("жаба вернулась в свою «Разведку»", savedToad().scene_id, "slot-a");
 check("поход убран из сейва", saved().expeditions.length, 0);
 
+const finishedAgain = manager.finishExpedition(expeditionId, "biomass");
+check("повторный разбор отклонён", finishedAgain.success, false);
+
 console.log("\n[4] Числовой origin старого сейва тоже возвращает домой");
 console.log("─".repeat(60));
 reset(

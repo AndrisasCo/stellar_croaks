@@ -83,6 +83,14 @@ const AchievementModal: React.FC = () => {
     if (!group.groupReward) {
       return;
     }
+
+    // Кнопка исчезает только после перерисовки, а `claimReward` пишет в
+    // localStorage синхронно. Проверяем ещё раз здесь: быстрый двойной клик не
+    // должен выдать групповую награду (жабу и лутбоксы) дважды.
+    if (getAchievementState().rewards?.includes(group.id)) {
+      return;
+    }
+
     playClick();
 
     const userStorage = gameState.user.storage;

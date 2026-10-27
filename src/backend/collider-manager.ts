@@ -53,6 +53,15 @@ export const saveColliderState = (state: ColliderState) => {
   }
 };
 
+/** Убирает состояние коллайдера при смене аккаунта. */
+export const clearColliderState = (): void => {
+  try {
+    localStorage.removeItem(COLLIDER_STATE_KEY);
+  } catch (error) {
+    console.error("Error clearing collider state from localStorage:", error);
+  }
+};
+
 export const loadColliderState = (): ColliderState => {
   try {
     const saved = localStorage.getItem(COLLIDER_STATE_KEY);

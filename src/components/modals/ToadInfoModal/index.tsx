@@ -50,10 +50,6 @@ import {
   isToadInHospital,
 } from "../../../utils/hospital";
 import {
-  getEnergyRegenPerHour,
-  getToadEnergyRegenPlace,
-} from "../../../utils/energy";
-import {
   EXPEDITION_TOAD_BUSY_REASON,
   isToadBusyOnExpedition,
 } from "../../../utils/expedition-manager";
@@ -200,27 +196,6 @@ export const ToadInfo = () => {
   const energy = getToadEnergy(toad);
   const maxEnergy = getToadMaxEnergy(toad);
   const energyCost = getEnergyCost(toad);
-  const isEnergyFull = energy >= maxEnergy;
-  const energyRegen = getEnergyRegenPerHour(toad, colony);
-  const energyRegenRate = Math.round(energyRegen * 10) / 10;
-  const energyRegenPlace = getToadEnergyRegenPlace(toad, colony);
-  const energyRegenPlaceLabel =
-    energyRegenPlace === "biopod"
-      ? "биоподе"
-      : energyRegenPlace === "hospital"
-        ? "Медотсеке"
-        : null;
-  const energyRegenHint = isEnergyFull
-    ? "Силы уже полны."
-    : energyRegen > 0 && energyRegenPlaceLabel
-      ? `Сейчас жаба в ${energyRegenPlaceLabel}: +${energyRegenRate} ⚡ в час.`
-      : energyRegenPlace === null
-        ? toad.status === "out"
-          ? "Сейчас жаба в походе — силы не восстанавливаются."
-          : "Сейчас жаба не в биоподе и не в Медотсеке — силы не восстанавливаются."
-        : hunger < 1
-          ? "Сейчас жаба голодна (сытость 0 %) — силы не восстанавливаются."
-          : "Сейчас силы не восстанавливаются.";
   const cooldownLeft = Math.max(0, (toad.breedCooldownUntil ?? 0) - Date.now());
   const isPregnant = Boolean(toad.pregnancy?.isPregnant);
   const isCourting = Boolean(toad.mating);
@@ -661,12 +636,9 @@ export const ToadInfo = () => {
                         {energyCost} ⚡, а поход за Периметр — от{" "}
                         {EXPEDITION_ENERGY_BASE} ⚡ за ближний сектор и на{" "}
                         {EXPEDITION_ENERGY_PER_DEPTH} ⚡ дороже за каждый
-                        следующий (силы тратит каждая жаба команды). Биомасса на
-                        снаряжение платится со склада и к силам отношения не
-                        имеет. Силы восстанавливаются только в биоподе или
-                        Медотсеке, при сытости выше 0; чем выше аппетит, тем
-                        быстрее. {energyRegenHint} Снять отдых после спаривания
-                        можно за 1 Астро-квакс.
+                        следующий (силы тратит каждая жаба команды). Силы
+                        восстанавливаются только в биоподе или Медотсеке, при
+                        сытости выше 0; чем выше аппетит, тем быстрее.
                       </p>
                     </Tooltip>
                   )

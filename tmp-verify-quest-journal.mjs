@@ -88,6 +88,10 @@ globalThis.window = {
 // === Модули проекта ===
 const gameStorage = bundle("src/backend/localStorage.ts", "local-storage");
 const quests = bundle("src/backend/quests-manager/index.ts", "quests");
+const journalStorage = bundle(
+  "src/backend/quests-manager/storage.ts",
+  "quests-storage",
+);
 const catalog = bundle("src/backend/quests-manager/quests-list.ts", "quests-list");
 const expedition = bundle("src/utils/expedition-config.ts", "expedition-config");
 const genetics = bundle("src/utils/calculate-genetics.ts", "calculate-genetics");
@@ -551,6 +555,77 @@ checkTrue(
     "m13d-medic",
     "m13e-negotiator",
   ].every((id) => entry(id).status === "ready"),
+);
+
+console.log(
+  "\n── 7. Синхронизация журнала между устройствами ─────────────",
+);
+
+// Устройство A: награда уже забрана, журнал уходит в облако (game_state.quests).
+const cloudJournal = JSON.parse(store.get(JOURNAL_KEY));
+checkTrue(
+  "устройство A: q01 в облачном архиве",
+  cloudJournal.claimed.includes("q01-first-sector"),
+);
+
+// Устройство B: тот же аккаунт, но локального журнала ещё нет.
+store.delete(JOURNAL_KEY);
+check("устройство B: журнал начат с нуля", journal().claimed.length, 0);
+check(
+  "устройство B: q01 снова готово до синка",
+  entry("q01-first-sector").status,
+  "ready",
+);
+
+// Синк на старте: журнал из облака применяется до первого клика игрока.
+journalStorage.mergeCloudQuestJournal(cloudJournal);
+check(
+  "устройство B: q01 вернулось в архив",
+  entry("q01-first-sector").status,
+  "claimed",
+);
+const tokensBeforeCloudClaim = readState().user.tokens;
+const cloudClaim = quests.claimQuestReward("q01-first-sector");
+check("устройство B: повторная награда запрещена", cloudClaim.success, false);
+check(
+  "устройство B: кваксы не начислены повторно",
+  readState().user.tokens,
+  tokensBeforeCloudClaim,
+);
+
+// Слияние не зависит от того, чей сейв новее: claimed объединяется.
+const localJournal = journalStorage.getQuestJournalState();
+const mergedJournal = journalStorage.mergeQuestJournalStates(localJournal, {
+  ...cloudJournal,
+  completed: [...cloudJournal.completed, "q02-food-stock"],
+  claimed: [...cloudJournal.claimed, "q02-food-stock"],
+  counters: { ...cloudJournal.counters, food_bought: 999 },
+});
+checkTrue(
+  "слияние сохраняет оба архива",
+  ["q01-first-sector", "q02-food-stock"].every((id) =>
+    mergedJournal.claimed.includes(id),
+  ),
+);
+check("счётчик берёт максимум", mergedJournal.counters.food_bought, 999);
+checkTrue(
+  "claimed без completed не проходит",
+  !journalStorage
+    .mergeQuestJournalStates(localJournal, { claimed: ["no-such-quest"] })
+    .claimed.includes("no-such-quest"),
+);
+check(
+  "битый облачный журнал не ломает слияние",
+  journalStorage.mergeQuestJournalStates(localJournal, "broken").claimed.length,
+  localJournal.claimed.length,
+);
+
+// Выход из аккаунта убирает журнал с устройства (в облаке он остаётся).
+journalStorage.clearQuestJournalState();
+check(
+  "выход из аккаунта чистит журнал",
+  journalStorage.getQuestJournalState().claimed.length,
+  0,
 );
 
 console.log("\n────────────────────────────────────────────────────────────");

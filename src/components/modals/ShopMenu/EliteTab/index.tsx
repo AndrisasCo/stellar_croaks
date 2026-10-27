@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from "react";
+import { getGameState } from "../../../../backend/localStorage";
 import { deleteToadsByIds, updateUser } from "../../../../backend";
 import { useSoundEffects } from "../../../../hooks/use-sound-effects";
 import { Toad } from "../../../../models/Toad";
 import { useToads } from "../../../ToadContext";
 import { CURRENCY_CONFIG } from "../../../../utils/constants";
 import {
+  claimEliteOrder,
   getEliteOrderById,
   getNewElite,
   getShopState,
@@ -35,7 +37,7 @@ const refreshShop = (cooldownMs = ELITE_REFRESH_COOLDOWN): ShopState => {
 export const EliteTab: React.FC = () => {
   const { allToads: activeToads, account } = useToads();
   const { playBuy } = useSoundEffects();
-  const { astro_quax = 0, tokens = 0 } = account || {};
+  const { tokens = 0 } = account || {};
   const [shopState, setShopState] = useState<ShopState>(getShopState());
   const [timeLeft, setTimeLeft] = useState<string>("");
 
@@ -72,7 +74,11 @@ export const EliteTab: React.FC = () => {
   }, [shopState.nextRefreshElite]);
 
   const handleInstantRefresh = () => {
-    if (tokens < INSTANT_REFRESH_ELITE_COST) {
+    // Баланс читаем из сейва: вторая вкладка могла потратить Кваксы, а рендер
+    // всё ещё показывает старое значение.
+    const currentTokens = getGameState().user.tokens ?? 0;
+
+    if (currentTokens < INSTANT_REFRESH_ELITE_COST) {
       addNotification({
         type: "warn",
         content: `Недостаточно Кваксов! Нужно ${INSTANT_REFRESH_ELITE_COST} ${CURRENCY_CONFIG.tokens.icon}`,
@@ -80,33 +86,45 @@ export const EliteTab: React.FC = () => {
       return;
     }
 
-    updateUser({ tokens: tokens - INSTANT_REFRESH_ELITE_COST });
+    updateUser({ tokens: currentTokens - INSTANT_REFRESH_ELITE_COST });
     const newShopState = refreshShop(INSTANT_REFRESH_ELITE_COOLDOWN);
     setShopState(newShopState);
     saveShopState(newShopState);
   };
 
   const handleSubmitEliteOrder = (order: string) => (toad: Toad) => {
-    if (isToadBusyOnExpedition(toad)) {
+    // Метаданные заказа восстанавливаются из id, а не из закешированного рендера:
+    // после обновления витрины или из второй вкладки список в замыкании устарел.
+    const selectedOrder = getEliteOrderById(order);
+    if (!selectedOrder) {
+      return;
+    }
+
+    // Жабу тоже перечитываем из сейва: вторая вкладка могла уже сдать её в другой
+    // заказ, и оплата за «призрак» была бы бесплатной наградой.
+    const freshToad = getGameState().toads.find((item) => item.id === toad.id);
+    if (!freshToad) {
+      return;
+    }
+    if (isToadBusyOnExpedition(freshToad)) {
       addNotification({ type: "warn", content: EXPEDITION_TOAD_BUSY_REASON });
       return;
     }
 
-    const selectedOrder = availableOrders.find((a) => a.id === order);
-    if (!selectedOrder) {
+    // Списываем заказ первым: повторный клик/вкладка не должны получить награду
+    // за уже сданный заказ. Если оплата ниже не случится, игрок потеряет заказ,
+    // но не получит бесконечный источник Астро-кваксов.
+    if (!claimEliteOrder(order)) {
       return;
     }
+
+    setShopState(getShopState());
     playBuy();
     deleteToadsByIds([toad.id]);
-    updateUser({ astro_quax: astro_quax + selectedOrder.reward });
-
-    const newShopState: ShopState = {
-      ...shopState,
-      eliteOrders: shopState.eliteOrders.filter((or) => or !== order),
-    };
-
-    setShopState(newShopState);
-    saveShopState(newShopState);
+    // Баланс читаем из сейва, а не из рендера: два заказа подряд до перерисовки
+    // иначе посчитали бы награду от старого значения и потеряли предыдущую.
+    const currentAstro = getGameState().user.astro_quax ?? 0;
+    updateUser({ astro_quax: currentAstro + selectedOrder.reward });
   };
 
   const getAvailableOrders = () => {

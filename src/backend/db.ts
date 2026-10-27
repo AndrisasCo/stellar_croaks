@@ -10,11 +10,21 @@ import {
 } from "./localStorage";
 import {
   getAchievementState,
-  saveAchievementState,
+  mergeCloudAchievements,
   type AchivementsState,
 } from "./achivements-manager";
 import { loadColliderState, saveColliderState } from "./collider-manager";
-import { getShopState, saveShopState, type ShopState } from "./shop-state";
+import {
+  getShopState,
+  mergeCloudEliteClaims,
+  saveShopState,
+  type ShopState,
+} from "./shop-state";
+import {
+  getQuestJournalState,
+  mergeCloudQuestJournal,
+  type QuestJournalState,
+} from "./quests-manager/storage";
 import { isCloudSyncEnabled, supabase } from "./supabase";
 
 // Клиент Supabase и флаг «облако настроено» переехали в ./supabase (чтобы вход не
@@ -649,6 +659,7 @@ export const createGameStateDB = async (accountId?: string) => {
     achievements: getAchievementState(),
     collider: loadColliderState(),
     shop: getShopState(),
+    quests: getQuestJournalState(),
   };
 
   const { data, error } = await supabase
@@ -690,6 +701,7 @@ export const updateGameStateDB = async (accountId?: string) => {
       achievements: getAchievementState(),
       collider: loadColliderState(),
       shop: getShopState(),
+      quests: getQuestJournalState(),
     })
     .eq("user_id", id)
     .select();
@@ -742,6 +754,8 @@ type StoredGameState = {
   achievements: AchivementsState;
   collider: ColliderState;
   shop?: ShopState | null;
+  /** Журнал заданий: архив наград и счётчики событий (см. quests-manager/storage). */
+  quests?: QuestJournalState | null;
 };
 
 type MergeOutcome = { ok: boolean; retryable: boolean };
@@ -762,7 +776,12 @@ const SYNC_TOLERANCE_MS = 1000;
 const MERGE_OK: MergeOutcome = { ok: true, retryable: false };
 const MERGE_RETRY: MergeOutcome = { ok: false, retryable: true };
 
-/** Переносит облачный сейв в localStorage: игру, достижения, коллайдер, магазин. */
+/**
+ * Переносит облачный сейв в localStorage: игру, достижения, коллайдер, магазин.
+ *
+ * Достижения не перезаписываются «как есть»: `mergeCloudAchievements` сохраняет
+ * уже забранные награды и счётчики, которых в облаке может не быть.
+ */
 const applyCloudGameState = (
   stored: StoredGameState,
   useCloudCreatedAt = false,
@@ -774,7 +793,7 @@ const applyCloudGameState = (
   );
 
   if (stored.achievements && Object.keys(stored.achievements).length) {
-    saveAchievementState(stored.achievements);
+    mergeCloudAchievements(stored.achievements);
   }
   if (stored.collider && Object.keys(stored.collider).length) {
     saveColliderState(stored.collider);
@@ -858,6 +877,21 @@ const mergeGameState = async (accountId: string): Promise<MergeOutcome> => {
 
     return MERGE_RETRY;
   }
+
+  // Журнал заданий сливаем до выбора «кто новее»: забранные награды и счётчики
+  // событий должны выживать и при чтении облака, и при отправке локального сейва.
+  // Иначе новое устройство начинает журнал с нуля и закрывает те же задания снова.
+  mergeCloudQuestJournal(stored.quests);
+
+  // Достижения — такой же журнал наград (групповые награды выдают жаб и лутбоксы).
+  // Слияние идёт до сравнения `lastSaved`, иначе офлайн-устройство с более новым
+  // сейвом могло бы стереть из облака уже забранные награды и открыть их повторно.
+  mergeCloudAchievements(stored.achievements);
+
+  // Сдачи элитных заказов тоже журнал наград. Витрину целиком не применяем —
+  // локальный ассортимент может быть новее, — но сведения об оплаченных заказах
+  // забираем, чтобы отправка локального `shop` не открыла их повторно.
+  mergeCloudEliteClaims(stored.shop?.eliteClaims);
 
   const accountCreated = currentGS.createdAt
     ? new Date(currentGS.createdAt).getTime()

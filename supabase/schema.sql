@@ -21,9 +21,21 @@ create table if not exists public.game_state (
   collider jsonb not null default '{}'::jsonb,
   -- Торговая Капсула синхронизировался только в коде: без колонки update/insert падали.
   shop jsonb not null default '{}'::jsonb,
+  -- Журнал заданий: забранные награды обязаны переживать смену устройства, иначе
+  -- одно и то же задание можно закрыть повторно (см. docs/quest-journal.md, D2).
+  quests jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+-- Колонки, появившиеся после первых релизов. Дотягиваем их ДО индексов и
+-- грантов ниже: `grant update (column)` и индекс на несуществующую колонку
+-- падают, и тогда схема не применится к уже существующей базе.
+alter table public.game_state
+  add column if not exists shop jsonb not null default '{}'::jsonb;
+alter table public.game_state
+  add column if not exists quests jsonb not null default '{}'::jsonb;
+alter table public.game_state add column if not exists tg_id bigint;
 
 -- Один игрок Telegram = один аккаунт, значит и один tg_id на строку.
 create unique index if not exists game_state_tg_id_key
@@ -187,7 +199,7 @@ revoke all on public.game_state, public.leaderboard, public.credits, public.play
   from anon, authenticated;
 
 grant select, insert, delete on public.game_state to authenticated;
-grant update (content, achievements, collider, shop, tg_id, updated_at)
+grant update (content, achievements, collider, shop, quests, tg_id, updated_at)
   on public.game_state to authenticated;
 
 grant select on public.leaderboard to authenticated;
@@ -216,9 +228,6 @@ grant usage, select on all sequences in schema public to service_role;
 -- 8. Если таблицы уже создавались вручную (до этого файла) — дотягиваем их.
 -- Для свежей базы безвредно: всё с `if not exists`.
 -- ---------------------------------------------------------------------------
-alter table public.game_state
-  add column if not exists shop jsonb not null default '{}'::jsonb;
-alter table public.game_state add column if not exists tg_id bigint;
 alter table public.game_state add column if not exists user_id uuid;
 alter table public.leaderboard add column if not exists tg_id bigint;
 alter table public.leaderboard add column if not exists user_id uuid;

@@ -246,6 +246,11 @@ export const UNIQUE_TOADS_BY_RARITY: Record<LootboxRarity, Partial<Toad>[]> = {
  */
 const PITY_KEY = "toad_lootbox_pity";
 
+/** Сбрасывает счётчик гарантий при смене аккаунта. */
+export const resetLootboxPity = (): void => {
+  localStorage.removeItem(PITY_KEY);
+};
+
 const readPity = (): number => {
   const stored = Number(localStorage.getItem(PITY_KEY));
   return Number.isFinite(stored) && stored > 0 ? stored : 0;

@@ -12,6 +12,7 @@ import {
   saveShopState,
   getNewToads,
   initialItemsAmount,
+  claimShopToad,
   REFRESH_COOLDOWN,
   INSTANT_REFRESH_COST,
   INSTANT_REFRESH_COOLDOWN,
@@ -45,7 +46,6 @@ export type ShopItem = {
 export const useShop = () => {
   const { account } = useToads();
 
-  const { tokens = 0, storage = { food: 0 } } = account || {};
   const [shopState, setShopState] = useState<ShopState>(getShopState());
   const [timeLeft, setTimeLeft] = useState<string>("");
   const { addNotification } = useNotifications();
@@ -180,8 +180,10 @@ export const useShop = () => {
   ];
 
   const updateShopStateAmount = (keyString: string) => {
-    const newShopState = { ...shopState };
-    newShopState.items[keyString] = newShopState.items[keyString] - 1;
+    // Склад читаем из сейва, а не из рендера: два быстрых клика иначе запишут
+    // оба остатка от старого значения и вернут уже проданный товар.
+    const newShopState = getShopState();
+    newShopState.items[keyString] = (newShopState.items[keyString] ?? 0) - 1;
 
     setShopState(newShopState);
     saveShopState(newShopState);
@@ -196,23 +198,30 @@ export const useShop = () => {
     () => {
       const currency = Object.keys(price)[0];
       const itemName = Object.keys(item)[0];
+      // Баланс и склад читаем из сейва: между рендером и кликом игрок мог
+      // потратить кваксы в другой вкладке, а два быстрых клика — перезаписать
+      // покупку друг друга суммой от старого баланса.
+      const current = getGameState().user;
+      // Остаток на витрине тоже из сейва: вторая вкладка могла уже выкупить
+      // последний предмет, и покупка «из рендера» обошла бы лимит.
+      const currentShopState = getShopState();
 
-      if ((account as any)[currency] < price[currency]) {
+      if (((current as any)[currency] ?? 0) < price[currency]) {
         return;
       }
 
-      if (!shopState.items[itemName] && !noAmount) {
+      if (!currentShopState.items[itemName] && !noAmount) {
         return;
       }
 
       // Склад предметов ограничен постройками «Склад» (Часть 3.7): без места покупка
       // не проходит — иначе игрок платил бы за предмет, который исчезнет.
-      if (!canFitInStorage(storage, { [itemName]: item[itemName] })) {
+      if (!canFitInStorage(current.storage, { [itemName]: item[itemName] })) {
         playError();
         addNotification({
           type: "warn",
-          content: `На складе нет места (${getStorageCapacityInfo(storage).used}/${
-            getStorageCapacityInfo(storage).capacity
+          content: `На складе нет места (${getStorageCapacityInfo(current.storage).used}/${
+            getStorageCapacityInfo(current.storage).capacity
           }): постройте склад на карте колонии`,
         });
         return;
@@ -220,10 +229,10 @@ export const useShop = () => {
 
       playBuy();
       updateUser({
-        [currency]: (account as any)[currency] - price[currency],
+        [currency]: (current as any)[currency] - price[currency],
         storage: {
-          ...storage,
-          [itemName]: ((storage as any)?.[itemName] || 0) + item[itemName],
+          ...current.storage,
+          [itemName]: ((current.storage as any)?.[itemName] || 0) + item[itemName],
         } as User["storage"],
       });
 
@@ -255,7 +264,9 @@ export const useShop = () => {
 
   const handleRefreshShop = () => {
     const now = Date.now();
-    if (now < shopState.nextRefresh) {
+    // Кулдаун проверяем по сейву: вторая вкладка могла обновить витрину
+    // мгновение назад, и её новые цены/остатки нельзя перетирать.
+    if (now < getShopState().nextRefresh) {
       addNotification({
         type: "warn",
         content: "Рынок можно обновить только раз в 3 часа",
@@ -292,7 +303,9 @@ export const useShop = () => {
     return newState;
   };
   const handleInstantRefresh = () => {
-    if (tokens < INSTANT_REFRESH_COST) {
+    const currentTokens = getGameState().user.tokens ?? 0;
+
+    if (currentTokens < INSTANT_REFRESH_COST) {
       addNotification({
         type: "warn",
         content: `Недостаточно кваксов! Нужно ${INSTANT_REFRESH_COST}`,
@@ -300,7 +313,7 @@ export const useShop = () => {
       return;
     }
 
-    updateUser({ tokens: tokens - INSTANT_REFRESH_COST });
+    updateUser({ tokens: currentTokens - INSTANT_REFRESH_COST });
     // Платное обновление даёт короткий кулдаун (30 мин), а не полные 3 часа:
     // иначе обновления можно было фармить без ограничений (аудит P1).
     const newShopState = refreshShop(INSTANT_REFRESH_COOLDOWN);
@@ -327,21 +340,30 @@ export const useShop = () => {
       return;
     }
 
+    // Баланс и наличие жабы проверяем по сейву: вторая вкладка могла уже купить
+    // эту жабу, а два быстрых клика — списать цену от старого баланса.
+    const price = calculateBuyPrice(toad);
+    const currentTokens = getGameState().user.tokens ?? 0;
+
+    if (currentTokens < price) {
+      playError();
+      return;
+    }
+
+    // Списываем жабу с витрины ДО создания: иначе повторный клик создаст вторую
+    // копию, а оплата пройдёт один раз. При сбое после списания игрок потеряет
+    // предложение, но не получит бесплатную жабу.
+    if (!claimShopToad(toad.id)) {
+      return;
+    }
+
+    setShopState(getShopState());
     playBuy();
     completeAchivement("buy-toad");
     completeAchivementCounter("buyToad", 1);
 
     createToad({ ...toad, scene_id: scene.id });
-    updateUser({ tokens: tokens - calculateBuyPrice(toad) });
-
-    // Помечаем жабу как купленную
-    const newShopState: ShopState = {
-      ...shopState,
-      availableToads: shopState.availableToads.filter((t) => t.id !== toad.id),
-    };
-
-    setShopState(newShopState);
-    saveShopState(newShopState);
+    updateUser({ tokens: currentTokens - price });
   };
   const allToadsPurchased = shopState.availableToads.length === 0;
 

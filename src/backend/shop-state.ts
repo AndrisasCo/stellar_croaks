@@ -18,6 +18,12 @@ export interface ShopState {
   nextRefreshElite: number; // timestamp следующего обновления
   eliteOrders: string[];
   items: Record<string, number>;
+  /**
+   * Журнал сдач элитных заказов. Дублируется внутри витрины, чтобы уезжать в
+   * облако вместе с `game_state.shop`: новое устройство иначе не знает, что
+   * заказ уже оплачен, и может выдать награду повторно.
+   */
+  eliteClaims?: Record<string, string[]>;
 }
 
 // Список всех возможных жаб для Торговая Капсулаа
@@ -222,8 +228,101 @@ export const ALL_TOADS: Partial<Toad>[] = [
   },
 ];
 
-// Ключ для localStorage
+/** Ключ для localStorage */
 export const SHOP_STATE_KEY = "toad_shop_state9";
+/**
+ * Журнал сданных элитных заказов: `эпоха витрины -> id заказов`.
+ *
+ * Хранится отдельно от витрины, чтобы устаревшая вкладка (или старый сейв) не
+ * могла вернуть заказ в `shop` и получить награду повторно. Эпоха — это
+ * `lastRefreshElite`: после обновления витрины те же id снова доступны.
+ */
+const ELITE_CLAIMS_KEY = "toad_elite_claims";
+
+/** Читает журнал сдач, игнорируя битые данные и мусор после ручной правки. */
+const readEliteClaims = (): Record<string, string[]> => {
+  try {
+    const raw = localStorage.getItem(ELITE_CLAIMS_KEY);
+
+    if (!raw) {
+      return {};
+    }
+
+    const parsed: unknown = JSON.parse(raw);
+
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return {};
+    }
+
+    return Object.fromEntries(
+      Object.entries(parsed as Record<string, unknown>)
+        .filter(([, ids]) => Array.isArray(ids))
+        .map(([epoch, ids]) => [
+          epoch,
+          (ids as unknown[]).filter((id): id is string => typeof id === "string"),
+        ]),
+    );
+  } catch (error) {
+    console.warn("[shop] не удалось прочитать журнал элитных заказов:", error);
+
+    return {};
+  }
+};
+
+const saveEliteClaims = (claims: Record<string, string[]>): void => {
+  localStorage.setItem(ELITE_CLAIMS_KEY, JSON.stringify(claims));
+};
+
+/**
+ * Объединяет журнал сдач с копией из витрины/облака.
+ *
+ * Витрина и журнал живут разными ключами: облачный сейв приносит `eliteClaims`
+ * внутри `shop`, а на устройстве журнал может быть новее. Объединяем по эпохам,
+ * чтобы ни одна сторона не потеряла уже оплаченный заказ.
+ */
+const mergeEliteClaims = (
+  extra?: Record<string, string[]> | null,
+): Record<string, string[]> => {
+  const local = readEliteClaims();
+
+  if (!extra || typeof extra !== "object" || Array.isArray(extra)) {
+    return local;
+  }
+
+  const merged: Record<string, string[]> = { ...local };
+  let changed = false;
+
+  Object.entries(extra).forEach(([epoch, ids]) => {
+    if (!Array.isArray(ids)) {
+      return;
+    }
+
+    const clean = ids.filter((id): id is string => typeof id === "string");
+    const current = merged[epoch] ?? [];
+    const union = [...new Set([...current, ...clean])];
+
+    if (union.length !== current.length) {
+      merged[epoch] = union;
+      changed = true;
+    }
+  });
+
+  if (changed) {
+    saveEliteClaims(merged);
+  }
+
+  return merged;
+};
+
+/**
+ * Поднимает журнал сдач из облачной витрины, не трогая локальный ассортимент.
+ * Нужен при старте, когда локальный сейв новее облачного: иначе отправка
+ * локального `shop` в облако затёрла бы сведения о чужих сдачах.
+ */
+export const mergeCloudEliteClaims = (
+  claims?: Record<string, string[]> | null,
+): Record<string, string[]> => mergeEliteClaims(claims);
+
 export const REFRESH_COOLDOWN = 3 * 60 * 60 * 1000; // 3 часа в миллисекундах
 /** Витрина элитных заказов обновляется реже рынка — раз в сутки */
 export const ELITE_REFRESH_COOLDOWN = 24 * 60 * 60 * 1000;
@@ -239,17 +338,115 @@ export const INSTANT_REFRESH_ELITE_COOLDOWN = 60 * 60 * 1000;
 // Функции для работы с localStorage
 export const getShopState = (): ShopState => {
   const stored = localStorage.getItem(SHOP_STATE_KEY);
+
   if (stored) {
-    return JSON.parse(stored);
+    const state = JSON.parse(stored) as ShopState;
+
+    // Витрина из облака приносит журнал сдач с собой: поднимаем его в локальный
+    // ключ до возврата, чтобы проверка повторов видела заказы с другого устройства.
+    if (state.eliteClaims) {
+      mergeEliteClaims(state.eliteClaims);
+    }
+
+    return { ...state, eliteClaims: readEliteClaims() };
   }
 
   // Инициализация нового состояния Торговая Капсулаа
-  return initializeShop();
+  return { ...initializeShop(), eliteClaims: readEliteClaims() };
 };
 
 export const saveShopState = (state: ShopState) => {
-  localStorage.setItem(SHOP_STATE_KEY, JSON.stringify(state));
+  // Журнал сдач всегда кладём внутрь витрины: так он уезжает в облако и
+  // переживает перезапись `shop` устаревшей вкладкой.
+  const eliteClaims = mergeEliteClaims(state.eliteClaims);
+
+  localStorage.setItem(
+    SHOP_STATE_KEY,
+    JSON.stringify({ ...state, eliteClaims }),
+  );
 };
+
+/** Убирает витрину при смене аккаунта: ассортимент и заказы — часть прогресса. */
+export const clearShopState = (): void => {
+  localStorage.removeItem(SHOP_STATE_KEY);
+  localStorage.removeItem(ELITE_CLAIMS_KEY);
+};
+
+/**
+ * Списывает элитный заказ с витрины ДО начисления награды.
+ *
+ * Награда за заказ уходит в `GameState`, а сам заказ — в отдельный `shop`.
+ * Две записи не атомарны, поэтому порядок важен: сначала фиксируем «заказ
+ * сдан», потом платим. Двойной клик, вторая вкладка или повторный вызов тогда
+ * увидят заказ уже отсутствующим и не начислят Астро-кваксы ещё раз. Обратный
+ * порядок (сначала заплатить) при сбое между записями оставлял бы заказ на
+ * витрине вместе с уже полученной наградой — то есть бесконечный фарм.
+ *
+ * Журнал сдач лежит отдельным ключом: даже если устаревшая вкладка перезапишет
+ * витрину и вернёт заказ, повторной оплаты не будет.
+ *
+ * @returns `false`, если заказ уже забран или его нет в текущей витрине.
+ */
+export const claimEliteOrder = (orderId: string): boolean => {
+  const state = getShopState();
+  const epoch = String(state.lastRefreshElite);
+  const claims = readEliteClaims();
+  const claimed = claims[epoch] ?? [];
+
+  if (claimed.includes(orderId)) {
+    // Устаревшая витрина вернула уже сданный заказ — убираем его и не платим.
+    if (state.eliteOrders.includes(orderId)) {
+      saveShopState({
+        ...state,
+        eliteOrders: state.eliteOrders.filter((id) => id !== orderId),
+      });
+    }
+
+    return false;
+  }
+
+  if (!state.eliteOrders.includes(orderId)) {
+    return false;
+  }
+
+  // Пишем журнал первым: если вкладка/браузер закроется между записями, игрок
+  // потеряет заказ, но не получит источник бесконечных Астро-кваксов.
+  // Храним только текущую эпоху: после обновления витрины старые сдачи не нужны.
+  saveEliteClaims({ [epoch]: [...claimed, orderId] });
+  saveShopState({
+    ...state,
+    eliteOrders: state.eliteOrders.filter((id) => id !== orderId),
+  });
+
+  return true;
+};
+/**
+ * Списывает жабу с витрины ДО создания и оплаты.
+ *
+ * `createToad` пишет в `GameState`, а витрина живёт отдельным ключом. Если
+ * сначала создать жабу, быстрый повторный клик (или вторая вкладка со старой
+ * витриной) создаст вторую копию той же жабы, а оплата пройдёт только один раз.
+ * Поэтому сначала фиксируем «жаба куплена» в витрине, потом создаём и платим.
+ * Обратный порядок при сбое между записями оставлял бы жабу на витрине вместе
+ * с уже созданной копией.
+ *
+ * @returns `false`, если жабы уже нет в текущей витрине.
+ */
+export const claimShopToad = (toadId: number): boolean => {
+  const state = getShopState();
+
+  if (!state.availableToads.some((toad) => toad.id === toadId)) {
+    return false;
+  }
+
+  saveShopState({
+    ...state,
+    availableToads: state.availableToads.filter((toad) => toad.id !== toadId),
+  });
+
+  return true;
+};
+
 export const initialItemsAmount = {
   lootbox: 10,
   battery: 2,

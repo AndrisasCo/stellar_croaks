@@ -1,7 +1,13 @@
 import { platform } from "../platform";
 import { isAutomatedBrowser } from "./automation";
+import { clearAchievementState } from "./achivements-manager";
+import { clearColliderState } from "./collider-manager";
 import { clearGameState } from "./localStorage";
+import { clearQuestJournalState } from "./quests-manager/storage";
+import { clearShopState } from "./shop-state";
 import { clearOfflineEvents } from "../utils/offline-events";
+import { clearNarratorState } from "../utils/narrator";
+import { resetLootboxPity } from "../models/Toad/lootbox";
 import { isCloudSyncEnabled, supabase } from "./supabase";
 
 /**
@@ -636,6 +642,20 @@ export const signOutAccount = async (): Promise<SignOutResult> => {
 
   setAccount(null);
   clearGameState();
+  // Журнал заданий тоже принадлежит аккаунту: иначе следующий игрок на этом
+  // устройстве унаследует чужой архив наград и счётчики событий.
+  clearQuestJournalState();
+  // Достижения, витрина, коллайдер и гарантии лутбоксов — часть прогресса
+  // аккаунта. Без очистки следующий игрок получил бы чужие забранные награды
+  // (и они бы уехали в его облако), а его собственные награды выглядели бы
+  // уже полученными.
+  clearAchievementState();
+  clearShopState();
+  clearColliderState();
+  resetLootboxPity();
+  // Прогресс обучения тоже принадлежит аккаунту: иначе следующий игрок начнёт
+  // игру с чужого шага (или пропустит вступление из-за старой метки).
+  clearNarratorState();
   // Журнал отсутствия принадлежит аккаунту: следующий игрок не должен видеть чужие события
   clearOfflineEvents();
   window.location.reload();
