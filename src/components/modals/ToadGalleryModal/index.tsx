@@ -8,6 +8,7 @@ import {
 } from "../../../models/Toad/toad-species";
 import { getAchievementState } from "../../../backend/achivements-manager";
 import { GlowWrapper } from "../../shared/GlowWrapper";
+import { DataCell, DataGrid, HudPanel } from "../../shared/DataGrid";
 import { DetailedView, type GallerySlot } from "./DetailedView";
 import { useModal } from "../../ModalContext";
 
@@ -250,7 +251,7 @@ export const ToadGalleryModal: React.FC = () => {
   };
 
   return (
-    <Modal icon={icon} title={"Жабопедия"}>
+    <Modal icon={icon} title={"Жабопедия"} tone="violet">
       <div className="flex justify-between items-center mb-4 px-1">
         <div className="text-sm text-slate-300">
           Найдено{" "}
@@ -261,7 +262,7 @@ export const ToadGalleryModal: React.FC = () => {
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as any)}
-            className="text-xs bg-slate-950/60 border border-white/10 rounded-lg px-3 py-1.5 text-slate-200 focus:outline-none focus:border-cyan-400"
+            className="rounded-none border border-white/10 bg-slate-950/50 px-3 py-1.5 font-mono text-xs text-slate-200 focus:border-cyan-400 focus:outline-none"
           >
             <option value="rarity">По редкости</option>
             <option value="unlocked">По открытию</option>
@@ -270,7 +271,7 @@ export const ToadGalleryModal: React.FC = () => {
         </div>
       </div>
 
-      <div className="mb-6 ui-panel p-4 backdrop-blur-sm">
+      <HudPanel className="mb-6 p-4">
         <div className="flex justify-between items-center mb-3">
           <div className="text-sm text-slate-200 font-medium">
             Прогресс коллекции
@@ -280,38 +281,40 @@ export const ToadGalleryModal: React.FC = () => {
           </div>
         </div>
 
-        <div className="w-full bg-slate-900 rounded-full h-3 mb-3 ">
+        <div className="w-full bg-slate-950/50 h-3 mb-3">
           <div
-            className="brand-bar h-full rounded-full shadow-[0_0_10px_rgba(34,211,238,0.35)] transition-all duration-700 ease-out"
+            className="brand-bar h-full shadow-[0_0_10px_rgba(34,211,238,0.35)] transition-all duration-700 ease-out"
             style={{ width: `${progressPercentage}%` }}
           />
         </div>
 
-        <div className="grid grid-cols-4 gap-2 text-center">
-          <div className="bg-green-900/30 rounded p-2">
-            <div className="text-green-400 font-bold">
-              {stats.byRarity.common}
-            </div>
-            <div className="text-xs text-slate-300">Обычные</div>
-          </div>
-          <div className="bg-blue-900/30 rounded p-2">
-            <div className="text-blue-400 font-bold">{stats.byRarity.rare}</div>
-            <div className="text-xs text-slate-300">Редкие</div>
-          </div>
-          <div className="bg-purple-900/30 rounded p-2">
-            <div className="text-purple-400 font-bold">
-              {stats.byRarity.epic}
-            </div>
-            <div className="text-xs text-slate-300">Эпические</div>
-          </div>
-          <div className="bg-yellow-900/30 rounded p-2">
-            <div className="text-yellow-400 font-bold">
-              {stats.byRarity.legendary}
-            </div>
-            <div className="text-xs text-slate-300">Легенды</div>
-          </div>
-        </div>
-      </div>
+        <DataGrid columns={4}>
+          <DataCell
+            dense
+            label="Обычные"
+            value={stats.byRarity.common}
+            color="text-green-400"
+          />
+          <DataCell
+            dense
+            label="Редкие"
+            value={stats.byRarity.rare}
+            color="text-blue-400"
+          />
+          <DataCell
+            dense
+            label="Эпические"
+            value={stats.byRarity.epic}
+            color="text-purple-400"
+          />
+          <DataCell
+            dense
+            label="Легенды"
+            value={stats.byRarity.legendary}
+            color="text-yellow-400"
+          />
+        </DataGrid>
+      </HudPanel>
 
       {/* --- СЕТКА ГАЛЕРЕИ --- */}
       <div className="grid grid-cols-2 gap-6 px-3 pb-3">
@@ -340,8 +343,8 @@ export const ToadGalleryModal: React.FC = () => {
                   : {}
               }
               className={`
-                relative rounded-xl p-2 flex flex-col items-center justify-between
-                border transition-all duration-300 group cursor-pointer
+                group relative flex cursor-pointer flex-col items-center justify-between rounded-none border p-2
+                transition-all duration-300
                  ${styles.bgLight} ${styles.border}
 
                 ${
@@ -404,7 +407,7 @@ export const ToadGalleryModal: React.FC = () => {
 
                 {/* Бейдж редкости */}
                 <div
-                  className={`text-2xs px-2 py-0.5 rounded-full ${styles.badge} inline-block`}
+                  className={`inline-block rounded-none px-2 py-0.5 font-mono text-3xs uppercase tracking-[0.08em] ${styles.badge}`}
                 >
                   {item.rarity === "legendary"
                     ? "ЛЕГЕНДАРНАЯ"
@@ -418,7 +421,7 @@ export const ToadGalleryModal: React.FC = () => {
 
               {/* Эффект при наведении */}
               <div
-                className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-20 transition-opacity duration-300 pointer-events-none"
+                className="pointer-events-none absolute inset-0 rounded-none opacity-0 transition-opacity duration-300 group-hover:opacity-20"
                 style={{
                   background: `radial-gradient(circle at center, ${
                     styles.titleColor.replace("text-", "#").split("-")[0]

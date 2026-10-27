@@ -58,19 +58,19 @@ const LoadingScreen = ({ progress, message }: LoadingScreenProps) => {
       <div className="absolute inset-0 overflow-hidden">
         {/* Плавающие элементы */}
         <div
-          className="absolute h-4 w-4 animate-float-1 rounded-full bg-cyan-400/20"
+          className="absolute h-4 w-4 animate-float-1 rounded-none bg-cyan-400/20"
           style={{ top: "20%", left: "10%" }}
         />
         <div
-          className="absolute w-6 h-6 bg-purple-400/15 rounded-full animate-float-2"
+          className="absolute w-6 h-6 bg-purple-400/15 rounded-none animate-float-2"
           style={{ top: "60%", left: "85%" }}
         />
         <div
-          className="absolute w-3 h-3 bg-emerald-400/25 rounded-full animate-float-3"
+          className="absolute w-3 h-3 bg-emerald-400/25 rounded-none animate-float-3"
           style={{ top: "80%", left: "20%" }}
         />
         <div
-          className="absolute h-5 w-5 animate-float-4 rounded-full bg-emerald-400/20"
+          className="absolute h-5 w-5 animate-float-4 rounded-none bg-emerald-400/20"
           style={{ top: "30%", left: "70%" }}
         />
 
@@ -90,16 +90,16 @@ const LoadingScreen = ({ progress, message }: LoadingScreenProps) => {
                 className="w-24 h-24 bg-contain bg-no-repeat"
               >
                 {/* Глаза */}
-                <div className="absolute top-[32px] left-[32px] w-[10px] h-[10px] bg-white rounded-full animate-blink" />
+                <div className="absolute top-[32px] left-[32px] w-[10px] h-[10px] bg-white rounded-none animate-blink" />
                 <div
-                  className="absolute top-[32px] w-[10px] left-[54px] h-[10px] bg-white rounded-full animate-blink"
+                  className="absolute top-[32px] w-[10px] left-[54px] h-[10px] bg-white rounded-none animate-blink"
                   style={{ animationDelay: "0.2s" }}
                 />
                 {/* Рот */}
               </div>
 
               {/* Свечение */}
-              <div className="absolute inset-0 h-24 w-24 animate-ping rounded-full bg-cyan-400 opacity-20" />
+              <div className="absolute inset-0 h-24 w-24 animate-ping rounded-none bg-cyan-400 opacity-20" />
             </div>
 
             <h1 className="brand-text text-4xl font-bold">
@@ -112,9 +112,9 @@ const LoadingScreen = ({ progress, message }: LoadingScreenProps) => {
 
         {/* Прогресс бар */}
         <div className="max-w-2xl mx-auto mb-6">
-          <div className="mb-2 h-3 overflow-hidden rounded-full border border-slate-600/50 bg-slate-950/60">
+          <div className="mb-2 h-3 overflow-hidden rounded-none border border-slate-600/50 bg-slate-950/60">
             <div
-              className="brand-bar h-full rounded-full shadow-lg shadow-cyan-500/20 transition-all duration-300 ease-out"
+              className="brand-bar h-full rounded-none shadow-lg shadow-cyan-500/20 transition-all duration-300 ease-out"
               style={{ width: `${shownProgress}%` }}
             />
           </div>

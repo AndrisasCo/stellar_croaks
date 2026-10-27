@@ -28,7 +28,7 @@ interface SlidePagerProps {
 
 /** Кнопка-стрелка под лентой: заметная, но приглушённая на краях */
 const arrowClass = (disabled: boolean) =>
-  `flex h-10 w-10 shrink-0 items-center justify-center rounded-full border text-2xl leading-none transition-colors duration-300 ${
+  `flex h-10 w-10 shrink-0 items-center justify-center rounded-none border text-2xl leading-none transition-colors duration-300 ${
     disabled
       ? "border-slate-700/40 bg-slate-900/40 text-slate-600"
       : "border-amber-400/60 bg-slate-800/90 text-amber-100 hover:bg-slate-700/90 active:bg-slate-600"
@@ -80,7 +80,7 @@ export const SlidePager = ({
         aria-label="Страницы: переключайте стрелками"
         tabIndex={0}
         onKeyDown={handleKeyDown}
-        className="overflow-hidden rounded-2xl outline-none focus-visible:ring-1 focus-visible:ring-amber-400/60"
+        className="overflow-hidden rounded-none outline-none focus-visible:ring-1 focus-visible:ring-amber-400/60"
       >
         <div
           className="flex transition-transform duration-300 ease-out"
@@ -118,7 +118,7 @@ export const SlidePager = ({
                 onClick={() => onIndexChange(page)}
                 aria-label={`Страница ${page + 1}`}
                 title={labels?.[page]}
-                className={`h-2 rounded-full transition-all duration-300 ${
+                className={`h-2 rounded-none transition-all duration-300 ${
                   page === index
                     ? "w-5 bg-amber-400"
                     : "w-2 bg-slate-600 hover:bg-slate-500"

@@ -40,7 +40,7 @@ export const MixingInProgress = () => {
   return (
     <div className="ui-panel-raised my-auto w-full overflow-hidden border-cyan-400/30">
       {/* Основной контейнер анимации */}
-      <div className="relative h-40 overflow-hidden rounded-xl bg-gradient-to-r from-cyan-900/40 to-emerald-900/40">
+      <div className="relative h-40 overflow-hidden rounded-none bg-gradient-to-r from-cyan-900/40 to-emerald-900/40">
         {/* Фон с узором */}
         <div
           className="absolute inset-0 opacity-20"
@@ -54,21 +54,21 @@ export const MixingInProgress = () => {
 
         {/* Прогресс заполнения */}
         <div
-          className="absolute bottom-0 left-0 right-0 rounded-t-xl bg-gradient-to-t from-cyan-500/80 to-emerald-400/90 transition-all duration-200"
+          className="absolute bottom-0 left-0 right-0 rounded-none bg-gradient-to-t from-cyan-500/80 to-emerald-400/90 transition-all duration-200"
           style={{ height: `${mixingProgress * 100}%` }}
         >
           {/* Эффект пузырьков на прогресс-баре */}
-          <div className="absolute inset-0 overflow-hidden rounded-t-xl">
+          <div className="absolute inset-0 overflow-hidden rounded-none">
             <div
-              className="absolute w-3 h-3 bg-white/30 rounded-full animate-bubble-1"
+              className="absolute w-3 h-3 bg-white/30 rounded-none animate-bubble-1"
               style={{ top: "20%", left: "30%" }}
             />
             <div
-              className="absolute w-2 h-2 bg-white/40 rounded-full animate-bubble-2"
+              className="absolute w-2 h-2 bg-white/40 rounded-none animate-bubble-2"
               style={{ top: "40%", left: "60%" }}
             />
             <div
-              className="absolute w-2.5 h-2.5 bg-white/20 rounded-full animate-bubble-3"
+              className="absolute w-2.5 h-2.5 bg-white/20 rounded-none animate-bubble-3"
               style={{ top: "60%", left: "20%" }}
             />
           </div>
@@ -92,15 +92,15 @@ export const MixingInProgress = () => {
         {/* Парящие частицы ДНК */}
         <div className="absolute inset-0 pointer-events-none">
           <div
-            className="absolute w-1 h-1 bg-green-400/60 rounded-full animate-float-1"
+            className="absolute w-1 h-1 bg-green-400/60 rounded-none animate-float-1"
             style={{ top: "30%", left: "15%" }}
           />
           <div
-            className="absolute w-1 h-1 bg-emerald-400/60 rounded-full animate-float-2"
+            className="absolute w-1 h-1 bg-emerald-400/60 rounded-none animate-float-2"
             style={{ top: "60%", left: "85%" }}
           />
           <div
-            className="absolute w-0.5 h-0.5 bg-green-300/50 rounded-full animate-float-3"
+            className="absolute w-0.5 h-0.5 bg-green-300/50 rounded-none animate-float-3"
             style={{ top: "20%", left: "70%" }}
           />
         </div>

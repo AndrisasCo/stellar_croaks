@@ -31,6 +31,7 @@ import { CURRENCY_CONFIG, NEST_ROOM_ID } from "../../utils/constants";
 import { getAstroBalance } from "../../utils/astro-shop";
 import { resolveColonyRooms } from "../HexMap/colony-build";
 import { ClickButton } from "../shared/ClickButton";
+import { DataCell, DataGrid, HudPanel } from "../shared/DataGrid";
 import Modal from "../shared/Header";
 import ModalTabs, { ModalTabItem } from "../shared/ModalTabs";
 import { ToadListCard } from "../shared/ToadListCard";
@@ -402,10 +403,7 @@ export default function NestModal({
   };
 
   return (
-    <Modal
-      title={room?.name ?? "Репродуктор"}
-      icon={<span className="text-xl">🥚</span>}
-    >
+    <Modal title={room?.name ?? "Репродуктор"} tone="rose">
       {/* Переключение вкладок: вид один на все секторы (`shared/ModalTabs`) */}
       {tabs.length > 1 && (
         <ModalTabs tabs={tabs} active={tab} onChange={setTab} />
@@ -414,20 +412,30 @@ export default function NestModal({
       {tab === "nest" && (
         <>
           <div className="flex flex-col gap-3">
-            {/* Сводка */}
-            <div className="flex items-center justify-between text-xs bg-color-main rounded-xl px-3 py-2 border border-slate-500/30">
-              <span className="text-cyan-300">
-                👥 В репродукторе: {nestAdults.length}/{NEST_ROOM_TOAD_SLOTS}
-              </span>
-              <span className="text-lime-300">🧪 {biomass}</span>
-              <span className="text-purple-300">
-                {CURRENCY_CONFIG.astro_quax.icon} {astro}
-              </span>
-            </div>
+            {/* Сводка: те же HUD-ячейки, что у остальных секторов */}
+            <DataGrid columns={3}>
+              <DataCell
+                dense
+                label="В репродукторе"
+                value={`${nestAdults.length}/${NEST_ROOM_TOAD_SLOTS}`}
+                color="text-rose-200"
+              />
+              <DataCell
+                dense
+                label="Биомасса"
+                value={`🧪 ${biomass}`}
+                color="text-lime-300"
+              />
+              <DataCell
+                dense
+                label="Астро-кваксы"
+                value={`${CURRENCY_CONFIG.astro_quax.icon} ${astro}`}
+                color="text-violet-200"
+              />
+            </DataGrid>
 
             {/* Слоты пары: квадраты с «+», выбор жабы — модалкой своего пола */}
-            <div className="bg-color-main rounded-xl px-3 py-2 border border-purple-500/40 flex flex-col gap-2">
-              <ToadSlotGrid
+            <ToadSlotGrid
                 slots={slots.map((toad, index) => ({
                   toad,
                   label: getNestSlotLabel(index),
@@ -481,13 +489,13 @@ export default function NestModal({
                     }}
                     actions={
                       toad.pregnancy?.isPregnant ? (
-                        <span className="rounded-md border border-pink-500/50 bg-color-main px-2 py-1 text-2xs text-pink-200">
+                        <span className="rounded-none border border-pink-500/50 bg-slate-950/50 px-2 py-1 text-2xs text-pink-200">
                           Беременность
                         </span>
                       ) : (
                         <ClickButton
                           onClick={() => handleRelease(toad)}
-                          className="rounded-md border border-slate-500/50 bg-color-main px-2 py-1 text-2xs text-slate-200"
+                          className="rounded-none border border-slate-500/50 bg-slate-950/50 px-2 py-1 text-2xs text-slate-200"
                         >
                           Вернуть в биопод
                         </ClickButton>
@@ -499,8 +507,8 @@ export default function NestModal({
 
               {/* Показываем их отдельно — жаба не пропадает с экрана */}
               {extraNestAdults.length > 0 && (
-                <div className="rounded-lg p-2 bg-black/20 border border-red-500/40 flex flex-col gap-1.5">
-                  <div className="text-2xs text-red-200 leading-snug">
+                <HudPanel tone="rose" className="flex flex-col gap-1.5 p-2">
+                  <div className="text-2xs leading-snug text-red-200">
                     Репродуктор переполнен, очистите слоты прежде чем начать
                     ухаживание.
                   </div>
@@ -522,22 +530,21 @@ export default function NestModal({
                       actions={
                         <ClickButton
                           onClick={() => handleRelease(toad)}
-                          className="shrink-0 rounded-lg border border-slate-500/50 bg-color-main px-2 py-1 text-2xs text-slate-200"
+                          className="shrink-0 rounded-none border border-slate-500/50 bg-slate-950/50 px-2 py-1 text-2xs text-slate-200"
                         >
                           Вынести в биопод
                         </ClickButton>
                       }
                     />
                   ))}
-                </div>
+                </HudPanel>
               )}
 
-              {nestHint && (
-                <div className="text-2xs text-amber-200 leading-snug">
-                  {nestHint}
-                </div>
-              )}
-            </div>
+            {nestHint && (
+              <div className="text-2xs leading-snug text-amber-200">
+                {nestHint}
+              </div>
+            )}
 
             {pregnantInNest && (
               <>
@@ -574,7 +581,7 @@ export default function NestModal({
               <ClickButton
                 disabled={!courtship.ready || !!extraNestAdults.length}
                 onClick={handleStartCourtship}
-                className={`w-full rounded-lg px-3 py-2 text-xs border transition-all ${
+                className={`w-full rounded-none px-3 py-2 text-xs border transition-all ${
                   courtship.ready
                     ? "border-pink-500/60 text-pink-100 hover:border-pink-400"
                     : "opacity-50 cursor-not-allowed border-slate-600/50 text-slate-400"
@@ -596,7 +603,7 @@ export default function NestModal({
 
             {/* Головастики, рождённые в репродукторе: переполнение разрешено, их выносит игрок */}
             {nestChildren.length > 0 && (
-              <div className="bg-color-main rounded-xl px-3 py-2 border border-amber-500/40 flex flex-col gap-1">
+              <HudPanel tone="amber" className="flex flex-col gap-1 p-2">
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-amber-200 font-semibold">
                     🐸 Головастики в репродукторе: {nestChildren.length}
@@ -627,7 +634,7 @@ export default function NestModal({
                         <ClickButton
                           onClick={() => handleRelease(child)}
                           disabled={(child.hp ?? 1) <= 0}
-                          className="shrink-0 rounded-lg border border-slate-600/50 bg-color-main px-2 py-1 text-2xs text-slate-200 transition-colors hover:border-amber-400/60 disabled:cursor-not-allowed disabled:opacity-50"
+                          className="shrink-0 rounded-none border border-slate-600/50 bg-slate-950/50 px-2 py-1 text-2xs text-slate-200 transition-colors hover:border-amber-400/60 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           В биопод
                         </ClickButton>
@@ -635,7 +642,7 @@ export default function NestModal({
                     />
                   ))}
                 </div>
-              </div>
+              </HudPanel>
             )}
           </div>
         </>

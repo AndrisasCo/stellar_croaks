@@ -29,7 +29,7 @@ export const ToadLocationBadge = ({
   textClassName = "text-3xs",
 }: ToadLocationBadgeProps) => (
   <span
-    className={`inline-flex min-w-0 items-center gap-1 rounded bg-slate-800/80 px-1 py-0.5 ${className}`}
+    className={`ui-chip min-w-0 gap-1 px-1.5 py-0.5 ${className}`}
     title={title}
   >
     <span aria-hidden className="shrink-0">

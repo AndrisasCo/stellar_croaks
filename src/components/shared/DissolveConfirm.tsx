@@ -33,43 +33,63 @@ export const DissolveConfirm = ({
   const warnings = getDissolveWarnings(toads);
 
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-      <div className="bg-color-main rounded-2xl border-2 border-amber-500/50 p-5 max-w-sm w-full mx-auto max-h-[90vh] overflow-y-auto">
-        <div className="text-center mb-3">
-          <div className="w-16 h-16 bg-amber-500/20 rounded-full flex items-center justify-center mx-auto mb-3 text-3xl">
-            ♻️
-          </div>
-          <h3 className="text-white font-bold text-lg mb-2">{title}</h3>
-          <p className="text-slate-200 text-sm leading-snug">
-            Диссоциатор мгновенно переработает выбранных жаб в биомассу. Жабы
-            исчезнут навсегда — вернуть их будет невозможно.
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+      <div className="ui-panel relative max-h-[90vh] w-full max-w-sm overflow-y-auto rounded-none border-amber-400/40 bg-slate-950/90 p-4 sm:p-5">
+        <div className="mb-3 border-b border-amber-400/20 pb-3 text-left">
+          <p className="ui-kicker text-amber-300/80">
+            // необратимая операция
           </p>
+          <div className="mt-1.5 flex items-start gap-2.5">
+            <span
+              aria-hidden="true"
+              className="flex h-9 w-9 shrink-0 items-center justify-center border border-amber-400/40 bg-amber-500/15 text-xl"
+            >
+              ♻️
+            </span>
+            <div className="min-w-0">
+              <h3 className="font-mono text-base font-bold uppercase leading-tight tracking-[0.04em] text-white">
+                {title}
+              </h3>
+              <p className="mt-1 text-2xs leading-snug text-slate-400">
+                Диссоциатор мгновенно переработает выбранных жаб в биомассу.
+                Жабы исчезнут навсегда — вернуть их будет невозможно.
+              </p>
+            </div>
+          </div>
         </div>
 
-        <div className="mb-3 rounded-xl bg-amber-900/25 border border-amber-500/40 p-2 text-left max-h-[30vh] overflow-y-auto">
-          <div className="text-1xs text-amber-200/90 mb-1">
-            Уйдут в переработку {toads.length}:
+        <div className="ui-panel mb-3 max-h-[30vh] overflow-y-auto rounded-none border-amber-400/30 bg-amber-500/5 p-2 text-left">
+          <div className="mb-1.5 flex items-center justify-between gap-2">
+            <span className="text-3xs font-semibold uppercase tracking-[0.14em] text-amber-200/80">
+              Уйдут в переработку
+            </span>
+            <span className="ui-badge border-amber-400/30 bg-amber-500/10 text-amber-200">
+              {toads.length} шт.
+            </span>
           </div>
-          <ul className="text-xs text-white flex flex-col gap-1">
+          <ul className="flex flex-col gap-1 text-xs text-white">
             {toads.map((toad) => (
-              <li key={toad.id} className="flex items-center gap-2">
+              <li
+                key={toad.id}
+                className="flex items-center gap-2 border-t border-white/5 pt-1 first:border-0 first:pt-0"
+              >
                 <ToadGender gender={toad.sex} />
                 <span
                   className={`truncate font-medium ${getRarityConfig(
-                    toad.genes?.rarity
+                    toad.genes?.rarity,
                   ).color}`}
                 >
                   {toad.name}
                 </span>
-                <span className="text-slate-400 text-2xs shrink-0">
+                <span className="shrink-0 text-2xs text-slate-400">
                   {toad.stage === "adult" ? "" : "🐛 "}
                   {toad.sex === "neuter" ? "⚪ " : ""}
                 </span>
-                <span className="text-amber-300 text-2xs shrink-0 ml-auto">
+                <span className="ml-auto shrink-0 font-mono text-2xs tabular-nums text-amber-300">
                   +{getDissolveYield(toad)} 🧪
                 </span>
                 {toad.pregnancy?.isPregnant && (
-                  <span className="text-2xs text-pink-300 shrink-0">
+                  <span className="shrink-0 text-3xs text-pink-300">
                     🍼 потомство пропадёт
                   </span>
                 )}
@@ -79,11 +99,11 @@ export const DissolveConfirm = ({
         </div>
 
         {warnings.length > 0 && (
-          <div className="mb-3 rounded-xl bg-red-900/25 border border-red-500/40 p-2">
-            <ul className="text-2xs text-red-200 flex flex-col gap-1">
+          <div className="ui-panel mb-3 rounded-none border-rose-400/30 bg-rose-500/10 p-2">
+            <ul className="flex flex-col gap-1 text-2xs text-rose-200">
               {warnings.map((warning) => (
-                <li key={warning.text} className="flex gap-1">
-                  <span>{warning.icon}</span>
+                <li key={warning.text} className="flex gap-1.5">
+                  <span aria-hidden="true">{warning.icon}</span>
                   <span>{warning.text}</span>
                 </li>
               ))}
@@ -91,21 +111,27 @@ export const DissolveConfirm = ({
           </div>
         )}
 
-        <div className="mb-4 flex items-center justify-between rounded-xl bg-slate-600/30 px-3 py-2">
-          <span className="text-slate-200 text-sm">Лаборатория получит</span>
-          <span className="text-amber-300 font-bold">+{total} 🧪</span>
+        <div className="ui-panel mb-4 flex items-center justify-between gap-3 rounded-none bg-slate-900/70 px-3 py-2">
+          <span className="text-2xs uppercase tracking-[0.12em] text-slate-400">
+            Лаборатория получит
+          </span>
+          <span className="font-mono text-sm font-bold tabular-nums text-amber-300">
+            +{total} 🧪
+          </span>
         </div>
 
-        <div className="flex gap-3">
+        <div className="flex gap-2.5">
           <button
+            type="button"
             onClick={onCancel}
-            className="flex-1 bg-slate-600 hover:bg-slate-500 text-white font-medium py-3 rounded-xl transition-all duration-300"
+            className="click-button ui-button-secondary flex-1 py-3"
           >
             Отмена
           </button>
           <button
+            type="button"
             onClick={onConfirm}
-            className="flex-1 bg-gradient-to-r from-amber-600 to-red-600 hover:from-amber-500 hover:to-red-500 text-white font-bold py-3 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95"
+            className="click-button ui-button-danger flex-1 py-3"
           >
             {confirmLabel}
           </button>

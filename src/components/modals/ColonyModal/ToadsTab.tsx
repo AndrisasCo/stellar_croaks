@@ -134,7 +134,7 @@ const ColonyToadCard = ({
             onFeed();
           }}
           disabled={!canFeed}
-          className="rounded-md border border-green-500/30 bg-green-500/20 px-2 py-1 text-2xs font-medium leading-none text-green-300 transition-all hover:bg-green-500/30 disabled:cursor-not-allowed disabled:border-slate-600/30 disabled:bg-slate-700/20 disabled:text-slate-500"
+          className="rounded-none border border-green-500/30 bg-green-500/20 px-2 py-1 text-2xs font-medium leading-none text-green-300 transition-all hover:bg-green-500/30 disabled:cursor-not-allowed disabled:border-slate-600/30 disabled:bg-slate-700/20 disabled:text-slate-500"
           title={canFeed ? "Покормить" : EXPEDITION_TOAD_BUSY_REASON}
         >
           🍎
@@ -148,7 +148,7 @@ const ColonyToadCard = ({
             onAdmit();
           }}
           disabled={!canAdmit}
-          className="rounded-md border border-rose-500/30 bg-rose-500/20 px-2 py-0.5 text-sm font-bold leading-none text-rose-300 transition-all hover:bg-rose-500/30 disabled:cursor-not-allowed disabled:border-slate-600/30 disabled:bg-slate-700/20 disabled:text-slate-500"
+          className="rounded-none border border-rose-500/30 bg-rose-500/20 px-2 py-0.5 text-sm font-bold leading-none text-rose-300 transition-all hover:bg-rose-500/30 disabled:cursor-not-allowed disabled:border-slate-600/30 disabled:bg-slate-700/20 disabled:text-slate-500"
           title={admission.issue ?? "Отправить в Медотсек"}
         >
           ✚

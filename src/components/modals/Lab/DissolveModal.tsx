@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { useNotifications } from "../../../hooks/use-notification";
 import { useSoundEffects } from "../../../hooks/use-sound-effects";
-import { getRarityConfig, Toad } from "../../../models/Toad";
-import { isToadSick } from "../../../utils/disease-manager";
+import { Toad } from "../../../models/Toad";
 import {
   canDissolveToad,
   dissolveToads,
@@ -13,11 +12,16 @@ import {
 import { DISSOLVE_MAX_BATCH } from "../../../utils/gamification-config";
 import { getToadHomeId } from "../../../utils/toad-location";
 import { ClickButton } from "../../shared/ClickButton";
+import {
+  DataCell,
+  DataGrid,
+  HudPanel,
+  SectionTitle,
+} from "../../shared/DataGrid";
 import { DissolveConfirm } from "../../shared/DissolveConfirm";
 import Modal from "../../shared/Header";
 import ModalTabs, { ModalTabItem } from "../../shared/ModalTabs";
-import { ToadAvatar } from "../../shared/ToadAvatar";
-import { ToadGender } from "../../shared/ToadGender";
+import { ToadListCard } from "../../shared/ToadListCard";
 import { useToads } from "../../ToadContext";
 import RoomDataTab, { ROOM_DATA_TAB, RoomDataTabId } from "../RoomDataTab";
 import { RoomConfig } from "../../HexMap/rooms-config";
@@ -140,6 +144,7 @@ export default function DissolveModal({ room }: { room?: RoomConfig }) {
           className="h-8 w-8 object-contain"
         />
       }
+      tone="lime"
     >
       {/* Табы: разбор жаб и «Данные сектора» (у модалки из лаборатории гекса нет —
           тогда таб один, и рисовать полоску табов нечего) */}
@@ -150,25 +155,34 @@ export default function DissolveModal({ room }: { room?: RoomConfig }) {
       {tab === "dissolve" && (
         <>
           <div className="px-2 pb-2">
-            <div className="rounded-xl bg-amber-900/20 border border-amber-500/40 p-2 mb-3">
-              <div className="flex items-center justify-between text-xs mb-1">
-                <span className="text-lime-300">🧪 Биомасса: {biomass}</span>
-                {selectedToads.length > 0 && (
-                  <span className="text-amber-300 font-bold">
-                    +{selectedYield} → {Math.floor(biomass + selectedYield)}
-                  </span>
-                )}
-              </div>
-              <p className="text-2xs text-amber-100 leading-snug">
+            <HudPanel tone="amber" className="mb-3 p-2">
+              <p className="text-2xs leading-snug text-amber-100">
                 ♻️ Диссоциатор мгновенно перерабатывает жабу в биомассу. Жабы
-                исчезают навсегда: Качество, вес и здоровье влияют на выход,
+                исчезают навсегда: качество, вес и здоровье влияют на выход,
                 головастики дают заметно меньше.
               </p>
-              <p className="text-2xs text-slate-400 mt-1">
-                Всего жаб в лаборатории: {allToads.length} · потенциал{" "}
-                {getDissolveBatchYield(availableToads)} 🧪
-              </p>
-            </div>
+            </HudPanel>
+
+            <DataGrid columns={3} className="mb-3">
+              <DataCell
+                dense
+                label="Биомасса"
+                value={`🧪 ${biomass}`}
+                color="text-lime-300"
+              />
+              <DataCell
+                dense
+                label="Выбрано"
+                value={`${selectedToads.length}/${DISSOLVE_MAX_BATCH}`}
+                color="text-amber-200"
+              />
+              <DataCell
+                dense
+                label="Потенциал"
+                value={`+${selectedToads.length > 0 ? selectedYield : getDissolveBatchYield(availableToads)} 🧪`}
+                color="text-amber-300"
+              />
+            </DataGrid>
 
             {groups.length === 0 ? (
               <div className="text-center py-8">
@@ -180,14 +194,9 @@ export default function DissolveModal({ room }: { room?: RoomConfig }) {
             ) : (
               groups.map((group) => (
                 <div key={group.key} className="mb-3">
-                  <div className="flex justify-between items-center px-1 mb-1">
-                    <span className="text-slate-200 text-xs font-semibold">
-                      {group.label}
-                    </span>
-                    <span className="text-slate-500 text-2xs">
-                      {group.toads.length}
-                    </span>
-                  </div>
+                  <SectionTitle aside={`${group.toads.length} шт.`}>
+                    {group.label}
+                  </SectionTitle>
                   <div className="flex flex-col gap-2">
                     {group.toads.map((toad) => {
                       const isIncubating = !canDissolveToad(
@@ -197,58 +206,51 @@ export default function DissolveModal({ room }: { room?: RoomConfig }) {
                       const isSelected = selectedIds.includes(toad.id);
 
                       return (
-                        <button
+                        <ToadListCard
                           key={toad.id}
-                          disabled={isIncubating}
-                          onClick={() => toggleToad(toad)}
-                          className={`w-full flex items-center gap-2 rounded-xl border px-2 py-2 text-left transition-all ${
-                            isSelected
-                              ? "border-amber-400 bg-amber-500/10"
-                              : "border-slate-600/40 bg-color-second hover:border-amber-400/60"
-                          } ${isIncubating ? "opacity-50 cursor-not-allowed" : ""}`}
-                        >
-                          <ToadAvatar size={9} toad={toad} />
-                          <div className="min-w-0 flex-1">
-                            <div
-                              className={`truncate text-sm font-medium ${
-                                getRarityConfig(toad.genes?.rarity).color
+                          toad={toad}
+                          onOpen={() => {
+                            if (!isIncubating) {
+                              toggleToad(toad);
+                            }
+                          }}
+                          variant="full"
+                          showHunger
+                          showHp
+                          diseaseStyle="chip"
+                          selected={isSelected}
+                          status={
+                            isIncubating
+                              ? {
+                                  icon: "⏳",
+                                  label: "в инкубаторе",
+                                  className: "text-slate-500",
+                                }
+                              : isSelected
+                                ? {
+                                    icon: "✓",
+                                    label: "к переработке",
+                                    className: "text-amber-300",
+                                  }
+                                : undefined
+                          }
+                          actions={
+                            <span
+                              className={`ui-chip shrink-0 leading-none ${
+                                isIncubating
+                                  ? "text-slate-500"
+                                  : "text-amber-300"
                               }`}
                             >
-                              {toad.name}
-                            </div>
-                            <div className="flex items-center gap-2 text-2xs text-slate-300 mt-0.5">
-                              <ToadGender gender={toad.sex} />
-                              <span>
-                                {toad.stage === "adult"
-                                  ? "Взрослый"
-                                  : "Головастик"}
-                              </span>
-                              <span className="text-slate-500">
-                                ★ {toad.genes?.rarity?.toFixed(1)}
-                              </span>
-                              {toad.pregnancy?.isPregnant && (
-                                <span className="text-pink-300">🍼</span>
-                              )}
-                              {isToadSick(toad) && (
-                                <span title="Кибер-заражение: выход биомассы снижен">
-                                  🦠
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                          <div className="text-right shrink-0">
-                            <div className="text-amber-300 font-bold text-sm">
                               +{getDissolveYield(toad)} 🧪
-                            </div>
-                            <div className="text-2xs text-slate-400">
-                              {isIncubating
-                                ? "⏳ в инкубаторе"
-                                : isSelected
-                                  ? "✓ к переработке"
-                                  : "биомасса"}
-                            </div>
-                          </div>
-                        </button>
+                            </span>
+                          }
+                          className={
+                            isIncubating
+                              ? "cursor-not-allowed opacity-50"
+                              : undefined
+                          }
+                        />
                       );
                     })}
                   </div>
@@ -281,7 +283,7 @@ export default function DissolveModal({ room }: { room?: RoomConfig }) {
             </ClickButton>
             {selectedToads.length > 0 && (
               <ClickButton
-                className="w-full mt-2 bg-color-second hover:bg-slate-600 text-slate-200 py-2 rounded-xl text-sm"
+                className="w-full mt-2 bg-color-second hover:bg-slate-600 text-slate-200 py-2 rounded-none text-sm"
                 onClick={() => setSelectedIds([])}
               >
                 Очистить

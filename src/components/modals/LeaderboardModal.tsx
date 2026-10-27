@@ -380,7 +380,7 @@ const LeaderboardModal: React.FC = () => {
               <div
                 key={player.user_id}
                 className={`
-                  relative rounded-lg py-2 px-2 border transition-all overflow-hidden
+                  relative rounded-none py-2 px-2 border transition-all overflow-hidden
                   ${
                     isUser
                       ? `
@@ -432,7 +432,7 @@ const LeaderboardModal: React.FC = () => {
                           {player.username}
                         </p>
                         {isUser && (
-                          <span className="bg-cyan-500/20 text-cyan-200 px-1.5 py-0.5 rounded-full text-xs font-medium">
+                          <span className="bg-cyan-500/20 text-cyan-200 px-1.5 py-0.5 rounded-none text-xs font-medium">
                             ВЫ
                           </span>
                         )}

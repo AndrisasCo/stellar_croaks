@@ -21,12 +21,12 @@ export const HpBar: React.FC<{
 
   return (
     <div
-      className={`h-1.5 w-full bg-slate-700 rounded-full overflow-hidden ${
+      className={`h-1.5 w-full bg-slate-700 rounded-none overflow-hidden ${
         className || ""
       }`}
     >
       <div
-        className={`h-full rounded-full transition-all duration-500 ${color}`}
+        className={`h-full rounded-none transition-all duration-500 ${color}`}
         style={{ width: `${ratio * 100}%` }}
       />
     </div>

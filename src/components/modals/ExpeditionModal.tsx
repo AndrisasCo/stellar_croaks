@@ -7,6 +7,7 @@ import { ToadAvatar } from "../shared/ToadAvatar";
 import ModalTabs, { ModalTabItem } from "../shared/ModalTabs";
 import RoomDataTab, { ROOM_DATA_TAB } from "./RoomDataTab";
 import { ToadInfo } from "./ToadInfoModal";
+import { DataCell, DataGrid, HudPanel } from "../shared/DataGrid";
 import { ExpeditionLootGrid } from "./ExpeditionLootGrid";
 import { ExpeditionLogList, formatExpeditionDate } from "./ExpeditionLogList";
 import { ExpeditionLogModal } from "./ExpeditionLogModal";
@@ -185,12 +186,12 @@ const TeamStatusList: React.FC<{ expedition: Expedition }> = ({
             title={`${role.icon} ${role.label} · ${
               toad?.name ?? `Жаба #${member.toadId}`
             } · ${hp}/${maxHp} HP${down ? " · выбита" : ""}`}
-            className={`relative flex min-w-0 flex-col items-center gap-1 rounded-xl border px-1 py-1.5 text-center ${tone}`}
+            className={`relative flex min-w-0 flex-col items-center gap-1 rounded-none border px-1 py-1.5 text-center ${tone}`}
           >
             {/* Роль — маленьким значком в углу, чтобы не отнимать место у аватара */}
             <span
               title={role.label}
-              className="absolute left-1 top-1 rounded bg-slate-950/70 px-0.5 text-2xs leading-none"
+              className="absolute left-1 top-1 rounded-none bg-slate-950/70 px-0.5 text-2xs leading-none"
             >
               {role.icon}
             </span>
@@ -200,7 +201,7 @@ const TeamStatusList: React.FC<{ expedition: Expedition }> = ({
                 <ToadAvatar toad={toad} size={10} />
               </span>
             ) : (
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-dashed border-slate-500/60 text-xs text-slate-400">
+              <span className="flex h-10 w-10 items-center justify-center rounded-none border border-dashed border-slate-500/60 text-xs text-slate-400">
                 ?
               </span>
             )}
@@ -692,12 +693,12 @@ const ExpeditionModal: React.FC<{
         onClick={(event) => handleCrewCardClick(event, toad)}
         onKeyDown={(event) => handleCrewCardKeyDown(event, toad)}
         title={`Открыть карточку: ${toad.name}`}
-        className={`rounded-xl px-2 py-1.5 border flex items-center gap-2 text-left cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60 ${
+        className={`flex cursor-pointer items-center gap-2 rounded-none border px-2 py-1.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60 ${
           !assigned
-            ? "bg-slate-800/40 border-slate-600/30 hover:border-cyan-400/50"
+            ? "bg-slate-800/40 border-slate-600/30 hover:border-emerald-400/50"
             : offRole
-              ? "bg-amber-950/30 border-amber-500/40 hover:border-cyan-400/50"
-              : "bg-emerald-950/30 border-emerald-500/40 hover:border-cyan-400/50"
+              ? "bg-amber-950/30 border-amber-500/40 hover:border-emerald-400/50"
+              : "bg-emerald-950/30 border-emerald-500/40 hover:border-emerald-400/50"
         }`}
       >
         <div className="min-w-0 flex-1">
@@ -727,9 +728,9 @@ const ExpeditionModal: React.FC<{
                     ? `В команду: ${config.label}`
                     : check.reason
               }
-              className={`py-1.5 px-2 rounded-lg text-xs font-bold border transition-colors duration-300 ${
+              className={`rounded-none border px-2 py-1.5 font-mono text-2xs font-bold uppercase tracking-[0.06em] transition-colors duration-300 ${
                 assigned
-                  ? "bg-cyan-900/50 border-cyan-400/60 text-cyan-100 hover:bg-cyan-800/60"
+                  ? "bg-emerald-900/50 border-emerald-400/60 text-emerald-100 hover:bg-emerald-800/60"
                   : check.ok
                     ? "bg-slate-800/60 border-slate-500/50 text-slate-200 hover:bg-slate-700/70"
                     : "bg-slate-800/40 border-slate-700/40 text-slate-500"
@@ -745,7 +746,7 @@ const ExpeditionModal: React.FC<{
             title={
               busy ? EXPEDITION_TOAD_BUSY_REASON : "Вернуть жабу в её биопод"
             }
-            className={`rounded-lg border px-2 py-1 text-2xs transition-colors ${
+            className={`rounded-none border px-2 py-1 font-mono text-3xs uppercase tracking-[0.06em] transition-colors ${
               busy
                 ? "cursor-not-allowed border-slate-700/60 text-slate-500"
                 : "border-slate-600/60 text-slate-300 hover:border-rose-400 hover:text-rose-200"
@@ -890,16 +891,16 @@ const ExpeditionModal: React.FC<{
     return (
       <div
         key={item.id}
-        className={`flex h-full flex-col gap-2 overflow-hidden rounded-2xl border p-3 ${
+        className={`ui-panel flex h-full flex-col gap-2 overflow-hidden rounded-none border p-3 ${
           !unlocked
-            ? "border-slate-700/40 bg-slate-900/40 text-slate-500"
+            ? "border-slate-700/40 bg-slate-950/50 text-slate-500"
             : selected
-              ? "border-cyan-400/70 bg-cyan-950/50 text-cyan-50"
-              : "border-slate-600/40 bg-slate-800/50 text-slate-200"
+              ? "border-emerald-400/70 bg-slate-950/50 text-emerald-50"
+              : "border-slate-600/40 bg-slate-950/50 text-slate-200"
         }`}
       >
         {item.image && (
-          <div className="-mx-3 -mt-3 shrink-0 border-b border-slate-700/40 bg-slate-950/60">
+          <div className="-mx-3 -mt-3 shrink-0 border-b border-slate-700/40 bg-slate-950/50">
             <img
               src={item.image}
               alt={`Иллюстрация сектора «${item.name}»`}
@@ -918,12 +919,12 @@ const ExpeditionModal: React.FC<{
             <p className="text-sm font-bold flex mb-1">
               {item.icon} {item.name}
               <span
-                className={`shrink-0 ml-auto rounded-lg px-2 py-1 text-2xs font-bold ${
+                className={`ui-badge ml-auto shrink-0 ${
                   !unlocked
-                    ? "bg-slate-900/60 text-slate-400"
+                    ? "border-slate-600/40 bg-slate-950/50 text-slate-400"
                     : selected
-                      ? "bg-cyan-400/20 text-cyan-100"
-                      : "bg-slate-900/50 text-slate-300"
+                      ? "border-emerald-400/50 bg-emerald-400/20 text-emerald-100"
+                      : "border-slate-600/40 bg-slate-950/50 text-slate-300"
                 }`}
               >
                 {!unlocked ? "🔒 закрыт" : "открыт"}
@@ -933,62 +934,71 @@ const ExpeditionModal: React.FC<{
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-1.5 text-center text-2xs">
-          <div className="rounded-lg bg-slate-900/40 px-1 py-1">
-            <p className="text-slate-400">Путь туда</p>
-            <p className="font-bold">{item.durationHours} ч</p>
-          </div>
-          <div className="rounded-lg bg-slate-900/40 px-1 py-1">
-            <p className="text-slate-400">Добыча / Сложность</p>
-            <p className="font-bold">
-              ×{item.lootMultiplier} / ×
-              {Math.round(getSectorDamageMultiplier(item) * 100) / 100}
-            </p>
-          </div>
-          <div className="rounded-lg bg-slate-900/40 px-1 py-1">
-            <p className="text-slate-400">Снаряжение</p>
-            <p className="font-bold">{sendCost} 🧪</p>
-          </div>
-          <div className="rounded-lg bg-slate-900/40 px-1 py-1">
-            <p className="text-slate-400">Силы необходимо</p>
-            <p className="font-bold">{energyCostPerToad} ⚡</p>
-          </div>
-          <div className="rounded-lg bg-slate-900/40 px-1 py-1">
-            <p className="text-slate-400">Потенциальная добыча</p>
-            <div
-              className="flex flex-wrap items-center justify-center gap-1 font-bold"
-              title={`${Math.round(
-                EXPEDITION_SAMPLE_TOAD_CHANCE * 100,
-              )}% за удачный поход: «${sampleReward.template.name}»`}
-            >
-              <span>{getContourPassReward(item)} 🎫</span>
-              <span className="flex items-center gap-0.5 rounded-md bg-slate-950/60 px-1 py-0.5">
-                <ToadAvatar toad={sampleReward.template as Toad} size={4} />
-                <span className="text-3xs font-semibold text-slate-300">
-                  {Math.round(EXPEDITION_SAMPLE_TOAD_CHANCE * 100)}%
-                </span>
-              </span>
-            </div>
-          </div>
-          <div className="rounded-lg bg-slate-900/40 px-1 py-1">
-            <p className="text-slate-400">Шанс удачного возврата</p>
-            <p className="font-bold">
-              <span
-                className={` ${
-                  successChance >= 1 ? "text-emerald-300" : "text-amber-200"
-                }`}
+        <DataGrid columns={3}>
+          <DataCell
+            dense
+            label="Путь туда"
+            value={`${item.durationHours} ч`}
+            color="text-white"
+          />
+          <DataCell
+            dense
+            label="Добыча / Сложность"
+            value={`×${item.lootMultiplier} / ×${
+              Math.round(getSectorDamageMultiplier(item) * 100) / 100
+            }`}
+            color="text-white"
+          />
+          <DataCell
+            dense
+            label="Снаряжение"
+            value={`${sendCost} 🧪`}
+            color="text-white"
+          />
+          <DataCell
+            dense
+            label="Силы необходимо"
+            value={`${energyCostPerToad} ⚡`}
+            color="text-white"
+          />
+          <DataCell
+            dense
+            label="Потенциальная добыча"
+            value={
+              <div
+                className="flex flex-wrap items-center gap-1"
+                title={`${Math.round(
+                  EXPEDITION_SAMPLE_TOAD_CHANCE * 100,
+                )}% за удачный поход: «${sampleReward.template.name}»`}
               >
+                <span>{getContourPassReward(item)} 🎫</span>
+                <span className="flex items-center gap-0.5 bg-slate-950/50 px-1 py-0.5">
+                  <ToadAvatar toad={sampleReward.template as Toad} size={4} />
+                  <span className="text-3xs font-semibold text-slate-300">
+                    {Math.round(EXPEDITION_SAMPLE_TOAD_CHANCE * 100)}%
+                  </span>
+                </span>
+              </div>
+            }
+            color="text-white"
+          />
+          <DataCell
+            dense
+            label="Шанс удачного возврата"
+            value={
+              <>
                 {Math.round(successChance * 100)}%
                 {successChance >= 1 ? " (гарантия)" : ""}
-              </span>{" "}
-            </p>
-          </div>
-        </div>
+              </>
+            }
+            color={successChance >= 1 ? "text-emerald-300" : "text-amber-200"}
+          />
+        </DataGrid>
 
         {/* Итог отправки */}
         {((members.length > 0 && biomass < sendCost) ||
           tiredMembers.length > 0) && (
-          <div className="bg-color-main rounded-xl px-3 py-2 border border-slate-600/30 flex flex-col gap-2">
+          <div className="ui-panel flex flex-col gap-2 rounded-none border-slate-600/30 bg-color-main px-3 py-2">
             {members.length > 0 && biomass < sendCost && (
               <p className="text-2xs text-red-300">
                 Не хватает биомассы на снаряжение.
@@ -1009,7 +1019,7 @@ const ExpeditionModal: React.FC<{
         )}
 
         {!sectorUnlocked && (
-          <div className="rounded-xl border border-amber-500/40 bg-amber-950/30 px-3 py-2 flex flex-col gap-2">
+          <div className="ui-panel flex flex-col gap-2 rounded-none border-amber-500/40 bg-amber-950/30 px-3 py-2">
             <div className="flex items-center justify-between gap-2">
               <span className="text-xs font-bold text-amber-100">
                 🔒 «{selectedSector.name}» закрыт
@@ -1032,7 +1042,7 @@ const ExpeditionModal: React.FC<{
             <ClickButton
               onClick={handleUnlockSector}
               disabled={!canUnlockSector}
-              className={`w-full py-2 rounded-xl text-xs font-bold border transition-colors duration-300 ${
+              className={`w-full rounded-none border py-2 font-mono text-2xs font-bold uppercase tracking-[0.08em] transition-colors duration-300 ${
                 canUnlockSector
                   ? "bg-amber-800/60 border-amber-400/70 text-amber-50 hover:bg-amber-700/70"
                   : "bg-slate-800/40 border-slate-700/40 text-slate-500"
@@ -1060,23 +1070,33 @@ const ExpeditionModal: React.FC<{
   return (
     <Modal
       title={room?.name ?? crewRoom?.name ?? "Разведка"}
-      icon={<span className="text-xl">🧭</span>}
+      tone="emerald"
     >
       {/* Переключатель сразу под названием: дальше — сводка и выбранный таб */}
       <ModalTabs tabs={expeditionTabs} active={tab} onChange={setTab} />
 
       <div className="flex flex-col gap-3 px-1">
-        {/* Сводка по разведке */}
-        <div className="grid gap-2 text-center grid-cols-2">
-          <div className="ui-panel py-2 px-1">
-            <p className="ui-hint">🎫 Пропуска КОНТУРа</p>
-            <p className="text-base font-bold text-white">{contourPasses}</p>
-          </div>
-          <div className="ui-panel py-2 px-1">
-            <p className="ui-hint">Походов завершено</p>
-            <p className="text-base font-bold text-white">{stats.completed}</p>
-          </div>
-        </div>
+        {/* Сводка по разведке: HUD-ячейки в акценте Контура */}
+        <DataGrid columns={3}>
+          <DataCell
+            dense
+            label="Пропуска Контура"
+            value={contourPasses}
+            color="text-emerald-200"
+          />
+          <DataCell
+            dense
+            label="Завершено"
+            value={stats.completed}
+            color="text-white"
+          />
+          <DataCell
+            dense
+            label="Активных"
+            value={`${shownActiveExpeditions.length}/${teamLimit}`}
+            color="text-emerald-300"
+          />
+        </DataGrid>
 
         {/* ВКЛАДКА: поход этого контура или сборы новой команды */}
         {tab === "main" && (
@@ -1088,13 +1108,10 @@ const ExpeditionModal: React.FC<{
               const survived = expedition.success !== false;
 
               return (
-                <div
+                <HudPanel
                   key={expedition.id}
-                  className={`rounded-2xl p-3 border flex flex-col gap-2 ${
-                    survived
-                      ? "bg-emerald-950/30 border-emerald-500/40"
-                      : "bg-red-950/20 border-red-500/30"
-                  }`}
+                  tone={survived ? "emerald" : "rose"}
+                  className="flex flex-col gap-2 p-3"
                 >
                   <div className="flex items-center justify-between gap-2">
                     <div className="min-w-0">
@@ -1108,10 +1125,10 @@ const ExpeditionModal: React.FC<{
                       </p>
                     </div>
                     <span
-                      className={`shrink-0 text-2xs font-bold px-2 py-1 rounded-lg ${
+                      className={`ui-badge shrink-0 ${
                         survived
-                          ? "bg-emerald-900/60 text-emerald-200"
-                          : "bg-red-900/50 text-red-200"
+                          ? "border-emerald-400/40 bg-emerald-900/60 text-emerald-200"
+                          : "border-red-400/40 bg-red-900/50 text-red-200"
                       }`}
                     >
                       {survived ? "✅ поход удался" : "⚠️ провал"}
@@ -1127,10 +1144,10 @@ const ExpeditionModal: React.FC<{
                   <ClickButton
                     onClick={() => openExpeditionLog(expedition)}
                     title="Прочитать полный бортовой журнал завершённого похода"
-                    className=" mt-6 w-full  rounded-xl border border-cyan-500/40 bg-cyan-950/40 py-2 text-xs font-bold text-cyan-100 hover:bg-cyan-900/50"
+                    className=" mt-6 w-full  rounded-none border border-emerald-500/40 bg-emerald-950/40 py-2 font-mono text-2xs font-bold uppercase tracking-[0.06em] text-emerald-100 hover:bg-emerald-900/50"
                   >
                     📡 Открыть логи{" "}
-                    <span className="ml-1 rounded-md bg-slate-950/50 px-1.5 py-0.5 text-3xs font-semibold text-slate-300">
+                    <span className="ml-1 rounded-none bg-slate-950/50 px-1.5 py-0.5 font-mono text-3xs font-semibold tabular-nums text-slate-300">
                       {expedition.log.length}
                     </span>
                   </ClickButton>
@@ -1143,10 +1160,10 @@ const ExpeditionModal: React.FC<{
                           ? "Забрать предметы на склад, а биомассу, Кваксы и образцы — в колонию"
                           : "На складе не хватает места: постройте «Склад» или переработайте лут в биомассу"
                       }
-                      className={`flex-1 py-2 rounded-xl text-xs font-bold border ${
+                      className={`flex-1 rounded-none border py-2 font-mono text-2xs font-bold uppercase tracking-[0.06em] ${
                         storage.ok
-                          ? "bg-emerald-900/50 hover:bg-emerald-800/60 text-emerald-100 border-emerald-500/40"
-                          : "bg-slate-800/40 text-slate-500 border-slate-600/30 cursor-not-allowed"
+                          ? "border-emerald-500/40 bg-emerald-900/50 text-emerald-100 hover:bg-emerald-800/60"
+                          : "cursor-not-allowed border-slate-600/30 bg-slate-800/40 text-slate-500"
                       }`}
                     >
                       Завершить
@@ -1154,12 +1171,12 @@ const ExpeditionModal: React.FC<{
                     <ClickButton
                       onClick={() => handleFinish(expedition.id, "biomass")}
                       title="Переработать всю добычу похода, включая предметы и образцы, в биомассу"
-                      className="flex-1 py-2 rounded-xl bg-lime-900/50 hover:bg-lime-800/60 text-lime-100 text-xs font-bold border border-lime-500/40"
+                      className="flex-1 rounded-none border border-lime-500/40 bg-lime-900/50 py-2 font-mono text-2xs font-bold uppercase tracking-[0.06em] text-lime-100 hover:bg-lime-800/60"
                     >
                       🧪 Превратить лут в биомассу (+{biomassValue} 🧪)
                     </ClickButton>
                   </div>
-                </div>
+                </HudPanel>
               );
             })}
 
@@ -1178,9 +1195,10 @@ const ExpeditionModal: React.FC<{
               const canAffordEvacuation = Math.floor(tokens) >= evacuationCost;
 
               return (
-                <div
+                <HudPanel
                   key={expedition.id}
-                  className="bg-color-main rounded-2xl p-3 border border-slate-600/30 flex flex-col gap-2"
+                  tone={stranded ? "rose" : returning ? "sky" : "emerald"}
+                  className="flex flex-col gap-2 p-3"
                 >
                   <div className="flex items-center justify-between">
                     <div>
@@ -1201,12 +1219,12 @@ const ExpeditionModal: React.FC<{
                       )}
                     </div>
                     <span
-                      className={`text-2xs font-bold px-2 py-1 rounded-lg ${
+                      className={`ui-badge ${
                         stranded
-                          ? "bg-red-900/60 text-red-100"
+                          ? "border-red-400/40 bg-red-900/60 text-red-100"
                           : returning
-                            ? "bg-blue-900/50 text-blue-200"
-                            : "bg-amber-900/50 text-amber-200"
+                            ? "border-blue-400/40 bg-blue-900/50 text-blue-200"
+                            : "border-amber-400/40 bg-amber-900/50 text-amber-200"
                       }`}
                     >
                       {stranded
@@ -1242,9 +1260,9 @@ const ExpeditionModal: React.FC<{
                         )}
                       </span>
                     </div>
-                    <div className="h-1.5 w-full bg-slate-700 rounded-full overflow-hidden">
+                    <div className="h-1.5 w-full overflow-hidden bg-slate-800/80">
                       <div
-                        className={`h-full rounded-full transition-all duration-500 ${
+                        className={`h-full transition-all duration-500 ${
                           stranded
                             ? "bg-red-500"
                             : returning
@@ -1289,7 +1307,7 @@ const ExpeditionModal: React.FC<{
                     {!returning && (
                       <ClickButton
                         onClick={() => handleWithdraw(expedition.id)}
-                        className="flex-1 py-2 rounded-xl bg-red-800/60 hover:bg-red-700/70 text-slate-200 text-xs font-bold border border-slate-600/40"
+                        className="flex-1 rounded-none border border-slate-600/40 bg-red-800/60 py-2 font-mono text-2xs font-bold uppercase tracking-[0.06em] text-slate-200 hover:bg-red-700/70"
                       >
                         ⏪ Отозвать
                       </ClickButton>
@@ -1303,10 +1321,10 @@ const ExpeditionModal: React.FC<{
                             ? `Эвакуировать выбитую команду за ${evacuationCost} Кваксов`
                             : `Не хватает ${evacuationCost - Math.floor(tokens)} Кваксов`
                         }
-                        className={`flex-1 py-2 rounded-xl text-xs font-bold border ${
+                        className={`flex-1 rounded-none border py-2 font-mono text-2xs font-bold uppercase tracking-[0.06em] ${
                           canAffordEvacuation
-                            ? "bg-red-800/60 hover:bg-red-700/70 text-red-50 border-red-500/40"
-                            : "bg-slate-700/60 text-slate-400 border-slate-600/40 cursor-not-allowed"
+                            ? "border-red-500/40 bg-red-800/60 text-red-50 hover:bg-red-700/70"
+                            : "cursor-not-allowed border-slate-600/40 bg-slate-700/60 text-slate-400"
                         }`}
                       >
                         Эвакуировать ({evacuationCost}{" "}
@@ -1317,7 +1335,7 @@ const ExpeditionModal: React.FC<{
                       speedUpCost > 0 && (
                         <ClickButton
                           onClick={() => handleSpeedUp(expedition.id)}
-                          className="flex-1 py-2 rounded-xl bg-emerald-900/50 hover:bg-emerald-800/60 text-emerald-100 text-xs font-bold border border-emerald-500/40"
+                          className="flex-1 rounded-none border border-emerald-500/40 bg-emerald-900/50 py-2 font-mono text-2xs font-bold uppercase tracking-[0.06em] text-emerald-100 hover:bg-emerald-800/60"
                         >
                           ⚡ Ускорить ({speedUpCost} 🧪)
                         </ClickButton>
@@ -1331,14 +1349,14 @@ const ExpeditionModal: React.FC<{
                           ? "Забрать команду домой сразу: добыча останется той, что уже лежит в рюкзаке"
                           : "Забрать команду с середины пути: поход не будет успешным, добыча — только уже найденная"
                       }
-                      className="flex-1 py-2 rounded-xl bg-cyan-900/50 hover:bg-cyan-800/60 text-cyan-100 text-xs font-bold border border-cyan-500/40"
+                      className="flex-1 rounded-none border border-emerald-500/40 bg-emerald-900/50 py-2 font-mono text-2xs font-bold uppercase tracking-[0.06em] text-emerald-100 hover:bg-emerald-800/60"
                     >
                       Закончить немедленно ({EXTRACTION_ASTRO_COST}{" "}
                       <CurrencyIcon currency="astro_quax" className="h-3 w-3" />
                       )
                     </ClickButton>
                   </div>
-                </div>
+                </HudPanel>
               );
             })}
           </div>
@@ -1399,7 +1417,7 @@ const ExpeditionModal: React.FC<{
 
         {/* Экипаж «Разведки» — внизу вкладки: и при сборах, и когда команда уже в походе */}
         {tab === "main" && crewRoom && (
-          <div className="bg-color-main flex flex-col gap-2 rounded-xl border border-slate-600/30 px-3 py-2">
+          <div className="ui-panel flex flex-col gap-2 rounded-none border-slate-600/30 bg-color-main px-3 py-2">
             <div className="flex items-center justify-between gap-2">
               <p className="text-xs font-bold text-white">
                 🧭 В «Разведке»: {crew.length}/{EXPEDITION_TEAM_SIZE}
@@ -1410,7 +1428,7 @@ const ExpeditionModal: React.FC<{
                   <ClickButton
                     onClick={handleFillFromRoom}
                     title="Занять свободные роли сильнейшими жабами сектора"
-                    className="ui-chip border-cyan-400/30 bg-cyan-500/10 text-cyan-200 transition-colors hover:bg-cyan-500/20"
+                    className="ui-chip border-emerald-400/30 bg-emerald-500/10 text-emerald-200 transition-colors hover:bg-emerald-500/20"
                   >
                     Собрать команду
                   </ClickButton>
@@ -1477,19 +1495,19 @@ const ExpeditionModal: React.FC<{
                       title={`Открыть контур: ${
                         originRoom?.name ?? "«Разведка»"
                       }`}
-                      className="w-full cursor-pointer rounded-2xl border border-slate-600/40 bg-slate-900/50 p-3 text-left transition-colors hover:border-cyan-400/50 hover:bg-slate-800/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60"
+                      className="ui-panel w-full cursor-pointer rounded-none border-slate-600/40 bg-slate-950/50 p-3 text-left transition-colors hover:border-emerald-400/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60"
                     >
                       <div className="flex items-center justify-between gap-2">
                         <p className="min-w-0 truncate text-sm font-bold text-white">
                           {sectorDef.icon} {sectorDef.name}
                         </p>
                         <span
-                          className={`shrink-0 rounded-lg px-2 py-1 text-2xs font-bold ${
+                          className={`ui-badge shrink-0 ${
                             stranded
-                              ? "bg-red-900/60 text-red-100"
+                              ? "border-red-400/40 bg-red-900/60 text-red-100"
                               : returning
-                                ? "bg-blue-900/50 text-blue-200"
-                                : "bg-amber-900/50 text-amber-200"
+                                ? "border-blue-400/40 bg-blue-900/50 text-blue-200"
+                                : "border-amber-400/40 bg-amber-900/50 text-amber-200"
                           }`}
                         >
                           {stranded
@@ -1503,9 +1521,9 @@ const ExpeditionModal: React.FC<{
                         🧭 {originRoom?.name ?? "«Разведка» не записана"} ·{" "}
                         {expedition.team.length} жаб · глубина {sectorDef.depth}
                       </p>
-                      <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-700">
+                      <div className="mt-2 h-1.5 w-full overflow-hidden bg-slate-800/80">
                         <div
-                          className={`h-full rounded-full transition-all duration-500 ${
+                          className={`h-full transition-all duration-500 ${
                             stranded
                               ? "bg-red-500"
                               : returning
@@ -1569,13 +1587,13 @@ const ExpeditionModal: React.FC<{
                       title={`Открыть контур: ${
                         originRoom?.name ?? "«Разведка»"
                       }`}
-                      className="w-full cursor-pointer rounded-2xl border border-emerald-500/40 bg-emerald-950/30 p-3 text-left transition-colors hover:border-emerald-400/60 hover:bg-emerald-900/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60"
+                      className="ui-panel w-full cursor-pointer rounded-none border-emerald-500/40 bg-emerald-950/30 p-3 text-left transition-colors hover:border-emerald-400/60 hover:bg-emerald-900/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60"
                     >
                       <div className="flex items-center justify-between gap-2">
                         <p className="min-w-0 truncate text-sm font-bold text-white">
                           {sectorDef.icon} {sectorDef.name}
                         </p>
-                        <span className="shrink-0 rounded-lg bg-emerald-900/60 px-2 py-1 text-2xs font-bold text-emerald-200">
+                        <span className="ui-badge shrink-0 border-emerald-400/40 bg-emerald-900/60 text-emerald-200">
                           🎁 ждёт разбора
                         </span>
                       </div>
@@ -1614,17 +1632,17 @@ const ExpeditionModal: React.FC<{
                   return (
                     <div
                       key={expedition.id}
-                      className="rounded-2xl border border-slate-600/40 bg-slate-900/50 p-3"
+                      className="ui-panel rounded-none border-slate-600/40 bg-slate-950/50 p-3"
                     >
                       <div className="flex items-center justify-between gap-2">
                         <p className="min-w-0 truncate text-sm font-bold text-white">
                           {sectorDef.icon} {sectorDef.name}
                         </p>
                         <span
-                          className={`shrink-0 rounded-lg px-2 py-1 text-2xs font-bold ${
+                          className={`ui-badge shrink-0 ${
                             survived
-                              ? "bg-emerald-900/50 text-emerald-200"
-                              : "bg-red-900/50 text-red-200"
+                              ? "border-emerald-400/40 bg-emerald-900/50 text-emerald-200"
+                              : "border-red-400/40 bg-red-900/50 text-red-200"
                           }`}
                         >
                           {survived ? "✅ удался" : "⚠️ провал"}
@@ -1643,7 +1661,7 @@ const ExpeditionModal: React.FC<{
                       <ClickButton
                         onClick={() => openExpeditionLog(expedition)}
                         title="Прочитать полный бортовой журнал этого похода"
-                        className="mt-2 w-full rounded-xl border border-cyan-500/40 bg-cyan-950/40 py-1.5 text-2xs font-bold text-cyan-100 hover:bg-cyan-900/50"
+                        className="mt-2 w-full rounded-none border border-emerald-500/40 bg-emerald-950/40 py-1.5 font-mono text-3xs font-bold uppercase tracking-[0.06em] text-emerald-100 hover:bg-emerald-900/50"
                       >
                         📡 Открыть логи ({expedition.log.length})
                       </ClickButton>
@@ -1660,22 +1678,26 @@ const ExpeditionModal: React.FC<{
           <RoomDataTab
             room={crewRoom}
             stats={
-              <div className="grid grid-cols-3 gap-1.5 text-center text-2xs">
-                <div className="rounded-lg bg-slate-900/40 px-1 py-1">
-                  <p className="text-slate-400">🧭 В секторе</p>
-                  <p className="font-bold text-white">{crew.length}</p>
-                </div>
-                <div className="rounded-lg bg-slate-900/40 px-1 py-1">
-                  <p className="text-slate-400">✅ Готовы к походу</p>
-                  <p className="font-bold text-white">{crewSendable.length}</p>
-                </div>
-                <div className="rounded-lg bg-slate-900/40 px-1 py-1">
-                  <p className="text-slate-400">🚁 Активных команд</p>
-                  <p className="font-bold text-white">
-                    {shownActiveExpeditions.length}/{teamLimit}
-                  </p>
-                </div>
-              </div>
+              <DataGrid columns={3}>
+                <DataCell
+                  dense
+                  label="🧭 В секторе"
+                  value={crew.length}
+                  color="text-white"
+                />
+                <DataCell
+                  dense
+                  label="✅ Готовы к походу"
+                  value={crewSendable.length}
+                  color="text-emerald-300"
+                />
+                <DataCell
+                  dense
+                  label="🚁 Активных команд"
+                  value={`${shownActiveExpeditions.length}/${teamLimit}`}
+                  color="text-white"
+                />
+              </DataGrid>
             }
           />
         )}

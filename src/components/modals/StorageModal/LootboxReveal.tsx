@@ -153,7 +153,7 @@ export const LootboxReveal = ({
           </div>
 
           <div
-            className={`mx-auto mb-3 w-fit rounded-2xl border bg-gradient-to-br p-2 ${rarityStyle.frame}`}
+            className={`mx-auto mb-3 w-fit rounded-none border bg-gradient-to-br p-2 ${rarityStyle.frame}`}
           >
             <ToadAvatar toad={toad} size={24} />
           </div>
@@ -236,7 +236,7 @@ export const LootboxReveal = ({
                 setSelectedSceneId(Number(event.target.value))
               }
               disabled={scenes.length === 0}
-              className="w-full rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2 text-sm text-slate-200 focus:border-cyan-400 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+              className="w-full rounded-none border border-white/10 bg-slate-950/60 px-3 py-2 text-sm text-slate-200 focus:border-cyan-400 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
               aria-label="Биопод для новой жабы"
             >
               {scenes.map((scene) => (
@@ -272,7 +272,7 @@ export const LootboxReveal = ({
               }
             >
               ♻️ Распылить на биомассу
-              <span className="rounded-md bg-black/25 px-1.5 py-0.5 text-2xs">
+              <span className="rounded-none bg-black/25 px-1.5 py-0.5 text-2xs">
                 +{dissolveYield} 🧪
               </span>
             </button>

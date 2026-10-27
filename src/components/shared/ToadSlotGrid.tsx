@@ -19,6 +19,7 @@ import { getToadRarityLine } from "../../utils/toad-picker";
 import { getHungerBarColor, getHungerTextColor } from "../../utils/hunger";
 import { useModal } from "../ModalContext";
 import { ClickButton } from "./ClickButton";
+import { getHudTone, GridNodes, useHudTone } from "./DataGrid";
 import Modal from "./Header";
 import { ToadAvatar } from "./ToadAvatar";
 import { getMeterColor, ToadPickerGroup, ToadPickerList } from "./ToadPicker";
@@ -145,8 +146,6 @@ const DEFAULT_VITALS: ToadSlotVitals = { hp: true, energy: true };
 interface ToadSlotPickerModalProps {
   /** Подпись слота: «Слот самки», «Койка 3» */
   slotLabel: string;
-  /** Значок слота для заголовка */
-  icon?: React.ReactNode;
   picker: ToadSlotPickerConfig;
   onPick: (toad: Toad) => void;
 }
@@ -154,7 +153,6 @@ interface ToadSlotPickerModalProps {
 /** Модалка выбора жабы в слот: тот же список, что у выпадающего `ToadPicker` */
 const ToadSlotPickerModal: React.FC<ToadSlotPickerModalProps> = ({
   slotLabel,
-  icon,
   picker,
   onPick,
 }) => {
@@ -165,8 +163,8 @@ const ToadSlotPickerModal: React.FC<ToadSlotPickerModalProps> = ({
   };
 
   return (
-    <Modal title={`Выбрать жабу · ${slotLabel}`} icon={icon}>
-      <div className="mx-auto w-full max-w-2xl rounded-xl border border-slate-600/50 bg-slate-900/70">
+    <Modal title={`Выбрать жабу · ${slotLabel}`}>
+      <div className="ui-panel mx-auto w-full max-w-2xl rounded-none border-slate-600/50 bg-slate-900/70">
         <ToadPickerList
           label={slotLabel}
           groups={picker.groups}
@@ -200,20 +198,20 @@ const SlotVital: React.FC<{
   return (
     <span
       title={title}
-      className="flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-md border border-white/10 bg-slate-950/50 px-1 py-0.5"
+      className="flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-none border border-white/10 bg-slate-950/50 px-1 py-0.5"
     >
       <span
-        className={`flex items-center gap-0.5 text-3xs font-semibold leading-none tabular-nums ${valueClassName}`}
+        className={`flex items-center gap-0.5 font-mono text-3xs font-semibold leading-none tabular-nums ${valueClassName}`}
       >
         <span aria-hidden>{icon}</span>
         {Math.round(value)}
       </span>
       <span
         aria-hidden
-        className="h-0.5 w-full overflow-hidden rounded-full bg-slate-700/70"
+        className="h-0.5 w-full overflow-hidden bg-slate-700/70"
       >
         <span
-          className={`block h-full rounded-full transition-all duration-500 ${barClassName}`}
+          className={`block h-full transition-all duration-500 ${barClassName}`}
           style={{ width: `${ratio * 100}%` }}
         />
       </span>
@@ -322,6 +320,8 @@ export const ToadSlotGrid: React.FC<ToadSlotGridProps> = ({
   className = "",
 }) => {
   const { openModal } = useModal();
+  const tone = useHudTone();
+  const style = getHudTone(tone);
 
   /** Пустой слот: список жаб открывается отдельной модалкой поверх сектора */
   const openPicker = (slot: ToadSlotItem, slotIndex: number) => {
@@ -335,7 +335,6 @@ export const ToadSlotGrid: React.FC<ToadSlotGridProps> = ({
       () => (
         <ToadSlotPickerModal
           slotLabel={slot.label}
-          icon={slot.icon}
           picker={picker}
           onPick={(toad) => onPick(toad, slotIndex)}
         />
@@ -346,12 +345,15 @@ export const ToadSlotGrid: React.FC<ToadSlotGridProps> = ({
 
   return (
     <div
-      className={`flex flex-col gap-2 rounded-xl border border-slate-500/30 bg-color-main px-3 py-2 ${className}`}
+      className={`relative flex flex-col gap-2 border bg-slate-950/50 px-3 py-2 ${style.box} ${className}`}
     >
+      <GridNodes tone={style.node} />
       {(title || headerRight) && (
         <div className="flex items-center justify-between gap-2">
           {title && (
-            <span className="text-xs font-semibold text-cyan-200">{title}</span>
+            <span className={`text-xs font-semibold ${style.text}`}>
+              {title}
+            </span>
           )}
           {headerRight && (
             <span className="shrink-0 text-2xs text-slate-400">
@@ -443,10 +445,10 @@ export const ToadSlotGrid: React.FC<ToadSlotGridProps> = ({
                   ? `${toad.name} · ${slot.label}`
                   : (slot.disabledHint ?? `${slot.label}: выбрать жабу`)
               }
-              className={`relative m-auto max-w-[250px] flex aspect-square w-full flex-col items-center justify-center gap-1 rounded-xl border px-1.5 py-2 transition-colors duration-300 ${
+              className={`relative m-auto flex aspect-square w-full max-w-[250px] flex-col items-center justify-center gap-1 rounded-none border px-1.5 py-2 transition-colors duration-300 ${
                 toad
-                  ? "border-solid border-emerald-500/40 bg-emerald-500/5 hover:border-cyan-300/60 hover:bg-emerald-500/10"
-                  : "border-dashed border-slate-500/60 bg-slate-950/20 hover:border-cyan-300/60 hover:bg-slate-800/40"
+                  ? "border-solid border-emerald-500/40 bg-emerald-500/5 hover:border-emerald-300/60 hover:bg-emerald-500/10"
+                  : "border-dashed border-slate-500/60 bg-slate-950/20 hover:border-slate-300/60 hover:bg-slate-800/40"
               } ${disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}
             >
               {toad ? (
@@ -460,7 +462,7 @@ export const ToadSlotGrid: React.FC<ToadSlotGridProps> = ({
                   {disease && (
                     <span
                       title={`${disease.name}: ${disease.description}`}
-                      className="flex w-full min-w-0 items-center justify-center gap-0.5 rounded border border-orange-400/30 bg-orange-500/10 px-1 py-0.5 text-3xs leading-none text-orange-200"
+                      className="flex w-full min-w-0 items-center justify-center gap-0.5 rounded-none border border-orange-400/30 bg-orange-500/10 px-1 py-0.5 text-3xs leading-none text-orange-200"
                     >
                       <span aria-hidden>{disease.icon}</span>
                       <span className="truncate">{disease.name}</span>
@@ -530,13 +532,13 @@ export const ToadSlotGrid: React.FC<ToadSlotGridProps> = ({
                             {slot.meter.detail}
                           </span>
                         )}
-                        <span className="shrink-0 text-2xs font-bold text-amber-200">
+                        <span className="shrink-0 font-mono text-2xs font-bold tabular-nums text-amber-200">
                           {slot.meter.label}
                         </span>
                       </div>
-                      <div className="h-1 w-full overflow-hidden rounded-full bg-slate-700">
+                      <div className="h-1 w-full overflow-hidden bg-slate-700">
                         <div
-                          className={`h-full rounded-full ${getMeterColor(
+                          className={`h-full ${getMeterColor(
                             meterPercent,
                           )}`}
                           style={{ width: `${meterPercent}%` }}
@@ -569,7 +571,7 @@ export const ToadSlotGrid: React.FC<ToadSlotGridProps> = ({
                         event.stopPropagation();
                         onRemove?.(toad, index);
                       }}
-                      className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full border border-rose-400/60 bg-rose-600/90 text-xs leading-none text-white transition-colors hover:bg-rose-500"
+                      className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-none border border-rose-400/60 bg-rose-600/90 font-mono text-xs leading-none text-white transition-colors hover:bg-rose-500"
                     >
                       ×
                     </span>
@@ -577,7 +579,7 @@ export const ToadSlotGrid: React.FC<ToadSlotGridProps> = ({
                 </>
               ) : (
                 <>
-                  <span className="text-2xl leading-none text-cyan-300/70">
+                  <span className={`text-2xl leading-none ${style.text} opacity-70`}>
                     +
                   </span>
                   <span className="w-full truncate text-center text-3xs text-slate-400">

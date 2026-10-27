@@ -50,13 +50,19 @@ export const ExpeditionLogList: React.FC<{
   const entries = limit ? ordered.slice(0, limit) : ordered;
 
   return (
-    <div className="flex flex-col gap-2 rounded-xl border border-cyan-400/40 bg-slate-950/80 p-3 shadow-[0_0_30px_-16px_rgba(34,211,238,0.9)]">
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-xs font-bold uppercase tracking-wide text-cyan-300">
-          {title}
+    <div className="ui-panel flex flex-col gap-2 border-cyan-400/30 p-3 shadow-[0_0_30px_-16px_rgba(34,211,238,0.9)]">
+      <div className="flex items-center justify-between gap-2 border-b border-cyan-300/15 pb-2">
+        <span className="flex min-w-0 items-center gap-1.5">
+          <span
+            aria-hidden="true"
+            className="h-1.5 w-1.5 shrink-0 animate-pulse bg-cyan-300 shadow-[0_0_6px_rgba(34,211,238,0.9)]"
+          />
+          <span className="truncate text-2xs font-bold uppercase tracking-[0.14em] text-cyan-300">
+            {title}
+          </span>
         </span>
-        <span className="text-3xs font-semibold text-slate-500">
-          {log.length} записей
+        <span className="ui-badge shrink-0 border-cyan-300/20 text-cyan-200/70">
+          {log.length} зап.
         </span>
       </div>
 
@@ -87,10 +93,12 @@ export const ExpeditionLogList: React.FC<{
             return (
               <p
                 key={entry.id}
-                className={`rounded-lg border-l-2 px-2 py-1.5 text-1xs leading-snug ${accent} ${color}`}
+                className={`border-l-2 px-2 py-1.5 text-1xs leading-snug ${accent} ${color}`}
               >
-                <span className="text-slate-500">{formatClock(entry.at)} </span>
-                <span className="font-semibold">
+                <span className="font-mono tabular-nums text-slate-500">
+                  {formatClock(entry.at)}{" "}
+                </span>
+                <span className="font-semibold uppercase tracking-[0.04em]">
                   {role
                     ? `${role.icon} ${entry.toadName ?? role.label}`
                     : "📡 Связь"}

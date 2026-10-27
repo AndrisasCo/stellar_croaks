@@ -148,13 +148,13 @@ export const DetailedView: React.FC<{ selectedItem: GallerySlot }> = ({
   );
 
   return (
-    <Modal title={selectedItem?.name}>
+    <Modal title={selectedItem?.name} tone="violet">
       <div className="relative flex flex-col">
         {/* Большой Аватар */}
         <div className="mb-6 flex mx-auto self-center">
           {selectedItem.isUnlocked && selectedItem.exampleToad ? (
             <GlowWrapper
-              className="rounded-xl "
+              className="rounded-none "
               disabled={
                 selectedItem.rarity === "rare" ||
                 selectedItem.rarity === "common"
@@ -181,7 +181,7 @@ export const DetailedView: React.FC<{ selectedItem: GallerySlot }> = ({
         {/* Информационный блок */}
         <div className="w-full space-y-4">
           {/* Описание */}
-          <div className="bg-black/30 rounded-xl p-4">
+          <div className="bg-black/30 rounded-none p-4">
             <p className={`text-sm leading-relaxed ${detailStyles.text}`}>
               {selectedItem.description}
             </p>
@@ -189,7 +189,7 @@ export const DetailedView: React.FC<{ selectedItem: GallerySlot }> = ({
 
           {/* Детали получения */}
           {!selectedItem.isUnlocked && (
-            <div className="bg-black/40 rounded-xl p-4 border border-dashed border-slate-600">
+            <div className="bg-black/40 rounded-none p-4 border border-dashed border-slate-600">
               <h4 className={`text-sm font-medium mb-2 ${detailStyles.text}`}>
                 Как получить:
               </h4>
@@ -214,7 +214,7 @@ export const DetailedView: React.FC<{ selectedItem: GallerySlot }> = ({
 
           {/* Статистика редкости */}
           <div className="grid grid-cols-2 gap-3 text-xs">
-            <div className="bg-black/30 rounded p-3">
+            <div className="bg-black/30 rounded-none p-3">
               <div className="text-slate-300 mb-1">Качество</div>
               <div className={detailStyles.titleColor}>
                 {selectedItem.rarity === "legendary"
@@ -226,7 +226,7 @@ export const DetailedView: React.FC<{ selectedItem: GallerySlot }> = ({
                       : "Обычная"}
               </div>
             </div>
-            <div className="bg-black/30 rounded p-3">
+            <div className="bg-black/30 rounded-none p-3">
               <div className="text-slate-300 mb-1">Статус</div>
               <div
                 className={

@@ -3,6 +3,7 @@ import React, { useState, useCallback, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { ModalOptions, ModalComponent, ModalContext } from "../ModalContext";
 import { ClickButton } from "../shared/ClickButton";
+import { GridNodes } from "../shared/DataGrid";
 
 interface ModalProviderProps {
   children: React.ReactNode;
@@ -214,7 +215,7 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({
             // высоту на низких экранах, чтобы карточка не выходила за пределы вьюпорта.
             // Если модалка задала свою max-width, общий `md:max-w-5xl` не подключаем:
             // иначе побеждает правило из CSS, а не класс, добавленный позже.
-            "md:h-auto md:min-h-[min(600px,80dvh)] md:max-h-[85dvh] md:rounded-3xl md:border md:border-white/20",
+            "md:h-auto md:min-h-[min(600px,80dvh)] md:max-h-[85dvh] md:rounded-none md:border md:border-white/20",
             /\bmax-w-/.test(options.className ?? "") ? "" : "md:max-w-5xl",
             // Анимация появления (index.css); без значения панель появляется без неё
             options.animation ? `modal-anim-${options.animation}` : "",
@@ -224,7 +225,20 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({
             .join(" ")}
         >
           {/* Полоска-акцент: тот же градиент, что у заголовков модалок (shared/Header) */}
-          <div className="brand-bar h-1 w-full shrink-0" />
+          <div className="brand-bar relative z-10 h-1 w-full shrink-0" />
+
+          {/* Углы корпуса: та же разметка, что у HUD-панелей внутри модалки.
+              Слой выше фона, но не перехватывает клики и не мешает скроллу. */}
+          <div className="pointer-events-none absolute inset-0 z-20">
+            <GridNodes tone="bg-cyan-200/70" />
+          </div>
+
+          {/* Фон лаборатории: едва заметная техно-сетка и скан-линии. Контент
+              лежит выше (`z-10`), поэтому паттерн не мешает чтению. */}
+          <div
+            aria-hidden="true"
+            className="hud-backdrop pointer-events-none absolute inset-0 z-0"
+          />
 
           {/* no-overscroll: свайп по списку не уходит в pull-to-refresh — иначе
               iOS Safari перезагружал страницу и «шторка» будто закрывалась сама.
@@ -232,13 +246,14 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({
               на телефоне, а на пределе карточки скроллится само. */}
           <div
             id={isActive ? "modal" : undefined}
-            className="no-overscroll flex min-h-0 grow flex-col overflow-y-auto px-1 py-4 md:px-6 md:py-5"
+            className="no-overscroll safe-area-bottom relative z-10 flex min-h-0 grow flex-col overflow-y-auto px-3 pt-4 md:px-6 md:pt-5"
           >
             {options.showCloseButton && (
               <ClickButton
                 onClick={closeModal}
                 aria-label="Закрыть"
-                className="absolute right-2 top-2 z-50 flex h-10 w-10 items-center justify-center rounded-full text-3xl leading-none text-slate-300 transition-colors duration-300 hover:scale-110 hover:bg-white/10 hover:text-cyan-300 md:right-3 md:top-3"
+                title="Закрыть (Esc)"
+                className="absolute right-2 top-2 z-50 flex h-10 w-10 items-center justify-center border border-white/10 bg-slate-950/55 text-3xl leading-none text-slate-300 backdrop-blur-md transition-colors duration-300 hover:border-cyan-300/50 hover:text-cyan-200 md:right-3 md:top-3"
               >
                 ×
               </ClickButton>
@@ -248,10 +263,17 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({
 
             <div className="min-h-4" />
             <ClickButton
-              className="ui-button-secondary relative mt-auto w-full py-3"
+              className="ui-button-secondary ui-button-close relative mt-auto min-h-10 w-full py-3 sm:w-auto sm:min-w-64 sm:self-end"
               onClick={closeModal}
+              title="Закрыть (Esc)"
             >
               Закрыть
+              <span
+                aria-hidden="true"
+                className="absolute right-3 top-1/2 -translate-y-1/2 border border-white/10 px-1 text-3xs font-semibold tracking-[0.14em] text-slate-500"
+              >
+                ESC
+              </span>
             </ClickButton>
           </div>
         </div>

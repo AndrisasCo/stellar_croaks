@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Toad } from "../../../../models/Toad";
 import { CurrencyIcon } from "../../../shared/CurrencyIcon";
+import { HudPanel, SectionTitle } from "../../../shared/DataGrid";
 import { getToadHomeId } from "../../../../utils/toad-location";
 import { ToadGender } from "../../../shared/ToadGender";
 import { ToadAvatar } from "../../../shared/ToadAvatar";
@@ -30,96 +31,114 @@ export const EliteOrderTooltip: React.FC<EliteOrderTooltipProps> = ({
   };
 
   return (
-    <div className="absolute left-0 right-0 bottom-0  flex items-center justify-center p-4 z-50">
-      <div className="w-full max-w-xs rounded-xl border border-cyan-400/40 bg-color-main p-4 shadow-lg">
-        {/* Заголовок */}
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-white font-semibold text-sm">Выбор жабы</h3>
+    <div className="absolute inset-x-0 bottom-0 z-50 flex items-end justify-center bg-slate-950/50 p-2 backdrop-blur-sm sm:items-center">
+      <HudPanel
+        tone="cyan"
+        className="w-full max-w-sm border-cyan-400/50 p-3 shadow-2xl shadow-cyan-950/40"
+      >
+        {/* Заголовок пульта выбора */}
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <div className="ui-kicker">SELECT TARGET</div>
+            <h3 className="mt-0.5 text-sm font-semibold text-white">
+              Выбор жабы
+            </h3>
+          </div>
           <button
+            type="button"
             onClick={onClose}
-            className="text-slate-300 hover:text-white transition-colors p-1"
+            aria-label="Закрыть выбор жабы"
+            className="flex h-8 w-8 shrink-0 items-center justify-center border border-white/10 bg-slate-800/70 text-slate-300 transition-colors hover:border-cyan-400/40 hover:text-white"
           >
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
+            ×
           </button>
         </div>
 
-        {/* Информация о заказе */}
-        <div className="mb-3">
-          <h4 className="mb-1 text-xs font-medium text-cyan-300">
-            {order.title}
-          </h4>
-          <p className="text-slate-200 text-xs mb-2 line-clamp-2">
+        {/* Заказ: цель и награда */}
+        <div className="mt-2 border border-cyan-400/20 bg-slate-950/50 p-2">
+          <div className="flex items-start justify-between gap-2">
+            <h4 className="min-w-0 truncate text-xs font-semibold text-cyan-200">
+              {order.title}
+            </h4>
+            <span className="inline-flex shrink-0 items-center gap-1 text-2xs font-semibold text-violet-200">
+              {order.reward}
+              <CurrencyIcon currency="astro_quax" className="h-3.5 w-3.5" />
+            </span>
+          </div>
+          <p className="mt-1 line-clamp-2 text-2xs leading-snug text-slate-400">
             {order.description}
           </p>
-          <div className="text-green-400 text-sm font-semibold">
-            Награда: {order.reward}{" "}
-            <CurrencyIcon currency="astro_quax" className="h-4 w-4" />
-          </div>
         </div>
 
-        {/* Список жаб */}
-        <div className="space-y-2 mb-3 max-h-48 overflow-y-auto">
-          <p className="text-slate-300 text-xs">Подходящие жабы:</p>
-          {availableToads.map((toad) => (
-            <div
-              key={toad.id}
-              onClick={() => setSelectedToadId(toad.id)}
-              className={`p-2 rounded-lg border cursor-pointer transition-all ${
-                selectedToadId === toad.id
-                  ? "border-cyan-400/60 bg-cyan-500/15"
-                  : "border-slate-600 bg-color-main hover:border-cyan-400/50"
-              }`}
-            >
-              <div className="flex items-center gap-2">
+        {/* Список жаб: компактные строки того же HUD-языка, что и общий список */}
+        <div className="mt-2">
+          <SectionTitle aside={`${availableToads.length} UNITS`}>
+            Подходящие жабы
+          </SectionTitle>
+        </div>
+        <div className="max-h-48 space-y-1 overflow-y-auto pr-1">
+          {availableToads.map((toad) => {
+            const isSelected = selectedToadId === toad.id;
+
+            return (
+              <button
+                key={toad.id}
+                type="button"
+                onClick={() => setSelectedToadId(toad.id)}
+                aria-pressed={isSelected}
+                className={`relative flex w-full items-center gap-2 border px-2 py-1.5 text-left transition-colors ${
+                  isSelected
+                    ? "border-cyan-400/60 bg-cyan-500/15"
+                    : "border-slate-700/60 bg-slate-950/50 hover:border-cyan-400/40"
+                }`}
+              >
                 <ToadAvatar toad={toad} size={8} />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1 mb-1">
-                    <span className="text-white font-medium text-xs truncate">
+                <div className="min-w-0 flex-1">
+                  <div className="flex min-w-0 items-center gap-1">
+                    <span className="truncate text-xs font-medium text-white">
                       {toad.name}
                     </span>
                     <ToadGender gender={toad.sex} />
                   </div>
-                  <div className="grid grid-cols-2 gap-x-2 text-xs text-slate-300">
-                    <span>Качество: {toad.genes.rarity.toFixed(1)}</span>
+                  <div className="mt-0.5 flex items-center gap-2 text-3xs uppercase tracking-[0.1em] text-slate-400">
+                    <span>Q {toad.genes.rarity.toFixed(1)}</span>
+                    <span className={getToadHomeId(toad) ? "" : "text-amber-300"}>
+                      {getToadHomeId(toad) ? "HOME" : "NO HOME"}
+                    </span>
                   </div>
                 </div>
-                {/* Дом жабы — её биопод (`homeId`): у жабы без дома (сейв старой версии,
-                    а не «в секторе») показываем коробку */}
-                <div>{getToadHomeId(toad) ? "" : "📦"}</div>
-              </div>
-            </div>
-          ))}
+                <span
+                  aria-hidden="true"
+                  className={`h-1.5 w-1.5 shrink-0 ${
+                    isSelected
+                      ? "bg-cyan-300 shadow-[0_0_6px_rgba(34,211,238,0.8)]"
+                      : "bg-slate-600"
+                  }`}
+                />
+              </button>
+            );
+          })}
         </div>
 
         {/* Кнопки действий */}
-        <div className="flex gap-2">
+        <div className="mt-3 flex gap-2">
           <button
+            type="button"
             onClick={onClose}
-            className="ui-button-secondary flex-1 py-2 text-xs"
+            className="ui-button-secondary flex-1 py-2 text-2xs"
           >
             Отмена
           </button>
           <button
+            type="button"
             onClick={handleSubmit}
             disabled={!selectedToadId}
-            className="ui-button-primary flex-1 py-2 text-xs"
+            className="ui-button-primary flex-1 py-2 text-2xs"
           >
             Отправить
           </button>
         </div>
-      </div>
+      </HudPanel>
     </div>
   );
 };

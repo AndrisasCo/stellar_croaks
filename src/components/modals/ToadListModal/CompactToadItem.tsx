@@ -33,10 +33,10 @@ export const CompactToadItem = ({
     <div
       id={String(toad.id)}
       onClick={() => onSelect(toad.id)}
-      className={`bg-color-main flex flex-col gap-1.5 rounded-xl p-1 border transition-colors cursor-pointer ${
+      className={`flex cursor-pointer flex-col gap-1.5 border p-1 transition-colors ${
         isSelected
           ? "border-yellow-400 bg-yellow-500/10 shadow-sm shadow-yellow-500/20"
-          : "border-slate-600/30 hover:border-slate-500/50"
+          : "border-slate-600/30 bg-slate-950/50 hover:border-slate-500/50"
       }`}
       style={{
         backgroundColor: familyColor ? familyColor : undefined,
@@ -67,9 +67,9 @@ export const CompactToadItem = ({
 
       {/* Средняя строка: шкала голода */}
       <div className="flex items-center gap-2">
-        <div className="flex-1 h-2 bg-slate-600 rounded-full overflow-hidden">
+        <div className="h-1.5 flex-1 overflow-hidden bg-slate-800/80">
           <div
-            className={`h-full rounded-full ${getHungerColor(
+            className={`h-full ${getHungerColor(
               toad.state.hunger,
             )}`}
             style={{ width: `${toad.state.hunger}%` }}

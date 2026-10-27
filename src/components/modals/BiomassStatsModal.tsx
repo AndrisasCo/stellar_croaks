@@ -8,6 +8,7 @@ import {
   getBiomassFarmStats,
 } from "../../utils/production-manager";
 import { UPKEEP_PER_TOAD_HOUR } from "../../utils/gamification-config";
+import { DataCell, DataGrid, HudPanel } from "../shared/DataGrid";
 
 /** Знак и один знак после запятой: темп фермы в HUD показывается так же. */
 const formatRate = (value: number): string =>
@@ -33,13 +34,11 @@ const BiomassStat = ({
   hint?: string;
   tone?: string;
 }) => (
-  <div className="rounded-xl border border-white/10 bg-slate-950/40 px-2 py-2">
-    <p className="text-2xs leading-tight text-slate-400">{label}</p>
-    <p className={`mt-0.5 text-sm font-bold tabular-nums ${tone}`}>{value}</p>
+  <DataCell dense label={label} value={value} color={tone}>
     {hint && (
       <p className="mt-0.5 text-3xs leading-tight text-slate-500">{hint}</p>
     )}
-  </div>
+  </DataCell>
 );
 
 /** Строка биопода: кто живёт, сколько даёт и сколько стоит содержание. */
@@ -47,7 +46,7 @@ const BiomassRoomRow = ({ room }: { room: BiomassFarmRoomStat }) => {
   const unit = room.toads === 1 ? "жаба" : "жаб";
 
   return (
-    <div className="rounded-xl border border-slate-600/40 bg-slate-950/35 px-2.5 py-2">
+    <HudPanel className="px-2.5 py-2">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="truncate text-2xs font-semibold text-slate-100">
@@ -59,33 +58,33 @@ const BiomassRoomRow = ({ room }: { room: BiomassFarmRoomStat }) => {
           </p>
         </div>
         {!room.powered && (
-          <span className="shrink-0 rounded border border-rose-500/30 bg-rose-950/40 px-1.5 py-0.5 text-3xs text-rose-200">
+          <span className="shrink-0 border border-rose-500/30 bg-slate-950/50 px-1.5 py-0.5 text-3xs text-rose-200">
             без тока
           </span>
         )}
       </div>
 
-      <div className="mt-1.5 grid grid-cols-3 gap-1.5 text-2xs">
-        <div>
-          <p className="text-3xs text-slate-500">Выработка</p>
-          <p className="font-semibold tabular-nums text-lime-300">
-            +{room.gross.toFixed(1)}
-          </p>
-        </div>
-        <div>
-          <p className="text-3xs text-slate-500">Содержание</p>
-          <p className="font-semibold tabular-nums text-rose-300">
-            −{room.upkeep.toFixed(1)}
-          </p>
-        </div>
-        <div>
-          <p className="text-3xs text-slate-500">Итог</p>
-          <p className={`font-semibold tabular-nums ${rateTone(room.net)}`}>
-            {formatRate(room.net)}
-          </p>
-        </div>
-      </div>
-    </div>
+      <DataGrid columns={3} className="mt-1.5">
+        <DataCell
+          dense
+          label="Выработка"
+          value={`+${room.gross.toFixed(1)}`}
+          color="text-lime-300"
+        />
+        <DataCell
+          dense
+          label="Содержание"
+          value={`−${room.upkeep.toFixed(1)}`}
+          color="text-rose-300"
+        />
+        <DataCell
+          dense
+          label="Итог"
+          value={formatRate(room.net)}
+          color={rateTone(room.net)}
+        />
+      </DataGrid>
+    </HudPanel>
   );
 };
 
@@ -97,7 +96,7 @@ const BiomassUpkeepRow = ({ room }: { room: BiomassUpkeepRoomStat }) => {
   const unit = room.toads === 1 ? "жаба" : "жаб";
 
   return (
-    <div className="flex items-center justify-between gap-2 rounded-xl border border-slate-600/40 bg-slate-950/35 px-2.5 py-1.5">
+    <HudPanel className="flex items-center justify-between gap-2 px-2.5 py-1.5">
       <div className="min-w-0">
         <p className="truncate text-2xs font-semibold text-slate-100">
           {room.icon} {room.name}
@@ -109,7 +108,7 @@ const BiomassUpkeepRow = ({ room }: { room: BiomassUpkeepRoomStat }) => {
       <p className="shrink-0 text-2xs font-semibold tabular-nums text-rose-300">
         −{room.upkeep.toFixed(1)}
       </p>
-    </div>
+    </HudPanel>
   );
 };
 
@@ -139,9 +138,9 @@ export default function BiomassStatsModal() {
   const hasRooms = stats.rooms.length > 0;
 
   return (
-    <Modal title="Биомасса" icon="🧪">
+    <Modal title="Биомасса" tone="lime">
       <div className="space-y-3 pb-1">
-        <div className="rounded-2xl border border-lime-500/25 bg-lime-950/20 px-3 py-3">
+        <HudPanel tone="lime" className="px-3 py-3">
           <div className="flex items-end justify-between gap-3">
             <div>
               <p className="text-2xs uppercase tracking-wide text-lime-200/60">
@@ -163,7 +162,7 @@ export default function BiomassStatsModal() {
             </div>
           </div>
 
-          <div className="mt-3 grid grid-cols-3 gap-1.5">
+          <DataGrid columns={3} className="mt-3">
             <BiomassStat
               label="Выработка"
               value={`+${stats.gross.toFixed(1)}`}
@@ -182,8 +181,8 @@ export default function BiomassStatsModal() {
               tone={rateTone(stats.net)}
               hint="в час"
             />
-          </div>
-        </div>
+          </DataGrid>
+        </HudPanel>
 
         <div className="flex flex-wrap gap-x-3 gap-y-1 text-2xs text-slate-400">
           <span>🐸 {stats.activeToads} работают на ферме</span>
@@ -221,9 +220,9 @@ export default function BiomassStatsModal() {
               ))}
             </div>
           ) : (
-            <p className="rounded-xl border border-slate-600/40 bg-slate-950/35 px-3 py-2 text-2xs leading-snug text-slate-400">
+            <HudPanel className="px-3 py-2 text-2xs leading-snug text-slate-400">
               Биоподов пока нет — биомассу никто не вырабатывает.
-            </p>
+            </HudPanel>
           )}
         </div>
 
@@ -237,7 +236,10 @@ export default function BiomassStatsModal() {
                 <BiomassUpkeepRow key={room.id} room={room} />
               ))}
               {stats.unplacedToads > 0 && (
-                <div className="flex items-center justify-between gap-2 rounded-xl border border-amber-500/25 bg-amber-950/20 px-2.5 py-1.5">
+                <HudPanel
+                  tone="amber"
+                  className="flex items-center justify-between gap-2 px-2.5 py-1.5"
+                >
                   <div className="min-w-0">
                     <p className="truncate text-2xs font-semibold text-amber-100">
                       ❔ Без гекса
@@ -252,13 +254,13 @@ export default function BiomassStatsModal() {
                     −
                     {(stats.unplacedToads * UPKEEP_PER_TOAD_HOUR).toFixed(1)}
                   </p>
-                </div>
+                </HudPanel>
               )}
             </div>
           </div>
         )}
 
-        <div className="rounded-xl border border-slate-600/40 bg-slate-950/35 px-3 py-2 text-2xs leading-snug text-slate-400">
+        <HudPanel className="px-3 py-2 text-2xs leading-snug text-slate-400">
           <p>
             Выработка жабы зависит от Качества, веса, характера, сытости и
             здоровья. Содержание — {UPKEEP_PER_TOAD_HOUR} 🧪/ч за каждую жабу
@@ -269,7 +271,7 @@ export default function BiomassStatsModal() {
             в походе не работают и содержания не требуют. Жабы в лазарете,
             репродукторе, ⚡-секторе и «Разведке» едят, но биомассу не дают.
           </p>
-        </div>
+        </HudPanel>
       </div>
     </Modal>
   );

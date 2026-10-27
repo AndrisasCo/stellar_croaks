@@ -1,101 +1,130 @@
 import { CurrencyIcon } from "../../../shared/CurrencyIcon";
+import { GridNodes, HudPanel, HudTone } from "../../../shared/DataGrid";
 import { ShopItem } from "./use-shop";
 import { LootboxDetails } from "./LootboxDetails";
 import { useModal } from "../../../ModalContext";
 
+/** Редкость груза: цвет узлов, рамки и технический код на карточке. */
+const RARITY_STYLE: Record<
+  ShopItem["rarity"],
+  {
+    tone: HudTone;
+    border: string;
+    text: string;
+    code: string;
+    glow: string;
+    node: string;
+  }
+> = {
+  common: {
+    tone: "emerald",
+    border: "border-emerald-400/35",
+    text: "text-emerald-300",
+    code: "COMMON",
+    glow: "shadow-[0_0_14px_rgba(52,211,153,0.16)]",
+    node: "bg-emerald-300",
+  },
+  uncommon: {
+    tone: "sky",
+    border: "border-sky-400/40",
+    text: "text-sky-300",
+    code: "UNCOMMON",
+    glow: "shadow-[0_0_14px_rgba(56,189,248,0.18)]",
+    node: "bg-sky-300",
+  },
+  rare: {
+    tone: "violet",
+    border: "border-violet-400/45",
+    text: "text-violet-300",
+    code: "RARE",
+    glow: "shadow-[0_0_18px_rgba(167,139,250,0.24)]",
+    node: "bg-violet-300",
+  },
+};
+
 export const BuyButton = (props: { item: ShopItem }) => {
   const { item } = props;
   const { openModal } = useModal();
-
-  const mapRarityStyles = {
-    common: {
-      border: "bg-color-main border-slate-700",
-      icon: "border-green-400",
-      shadow: "0 0  1px  1px #00ff5233",
-    },
-    uncommon: {
-      border: "bg-color-main border-blue-700",
-      icon: "border-blue-400",
-      shadow: "0 0  1px  1px #0067ff33",
-    },
-    rare: {
-      border: "bg-color-main border-purple-700 relative overflow-hidden",
-      icon: "border-purple-400",
-      shadow: "0 0  1px  1px #eb00ff33",
-    },
-  };
-
-  const className = mapRarityStyles[item.rarity];
+  const style = RARITY_STYLE[item.rarity];
+  const soldOut = item.left === 0;
 
   return (
-    <>
-      <div className={` rounded-xl py-4 px-2 border mb-3 ${className.border} `}>
-        {item.rarity === "rare" && (
-          <>
-            <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/10 rounded-full -translate-y-8 translate-x-8" />
-            <div className="absolute bottom-0 left-0 w-16 h-16 bg-purple-500/5 rounded-full translate-y-8 -translate-x-8" />
-          </>
-        )}
-
-        <div className="flex items-center justify-between relative z-10">
-          <div className="flex items-center gap-6">
-            <div
-              style={{
-                boxShadow: className.shadow + " inset",
-              }}
-              className={`min-w-14 min-h-14 flex items-center justify-center relative rounded-full shadow-[inset_${className.shadow}]`}
-            >
-              <div
-                style={{
-                  boxShadow: className.shadow,
-                }}
-                className={`absolute w-14 h-14 inset-0  rounded-full`}
-              />
-              <img
-                src={item.icon}
-                className="max-w-14 max-h-14 relative m-auto z-10"
-                alt="icon"
-              />
-            </div>
-            <div>
-              <p className="text-white font-medium text-base">{item.name}</p>
-              <p className="text-sm text-slate-300 font-medium ">
-                {item.description}
-              </p>
-              <p
-                className={`text-xs mt-1 ${
-                  item.left === 0 ? "text-red-400" : "text-green-400"
-                }`}
-              >
-                {item.left === 0
-                  ? "❌ Куплено"
-                  : `✅ ${item.left === Infinity ? "∞" : item.left} доступно`}
-              </p>
-            </div>
+    <HudPanel tone={style.tone} className="p-2.5">
+      <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
+        <div className="flex min-w-0 flex-1 items-center gap-2.5">
+          <div
+            className={`relative flex h-14 w-14 shrink-0 items-center justify-center border bg-slate-950/70 ${style.border} ${style.glow}`}
+          >
+            <GridNodes tone={style.node} />
+            <span
+              aria-hidden="true"
+              className={`pointer-events-none absolute inset-x-2 top-0 h-px bg-gradient-to-r from-transparent via-current to-transparent ${style.text} opacity-60`}
+            />
+            <img
+              src={item.icon}
+              className="relative z-10 max-h-12 max-w-12 object-contain"
+              alt=""
+            />
           </div>
 
-          <div className="flex flex-col gap-2 ml-1">
-            <button
-              className="ui-button-primary min-w-[99px] whitespace-nowrap px-3 py-1.5"
-              onClick={item.onClick}
-              disabled={item.disabled}
-            >
-              {item.price}{" "}
-              <CurrencyIcon currency={item.currency} className="h-4 w-4" />
-            </button>
-            {item.key === "lootbox" && (
-              <button
-                onClick={() => {
-                  openModal(() => <LootboxDetails />);
-                }}
-                className="px-3 py-1.5 rounded-lg text-sm font-medium bg-color-second hover:bg-slate-600 text-slate-200 hover:text-white transition-colors"
+          <div className="min-w-0 flex-1">
+            <div className="flex min-w-0 items-center gap-2">
+              <p className="truncate text-sm font-semibold text-white">
+                {item.name}
+              </p>
+              <span
+                className={`shrink-0 text-3xs font-semibold uppercase tracking-[0.14em] ${style.text}`}
               >
-                Подробнее
-              </button>
-            )}
+                {style.code}
+              </span>
+            </div>
+            <p className="mt-0.5 text-2xs leading-snug text-slate-400">
+              {item.description}
+            </p>
+            <div
+              className={`mt-1 flex items-center gap-1.5 text-3xs uppercase tracking-[0.12em] ${
+                soldOut ? "text-rose-300" : "text-emerald-300/90"
+              }`}
+            >
+              <span
+                aria-hidden="true"
+                className={`h-1 w-1 ${
+                  soldOut
+                    ? "bg-rose-300"
+                    : "bg-emerald-300 shadow-[0_0_6px_rgba(52,211,153,0.8)]"
+                }`}
+              />
+              {soldOut
+                ? "Нет в наличии"
+                : `${item.left === Infinity ? "∞" : item.left} в наличии`}
+            </div>
           </div>
         </div>
+
+        <div className="flex flex-wrap justify-end gap-1.5 sm:shrink-0 sm:flex-col">
+          <button
+            type="button"
+            aria-label={`Купить «${item.name}» за ${item.price}`}
+            className="ui-button-primary min-w-[99px] whitespace-nowrap px-3 py-1.5"
+            onClick={item.onClick}
+            disabled={item.disabled}
+          >
+            {item.price}{" "}
+            <CurrencyIcon currency={item.currency} className="h-4 w-4" />
+          </button>
+          {item.key === "lootbox" && (
+            <button
+              type="button"
+              onClick={() => {
+                openModal(() => <LootboxDetails />);
+              }}
+              className="ui-button-secondary whitespace-nowrap px-3 py-1.5 text-3xs"
+            >
+              Подробнее
+            </button>
+          )}
+        </div>
       </div>
-    </>
+    </HudPanel>
   );
 };

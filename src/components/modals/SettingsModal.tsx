@@ -17,7 +17,7 @@ import { mutate } from "swr";
 
 /** Поле ввода как в AuthModal: одно и то же оформление во всех формах. */
 const INPUT_CLASS =
-  "w-full rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-white placeholder-slate-500 outline-none transition-colors focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20";
+  "w-full rounded-none border border-white/10 bg-slate-950/70 px-3 py-2.5 font-mono text-sm text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] placeholder-slate-600 outline-none transition-colors focus:border-cyan-400/70 focus:ring-1 focus:ring-cyan-400/20";
 
 const SettingsModal: React.FC = () => {
   const {
@@ -124,10 +124,14 @@ const SettingsModal: React.FC = () => {
         <div className="flex flex-col gap-3">
           {/* Настройки музыки */}
           <div className="ui-panel p-4">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
+            <div className="mb-3 flex items-center justify-between gap-2 border-b border-white/10 pb-2">
+              <div className="flex min-w-0 items-center gap-2">
+                <span
+                  aria-hidden="true"
+                  className="h-1 w-3 shrink-0 bg-cyan-300/60"
+                />
                 <svg
-                  className="w-5 h-5 text-cyan-300"
+                  className="h-4 w-4 shrink-0 text-cyan-300"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -139,7 +143,7 @@ const SettingsModal: React.FC = () => {
                     d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"
                   />
                 </svg>
-                <span className="text-sm font-semibold text-slate-100">
+                <span className="truncate text-2xs font-bold uppercase tracking-[0.14em] text-slate-200">
                   Фоновая музыка
                 </span>
               </div>
@@ -149,14 +153,14 @@ const SettingsModal: React.FC = () => {
                 aria-checked={settings.musicEnabled}
                 aria-label="Фоновая музыка"
                 onClick={toggleMusic}
-                className={`relative h-6 w-12 rounded-full border border-white/10 transition-all duration-300 ${
+                className={`relative h-6 w-12 rounded-none border border-white/10 transition-all duration-300 ${
                   settings.musicEnabled
-                    ? "bg-cyan-500 shadow-lg shadow-cyan-500/30"
-                    : "bg-slate-600"
+                    ? "bg-cyan-500 shadow-[0_0_14px_-2px_rgba(34,211,238,0.55)]"
+                    : "bg-slate-700"
                 }`}
               >
                 <div
-                  className={`bg-white w-4 h-4 rounded-full transition-all duration-300 absolute top-1 shadow-md ${
+                  className={`absolute top-1 h-4 w-4 rounded-none bg-white shadow-md transition-all duration-300 ${
                     settings.musicEnabled
                       ? "transform translate-x-7"
                       : "transform translate-x-1"
@@ -175,11 +179,11 @@ const SettingsModal: React.FC = () => {
                 onChange={(e) =>
                   handleMusicVolumeChange(parseFloat(e.target.value))
                 }
-                className="h-2 flex-1 cursor-pointer rounded-lg bg-slate-700 accent-cyan-400 disabled:cursor-not-allowed disabled:opacity-50"
+                className="h-1.5 flex-1 cursor-pointer rounded-none bg-slate-800 accent-cyan-400 disabled:cursor-not-allowed disabled:opacity-50"
                 disabled={!settings.musicEnabled}
               />
               <span
-                className={`w-10 text-right text-xs font-semibold tabular-nums ${
+                className={`w-10 text-right font-mono text-xs font-semibold tabular-nums ${
                   settings.musicEnabled ? "text-cyan-200" : "text-slate-500"
                 }`}
               >
@@ -190,10 +194,14 @@ const SettingsModal: React.FC = () => {
 
           {/* Настройки звуковых эффектов */}
           <div className="ui-panel p-4">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
+            <div className="mb-3 flex items-center justify-between gap-2 border-b border-white/10 pb-2">
+              <div className="flex min-w-0 items-center gap-2">
+                <span
+                  aria-hidden="true"
+                  className="h-1 w-3 shrink-0 bg-cyan-300/60"
+                />
                 <svg
-                  className="w-5 h-5 text-cyan-300"
+                  className="h-4 w-4 shrink-0 text-cyan-300"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -205,7 +213,7 @@ const SettingsModal: React.FC = () => {
                     d="M15.536 8.464a5 5 0 010 7.072M12 6v12m-3.536-9.536a5 5 0 000 7.072"
                   />
                 </svg>
-                <span className="text-sm font-semibold text-slate-100">
+                <span className="truncate text-2xs font-bold uppercase tracking-[0.14em] text-slate-200">
                   Звуковые эффекты
                 </span>
               </div>
@@ -215,14 +223,14 @@ const SettingsModal: React.FC = () => {
                 aria-checked={settings.soundEffectsEnabled}
                 aria-label="Звуковые эффекты"
                 onClick={toggleSoundEffects}
-                className={`relative h-6 w-12 rounded-full border border-white/10 transition-all duration-300 ${
+                className={`relative h-6 w-12 rounded-none border border-white/10 transition-all duration-300 ${
                   settings.soundEffectsEnabled
-                    ? "bg-cyan-500 shadow-lg shadow-cyan-500/30"
-                    : "bg-slate-600"
+                    ? "bg-cyan-500 shadow-[0_0_14px_-2px_rgba(34,211,238,0.55)]"
+                    : "bg-slate-700"
                 }`}
               >
                 <div
-                  className={`bg-white w-4 h-4 rounded-full transition-all duration-300 absolute top-1 shadow-md ${
+                  className={`absolute top-1 h-4 w-4 rounded-none bg-white shadow-md transition-all duration-300 ${
                     settings.soundEffectsEnabled
                       ? "transform translate-x-7"
                       : "transform translate-x-1"
@@ -241,11 +249,11 @@ const SettingsModal: React.FC = () => {
                 onChange={(e) =>
                   handleSFXVolumeChange(parseFloat(e.target.value))
                 }
-                className="h-2 flex-1 cursor-pointer rounded-lg bg-slate-700 accent-cyan-400 disabled:cursor-not-allowed disabled:opacity-50"
+                className="h-1.5 flex-1 cursor-pointer rounded-none bg-slate-800 accent-cyan-400 disabled:cursor-not-allowed disabled:opacity-50"
                 disabled={!settings.soundEffectsEnabled}
               />
               <span
-                className={`w-10 text-right text-xs font-semibold tabular-nums ${
+                className={`w-10 text-right font-mono text-xs font-semibold tabular-nums ${
                   settings.soundEffectsEnabled
                     ? "text-cyan-200"
                     : "text-slate-500"
@@ -258,9 +266,13 @@ const SettingsModal: React.FC = () => {
 
           {/* Профиль игрока: имя видно в лидерборде */}
           <div className="ui-panel p-4">
-            <div className="mb-3 flex items-center gap-2">
+            <div className="mb-3 flex items-center gap-2 border-b border-white/10 pb-2">
+              <span
+                aria-hidden="true"
+                className="h-1 w-3 shrink-0 bg-cyan-300/60"
+              />
               <svg
-                className="w-5 h-5 text-cyan-300"
+                className="h-4 w-4 shrink-0 text-cyan-300"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -272,7 +284,9 @@ const SettingsModal: React.FC = () => {
                   d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
                 />
               </svg>
-              <h3 className="text-sm font-semibold text-slate-100">Профиль</h3>
+              <h3 className="text-2xs font-bold uppercase tracking-[0.14em] text-slate-200">
+                Профиль
+              </h3>
             </div>
 
             <p className="mb-3 text-sm text-slate-300">
@@ -280,7 +294,7 @@ const SettingsModal: React.FC = () => {
             </p>
 
             <label className="flex flex-col gap-1">
-              <span className="text-xs font-semibold text-slate-200">
+              <span className="text-3xs font-semibold uppercase tracking-[0.12em] text-slate-400">
                 Имя игрока
               </span>
               <input
@@ -317,10 +331,10 @@ const SettingsModal: React.FC = () => {
 
             {nameResult && (
               <p
-                className={`mt-2 rounded-lg border px-3 py-2 text-xs ${
+                className={`mt-2 border-l-2 px-3 py-2 font-mono text-xs ${
                   nameResult.ok
-                    ? "border-emerald-400/40 bg-emerald-500/15 text-emerald-100"
-                    : "border-rose-400/40 bg-rose-500/15 text-rose-100"
+                    ? "border-emerald-400/60 bg-emerald-500/10 text-emerald-100"
+                    : "border-rose-400/60 bg-rose-500/10 text-rose-100"
                 }`}
               >
                 {nameResult.message}
@@ -330,9 +344,13 @@ const SettingsModal: React.FC = () => {
 
           {/* Информация о игре */}
           <div className="ui-panel p-4">
-            <div className="flex items-center gap-2 mb-3">
+            <div className="mb-3 flex items-center gap-2 border-b border-white/10 pb-2">
+              <span
+                aria-hidden="true"
+                className="h-1 w-3 shrink-0 bg-cyan-300/60"
+              />
               <svg
-                className="w-5 h-5 text-cyan-300"
+                className="h-4 w-4 shrink-0 text-cyan-300"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -344,11 +362,13 @@ const SettingsModal: React.FC = () => {
                   d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                 />
               </svg>
-              <h3 className="text-sm font-semibold text-slate-100">Об игре</h3>
+              <h3 className="text-2xs font-bold uppercase tracking-[0.14em] text-slate-200">
+                Об игре
+              </h3>
             </div>
             <div className="space-y-2 text-sm text-slate-300">
-              <div className="flex justify-between gap-3">
-                <span>Версия:</span>
+              <div className="flex justify-between gap-3 font-mono text-2xs">
+                <span className="text-slate-500">build.version</span>
                 <span className="font-semibold text-cyan-200">pre-alpha</span>
               </div>
 
@@ -366,9 +386,13 @@ const SettingsModal: React.FC = () => {
 
           {/* Кнопка сброса прогресса */}
           <div className="ui-panel border-rose-400/30 bg-rose-950/20 p-4">
-            <div className="mb-3 flex items-center gap-2">
+            <div className="mb-3 flex items-center gap-2 border-b border-rose-400/20 pb-2">
+              <span
+                aria-hidden="true"
+                className="h-1 w-3 shrink-0 bg-rose-400/70"
+              />
               <svg
-                className="w-5 h-5 text-rose-300"
+                className="h-4 w-4 shrink-0 text-rose-300"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -380,7 +404,7 @@ const SettingsModal: React.FC = () => {
                   d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
                 />
               </svg>
-              <h3 className="text-sm font-semibold text-rose-100">
+              <h3 className="text-2xs font-bold uppercase tracking-[0.14em] text-rose-100">
                 Опасная зона
               </h3>
             </div>
@@ -409,7 +433,10 @@ const SettingsModal: React.FC = () => {
             className="ui-panel-raised mx-auto w-full max-w-sm border-rose-400/30 p-5"
           >
             <div className="mb-4 text-center">
-              <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-rose-500/15">
+              <span className="ui-kicker text-rose-300/80">
+                // критическая операция
+              </span>
+              <div className="mx-auto my-3 flex h-14 w-14 items-center justify-center border border-rose-400/30 bg-rose-500/10">
                 <svg
                   className="w-8 h-8 text-rose-300"
                   fill="none"

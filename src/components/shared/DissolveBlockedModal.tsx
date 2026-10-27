@@ -18,20 +18,30 @@ export const DissolveBlockedModal = ({
   unpowered = false,
   onClose,
 }: DissolveBlockedModalProps) => (
-  <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-    <div className="bg-color-main rounded-2xl border-2 border-amber-500/50 p-5 max-w-sm w-full mx-auto max-h-[90vh] overflow-y-auto">
-      <div className="text-center mb-4">
-        <div className="w-16 h-16 bg-amber-500/20 rounded-full flex items-center justify-center mx-auto mb-3 text-3xl">
-          🚫
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+    <div className="ui-panel relative max-h-[90vh] w-full max-w-sm overflow-y-auto rounded-none border-amber-400/40 bg-slate-950/90 p-4 sm:p-5">
+      <div className="border-b border-amber-400/20 pb-3">
+        <p className="ui-kicker text-amber-300/80">// сектор недоступен</p>
+        <div className="mt-1.5 flex items-start gap-2.5">
+          <span
+            aria-hidden="true"
+            className="flex h-9 w-9 shrink-0 items-center justify-center border border-amber-400/40 bg-amber-500/15 text-xl"
+          >
+            🚫
+          </span>
+          <div className="min-w-0">
+            <h3 className="font-mono text-base font-bold uppercase leading-tight tracking-[0.04em] text-white">
+              Диссоциатор недоступен
+            </h3>
+            <p className="mt-1 text-2xs leading-snug text-slate-400">
+              Чтобы разобрать жабу на биомассу, необходимо построить
+              диссоциатор.
+            </p>
+          </div>
         </div>
-        <h3 className="text-white font-bold text-lg mb-2">
-          Диссоциатор недоступен
-        </h3>
-        <p className="text-slate-200 text-sm leading-snug">
-          Чтобы разобрать жабу на биомассу необходимо построить диссоциатор.
-        </p>
+
         {unpowered && (
-          <p className="text-2xs text-amber-200 mt-2 leading-snug">
+          <p className="mt-3 border-l-2 border-amber-400/60 bg-amber-500/10 px-2.5 py-1.5 text-2xs leading-snug text-amber-200">
             ⚡ Сектор уже стоит, но обесточен: подведите к нему ток — и разбор
             заработает.
           </p>
@@ -39,7 +49,7 @@ export const DissolveBlockedModal = ({
       </div>
 
       <ClickButton
-        className="w-full bg-gradient-to-r from-amber-600 to-red-600 hover:from-amber-500 hover:to-red-500 text-white font-bold py-3 rounded-xl transition-all duration-300"
+        className="click-button ui-button-secondary mt-4 w-full py-3"
         onClick={onClose}
       >
         Ок

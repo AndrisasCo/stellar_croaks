@@ -141,11 +141,11 @@ const AchievementModal: React.FC = () => {
   };
 
   return (
-    <Modal icon={icon} title="Достижения">
+    <Modal icon={icon} title="Достижения" tone="amber">
       {/* Статистика */}
       <div className="grid grid-cols-3 gap-3 mb-6">
         <div className="ui-panel p-3 text-center">
-          <div className="text-emerald-300 text-lg font-bold">
+          <div className="font-mono text-lg font-bold tabular-nums text-emerald-300">
             {
               achievementGroups
                 .flatMap((g) => g.achievements)
@@ -155,13 +155,13 @@ const AchievementModal: React.FC = () => {
           <div className="ui-hint">Выполнено</div>
         </div>
         <div className="ui-panel p-3 text-center">
-          <div className="text-cyan-300 text-lg font-bold">
+          <div className="font-mono text-lg font-bold tabular-nums text-cyan-300">
             {achievementGroups.flatMap((g) => g.achievements).length}
           </div>
           <div className="ui-hint">Всего</div>
         </div>
         <div className="ui-panel p-3 text-center">
-          <div className="text-amber-300 text-lg font-bold">
+          <div className="font-mono text-lg font-bold tabular-nums text-amber-300">
             {achivements.rewards.length}
           </div>
           <div className="ui-hint">Наград</div>
@@ -170,15 +170,15 @@ const AchievementModal: React.FC = () => {
 
       {/* Счетчики прогресса */}
       {Object.keys(achivements.counter || {}).length > 0 && (
-        <div className="mb-6 p-3 bg-color-main rounded-xl border border-slate-600/30">
-          <h4 className="text-white font-semibold mb-3 text-sm">
-            Прогресс по категориям:
+        <div className="ui-panel mb-6 rounded-none border-slate-600/30 bg-color-main p-3">
+          <h4 className="mb-3 font-mono text-2xs font-semibold uppercase tracking-[0.12em] text-cyan-300/80">
+            Прогресс по категориям
           </h4>
           <div className="grid grid-cols-2 gap-2">
             {Object.entries(achivements.counter || {}).map(([key, value]) => (
               <div
                 key={key}
-                className="flex items-center justify-between p-2 bg-color-second/30 rounded"
+                className="flex items-center justify-between border border-white/5 bg-color-second/30 p-2"
               >
                 <span className="text-slate-200 text-xs capitalize">
                   {key === "earn" ? (
@@ -197,7 +197,7 @@ const AchievementModal: React.FC = () => {
                     key
                   )}
                 </span>
-                <span className="text-yellow-400 font-bold text-sm">
+                <span className="font-mono text-sm font-bold tabular-nums text-yellow-400">
                   {value}
                 </span>
               </div>
@@ -219,7 +219,7 @@ const AchievementModal: React.FC = () => {
             <div
               key={group.id}
               className={`
-                  rounded-xl p-4 border transition-all
+                  ui-panel rounded-none border p-4 transition-all
                   bg-gradient-to-r ${getColorClasses(group.color)}
                   ${isGroupCompleted ? "neon-glow" : ""}
                 `}
@@ -229,7 +229,7 @@ const AchievementModal: React.FC = () => {
                 <div className="flex items-center gap-3">
                   <div>
                     <h3
-                      className={`font-semibold text-lg ${getTextColor(
+                      className={`font-mono text-sm font-semibold uppercase tracking-[0.1em] ${getTextColor(
                         group.color,
                       )}`}
                     >
@@ -240,18 +240,22 @@ const AchievementModal: React.FC = () => {
                 </div>
                 <div className="text-right">
                   <div
-                    className={`text-sm font-bold ${getTextColor(group.color)}`}
+                    className={`font-mono text-sm font-bold tabular-nums ${getTextColor(
+                      group.color,
+                    )}`}
                   >
                     {progress.completed}/{progress.total}
                   </div>
-                  <div className="text-slate-300 text-xs">выполнено</div>
+                  <div className="font-mono text-3xs uppercase tracking-[0.1em] text-slate-400">
+                    выполнено
+                  </div>
                 </div>
               </div>
 
               {/* Прогресс бар группы */}
-              <div className="w-full bg-slate-900/70 rounded-full h-2 mb-4">
+              <div className="mb-4 h-1.5 w-full overflow-hidden bg-slate-900/70">
                 <div
-                  className={`h-2 rounded-full transition-all duration-500 ${getProgressColor(
+                  className={`h-full transition-all duration-500 ${getProgressColor(
                     group.color,
                   )}`}
                   style={{ width: `${progress.percentage}%` }}
@@ -272,11 +276,11 @@ const AchievementModal: React.FC = () => {
                     <div
                       key={achievement.id}
                       className={`
-                          flex flex-col gap-2 p-3 rounded-lg border transition-all
+                          ui-panel flex flex-col gap-2 rounded-none border p-3 transition-all
                           ${
                             isCompleted
-                              ? "bg-emerald-950/20 border-emerald-400/25"
-                              : "bg-slate-950/40 border-white/10"
+                              ? "border-emerald-400/25 bg-emerald-950/20"
+                              : "border-white/10 bg-slate-950/40"
                           }
                         `}
                     >
@@ -296,11 +300,11 @@ const AchievementModal: React.FC = () => {
                         </div>
                         <div
                           className={`
-                            w-6 h-6 rounded-full border-2 flex items-center justify-center
+                            flex h-6 w-6 items-center justify-center rounded-none border
                             ${
                               isCompleted
-                                ? "bg-green-500 border-green-500"
-                                : "bg-color-second border-slate-500"
+                                ? "border-green-400 bg-green-500"
+                                : "border-slate-500 bg-color-second"
                             }
                           `}
                         >
@@ -336,7 +340,7 @@ const AchievementModal: React.FC = () => {
                               {isCompleted ? "Выполнено!" : "Прогресс:"}
                             </span>
                             <span
-                              className={`font-bold ${
+                              className={`font-mono font-bold tabular-nums ${
                                 isCompleted
                                   ? "text-green-300"
                                   : "text-yellow-300"
@@ -346,9 +350,9 @@ const AchievementModal: React.FC = () => {
                               {formatNumber(progress.target)}
                             </span>
                           </div>
-                          <div className="w-full bg-color-main rounded-full h-1.5">
+                          <div className="h-1.5 w-full overflow-hidden bg-slate-900/70">
                             <div
-                              className={`h-1.5 rounded-full transition-all duration-300 ${
+                              className={`h-full transition-all duration-300 ${
                                 isCompleted
                                   ? "bg-green-500"
                                   : getProgressColor(group.color)
@@ -373,13 +377,13 @@ const AchievementModal: React.FC = () => {
               {/* Награда за группу */}
               <div
                 className={`
-                  flex items-center justify-between p-3 rounded-lg border
+                  flex items-center justify-between rounded-none border p-3
                   ${
                     isGroupCompleted
                       ? isRewardClaimed
-                        ? "bg-gradient-to-r from-yellow-500/10 to-amber-500/10 border-yellow-400/50"
-                        : "bg-gradient-to-r from-green-500/10 to-emerald-500/10 border-green-400/50"
-                      : "bg-color-main border-slate-600/30"
+                        ? "border-yellow-400/50 bg-gradient-to-r from-yellow-500/10 to-amber-500/10"
+                        : "border-green-400/50 bg-gradient-to-r from-green-500/10 to-emerald-500/10"
+                      : "border-slate-600/30 bg-color-main"
                   }
                 `}
               >
@@ -388,7 +392,7 @@ const AchievementModal: React.FC = () => {
                     {isGroupCompleted ? (
                       group.groupReward?.icon
                     ) : (
-                      <div className="w-8 h-8 rounded-full bg-slate-600 flex items-center justify-center border border-slate-500">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-none border border-slate-500 bg-slate-600">
                         <span className="text-slate-200 text-lg">?</span>
                       </div>
                     )}
@@ -435,10 +439,10 @@ const AchievementModal: React.FC = () => {
       </div>
 
       {/* Подсказка о прогрессивных ачивках */}
-      <div className="mt-6 p-4 bg-color-main rounded-xl border border-slate-600/30">
-        <div className="flex items-center gap-2 mb-2">
+      <div className="ui-panel mt-6 rounded-none border-slate-600/30 bg-color-main p-4">
+        <div className="mb-2 flex items-center gap-2">
           <div className="text-cyan-300">📈</div>
-          <h4 className="text-white font-semibold">О прогрессе достижений</h4>
+          <h4 className="ui-kicker">О прогрессе достижений</h4>
         </div>
         <p className="text-slate-300 text-sm mb-2">
           Некоторые достижения требуют выполнения нескольких действий. Прогресс
@@ -446,15 +450,15 @@ const AchievementModal: React.FC = () => {
         </p>
         <div className="text-xs text-slate-500 space-y-1">
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-green-500"></div>
+            <div className="h-2 w-2 bg-green-500"></div>
             <span>Завершённое достижение</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-cyan-400"></div>
+            <div className="h-2 w-2 bg-cyan-400"></div>
             <span>Достижение с прогрессом</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-slate-500"></div>
+            <div className="h-2 w-2 bg-slate-500"></div>
             <span>Ещё не начато</span>
           </div>
         </div>

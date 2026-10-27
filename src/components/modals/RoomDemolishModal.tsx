@@ -109,9 +109,9 @@ export default function RoomDemolishModal({ room }: { room: RoomConfig }) {
   };
 
   return (
-    <Modal icon={<span className="text-2xl">🗑</span>} title="Снос сектора">
+    <Modal title="Снос сектора" tone="rose">
       <div className="px-2 pb-2">
-        <div className="mb-3 rounded-xl border border-rose-500/40 bg-rose-900/20 p-2">
+        <div className="mb-3 rounded-none border border-rose-500/40 bg-rose-900/20 p-2">
           <div className="mb-1 flex items-center justify-between text-xs">
             <span className="font-bold text-rose-200">Шаг необратимый</span>
             <span className="text-amber-200">
@@ -125,7 +125,7 @@ export default function RoomDemolishModal({ room }: { room: RoomConfig }) {
           </p>
         </div>
 
-        <div className="mb-2 rounded-xl border border-slate-600/40 bg-color-second p-2">
+        <div className="mb-2 rounded-none border border-slate-600/40 bg-color-second p-2">
           <div className="flex items-center gap-2">
             <span className="text-2xl">{room.icon}</span>
             <div className="min-w-0 flex-1">
@@ -144,7 +144,7 @@ export default function RoomDemolishModal({ room }: { room: RoomConfig }) {
           </div>
         </div>
 
-        <div className="mb-2 space-y-1 rounded-xl border border-slate-600/40 bg-color-second p-2 text-2xs leading-snug text-slate-300">
+        <div className="mb-2 space-y-1 rounded-none border border-slate-600/40 bg-color-second p-2 text-2xs leading-snug text-slate-300">
           <div>
             🗺 Гекс останется на карте свободным слотом: территорию снос не отбирает, гексы
             вокруг него тоже остаются открытыми.
@@ -176,7 +176,7 @@ export default function RoomDemolishModal({ room }: { room: RoomConfig }) {
         </div>
 
         {issue && (
-          <p className="mb-2 rounded-xl border border-rose-500/40 bg-rose-900/20 p-2 text-2xs leading-snug text-rose-100">
+          <p className="mb-2 rounded-none border border-rose-500/40 bg-rose-900/20 p-2 text-2xs leading-snug text-rose-100">
             {issue}
           </p>
         )}
@@ -191,14 +191,14 @@ export default function RoomDemolishModal({ room }: { room: RoomConfig }) {
           <div className="flex items-center gap-2">
             <ClickButton
               onClick={closeModal}
-              className="rounded-lg bg-slate-700/60 px-3 py-1 text-xs font-bold text-slate-200 transition-all hover:bg-slate-600/60 active:scale-95"
+              className="rounded-none bg-slate-700/60 px-3 py-1 text-xs font-bold text-slate-200 transition-all hover:bg-slate-600/60 active:scale-95"
             >
               Оставить
             </ClickButton>
             <ClickButton
               onClick={handleDemolish}
               disabled={blocked}
-              className={`rounded-lg px-3 py-1 text-xs font-bold transition-all ${
+              className={`rounded-none px-3 py-1 text-xs font-bold transition-all ${
                 blocked
                   ? "cursor-not-allowed bg-slate-700/60 text-slate-400"
                   : "bg-rose-600 text-white hover:bg-rose-500 active:scale-95"

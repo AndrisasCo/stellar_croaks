@@ -139,7 +139,7 @@ const ToadPickerCard: React.FC<{
           ? `${toad.name}: ${item.reason}`
           : `Взять ${toad.name} в «${label}» · сейчас: ${location.label}`
       }
-      className={`flex h-full min-w-0 flex-col gap-1 rounded-xl border px-1.5 py-1.5 text-left transition-colors duration-300 ${
+      className={`flex h-full min-w-0 flex-col gap-1 rounded-none border px-1.5 py-1.5 text-left transition-colors duration-300 ${
         blocked ? "cursor-not-allowed opacity-60" : tone
       }`}
     >
@@ -164,7 +164,7 @@ const ToadPickerCard: React.FC<{
 
       {/* Силы и место: место общей плашкой (`ToadLocationBadge`), как в списках жаб */}
       <div className="flex min-w-0 items-center justify-between gap-1">
-        <span className="shrink-0 text-2xs font-semibold text-lime-300">
+        <span className="shrink-0 font-mono text-2xs font-semibold tabular-nums text-lime-300">
           ⚡ {Math.round(getToadEnergy(toad))}
         </span>
         <ToadLocationBadge
@@ -192,13 +192,13 @@ const ToadPickerCard: React.FC<{
                 {item.meter.detail}
               </span>
             )}
-            <span className="shrink-0 text-2xs font-bold text-amber-200">
+            <span className="shrink-0 font-mono text-2xs font-bold tabular-nums text-amber-200">
               {item.meter.label}
             </span>
           </div>
-          <div className="h-1 w-full overflow-hidden rounded-full bg-slate-700">
+          <div className="h-1 w-full overflow-hidden bg-slate-700">
             <div
-              className={`h-full rounded-full ${getMeterColor(percent)}`}
+              className={`h-full ${getMeterColor(percent)}`}
               style={{ width: `${percent}%` }}
             />
           </div>
@@ -470,7 +470,7 @@ export const ToadPicker: React.FC<ToadPickerProps> = ({
         title={
           picked ? `Заменить жабу в «${label}»` : `Взять жабу в «${label}»`
         }
-        className={`flex w-full items-center gap-2 rounded-lg border px-2 py-1.5 transition-colors duration-300 ${
+        className={`flex w-full items-center gap-2 rounded-none border px-2 py-1.5 transition-colors duration-300 ${
           disabled
             ? "cursor-not-allowed border-slate-600/30 opacity-60"
             : open
@@ -514,7 +514,7 @@ export const ToadPicker: React.FC<ToadPickerProps> = ({
 
       {open && (
         <div
-          className={`no-overscroll absolute left-0 right-0 z-30 max-h-60 overflow-y-auto rounded-xl border border-slate-600/50 bg-slate-900/95 shadow-xl backdrop-blur-md ${
+          className={`no-overscroll absolute left-0 right-0 z-30 max-h-60 overflow-y-auto rounded-none border border-slate-600/50 bg-slate-900/95 shadow-xl backdrop-blur-md ${
             dropUp ? "bottom-full mb-1" : "top-full mt-1"
           }`}
         >

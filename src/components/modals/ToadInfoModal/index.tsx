@@ -65,6 +65,7 @@ import { DissolveConfirm } from "../../shared/DissolveConfirm";
 import { DissolveBlockedModal } from "../../shared/DissolveBlockedModal";
 import { useDissociator } from "../../../hooks/use-dissociator";
 import { ClickButton } from "../../shared/ClickButton";
+import { HudPanel } from "../../shared/DataGrid";
 import { useColony } from "../../../hooks/use-colony";
 import {
   getToadDestinationGroups,
@@ -433,7 +434,7 @@ export const ToadInfo = () => {
 
   return (
     <>
-      <Modal>
+      <Modal tone="emerald">
         {/* Возврат ровно туда, откуда открыли карточку: ядро, список биопода или карта.
             Это именно закрытие верхней модалки, а не новый экран поверх стека, поэтому
             фильтры, сортировка и скролл предыдущего списка остаются как были.
@@ -441,10 +442,10 @@ export const ToadInfo = () => {
             Кнопка закреплена сверху: карточка длинная, и «Назад» должна оставаться
             под рукой при прокрутке. Sticky, а не fixed, — чтобы на десктопе кнопка
             не выезжала за пределы карточки и не висела над картой. */}
-        <div className="sticky -top-4 z-30 -mx-1 -mt-4 mb-4 flex w-auto items-center border-b border-white/5 bg-slate-950/95 px-10 py-2 backdrop-blur-md md:-top-5 md:-mx-6 md:-mt-5 md:mb-5">
+        <div className="sticky -top-4 z-30 -mx-3 -mt-4 mb-4 flex w-auto items-center border-b border-white/5 bg-slate-950/95 px-10 py-2 backdrop-blur-md md:-top-5 md:-mx-6 md:-mt-5 md:mb-5">
           <ClickButton
             onClick={closeModal}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-amber-300/50 bg-amber-500/20 px-4 py-2 text-base font-bold text-amber-100 shadow-lg shadow-amber-950/30 transition-colors duration-300 hover:bg-amber-500/30 hover:text-amber-50"
+            className="inline-flex items-center gap-1.5 rounded-none border border-amber-300/50 bg-amber-500/20 px-4 py-2 font-mono text-xs font-bold uppercase tracking-[0.08em] text-amber-100 shadow-lg shadow-amber-950/30 transition-colors duration-300 hover:bg-amber-500/30 hover:text-amber-50"
             title="Вернуться к предыдущему экрану"
           >
             ‹ Назад
@@ -463,7 +464,7 @@ export const ToadInfo = () => {
               <input
                 value={editedName}
                 onChange={(e) => setEditedName(e.target.value)}
-                className="bg-color-second border border-slate-600 rounded-lg px-2 py-1 text-white w-full"
+                className="w-full rounded-none border border-slate-600 bg-color-second px-2 py-1 font-mono text-white"
                 autoFocus
                 onKeyDown={(e) => e.key === "Enter" && handleRename()}
               />
@@ -510,7 +511,7 @@ export const ToadInfo = () => {
           {tooltips["avatar"] && (
             <div
               onClick={() => toggleTooltip("avatar")}
-              className={`absolute top-full z-10 bg-color-main border border-cyan-500/40 rounded-xl p-2  shadow-lg`}
+              className="absolute top-full z-10 border border-emerald-500/40 bg-slate-950/95 p-2 shadow-lg"
             >
               <ToadAvatar toad={toad} size={75} />
             </div>
@@ -525,7 +526,7 @@ export const ToadInfo = () => {
           {/* Sex Icon */}
           {toad.sex !== "neuter" && (
             <div
-              className={`flex items-center justify-center w-8 rounded-xl border-2 ${
+              className={`flex w-8 items-center justify-center rounded-none border ${
                 toad.sex === "male"
                   ? "bg-blue-900/50 border-blue-500"
                   : "bg-pink-900/50 border-pink-500"
@@ -537,7 +538,7 @@ export const ToadInfo = () => {
         </div>
 
         {onExpedition && (
-          <div className="mx-2 mb-3 rounded-xl border border-amber-400/40 bg-amber-500/10 px-3 py-2">
+          <div className="mx-2 mb-3 border border-amber-400/40 bg-amber-500/10 px-3 py-2">
             <p className="text-xs font-semibold text-amber-100">
               🧭 Жаба в походе
             </p>
@@ -551,7 +552,7 @@ export const ToadInfo = () => {
           {/* --- MAIN CONTENT COLUMN --- */}
           <div className="flex w-full flex-col px-2">
             {/* STATS GRID */}
-            <div className="grid grid-cols-2 gap-2 mb-3 ">
+            <div className="mb-3 grid grid-cols-2 gap-px border border-emerald-400/25 bg-emerald-400/25 [&>div]:border-0">
               <StatCard
                 icon={InfoIcons.rarity}
                 label="Качество"
@@ -888,7 +889,7 @@ export const ToadInfo = () => {
                   }}
                 />
                 {growth.hungry && (
-                  <p className="-mt-2 mb-3 rounded-lg border border-amber-400/30 bg-amber-400/10 px-2 py-1.5 text-2xs leading-snug text-amber-200">
+                  <p className="-mt-2 mb-3 border border-amber-400/30 bg-amber-400/10 px-2 py-1.5 text-2xs leading-snug text-amber-200">
                     🍽️ Голодный головастик не растёт. Покормите его, чтобы
                     запустить рост.
                   </p>
@@ -915,7 +916,7 @@ export const ToadInfo = () => {
             )}
 
             {/* ACTIONS */}
-            <div className="bg-color-main rounded-xl p-2 border border-slate-600/50 mt-1 grid grid-cols-2 gap-2">
+            <HudPanel className="mt-1 grid grid-cols-2 gap-2 p-2">
               <button
                 onClick={() => {
                   if (onExpedition) {
@@ -929,7 +930,7 @@ export const ToadInfo = () => {
                 }}
                 disabled={onExpedition}
                 title={onExpedition ? EXPEDITION_TOAD_BUSY_REASON : undefined}
-                className="bg-green-600/30 hover:bg-green-600/40 rounded-lg py-2 text-xs flex justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-green-600/30"
+                className="flex justify-center gap-2 rounded-none border border-green-400/20 bg-green-600/30 py-2 font-mono text-xs uppercase tracking-[0.06em] transition-colors hover:bg-green-600/40 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-green-600/30"
               >
                 <span>🍎</span> Накормить
               </button>
@@ -938,7 +939,7 @@ export const ToadInfo = () => {
                   onClick={() => toggleTooltip("scenes")}
                   disabled={onExpedition}
                   title={onExpedition ? EXPEDITION_TOAD_BUSY_REASON : undefined}
-                  className="rounded-lg border border-cyan-400/30 bg-cyan-500/15 py-2 text-xs text-cyan-100 transition-colors hover:bg-cyan-500/25 w-full flex justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-cyan-500/15"
+                  className="flex w-full justify-center gap-2 rounded-none border border-emerald-400/30 bg-emerald-500/15 py-2 font-mono text-xs uppercase tracking-[0.06em] text-emerald-100 transition-colors hover:bg-emerald-500/25 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-emerald-500/15"
                 >
                   <span>🏠</span> Переместить
                 </button>
@@ -970,7 +971,7 @@ export const ToadInfo = () => {
                                       ? `Переместить в «${destination.name}»`
                                       : destination.check.reason
                                   }
-                                  className={`w-full rounded-lg px-2 py-1.5 text-left text-xs transition-colors ${
+                                  className={`w-full rounded-none border border-transparent px-2 py-1.5 text-left text-xs transition-colors ${
                                     destination.check.ok
                                       ? "hover:bg-slate-600"
                                       : "cursor-not-allowed opacity-50"
@@ -1024,7 +1025,7 @@ export const ToadInfo = () => {
                           ? `Вернуть жабу в «${toadScene.name}»`
                           : "Вернуть жабу в её биопод"
                   }
-                  className="col-span-2 bg-cyan-600/30 hover:bg-cyan-600/40 rounded-lg py-2 text-xs flex justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-cyan-600/30"
+                  className="col-span-2 flex justify-center gap-2 rounded-none border border-emerald-400/20 bg-emerald-600/30 py-2 font-mono text-xs uppercase tracking-[0.06em] transition-colors hover:bg-emerald-600/40 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-emerald-600/30"
                 >
                   <span>🏠</span> Домой
                 </button>
@@ -1042,14 +1043,14 @@ export const ToadInfo = () => {
                   dissolveBlockedReason ??
                   "Переработать жабу в биомассу навсегда"
                 }
-                className="col-span-2 bg-amber-600/30 hover:bg-amber-600/40 rounded-lg py-2 text-xs flex justify-center items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="col-span-2 flex items-center justify-center gap-2 rounded-none border border-amber-400/30 bg-amber-600/30 py-2 font-mono text-xs uppercase tracking-[0.06em] transition-colors hover:bg-amber-600/40 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <span>♻️</span> Разобрать на биомассу
                 <span className="text-amber-300 font-semibold">
                   +{getDissolveYield(toad)} 🧪
                 </span>
               </button>
-            </div>
+            </HudPanel>
 
             <Colors toad={toad} />
           </div>

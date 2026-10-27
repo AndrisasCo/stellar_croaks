@@ -39,13 +39,15 @@ import {
   ROOM_UNPOWERED_TITLE,
 } from "../../HexMap/colony-build";
 import RoomDataTab, { ROOM_DATA_TAB, RoomDataTabId } from "../RoomDataTab";
+import { DataCell, DataGrid, HudPanel } from "../../shared/DataGrid";
 
 /**
  * Список жаб одного биопода.
  *
  * Биопод приходит от гекса карты, по которому тапнули (`RoomConfig.sceneId`): общего
  * «текущего биопода» больше нет, поэтому и закреплён за модалкой гекс. Стрелки листают
- * биоподы прямо здесь (`ownedScenes`), не трогая состояние игры.
+ * биоподы прямо здесь (`ownedScenes`) по кругу, не трогая состояние игры: после
+ * последнего биопода снова идёт первый, поэтому листать можно бесконечно в обе стороны.
  *
  * У биопода два состояния (таба): список жаб — по умолчанию, и статистика биопода
  * (`SceneInfoModal` больше нет: его содержимое переехало во вкладку `SceneStatsTab`).
@@ -142,6 +144,17 @@ const ToadListModal: React.FC<{
 
     setTab(roomDataRoom ? "room-data" : "toads");
   }, [currentPowerIssue, roomDataRoom, setTab, tab]);
+
+  /**
+   * Вкладка «Данные сектора» живёт только у гекса с настройками. У старого сейва
+   * биопод может быть без `RoomConfig`, и после листания по кругу такая вкладка
+   * осталась бы вкладкой-призраком с пустым телом. Уводим на список жаб.
+   */
+  useEffect(() => {
+    if (tab === "room-data" && !roomDataRoom) {
+      setTab("toads");
+    }
+  }, [roomDataRoom, setTab, tab]);
 
   /**
    * Жабы открытого биопода — только те, кто в нём **сейчас** (`scene_id`). Жаба в секторе
@@ -384,16 +397,27 @@ const ToadListModal: React.FC<{
     starving: toads.filter((t) => t.state.hunger < 50).length,
   };
 
-  const isFirstScene = sceneIndex === 0;
-  const isLastScene = sceneIndex === ownedScenes.length - 1;
-
+  /**
+   * Биоподы листаются по кругу: после последнего идёт первый, перед первым — последний.
+   * Так стрелка никогда не «залипает» на краю, а модалку не нужно закрывать, чтобы
+   * вернуться к началу списка. Блокируем кнопки только когда биопод действительно один:
+   * листать нечего, и бесконечный цикл из одного элемента выглядел бы как поломка.
+   */
   const onNextScene = () =>
-    setSceneIndex((index) => Math.min(ownedScenes.length - 1, index + 1));
+    setSceneIndex((index) =>
+      ownedScenes.length > 0 ? (index + 1) % ownedScenes.length : 0,
+    );
 
-  const onPrevScene = () => setSceneIndex((index) => Math.max(0, index - 1));
+  const onPrevScene = () =>
+    setSceneIndex((index) =>
+      ownedScenes.length > 0
+        ? (index - 1 + ownedScenes.length) % ownedScenes.length
+        : 0,
+    );
 
   return (
     <Modal
+      tone="emerald"
       title={
         /**
          * Шапка списка — сам биопод: имя, сколько жаб внутри из вместимости и есть ли
@@ -434,13 +458,13 @@ const ToadListModal: React.FC<{
         <div className="flex items-center justify-center gap-2 ml-auto">
           <ArrowLeftButtonCompact
             className="w-6 h-6"
-            disabled={isFirstScene}
+            disabled={ownedScenes.length <= 1}
             onClick={onPrevScene}
           />
           <ArrowRightButtonCompact
             className="w-6 h-6"
+            disabled={ownedScenes.length <= 1}
             onClick={onNextScene}
-            disabled={isLastScene}
           />
         </div>
       </div>
@@ -451,7 +475,7 @@ const ToadListModal: React.FC<{
         <>
           {/* Ошибка сектора: жильцы доступны, но биомасса у обесточенного биопода не растёт */}
           {currentPowerIssue && (
-            <div className="mx-1 mb-3 rounded-xl border border-rose-500/60 bg-rose-950/40 p-2">
+            <HudPanel tone="rose" className="mx-1 mb-3 p-2">
               <p className="text-xs font-bold text-rose-200">
                 ⚠️ {ROOM_UNPOWERED_TITLE}
               </p>
@@ -459,13 +483,13 @@ const ToadListModal: React.FC<{
                 Биопод обесточен: жабы остаются доступны, но биомассу он не
                 вырабатывает. Подключите сектор к ядру или энергосектору ⚡.
               </p>
-            </div>
+            </HudPanel>
           )}
 
           {/* Свои жабы в походе: в списке жильцов их нет (место освобождено), но дом
               остался этим биоподом — игрок должен видеть, кто вернётся после похода. */}
           {awayToads.length > 0 && (
-            <div className="mx-1 mb-3 rounded-xl border border-amber-500/40 bg-amber-950/25 p-2">
+            <HudPanel tone="amber" className="mx-1 mb-3 p-2">
               <p className="text-xs font-bold text-amber-200">
                 🧭 В походе: {awayToads.length}
               </p>
@@ -478,7 +502,7 @@ const ToadListModal: React.FC<{
                     key={toad.id}
                     type="button"
                     onClick={() => handleToadClick(toad)}
-                    className="flex items-center gap-1.5 rounded-lg border border-amber-400/30 bg-amber-500/10 px-1.5 py-1 text-left transition-colors hover:bg-amber-500/20"
+                    className="flex items-center gap-1.5 rounded-none border border-amber-400/30 bg-slate-950/50 px-1.5 py-1 text-left transition-colors hover:border-amber-300/60"
                     title={`${toad.name ?? "Жаба"} — в походе`}
                   >
                     <ToadAvatar toad={toad} size={6} />
@@ -489,7 +513,7 @@ const ToadListModal: React.FC<{
                   </button>
                 ))}
               </div>
-            </div>
+            </HudPanel>
           )}
 
           <Filters
@@ -508,10 +532,10 @@ const ToadListModal: React.FC<{
           <div className="px-1 pb-3 flex gap-2 ">
             <ClickButton
               onClick={() => setViewMode("detailed")}
-              className={`px-3 py-1 rounded-md h-min text-xs font-medium transition-all ${
+              className={`h-min rounded-none border px-3 py-1 font-mono text-2xs font-semibold uppercase tracking-[0.08em] transition-all ${
                 viewMode === "detailed"
-                  ? "bg-cyan-500/20 text-cyan-200"
-                  : "bg-color-second text-slate-200 hover:text-white"
+                  ? "border-emerald-400/50 bg-emerald-500/15 text-emerald-200"
+                  : "border-white/10 bg-slate-900/60 text-slate-300 hover:border-white/25 hover:text-white"
               }`}
               title="Подробный вид"
             >
@@ -519,10 +543,10 @@ const ToadListModal: React.FC<{
             </ClickButton>
             <ClickButton
               onClick={() => setViewMode("compact")}
-              className={`px-3 py-1 rounded-md h-min text-xs font-medium transition-all ${
+              className={`h-min rounded-none border px-3 py-1 font-mono text-2xs font-semibold uppercase tracking-[0.08em] transition-all ${
                 viewMode === "compact"
-                  ? "bg-cyan-500/20 text-cyan-200"
-                  : "bg-color-second text-slate-200 hover:text-white"
+                  ? "border-emerald-400/50 bg-emerald-500/15 text-emerald-200"
+                  : "border-white/10 bg-slate-900/60 text-slate-300 hover:border-white/25 hover:text-white"
               }`}
               title="Компактный вид"
             >
@@ -531,18 +555,21 @@ const ToadListModal: React.FC<{
           </div>
           {/* Панель управления выделением (только для компактного режима) */}
           {viewMode === "compact" && (
-            <div className="bg-color-main rounded-lg p-3 mb-4 border border-slate-600/50">
-              <div className="flex items-center justify-between relative">
+            <HudPanel className="mb-4 p-3">
+              <div className="relative flex items-center justify-between">
                 <div className="text-sm text-white">
-                  Выбрано:{" "}
-                  <span className="font-bold">{selectedToads.size}</span> жаб
+                  <span className="ui-kicker">Выбрано</span>{" "}
+                  <span className="font-mono font-bold tabular-nums">
+                    {selectedToads.size}
+                  </span>{" "}
+                  жаб
                 </div>
 
                 <div className="flex gap-2">
                   {/* Выделить все */}
                   <button
                     onClick={selectAll}
-                    className="rounded-lg border border-cyan-400/30 bg-cyan-500/15 px-2 py-1 text-xs font-medium text-cyan-200 transition-colors hover:bg-cyan-500/25"
+                    className="rounded-none border border-emerald-400/30 bg-emerald-500/15 px-2 py-1 font-mono text-xs font-medium text-emerald-200 transition-colors hover:bg-emerald-500/25"
                     title="Выделить все"
                   >
                     ▼
@@ -551,7 +578,7 @@ const ToadListModal: React.FC<{
                   {/* Отменить выделение */}
                   <button
                     onClick={clearSelection}
-                    className="px-2 py-1 bg-slate-500/20 text-slate-200 rounded-lg text-xs font-medium transition-all border border-slate-500/30 hover:bg-slate-500/30"
+                    className="rounded-none border border-slate-500/30 bg-slate-500/20 px-2 py-1 font-mono text-xs font-medium text-slate-200 transition-all hover:bg-slate-500/30"
                     title="Отменить выделение"
                   >
                     ✕
@@ -560,7 +587,7 @@ const ToadListModal: React.FC<{
                   {/* Покормить выделенных */}
                   <button
                     onClick={feedSelected}
-                    className="px-3 py-1 bg-green-500/20 text-green-300 rounded-lg text-xs font-medium transition-all border border-green-500/30 hover:bg-green-500/30"
+                    className="rounded-none border border-green-500/30 bg-green-500/20 px-3 py-1 font-mono text-xs font-medium text-green-300 transition-all hover:bg-green-500/30"
                     title="Покормить выделенных"
                   >
                     🍎
@@ -570,7 +597,7 @@ const ToadListModal: React.FC<{
                   <div className="">
                     <button
                       onClick={() => setShowMoveTooltip(!showMoveTooltip)}
-                      className="rounded-lg border border-cyan-400/30 bg-cyan-500/15 px-3 py-1 text-xs font-medium text-cyan-200 transition-colors hover:bg-cyan-500/25"
+                      className="rounded-none border border-emerald-400/30 bg-emerald-500/15 px-3 py-1 font-mono text-xs font-medium text-emerald-200 transition-colors hover:bg-emerald-500/25"
                       title="Переместить выделенных"
                     >
                       🏠
@@ -601,7 +628,7 @@ const ToadListModal: React.FC<{
                   </div>
                 </div>
               </div>
-            </div>
+            </HudPanel>
           )}
 
           {/* Контент с прокруткой */}
@@ -650,7 +677,7 @@ const ToadListModal: React.FC<{
                             handleFeedToads([toad.id]);
                             completeAchivement("feed-one");
                           }}
-                          className="rounded-md border border-green-500/30 bg-green-500/20 px-2 py-1 text-2xs font-medium leading-none text-green-300 transition-all hover:bg-green-500/30"
+                          className="rounded-none border border-green-500/30 bg-green-500/20 px-2 py-1 font-mono text-2xs font-medium leading-none text-green-300 transition-all hover:bg-green-500/30"
                           title="Покормить"
                         >
                           🍎
@@ -664,7 +691,7 @@ const ToadListModal: React.FC<{
                             admit(toad);
                           }}
                           disabled={!admission.room}
-                          className="rounded-md border border-rose-500/30 bg-rose-500/20 px-2 py-0.5 text-sm font-bold leading-none text-rose-300 transition-all hover:bg-rose-500/30 disabled:cursor-not-allowed disabled:border-slate-600/30 disabled:bg-slate-700/20 disabled:text-slate-500"
+                          className="rounded-none border border-rose-500/30 bg-rose-500/20 px-2 py-0.5 font-mono text-sm font-bold leading-none text-rose-300 transition-all hover:bg-rose-500/30 disabled:cursor-not-allowed disabled:border-slate-600/30 disabled:bg-slate-700/20 disabled:text-slate-500"
                           title={admission.issue ?? "Отправить в Медотсек"}
                         >
                           ✚
@@ -700,64 +727,64 @@ const ToadListModal: React.FC<{
           </div>
 
           {/* Подвал с статистикой */}
-          <div className="border-t border-slate-700/50 py-3 px-2 bg-slate-900/50 mt-3">
-            <div className="grid grid-cols-5 gap-1 text-center text-xs mb-2">
-              <div>
-                <div className="text-green-400 font-bold">
-                  {groupedToads.common.length}
-                </div>
-                <div className="text-slate-300 text-2xs">Обычные</div>
-              </div>
-              <div>
-                <div className="text-blue-400 font-bold">
-                  {groupedToads.uncommon.length}
-                </div>
-                <div className="text-slate-300 text-2xs">Необычные</div>
-              </div>
-              <div>
-                <div className="text-purple-400 font-bold">
-                  {groupedToads.rare.length}
-                </div>
-                <div className="text-slate-300 text-2xs">Редкие</div>
-              </div>
-              <div>
-                <div className="text-orange-400 font-bold">
-                  {groupedToads.epic.length}
-                </div>
-                <div className="text-slate-300 text-2xs">Эпические</div>
-              </div>
-              <div>
-                <div className="text-yellow-400 font-bold">
-                  {groupedToads.legendary.length}
-                </div>
-                <div className="text-slate-300 text-2xs">Легендарные</div>
-              </div>
-            </div>
+          <div className="border-t border-slate-700/50 py-3 px-2 bg-slate-950/50 mt-3">
+            <DataGrid columns={5} className="mb-2">
+              <DataCell
+                dense
+                label="Обычные"
+                value={groupedToads.common.length}
+                color="text-green-400"
+              />
+              <DataCell
+                dense
+                label="Необычные"
+                value={groupedToads.uncommon.length}
+                color="text-blue-400"
+              />
+              <DataCell
+                dense
+                label="Редкие"
+                value={groupedToads.rare.length}
+                color="text-purple-400"
+              />
+              <DataCell
+                dense
+                label="Эпические"
+                value={groupedToads.epic.length}
+                color="text-orange-400"
+              />
+              <DataCell
+                dense
+                label="Легендарные"
+                value={groupedToads.legendary.length}
+                color="text-yellow-400"
+              />
+            </DataGrid>
 
             {/* Статистика голода */}
-            <div className="flex justify-between text-center text-xs px-2">
-              <div>
-                <div className="text-green-400 font-bold">
-                  {hungerStats.wellFed}
-                </div>
-                <div className="text-slate-300 text-2xs">Сытые</div>
-              </div>
-              <div>
-                <div className="text-yellow-400 font-bold">
-                  {hungerStats.normal}
-                </div>
-                <div className="text-slate-300 text-2xs">Норма</div>
-              </div>
-              <div>
-                <div className="text-red-400 font-bold">
-                  {hungerStats.starving}
-                </div>
-                <div className="text-slate-300 text-2xs">Голодные</div>
-              </div>
-            </div>
+            <DataGrid columns={3}>
+              <DataCell
+                dense
+                label="Сытые"
+                value={hungerStats.wellFed}
+                color="text-green-400"
+              />
+              <DataCell
+                dense
+                label="Норма"
+                value={hungerStats.normal}
+                color="text-yellow-400"
+              />
+              <DataCell
+                dense
+                label="Голодные"
+                value={hungerStats.starving}
+                color="text-red-400"
+              />
+            </DataGrid>
 
             {/* Места в биоподах: склада жаб нет, поэтому «дом» — только биоподы */}
-            <div className="mt-2 flex items-center justify-between text-2xs text-slate-300 px-2">
+            <HudPanel className="mt-2 flex items-center justify-between gap-2 px-2 py-1.5 text-2xs text-slate-300">
               <span>
                 🏠 Мест в биоподах: {housing.used} / {housing.capacity}{" "}
                 (биоподов: {housing.enclosures})
@@ -767,7 +794,7 @@ const ToadListModal: React.FC<{
                   Мест нет — постройте «Биопод» на карте
                 </span>
               )}
-            </div>
+            </HudPanel>
           </div>
         </>
       )}
@@ -789,30 +816,32 @@ const ToadListModal: React.FC<{
         <RoomDataTab
           room={roomDataRoom}
           stats={
-            <div className="grid grid-cols-3 gap-1.5 text-center text-2xs">
-              <div className="rounded-lg bg-slate-900/40 px-1 py-1">
-                <p className="text-slate-400">🐸 В биоподе</p>
-                <p className="font-bold text-white">
-                  {toads.length}/{scene?.capacity ?? 0}
-                </p>
-              </div>
-              <div className="rounded-lg bg-slate-900/40 px-1 py-1">
-                <p className="text-slate-400">🏠 Мест в колонии</p>
-                <p className="font-bold text-white">
-                  {housing.used}/{housing.capacity}
-                </p>
-              </div>
-              <div className="rounded-lg bg-slate-900/40 px-1 py-1">
-                <p className="text-slate-400">🍽 Автокормушка</p>
-                <p className="font-bold text-white">
-                  {hasAutoFeeder
+            <DataGrid columns={3}>
+              <DataCell
+                dense
+                label="🐸 В биоподе"
+                value={`${toads.length}/${scene?.capacity ?? 0}`}
+                color="text-white"
+              />
+              <DataCell
+                dense
+                label="🏠 Мест в колонии"
+                value={`${housing.used}/${housing.capacity}`}
+                color="text-white"
+              />
+              <DataCell
+                dense
+                label="🍽 Автокормушка"
+                value={
+                  hasAutoFeeder
                     ? autoFeederActive
                       ? "есть"
                       : "выключена"
-                    : "нет"}
-                </p>
-              </div>
-            </div>
+                    : "нет"
+                }
+                color={autoFeederActive ? "text-lime-300" : "text-slate-300"}
+              />
+            </DataGrid>
           }
         />
       )}

@@ -34,7 +34,7 @@ export const OfflineEventsButton = () => {
           : "События колонии"
       }
       onClick={() => openModal(() => <OfflineEventsModal />)}
-      className={`pointer-events-auto  relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-1 text-xl font-black leading-none backdrop-blur-md transition-all duration-300 active:scale-95 ${
+      className={`pointer-events-auto relative flex h-10 w-10 shrink-0 items-center justify-center rounded-none border-1 font-mono text-xl font-black leading-none backdrop-blur-md transition-all duration-300 active:scale-95 ${
         hasUnread
           ? "border-amber-300/90 border-solid border-[1px] bg-amber-400/20 text-amber-100 "
           : "border-white/15 border-solid border-[1px] bg-slate-950/65 text-slate-400 hover:border-white/30 hover:text-slate-200"
@@ -42,7 +42,7 @@ export const OfflineEventsButton = () => {
     >
       !
       {hasUnread && (
-        <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-3xs font-bold text-white">
+        <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-none border border-rose-200/60 bg-rose-500 px-1 font-mono text-3xs font-bold tabular-nums text-white">
           {unreadCount > 9 ? "9+" : unreadCount}
         </span>
       )}

@@ -242,7 +242,7 @@ const TutorialModal: React.FC = () => {
               )}`}
             >
               {/* Номер секции */}
-              <div className="absolute -left-3 -top-3 flex h-8 w-8 items-center justify-center rounded-full border-2 border-slate-600 bg-slate-950 text-sm font-bold text-white">
+              <div className="absolute -left-3 -top-3 flex h-8 w-8 items-center justify-center rounded-none border-2 border-slate-600 bg-slate-950 text-sm font-bold text-white">
                 {index + 1}
               </div>
 
@@ -264,7 +264,7 @@ const TutorialModal: React.FC = () => {
                 {section.tips.map((tip, tipIndex) => (
                   <div
                     key={tipIndex}
-                    className="flex items-start gap-2 rounded-lg border border-white/10 bg-slate-900/40 p-3 text-sm text-slate-300"
+                    className="flex items-start gap-2 rounded-none border border-white/10 bg-slate-900/40 p-3 text-sm text-slate-300"
                   >
                     <span className="mt-0.5 flex-shrink-0 text-cyan-300">
                       •
@@ -285,21 +285,21 @@ const TutorialModal: React.FC = () => {
             ⚗️ Уровни поломки ДНК
           </h4>
           <div className="grid grid-cols-2 gap-3 text-sm">
-            <div className="rounded-lg border border-emerald-400/30 bg-emerald-500/10 p-3 text-center transition-colors hover:bg-emerald-500/15">
+            <div className="rounded-none border border-emerald-400/30 bg-emerald-500/10 p-3 text-center transition-colors hover:bg-emerald-500/15">
               <div className="mb-1 font-semibold text-emerald-200">0% 🧬</div>
               <div className="text-xs text-emerald-300/80">Идеальная</div>
             </div>
-            <div className="rounded-lg border border-amber-400/30 bg-amber-500/10 p-3 text-center transition-colors hover:bg-amber-500/15">
+            <div className="rounded-none border border-amber-400/30 bg-amber-500/10 p-3 text-center transition-colors hover:bg-amber-500/15">
               <div className="mb-1 font-semibold text-amber-200">1-25% 🔬</div>
               <div className="text-xs text-amber-300/80">Стабильная</div>
             </div>
-            <div className="rounded-lg border border-orange-400/30 bg-orange-500/10 p-3 text-center transition-colors hover:bg-orange-500/15">
+            <div className="rounded-none border border-orange-400/30 bg-orange-500/10 p-3 text-center transition-colors hover:bg-orange-500/15">
               <div className="mb-1 font-semibold text-orange-200">
                 26-50% ⚠️
               </div>
               <div className="text-xs text-orange-300/80">Нестабильная</div>
             </div>
-            <div className="rounded-lg border border-rose-400/30 bg-rose-500/10 p-3 text-center transition-colors hover:bg-rose-500/15">
+            <div className="rounded-none border border-rose-400/30 bg-rose-500/10 p-3 text-center transition-colors hover:bg-rose-500/15">
               <div className="mb-1 font-semibold text-rose-200">51%+ 💥</div>
               <div className="text-xs text-rose-300/80">Критическая</div>
             </div>

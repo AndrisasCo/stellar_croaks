@@ -1,7 +1,6 @@
 import { SortArrowIcon } from "./SortArrowIcon";
-import React from "react";
 import { Toad } from "../../models/Toad";
-import { HorizontalScroll } from "./HorizontalScroll";
+import { HudPanel } from "./DataGrid";
 
 export type SortDirection = "asc" | "desc";
 
@@ -46,19 +45,7 @@ export const Filters = ({
   addHealth,
 }: FilterProps) => {
   // Обработчик сортировки
-  const handleSort = (
-    type:
-      | "rarity"
-      | "name"
-      | "price"
-      | "type"
-      | "size"
-      | "speed"
-      | "fertility"
-      | "appetite"
-      | "hunger"
-      | "health",
-  ) => {
+  const handleSort = (type: SortByType) => {
     if (sortBy === type) {
       setSortDirection(sortDirection === "asc" ? "desc" : "asc");
     } else {
@@ -73,178 +60,194 @@ export const Filters = ({
   const femalesCount = toads.filter((t) => t.sex === "female").length;
   const toadPolesCount = toads.filter((t) => t.stage === "toadpole").length;
 
+  /**
+   * Сортировки, доступные этому списку. На мобилке они живут в нативном
+   * `select`: так видно все варианты без невидимого горизонтального скролла,
+   * а на десктопе остаются привычные чипы.
+   */
+  const sortOptions: { key: SortByType; label: string }[] = [
+    { key: "rarity", label: "Качество" },
+    ...(addPrice ? [{ key: "price" as const, label: "Цена" }] : []),
+    { key: "name", label: "Имя" },
+    { key: "type", label: "Вид" },
+    { key: "fertility", label: "Плодовитость" },
+    { key: "appetite", label: "Аппетит" },
+    { key: "size", label: "Вес" },
+    { key: "speed", label: "Скорость" },
+    { key: "genetic_fault", label: "Генетика" },
+    ...(addHunger ? [{ key: "hunger" as const, label: "Голод" }] : []),
+    ...(addHealth ? [{ key: "health" as const, label: "HP" }] : []),
+  ];
+
+  const filterOptions: { key: FilterByType; label: string; count: number }[] = [
+    { key: "all", label: "Все", count: toads.length },
+    { key: "females", label: "Самки", count: femalesCount },
+    { key: "males", label: "Самцы", count: malesCount },
+    { key: "toadpoles", label: "Головастики", count: toadPolesCount },
+  ];
+
+  const sortLabel =
+    sortOptions.find((option) => option.key === sortBy)?.label ?? "Качество";
+
   return (
-    <>
-      {/* Панель фильтров и сортировки */}
-      <div className="bg-color-main rounded-xl p-3 border border-cyan-500/20  mb-3">
-        <div className="space-y-2">
-          {/* Селектор сортировки */}
-          <div className="flex items-center gap-2">
-            <span className="text-cyan-300 text-xs font-medium min-w-[20px]">
+    <HudPanel className="mb-3 p-3">
+      <div className="space-y-2">
+        {/* Мобильная сортировка: один компактный select и направление стрелкой */}
+        <div className="flex items-center gap-2 sm:hidden">
+          <span className="shrink-0 text-cyan-300">
+            <svg
+              className="h-4 w-4"
+              viewBox="0 0 16 16"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M4 6L8 2L12 6"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <path
+                d="M12 10L8 14L4 10"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </span>
+
+          <div className="relative min-w-0 flex-1">
+            <select
+              aria-label="Сортировка жаб"
+              value={sortBy}
+              onChange={(event) =>
+                handleSort(event.target.value as SortByType)
+              }
+              className="w-full appearance-none border border-cyan-500/20 bg-slate-950/50 px-2 py-1.5 pr-7 text-xs font-medium text-slate-200 outline-none transition-colors [color-scheme:dark] focus:border-cyan-400"
+            >
+              {sortOptions.map((option) => (
+                <option key={option.key} value={option.key}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-cyan-300"
+            >
+              ▾
+            </span>
+          </div>
+
+          <button
+            type="button"
+            onClick={() =>
+              setSortDirection(sortDirection === "asc" ? "desc" : "asc")
+            }
+            aria-label={`Направление сортировки: ${
+              sortDirection === "asc" ? "по возрастанию" : "по убыванию"
+            }`}
+            title={`${sortLabel}: ${
+              sortDirection === "asc" ? "по возрастанию" : "по убыванию"
+            }`}
+            className="flex h-8 w-8 shrink-0 items-center justify-center border border-cyan-500/30 bg-slate-950/50 text-cyan-200 transition-colors hover:border-cyan-300 hover:text-cyan-100"
+          >
+            <SortArrowIcon direction={sortDirection} />
+          </button>
+        </div>
+
+        {/* Десктопная сортировка: те же чипы, но без горизонтального скролла */}
+        <div className="hidden items-start gap-2 sm:flex">
+          <span className="mt-1.5 shrink-0 text-cyan-300">
+            <svg
+              className="h-4 w-4"
+              viewBox="0 0 16 16"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M4 6L8 2L12 6"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <path
+                d="M12 10L8 14L4 10"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </span>
+
+          <div className="flex min-w-0 flex-1 flex-wrap gap-1">
+            {sortOptions.map((option) => (
+              <button
+                key={option.key}
+                onClick={() => handleSort(option.key)}
+                aria-pressed={sortBy === option.key}
+                className={`flex items-center gap-1 border px-2 py-1 text-xs font-medium transition-all ${
+                  sortBy === option.key
+                    ? "border-cyan-400/60 bg-cyan-600 text-white shadow-sm shadow-cyan-500/30"
+                    : "border-transparent text-slate-200 hover:border-cyan-400/30 hover:text-cyan-300"
+                }`}
+              >
+                {option.label}
+                <SortArrowIcon
+                  direction={sortBy === option.key ? sortDirection : null}
+                />
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/*
+          Фильтры пола и стадии. На мобилке это сетка 2×2: все четыре варианта
+          видны сразу, ничего не прячется за краем экрана. На десктопе — строка.
+        */}
+        {!addPrice && (
+          <div className="flex items-start gap-2">
+            <span className="mt-1.5 hidden shrink-0 text-cyan-300 sm:block">
               <svg
-                className="w-4 h-4"
+                className="h-4 w-4"
                 viewBox="0 0 16 16"
                 fill="none"
                 xmlns="http://www.w3.org/2000/svg"
               >
                 <path
-                  d="M4 6L8 2L12 6"
+                  d="M14 2H2L6 8V14L10 12V8L14 2Z"
                   stroke="currentColor"
                   strokeWidth="1.5"
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                />
-                <path
-                  d="M12 10L8 14L4 10"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
+                  fill="none"
                 />
               </svg>
             </span>
-            <HorizontalScroll className="flex bg-color-main rounded-lg p-1 border border-cyan-500/10">
-              {[
-                { key: "rarity", label: "Качество" },
-                addPrice ? { key: "price", label: "Цена" } : {},
-                { key: "name", label: "Имя" },
-                { key: "type", label: "Вид" },
-                { key: "fertility", label: "Плодовитость" },
-                { key: "appetite", label: "Аппетит" },
-                { key: "size", label: "Вес" },
-                { key: "speed", label: "Скорость" },
-                { key: "genetic_fault", label: "Генетика" },
-                addHunger ? { key: "hunger", label: "Голод" } : {},
-                addHealth ? { key: "health", label: "HP" } : {},
-              ]
-                .filter((i) => i.key)
-                .map((item, index) => (
-                  <React.Fragment key={item.key}>
-                    {index > 0 && (
-                      <div className="w-px bg-cyan-500/20 my-1"></div>
-                    )}
-                    <button
-                      onClick={() => handleSort(item.key as any)}
-                      className={`px-2 py-1 rounded text-xs font-medium transition-all flex items-center gap-1 ${
-                        sortBy === item.key
-                          ? "bg-cyan-600 text-white shadow-sm shadow-cyan-500/30"
-                          : "text-slate-200 hover:text-cyan-300"
-                      }`}
-                    >
-                      {item.label}
-                      <SortArrowIcon
-                        direction={sortBy === item.key ? sortDirection : null}
-                      />
-                    </button>
-                  </React.Fragment>
-                ))}
-            </HorizontalScroll>
+
+            <div className="grid min-w-0 flex-1 grid-cols-2 gap-1 sm:flex sm:flex-wrap">
+              {filterOptions.map((option) => (
+                <button
+                  key={option.key}
+                  onClick={() => setFilterBy(option.key)}
+                  aria-pressed={filterBy === option.key}
+                  className={`border px-2 py-1.5 text-center text-xs font-medium transition-all sm:py-1 ${
+                    filterBy === option.key
+                      ? "border-cyan-400/60 bg-cyan-600 text-white shadow-sm shadow-cyan-500/30"
+                      : "border-transparent text-slate-200 hover:border-cyan-400/30 hover:text-cyan-300"
+                  }`}
+                >
+                  {option.label} ({option.count})
+                </button>
+              ))}
+            </div>
           </div>
-
-          {/* Селектор фильтрации */}
-          {!addPrice && (
-            <div className="flex items-center gap-2">
-              <span className="text-cyan-300 text-xs font-medium min-w-[20px]">
-                <svg
-                  className="w-4 h-4"
-                  viewBox="0 0 16 16"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    d="M14 2H2L6 8V14L10 12V8L14 2Z"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    fill="none"
-                  />
-                </svg>
-              </span>
-              <HorizontalScroll className="flex bg-color-main rounded-lg p-1 border text-nowrap border-cyan-500/10">
-                <button
-                  onClick={() => setFilterBy("all")}
-                  className={`px-2 py-1 text-nowrap rounded text-xs font-medium transition-all ${
-                    filterBy === "all"
-                      ? "bg-cyan-600 text-white shadow-sm shadow-cyan-500/30"
-                      : "text-slate-200 hover:text-cyan-300"
-                  }`}
-                >
-                  Все ({toads.length})
-                </button>
-                <div className="w-px bg-cyan-500/20 my-1"></div>
-                <button
-                  onClick={() => setFilterBy("females")}
-                  className={`px-2 py-1 rounded text-xs font-medium transition-all ${
-                    filterBy === "females"
-                      ? "bg-cyan-600 text-white shadow-sm shadow-cyan-500/30"
-                      : "text-slate-200 hover:text-cyan-300"
-                  }`}
-                >
-                  Самки ({femalesCount})
-                </button>
-                <div className="w-px bg-cyan-500/20 my-1"></div>
-                <button
-                  onClick={() => setFilterBy("males")}
-                  className={`px-2 py-1 rounded text-xs font-medium transition-all ${
-                    filterBy === "males"
-                      ? "bg-cyan-600 text-white shadow-sm shadow-cyan-500/30"
-                      : "text-slate-200 hover:text-cyan-300"
-                  }`}
-                >
-                  Самцы ({malesCount})
-                </button>
-                <div className="w-px bg-cyan-500/20 my-1"></div>
-                <button
-                  onClick={() => setFilterBy("toadpoles")}
-                  className={`px-2 py-1 rounded text-xs font-medium transition-all ${
-                    filterBy === "toadpoles"
-                      ? "bg-cyan-600 text-white shadow-sm shadow-cyan-500/30"
-                      : "text-slate-200 hover:text-cyan-300"
-                  }`}
-                >
-                  Головастики ({toadPolesCount})
-                </button>
-              </HorizontalScroll>
-            </div>
-          )}
-
-          {/* Селектор фильтрации */}
-          {addPrice && (
-            <div className="flex items-center gap-2">
-              <span className="text-cyan-300 text-xs font-medium min-w-[20px]">
-                <svg
-                  className="w-4 h-4"
-                  viewBox="0 0 16 16"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    d="M14 2H2L6 8V14L10 12V8L14 2Z"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    fill="none"
-                  />
-                </svg>
-              </span>
-              <HorizontalScroll className="flex bg-color-main rounded-lg p-1 border text-nowrap border-cyan-500/10">
-                <button
-                  onClick={() => setFilterBy("all")}
-                  className={`px-2 py-1 text-nowrap rounded text-xs font-medium transition-all ${
-                    filterBy === "all"
-                      ? "bg-cyan-600 text-white shadow-sm shadow-cyan-500/30"
-                      : "text-slate-200 hover:text-cyan-300"
-                  }`}
-                >
-                  Все ({toads.length})
-                </button>
-              </HorizontalScroll>
-            </div>
-          )}
-        </div>
+        )}
       </div>
-    </>
+    </HudPanel>
   );
 };

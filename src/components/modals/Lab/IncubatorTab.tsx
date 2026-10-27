@@ -93,7 +93,7 @@ export default function IncubatorTab() {
   };
 
   return (
-    <div className="relative flex min-h-[260px] flex-1 flex-col overflow-hidden rounded-xl border border-cyan-400/20">
+    <div className="relative flex min-h-[260px] flex-1 flex-col overflow-hidden rounded-none border border-cyan-400/20">
       {/* Фон инкубатора и силуэт гибрида в колбе — как в прежней отдельной модалке */}
       <div className="pointer-events-none absolute inset-0 bg-[url('/bg/incubator.webp')] bg-center bg-cover bg-no-repeat" />
       <div
@@ -122,9 +122,9 @@ export default function IncubatorTab() {
             )}
 
             {/* Прогресс бар */}
-            <div className="relative bg-color-second mt-6 rounded-xl h-10 mb-4 overflow-hidden border border-slate-600">
+            <div className="relative bg-color-second mt-6 rounded-none h-10 mb-4 overflow-hidden border border-slate-600">
               <div
-                className="brand-bar h-full rounded-xl shadow-lg transition-all duration-1000"
+                className="brand-bar h-full rounded-none shadow-lg transition-all duration-1000"
                 style={{ width: `${activeSlot.isReady ? 100 : slotProgress}%` }}
               />
               <div className="absolute inset-0 flex items-center justify-center">

@@ -9,6 +9,12 @@ import {
   normalizeSceneName,
   SCENE_NAME_MAX_LENGTH,
 } from "../../../utils/scene-name";
+import {
+  DataCell,
+  DataGrid,
+  HudPanel,
+  SectionTitle,
+} from "../../shared/DataGrid";
 
 /**
  * «Статистика биопода» — вторая вкладка модалки списка жаб (`ToadListModal/index.tsx`).
@@ -169,94 +175,13 @@ export const SceneStatsTab: React.FC<{
       ? Math.min(100, Math.round((toads.length / scene.capacity) * 100))
       : 0;
 
-  /**
-   * Квадратный узел на линии сетки. В каждой ячейке их четыре: соседние ячейки
-   * дают общий узел на пересечении, а внешние — аккуратные метки по краям HUD.
-   */
-  const DataNode: React.FC<{ className?: string }> = ({ className = "" }) => (
-    <span
-      aria-hidden="true"
-      className={`pointer-events-none absolute h-[3px] w-[3px] bg-cyan-300/80 ${className}`}
-    />
-  );
-
-  const CellNodes = () => (
-    <>
-      <DataNode className="-left-px -top-px" />
-      <DataNode className="-right-px -top-px" />
-      <DataNode className="-bottom-px -left-px" />
-      <DataNode className="-bottom-px -right-px" />
-    </>
-  );
-
-  const SectionTitle: React.FC<{
-    children: React.ReactNode;
-    aside?: React.ReactNode;
-  }> = ({ children, aside }) => (
-    <div className="mb-2 flex items-center gap-2">
-      <span className="h-1.5 w-1.5 shrink-0 bg-cyan-300 shadow-[0_0_6px_rgba(34,211,238,0.8)]" />
-      <h4 className="text-3xs font-semibold uppercase tracking-[0.18em] text-slate-300">
-        {children}
-      </h4>
-      <span className="h-px min-w-4 flex-1 bg-gradient-to-r from-cyan-400/40 to-transparent" />
-      {aside && (
-        <span className="shrink-0 text-3xs uppercase tracking-[0.14em] text-cyan-500/80">
-          {aside}
-        </span>
-      )}
-    </div>
-  );
-
-  const DataCell: React.FC<{
-    label: string;
-    value: React.ReactNode;
-    suffix?: string;
-    color?: string;
-    accent?: string;
-    className?: string;
-    children?: React.ReactNode;
-  }> = ({
-    label,
-    value,
-    suffix,
-    color = "text-slate-100",
-    accent,
-    className = "",
-    children,
-  }) => (
-    <div className={`relative bg-slate-950 px-3 py-2.5 ${className}`}>
-      <CellNodes />
-      {accent && (
-        <span
-          aria-hidden="true"
-          className={`absolute left-3 top-0 h-0.5 w-6 ${accent}`}
-        />
-      )}
-      <div className="text-3xs uppercase tracking-[0.14em] text-slate-500">
-        {label}
-      </div>
-      <div
-        className={`mt-1 text-lg font-semibold leading-none tabular-nums ${color}`}
-      >
-        {value}
-        {suffix && (
-          <span className="ml-0.5 text-xs font-medium text-slate-500">
-            {suffix}
-          </span>
-        )}
-      </div>
-      {children}
-    </div>
-  );
-
   return (
     <div className="mb-6 space-y-4 px-1">
       {/* Название биопода: правится прямо здесь, сохранение — кнопкой галочки */}
-      <div className="relative border border-slate-700/70 bg-slate-950/80 px-3 py-2.5">
-        <CellNodes />
+      <HudPanel className="px-3 py-2.5">
         <div className="flex items-center gap-2">
           <svg
-            className="h-3.5 w-3.5 shrink-0 text-cyan-400"
+            className="h-3.5 w-3.5 shrink-0 text-emerald-400"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -276,7 +201,7 @@ export const SceneStatsTab: React.FC<{
                 onChange={(e) => setSceneName(e.target.value)}
                 onKeyDown={handleKeyPress}
                 maxLength={SCENE_NAME_MAX_LENGTH}
-                className="min-w-0 flex-1 border border-cyan-500/60 bg-slate-900 px-2 py-1 text-sm text-cyan-50 placeholder:text-slate-600 focus:border-cyan-300 focus:outline-none"
+                className="min-w-0 flex-1 border border-emerald-500/60 bg-slate-950/50 px-2 py-1 text-sm text-emerald-50 placeholder:text-slate-600 focus:border-emerald-300 focus:outline-none"
                 placeholder="Введите название биопода"
                 autoFocus
               />
@@ -333,7 +258,7 @@ export const SceneStatsTab: React.FC<{
               </div>
               <button
                 onClick={() => setIsEditing(true)}
-                className="flex h-7 w-7 shrink-0 items-center justify-center border border-slate-600/70 text-slate-400 transition-colors hover:border-cyan-400/60 hover:bg-cyan-400/10 hover:text-cyan-300"
+                className="flex h-7 w-7 shrink-0 items-center justify-center border border-slate-600/70 text-slate-400 transition-colors hover:border-emerald-400/60 hover:bg-emerald-400/10 hover:text-emerald-300"
                 title="Редактировать название"
               >
                 {InfoIcons.pencil}
@@ -341,79 +266,75 @@ export const SceneStatsTab: React.FC<{
             </>
           )}
         </div>
-      </div>
+      </HudPanel>
 
       {/* Население жаб: возраст, пол и беременность — вместимость биопода из шапки */}
       <section>
         <SectionTitle aside={`${toads.length}/${scene.capacity}`}>
           Население жаб
         </SectionTitle>
-        <div className="relative border border-cyan-400/25 bg-slate-950">
-          <div className="grid grid-cols-2 gap-px bg-cyan-400/15 sm:grid-cols-3">
-            <DataCell
-              label="Мест в биоподе"
-              value={`${toads.length}/${scene.capacity}`}
-              color="text-cyan-300"
-              className="col-span-2 sm:col-span-3"
-            >
-              <div className="mt-2 h-1 w-full overflow-hidden bg-slate-800">
-                <div
-                  className="h-full bg-cyan-400/80 transition-[width] duration-500"
-                  style={{ width: `${occupancy}%` }}
-                />
-              </div>
-            </DataCell>
-            <DataCell
-              label="Самцы"
-              value={toadStats.male}
-              color="text-blue-300"
-            />
-            <DataCell
-              label="Самки"
-              value={toadStats.female}
-              color="text-pink-300"
-            />
-            <DataCell
-              label="Бесполые"
-              value={toadStats.neuter}
-              color="text-slate-300"
-            />
-            <DataCell
-              label="Головастики"
-              value={toadStats.toadpole}
-              color="text-cyan-300"
-            />
-            <DataCell
-              label="Беременные"
-              value={toadStats.pregnant}
-              color="text-pink-300"
-            />
-            <DataCell
-              label="Свободно"
-              value={toadStats.free}
-              color="text-slate-400"
-            />
-          </div>
-        </div>
+        <DataGrid>
+          <DataCell
+            label="Мест в биоподе"
+            value={`${toads.length}/${scene.capacity}`}
+            color="text-emerald-300"
+            className="col-span-2 sm:col-span-3"
+          >
+            <div className="mt-2 h-1 w-full overflow-hidden bg-slate-950/50">
+              <div
+                className="h-full bg-emerald-400/80 transition-[width] duration-500"
+                style={{ width: `${occupancy}%` }}
+              />
+            </div>
+          </DataCell>
+          <DataCell
+            label="Самцы"
+            value={toadStats.male}
+            color="text-blue-300"
+          />
+          <DataCell
+            label="Самки"
+            value={toadStats.female}
+            color="text-pink-300"
+          />
+          <DataCell
+            label="Бесполые"
+            value={toadStats.neuter}
+            color="text-slate-300"
+          />
+          <DataCell
+            label="Головастики"
+            value={toadStats.toadpole}
+            color="text-emerald-300"
+          />
+          <DataCell
+            label="Беременные"
+            value={toadStats.pregnant}
+            color="text-pink-300"
+          />
+          <DataCell
+            label="Свободно"
+            value={toadStats.free}
+            color="text-slate-400"
+          />
+        </DataGrid>
       </section>
 
       {/* Средние характеристики: весь набор генетики, а не только три базовых */}
       <section>
         <SectionTitle aside="AVG">Средние характеристики</SectionTitle>
-        <div className="relative border border-cyan-400/25 bg-slate-950">
-          <div className="grid grid-cols-2 gap-px bg-cyan-400/15 sm:grid-cols-3">
-            {averageItems.map((item) => (
-              <DataCell
-                key={item.label}
-                label={item.label}
-                value={item.value}
-                suffix={item.suffix}
-                color={item.color}
-                accent={item.accent}
-              />
-            ))}
-          </div>
-        </div>
+        <DataGrid>
+          {averageItems.map((item) => (
+            <DataCell
+              key={item.label}
+              label={item.label}
+              value={item.value}
+              suffix={item.suffix}
+              color={item.color}
+              accent={item.accent}
+            />
+          ))}
+        </DataGrid>
         {toads.length === 0 && (
           <p className="mt-2 text-3xs uppercase tracking-[0.12em] text-slate-600">
             Нет жаб — средние значения появятся после заселения
@@ -422,25 +343,10 @@ export const SceneStatsTab: React.FC<{
       </section>
 
       {/* Улучшения сектора — во вкладке «Данные сектора»: их ставит сама модалка биопода */}
-      <div
-        className={`relative border p-3 pl-4 text-2xs leading-snug ${
-          autoFeederActive
-            ? "border-lime-500/30 bg-lime-500/10 text-lime-100"
-            : "border-amber-500/30 bg-amber-500/10 text-amber-100"
-        }`}
+      <HudPanel
+        tone={autoFeederActive ? "lime" : "amber"}
+        className="p-3 text-2xs leading-snug"
       >
-        <span
-          aria-hidden="true"
-          className={`absolute inset-y-0 left-0 w-0.5 ${
-            autoFeederActive ? "bg-lime-400/70" : "bg-amber-400/70"
-          }`}
-        />
-        <span
-          aria-hidden="true"
-          className={`absolute -left-px -top-px h-1.5 w-1.5 ${
-            autoFeederActive ? "bg-lime-300" : "bg-amber-300"
-          }`}
-        />
         <span className="mb-1 block text-3xs font-semibold uppercase tracking-[0.16em] opacity-70">
           Автокормушка
         </span>
@@ -451,7 +357,7 @@ export const SceneStatsTab: React.FC<{
               ? "Автокормушка установлена, но выключена: жабы кормятся вручную (🍎 на карточке), иначе они работают вполсилы. Включить её можно во вкладке «Данные сектора» этой модалки."
               : "Автокормушки нет: жаб кормят вручную (🍎 на карточке), иначе они работают вполсилы. Улучшение «Автокормушка» ставится на сектор — во вкладке «Данные сектора» этой модалки."}
         </p>
-      </div>
+      </HudPanel>
     </div>
   );
 };

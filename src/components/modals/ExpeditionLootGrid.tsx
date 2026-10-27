@@ -167,24 +167,24 @@ export const ExpeditionLootGrid: React.FC<{
 
   return (
     <div
-      className={`relative overflow-hidden rounded-2xl border border-amber-300/35 bg-gradient-to-br from-amber-500/15 via-emerald-500/10 to-cyan-500/15 p-2.5 shadow-[0_0_18px_-18px_rgba(251,191,36,0.9)] ${className}`}
+      className={`relative overflow-hidden rounded-none border border-amber-300/35 bg-gradient-to-br from-amber-500/15 via-emerald-500/10 to-cyan-500/15 p-2.5 shadow-[0_0_18px_-18px_rgba(251,191,36,0.9)] ${className}`}
     >
       <div
         aria-hidden
-        className="pointer-events-none absolute -right-8 -top-10 h-24 w-24 rounded-full bg-amber-300/20 blur-2xl"
+        className="pointer-events-none absolute -right-8 -top-10 h-24 w-24 rounded-none bg-amber-300/20 blur-2xl"
       />
 
       <div className="relative flex items-center justify-between gap-2">
         <span className="text-2xs font-bold uppercase tracking-[0.16em] text-amber-200">
           {title}
         </span>
-        <span className="rounded-md border border-amber-300/30 bg-slate-950/60 px-1.5 py-0.5 text-3xs font-semibold text-amber-100/80">
+        <span className="rounded-none border border-amber-300/30 bg-slate-950/50 px-1.5 py-0.5 text-3xs font-semibold text-amber-100/80">
           {tiles.length} поз.
         </span>
       </div>
 
       {tiles.length === 0 ? (
-        <p className="relative mt-2 rounded-xl border border-dashed border-slate-500/40 bg-slate-950/40 px-2 py-3 text-center text-2xs italic text-slate-400">
+        <p className="relative mt-2 rounded-none border border-dashed border-slate-500/40 bg-slate-950/50 px-2 py-3 text-center text-2xs italic text-slate-400">
           Добычи собрать не удалось
         </p>
       ) : (
@@ -193,9 +193,9 @@ export const ExpeditionLootGrid: React.FC<{
             <div
               key={tile.id}
               title={tile.hint}
-              className={`relative flex min-w-0 flex-col items-center gap-1 rounded-xl border bg-slate-950/65 px-1 py-1.5 text-center ${tile.tone}`}
+              className={`relative flex min-w-0 flex-col items-center gap-1 rounded-none border bg-slate-950/50 px-1 py-1.5 text-center ${tile.tone}`}
             >
-              <span className="absolute right-1 top-1 rounded bg-slate-950/80 px-1 text-3xs font-extrabold leading-tight tabular-nums text-white">
+              <span className="absolute right-1 top-1 rounded-none bg-slate-950/80 px-1 text-3xs font-extrabold leading-tight tabular-nums text-white">
                 ×{formatAmount(tile.amount)}
               </span>
               <span className="mt-1 flex h-7 w-7 items-center justify-center leading-none">

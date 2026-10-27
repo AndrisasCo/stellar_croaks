@@ -30,7 +30,7 @@ const TABS = [
 ];
 
 const INPUT_CLASS =
-  "w-full rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-white placeholder-slate-500 outline-none transition-colors focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20";
+  "w-full rounded-none border border-white/10 bg-slate-950/60 px-4 py-3 text-white placeholder-slate-500 outline-none transition-colors focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20";
 
 const AuthIcon = (
   <svg
@@ -197,13 +197,13 @@ export const AuthModal: React.FC = () => {
             </label>
 
             {error && (
-              <p className="rounded-lg border border-rose-400/40 bg-rose-500/15 px-3 py-2 text-xs text-rose-100">
+              <p className="rounded-none border border-rose-400/40 bg-rose-500/15 px-3 py-2 text-xs text-rose-100">
                 {error}
               </p>
             )}
 
             {message && (
-              <p className="rounded-lg border border-emerald-400/40 bg-emerald-500/15 px-3 py-2 text-xs text-emerald-100">
+              <p className="rounded-none border border-emerald-400/40 bg-emerald-500/15 px-3 py-2 text-xs text-emerald-100">
                 {message}
               </p>
             )}

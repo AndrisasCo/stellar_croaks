@@ -10,6 +10,7 @@ import { useSoundEffects } from "../../../hooks/use-sound-effects";
 import { getFeedCost } from "../../../utils/feeding";
 import { isToadBusyOnExpedition } from "../../../utils/expedition-manager";
 import { isRoomOpen } from "../../HexMap/rooms-config";
+import { DataCell, DataGrid } from "../../shared/DataGrid";
 import ToadsTab from "./ToadsTab";
 import RoomsTab from "./RoomsTab";
 
@@ -32,13 +33,17 @@ const ColonyStat = ({
   label: string;
   tone?: string;
 }) => (
-  <div className="rounded-xl border border-white/10 bg-slate-950/40 px-2 py-1.5">
-    <p className={`text-sm font-bold tabular-nums ${tone}`}>
-      <span className="mr-1 text-2xs">{icon}</span>
-      {value}
-    </p>
-    <p className="text-2xs leading-tight text-slate-400">{label}</p>
-  </div>
+  <DataCell
+    dense
+    label={label}
+    value={
+      <>
+        <span className="mr-1 text-2xs">{icon}</span>
+        {value}
+      </>
+    }
+    color={tone}
+  />
 );
 
 /**
@@ -96,12 +101,12 @@ const ColonyModal = () => {
   };
 
   return (
-    <Modal title="Управление колонией">
+    <Modal title="Управление колонией" tone="emerald">
       {/* Табы сразу под названием — общий каркас модалок секторов */}
       <ModalTabs tabs={COLONY_TABS} active={tab} onChange={setTab} />
 
       <div className="flex flex-col gap-3">
-        <div className="grid grid-cols-4 gap-1.5">
+        <DataGrid columns={4}>
           <ColonyStat icon="🐸" value={allToads.length} label="жаб" />
           <ColonyStat
             icon="🏗"
@@ -121,9 +126,9 @@ const ColonyModal = () => {
             label="в походе"
             tone="text-amber-300"
           />
-        </div>
+        </DataGrid>
 
-        <div className="rounded-2xl border border-amber-400/25 bg-gradient-to-br from-amber-500/10 via-slate-900/20 to-emerald-500/10 p-3">
+        <div className="rounded-none border border-amber-400/25 bg-gradient-to-br from-amber-500/10 via-slate-900/20 to-emerald-500/10 p-3">
           <div className="flex items-center justify-between gap-2">
             <div>
               <p className="text-xs font-semibold text-amber-100">
@@ -139,7 +144,7 @@ const ColonyModal = () => {
               </p>
             </div>
 
-            <span className="flex shrink-0 items-center gap-1 rounded-lg border border-white/10 bg-slate-950/50 px-2 py-1 text-xs font-semibold text-amber-100">
+            <span className="flex shrink-0 items-center gap-1 rounded-none border border-white/10 bg-slate-950/50 px-2 py-1 text-xs font-semibold text-amber-100">
               <img
                 src="/assets/food.webp"
                 alt="Корм"
@@ -153,7 +158,7 @@ const ColonyModal = () => {
             type="button"
             onClick={feedColony}
             disabled={!canFeed}
-            className="mt-2.5 flex w-full items-center justify-center gap-2 rounded-xl border border-amber-300/40 bg-gradient-to-r from-amber-600 to-orange-600 px-3 py-2 text-sm font-bold text-white shadow-lg transition-colors hover:from-amber-500 hover:to-orange-500 disabled:cursor-not-allowed disabled:from-slate-700 disabled:to-slate-700 disabled:text-slate-400"
+            className="mt-2.5 flex w-full items-center justify-center gap-2 rounded-none border border-amber-300/40 bg-gradient-to-r from-amber-600 to-orange-600 px-3 py-2 text-sm font-bold text-white shadow-lg transition-colors hover:from-amber-500 hover:to-orange-500 disabled:cursor-not-allowed disabled:from-slate-700 disabled:to-slate-700 disabled:text-slate-400"
           >
             <img
               src="/assets/food.webp"

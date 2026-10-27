@@ -5,6 +5,7 @@ import { useColony } from "../../hooks/use-colony";
 import { useNotifications } from "../../hooks/use-notification";
 import { isRoomKindBuilt } from "../HexMap/colony-build";
 import { useModal } from "../ModalContext";
+import { GridNodes } from "../shared/DataGrid";
 import Modal from "../shared/Header";
 import AchivementsModal from "./AchivementsModal";
 import AuthModal from "./AuthModal";
@@ -225,35 +226,65 @@ export const BurgerMenu = () => {
 
               openModal(() => item.target);
             }}
-            className={`group w-full rounded-xl border border-white/10 bg-slate-900/55 px-3 py-2.5 shadow-lg transition-colors duration-300 ${
+            className={`group relative w-full overflow-hidden border border-white/10 bg-slate-950/55 px-3 py-2.5 text-left transition-colors duration-300 ${
               items.length % 2 === 1 && index === items.length - 1
                 ? "sm:col-span-2"
                 : ""
             } ${
               item.locked
                 ? "cursor-not-allowed opacity-45 grayscale"
-                : "hover:border-cyan-300/40 hover:bg-slate-800/70 active:scale-[0.99]"
+                : "hover:border-cyan-300/40 hover:bg-slate-900/75 active:scale-[0.99]"
             }`}
             style={{
               animationDelay: `${index * 70}ms`,
               animation: "slideInUp 0.4s ease-out forwards",
             }}
           >
-            <div className="flex items-center space-x-3">
-              <div className={`transition-colors duration-300 ${item.color}`}>
+            <GridNodes
+              tone={item.locked ? "bg-slate-600" : "bg-cyan-300/70"}
+            />
+            <span
+              aria-hidden="true"
+              className={`pointer-events-none absolute inset-y-0 left-0 w-px ${
+                item.locked ? "bg-slate-700" : "bg-cyan-300/40"
+              }`}
+            />
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-300/60 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+            />
+
+            <div className="relative flex items-center gap-3">
+              <div
+                className={`flex h-9 w-9 shrink-0 items-center justify-center border border-white/10 bg-white/[0.03] transition-colors duration-300 group-hover:border-white/25 ${item.color}`}
+              >
                 {item.icon}
               </div>
-              <div className="flex-1 text-left">
-                <div className="text-sm font-bold text-white transition-colors duration-300 group-hover:text-cyan-50">
-                  {item.label}
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5">
+                  <span
+                    aria-hidden="true"
+                    className="text-3xs text-slate-600 transition-colors duration-300 group-hover:text-cyan-300/70"
+                  >
+                    ›
+                  </span>
+                  <span className="truncate text-sm font-bold text-white transition-colors duration-300 group-hover:text-cyan-50">
+                    {item.label}
+                  </span>
                 </div>
-                <div className="ui-caption transition-colors duration-300 group-hover:text-slate-300">
+                <div className="ui-caption mt-0.5 transition-colors duration-300 group-hover:text-slate-300">
                   {item.locked ? item.lockedDesc : item.desc}
                 </div>
               </div>
-              <div className="text-lg text-slate-500 transition-colors duration-300 group-hover:text-cyan-300">
-                {item.locked ? "🔒" : "›"}
-              </div>
+              <span
+                className={`shrink-0 border px-1.5 py-0.5 text-3xs font-semibold tracking-[0.14em] transition-colors duration-300 ${
+                  item.locked
+                    ? "border-amber-400/30 bg-amber-500/10 text-amber-300"
+                    : "border-cyan-300/20 bg-cyan-400/5 text-cyan-200/80 group-hover:border-cyan-300/50 group-hover:text-cyan-200"
+                }`}
+              >
+                {item.locked ? "LOCK" : "OPEN"}
+              </span>
             </div>
           </button>
         ))}

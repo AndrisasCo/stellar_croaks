@@ -1262,21 +1262,21 @@ export default function HexMapCanvas(props: HexMapCanvasProps) {
         <ClickButton
           title="Приблизить к гексу (жабы кликаются)"
           onClick={() => controlsRef.current.zoomTo("detail")}
-          className="bg-slate-800/70 border-2 border-cyan-300/70 text-cyan-100 rounded-lg w-10 h-10 text-xl font-bold backdrop-blur-sm active:scale-95 transition-transform"
+          className="bg-slate-800/70 border-2 border-cyan-300/70 text-cyan-100 rounded-none w-10 h-10 text-xl font-bold backdrop-blur-sm active:scale-95 transition-transform"
         >
           +
         </ClickButton>
         <ClickButton
           title="Обзорный вид (вся колония)"
           onClick={() => controlsRef.current.zoomTo("overview")}
-          className="bg-slate-800/70 border-2 border-cyan-300/70 text-cyan-100 rounded-lg w-10 h-10 text-xl font-bold backdrop-blur-sm active:scale-95 transition-transform"
+          className="bg-slate-800/70 border-2 border-cyan-300/70 text-cyan-100 rounded-none w-10 h-10 text-xl font-bold backdrop-blur-sm active:scale-95 transition-transform"
         >
           −
         </ClickButton>
         <ClickButton
           title="Показать всю колонию"
           onClick={() => controlsRef.current.reset()}
-          className="bg-slate-800/70 border-2 border-cyan-300/70 text-cyan-100 rounded-lg w-10 h-10 text-base backdrop-blur-sm active:scale-95 transition-transform"
+          className="bg-slate-800/70 border-2 border-cyan-300/70 text-cyan-100 rounded-none w-10 h-10 text-base backdrop-blur-sm active:scale-95 transition-transform"
         >
           ⌖
         </ClickButton>

@@ -47,7 +47,7 @@ export const DiseaseBar: React.FC<{
 
   return (
     <div
-      className={`relative rounded-xl border border-orange-500/50 bg-orange-950/30 p-2 ${
+      className={`ui-panel relative rounded-none border-orange-500/40 bg-orange-950/25 p-2 ${
         className || ""
       }`}
     >
@@ -58,13 +58,13 @@ export const DiseaseBar: React.FC<{
           onClick={() => setIsInfoOpen((open) => !open)}
           aria-expanded={isInfoOpen}
           title="Что это за болезнь, заразна ли она и как лечится"
-          className="flex min-w-0 items-center gap-1.5 rounded-lg text-left text-xs font-medium uppercase text-orange-300 transition-colors hover:text-orange-100"
+          className="flex min-w-0 items-center gap-1.5 rounded-none text-left text-xs font-semibold uppercase tracking-[0.04em] text-orange-300 transition-colors hover:text-orange-100"
         >
           <span>{recovery.disease.icon}</span>
           <span className="truncate">{recovery.disease.name}</span>
           <span
             aria-hidden
-            className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border text-[10px] leading-none ${
+            className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-none border font-mono text-[10px] leading-none ${
               isInfoOpen
                 ? "border-orange-300/70 text-orange-100"
                 : "border-orange-400/40 text-orange-300/80"
@@ -73,7 +73,7 @@ export const DiseaseBar: React.FC<{
             i
           </span>
         </button>
-        <span className="text-2xs font-semibold text-orange-200">
+        <span className="font-mono text-2xs font-semibold tabular-nums text-orange-200">
           {percent} %
         </span>
       </div>
@@ -129,19 +129,19 @@ export const DiseaseBar: React.FC<{
         </p>
       </Tooltip>
 
-      <div className="h-2 w-full overflow-hidden rounded-full bg-slate-600/50">
+      <div className="h-1.5 w-full overflow-hidden bg-slate-800/80">
         <div
-          className="h-2 rounded-full bg-orange-500 transition-all duration-500"
+          className="h-full bg-orange-500 transition-all duration-500"
           style={{ width: `${recovery.progress}%` }}
         />
       </div>
 
-      <div className="mt-1 flex flex-wrap items-center justify-between gap-x-2 text-2xs">
+      <div className="mt-1 flex flex-wrap items-center justify-between gap-x-2 font-mono text-3xs tabular-nums">
         <span className="text-orange-200">
           Осталось: {formatDiseaseTimeLeft(recovery.remainingMs)}
         </span>
         <span className="text-orange-200/70">
-          идет выздоровление · {inHospital ? "не заразен" : "заразен"}
+          {inHospital ? "не заразен" : "заразен"}
         </span>
       </div>
     </div>

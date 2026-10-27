@@ -42,6 +42,12 @@ import {
   RoomConfig,
 } from "../HexMap/rooms-config";
 import { getRoomToadLists } from "../HexMap/room-toad-lists";
+import {
+  DataCell,
+  DataGrid,
+  HudPanel,
+  SectionTitle,
+} from "../shared/DataGrid";
 import { ClickButton } from "../shared/ClickButton";
 import { CurrencyIcon } from "../shared/CurrencyIcon";
 import RoomDemolishModal from "./RoomDemolishModal";
@@ -254,51 +260,44 @@ export default function RoomDataTab({ room, stats }: RoomDataTabProps) {
 
   return (
     <div className="flex flex-col gap-3 px-2 pb-2">
-      {/* Описание сектора — то же, что видно в каталоге карты. Это первое, что нужно
-          прочитать о гексе, поэтому блок стоит выше сводки и предупреждений. */}
-      <div className="rounded-xl border border-sky-400/25 bg-sky-950/30 p-2">
-        <p className="mb-1 text-2xs font-bold uppercase tracking-wide text-sky-200">
-          📖 О секторе
-        </p>
-        <p className="text-2xs leading-snug text-sky-100">{description}</p>
-      </div>
+      {/* Паспорт сектора: иконка, имя, тип и описание в одной карточке. Отдельная
+          панель «О секторе» дублировала заголовок и оставляла пустую полосу,
+          поэтому описание живёт прямо под именем — первое, что читает игрок. */}
+      <HudPanel className="h-fit w-full p-0">
+        <div className="flex items-start gap-2.5 p-3">
+          <span
+            aria-hidden="true"
+            className="flex h-11 w-11 shrink-0 items-center justify-center border border-slate-600/50 bg-slate-950/50 text-2xl leading-none"
+          >
+            {room.icon}
+          </span>
 
-      {/* Главная ошибка сектора: без тока рабочие вкладки закрыты, а биопод не производит биомассу */}
-      {!powered && (
-        <div className="rounded-xl border border-rose-500/60 bg-rose-950/40 p-2">
-          <p className="text-xs font-bold text-rose-200">
-            ⚠️ {ROOM_UNPOWERED_TITLE}
-          </p>
-          <p className="mt-1 text-2xs leading-snug text-rose-100/80">
-            {ROOM_UNPOWERED_MESSAGE} Его рабочие вкладки закрыты, а жильцы
-            биопода без тока не вырабатывают биомассу.
-          </p>
-        </div>
-      )}
-
-      {/* Что это за гекс и кто в нём живёт */}
-      <div className="ui-panel p-2">
-        <div className="flex items-center gap-2">
-          <span className="text-2xl">{room.icon}</span>
           <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-1">
-              <span className="text-sm font-semibold text-amber-100">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <h3 className="text-sm font-semibold text-slate-100">
                 {room.name}
+              </h3>
+              <span className="border border-slate-600/50 bg-slate-950/50 px-1.5 py-0.5 text-3xs uppercase tracking-[0.12em] text-slate-400">
+                {room.subtitle}
               </span>
               {scene && !isEditingName && (
-                <span className="inline-flex items-center gap-1 text-2xs text-slate-400">
-                  биопод «{scene.name || "Биопод"}»
-                  <button
-                    onClick={() => setIsEditingName(true)}
-                    className="text-slate-400 transition-colors hover:text-cyan-300"
-                    title="Переименовать биопод"
-                    aria-label="Переименовать биопод"
-                  >
-                    {InfoIcons.pencil}
-                  </button>
-                </span>
+                <button
+                  onClick={() => setIsEditingName(true)}
+                  className="inline-flex min-w-0 items-center gap-1 text-2xs text-slate-400 transition-colors hover:text-slate-100"
+                  title="Переименовать биопод"
+                  aria-label="Переименовать биопод"
+                >
+                  <span className="truncate">
+                    🏠 «{scene.name || "Биопод"}»
+                  </span>
+                  {InfoIcons.pencil}
+                </button>
               )}
             </div>
+
+            <p className="mt-1 text-2xs leading-snug text-slate-300">
+              {description}
+            </p>
 
             {/* Имя биопода: Enter сохраняет, Esc отменяет правку и не закрывает окно */}
             {scene && isEditingName && (
@@ -311,60 +310,94 @@ export default function RoomDataTab({ room, stats }: RoomDataTabProps) {
                   placeholder="Название биопода"
                   aria-label="Название биопода"
                   autoFocus
-                  className="min-w-0 flex-1 rounded-lg border border-cyan-400/40 bg-slate-950/60 px-2 py-1 text-xs text-white outline-none transition-colors placeholder-slate-500 focus:border-cyan-400"
+                  className="min-w-0 flex-1 border border-slate-600/60 bg-slate-950/50 px-2 py-1 text-xs text-white outline-none transition-colors placeholder-slate-500 focus:border-slate-400"
                 />
                 <button
                   onClick={handleSaveName}
-                  className="rounded-lg border border-emerald-500/40 px-2 py-1 text-xs text-emerald-300 transition-colors hover:bg-emerald-500/15"
+                  className="border border-emerald-500/40 px-2 py-1 text-xs text-emerald-300 transition-colors hover:bg-emerald-500/15"
                   title="Сохранить название"
                 >
                   ✓
                 </button>
                 <button
                   onClick={handleCancelName}
-                  className="rounded-lg border border-rose-500/40 px-2 py-1 text-xs text-rose-300 transition-colors hover:bg-rose-500/15"
+                  className="border border-rose-500/40 px-2 py-1 text-xs text-rose-300 transition-colors hover:bg-rose-500/15"
                   title="Отменить переименование"
                 >
                   ✕
                 </button>
               </div>
             )}
-            <p className="ui-caption">{room.subtitle}</p>
           </div>
         </div>
 
-        <div className="mt-2 grid grid-cols-3 gap-1.5 text-center text-2xs">
-          <div className="rounded-lg bg-slate-950/40 px-1 py-1">
-            <p className="text-slate-400">Жаб в секторе</p>
-            <p className="font-bold text-white">{roomToads.length}</p>
-          </div>
-          <div className="rounded-lg bg-slate-950/40 px-1 py-1">
-            <p className="text-slate-400">Питание</p>
-            <p
-              className={`font-bold ${
-                powered ? "text-emerald-300" : "text-rose-300"
-              }`}
-            >
-              {powered ? "⚡ есть ток" : "🔌 без тока"}
-            </p>
-          </div>
-          <div className="rounded-lg bg-slate-950/40 px-1 py-1">
-            <p className="text-slate-400">Улучшения</p>
-            <p className="font-bold text-white">
-              {canUpgrade ? `${installed}/${availableUpgrades.length}` : "—"}
-            </p>
-          </div>
+        {/* Техническая строка: статус канала и заполненность сектора. Заполняет
+            нижнюю полосу карточки и даёт быстрый ответ «работает ли гекс». */}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-slate-600/40 px-3 py-1.5 text-3xs uppercase tracking-[0.12em]">
+          <span
+            className={`font-bold ${
+              powered ? "text-emerald-300" : "text-rose-300"
+            }`}
+          >
+            ● {powered ? "Онлайн" : "Нет тока"}
+          </span>
+          <span aria-hidden="true" className="h-3 w-px bg-slate-700" />
+          <span className="text-slate-500">
+            Канал // {powered ? "стабилен" : "потерян"}
+          </span>
+          <span className="ml-auto tabular-nums text-slate-400">
+            🐸 {roomToads.length}
+          </span>
         </div>
-      </div>
+      </HudPanel>
+
+      {/* Главная ошибка сектора: без тока рабочие вкладки закрыты, а биопод не производит биомассу */}
+      {!powered && (
+        <HudPanel tone="rose" className="p-2">
+          <p className="text-xs font-bold text-rose-200">
+            ⚠️ {ROOM_UNPOWERED_TITLE}
+          </p>
+          <p className="mt-1 text-2xs leading-snug text-rose-100/80">
+            {ROOM_UNPOWERED_MESSAGE} Его рабочие вкладки закрыты, а жильцы
+            биопода без тока не вырабатывают биомассу.
+          </p>
+        </HudPanel>
+      )}
+
+      {/* Сводка по гексу: те же клетки, что и у статистики биопода */}
+      <DataGrid columns={3}>
+        <DataCell
+          dense
+          label="Жабы"
+          value={roomToads.length}
+          color="text-white"
+        />
+        <DataCell
+          dense
+          label="Питание"
+          value={powered ? "⚡ есть ток" : "🔌 без тока"}
+          color={powered ? "text-emerald-300" : "text-rose-300"}
+        />
+        <DataCell
+          dense
+          label="Апгрейды"
+          value={canUpgrade ? `${installed}/${availableUpgrades.length}` : "—"}
+          color="text-white"
+        />
+      </DataGrid>
 
       {/* Статистика самого места: у биопода, Медотсека и «Разведки» она своя */}
       {stats}
 
       {/* Улучшения сектора — то, что раньше стояло в модалке улучшения */}
       <div className="flex flex-col gap-2">
-        <p className="text-2xs font-bold uppercase tracking-wide text-amber-200">
+        <SectionTitle
+          aside={
+            canUpgrade ? `${installed}/${availableUpgrades.length}` : undefined
+          }
+        >
           🛠️ Улучшения
-        </p>
+        </SectionTitle>
 
         {!canUpgrade && (
           <p className="ui-caption">У этого сектора улучшений нет.</p>
@@ -377,13 +410,10 @@ export default function RoomDataTab({ room, stats }: RoomDataTabProps) {
             const enough = tokens >= option.cost;
 
             return (
-              <div
+              <HudPanel
                 key={option.key}
-                className={`rounded-xl border p-2 ${
-                  bought
-                    ? "border-emerald-500/40 bg-emerald-900/20"
-                    : "border-white/10 bg-slate-950/40"
-                }`}
+                tone={bought ? "emerald" : "cyan"}
+                className="p-2"
               >
                 <div className="flex items-start gap-2">
                   <span className="text-xl leading-none">{option.icon}</span>
@@ -396,7 +426,7 @@ export default function RoomDataTab({ room, stats }: RoomDataTabProps) {
                 </div>
 
                 {bought ? (
-                  <div className="mt-2 flex items-center justify-between gap-2 rounded-lg border border-emerald-500/20 bg-slate-950/30 px-2 py-1.5">
+                  <div className="mt-2 flex items-center justify-between gap-2 border border-emerald-500/20 bg-slate-950/50 px-2 py-1.5">
                     <span
                       className={`text-2xs font-bold ${
                         active ? "text-emerald-300" : "text-slate-400"
@@ -414,14 +444,14 @@ export default function RoomDataTab({ room, stats }: RoomDataTabProps) {
                         active ? "включён" : "выключен"
                       }`}
                       onClick={() => handleToggle(option)}
-                      className={`relative h-6 w-12 shrink-0 rounded-full border border-white/10 transition-all duration-300 ${
+                      className={`relative h-6 w-12 shrink-0 rounded-none border border-white/10 transition-all duration-300 ${
                         active
                           ? "bg-emerald-500 shadow-lg shadow-emerald-500/30"
                           : "bg-slate-600"
                       }`}
                     >
                       <div
-                        className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-md transition-all duration-300 ${
+                        className={`absolute top-1 h-4 w-4 rounded-none bg-white shadow-md transition-all duration-300 ${
                           active ? "translate-x-7" : "translate-x-1"
                         }`}
                       />
@@ -431,7 +461,7 @@ export default function RoomDataTab({ room, stats }: RoomDataTabProps) {
                   <ClickButton
                     disabled={!enough}
                     onClick={() => handleBuy(option)}
-                    className={`mt-2 w-full rounded-lg border px-3 py-2 text-xs font-bold transition-colors duration-300 ${
+                    className={`mt-2 w-full border px-3 py-2 text-xs font-bold transition-colors duration-300 ${
                       enough
                         ? "border-amber-500/50 text-amber-100 hover:bg-amber-800/40"
                         : "border-slate-600/40 text-slate-500"
@@ -442,7 +472,7 @@ export default function RoomDataTab({ room, stats }: RoomDataTabProps) {
                     {enough ? "" : " — не хватает Кваксов"}
                   </ClickButton>
                 )}
-              </div>
+              </HudPanel>
             );
           })}
 
@@ -456,9 +486,7 @@ export default function RoomDataTab({ room, stats }: RoomDataTabProps) {
 
       {/* Снос сектора: подтверждение берёт на себя RoomDemolishModal */}
       <div className="flex flex-col gap-2 pb-1">
-        <p className="text-2xs font-bold uppercase tracking-wide text-rose-200">
-          🗑️ Снос сектора
-        </p>
+        <SectionTitle>🗑️ Снос сектора</SectionTitle>
 
         <p className="ui-caption">
           Снос стоит {DEMOLISH_ROOM_COST}{" "}

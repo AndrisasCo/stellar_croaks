@@ -31,6 +31,7 @@ import { canMoveToadToRoom, getToadMoveIssue } from "../HexMap/toad-move-rules";
 import { RoomConfig } from "../HexMap/rooms-config";
 import RoomDataTab, { ROOM_DATA_TAB } from "./RoomDataTab";
 import { ToadInfo } from "./ToadInfoModal";
+import { DataCell, DataGrid } from "../shared/DataGrid";
 
 /**
  * Медотсек 🛏️ — сектор лечения, и модалка у него своя, а не вкладка «Разведки».
@@ -318,7 +319,7 @@ export default function HospitalModal({ room }: HospitalModalProps) {
           <ClickButton
             onClick={() => handleHeal(toad.id)}
             disabled={!affordable}
-            className={`w-full py-2 rounded-xl text-xs font-bold border transition-colors duration-300 ${
+            className={`w-full py-2 rounded-none text-xs font-bold border transition-colors duration-300 ${
               affordable
                 ? "bg-emerald-900/50 border-emerald-500/50 text-emerald-100 hover:bg-emerald-800/60"
                 : "bg-slate-800/40 border-slate-700/40 text-slate-500"
@@ -333,7 +334,7 @@ export default function HospitalModal({ room }: HospitalModalProps) {
           <ClickButton
             onClick={() => handleCure(toad.id)}
             disabled={!cureAffordable}
-            className={`w-full py-2 rounded-xl text-xs font-bold border transition-colors duration-300 ${
+            className={`w-full py-2 rounded-none text-xs font-bold border transition-colors duration-300 ${
               cureAffordable
                 ? "bg-sky-900/50 border-sky-500/50 text-sky-100 hover:bg-sky-800/60"
                 : "bg-slate-800/40 border-slate-700/40 text-slate-500"
@@ -348,7 +349,7 @@ export default function HospitalModal({ room }: HospitalModalProps) {
           <ClickButton
             onClick={() => admission?.room && handleAdmit(toad, admission.room)}
             disabled={!admission?.room}
-            className={`w-full py-2 rounded-xl text-xs font-bold border transition-colors duration-300 ${
+            className={`w-full py-2 rounded-none text-xs font-bold border transition-colors duration-300 ${
               admission?.room
                 ? "bg-amber-900/50 border-amber-500/50 text-amber-100 hover:bg-amber-800/60"
                 : "bg-slate-800/40 border-slate-700/40 text-slate-500"
@@ -362,7 +363,7 @@ export default function HospitalModal({ room }: HospitalModalProps) {
           <ClickButton
             onClick={() => handleDischarge(toad)}
             disabled={Boolean(dischargeIssue)}
-            className={`w-full py-2 rounded-xl text-xs font-bold border transition-colors duration-300 ${
+            className={`w-full py-2 rounded-none text-xs font-bold border transition-colors duration-300 ${
               dischargeIssue
                 ? "bg-slate-800/40 border-slate-700/40 text-slate-500"
                 : "bg-slate-800/60 border-slate-500/50 text-slate-200 hover:bg-slate-700/70"
@@ -378,7 +379,7 @@ export default function HospitalModal({ room }: HospitalModalProps) {
   };
 
   return (
-    <Modal icon={<span className="text-xl">🛏️</span>} title={room.name}>
+    <Modal title={room.name} tone="sky">
       {/* Табы сразу под названием — общий каркас модалок секторов */}
       <ModalTabs tabs={hospitalTabs} active={tab} onChange={setTab} />
 
@@ -439,7 +440,7 @@ export default function HospitalModal({ room }: HospitalModalProps) {
             </p>
 
             {hospitalRooms.length === 0 && (
-              <p className="rounded-xl border border-amber-500/30 bg-amber-950/30 px-3 py-2 text-2xs leading-snug text-amber-200/90">
+              <p className="rounded-none border border-amber-500/30 bg-amber-950/30 px-3 py-2 text-2xs leading-snug text-amber-200/90">
                 🏥 В колонии нет «Медотсека»: постройте этот сектор на свободном
                 гексе — только на койке жабы выздоравливают быстро.
               </p>
@@ -467,24 +468,26 @@ export default function HospitalModal({ room }: HospitalModalProps) {
           <RoomDataTab
             room={room}
             stats={
-              <div className="grid grid-cols-3 gap-1.5 text-center text-2xs">
-                <div className="rounded-lg bg-slate-900/40 px-1 py-1">
-                  <p className="text-slate-400">На этих койках</p>
-                  <p className="font-bold text-white">
-                    {roomToads.length}/{HOSPITAL_ROOM_TOAD_SLOTS}
-                  </p>
-                </div>
-                <div className="rounded-lg bg-slate-900/40 px-1 py-1">
-                  <p className="text-slate-400">Лежит в колонии</p>
-                  <p className="font-bold text-white">
-                    {patients.length}/{hospitalCapacity}
-                  </p>
-                </div>
-                <div className="rounded-lg bg-slate-900/40 px-1 py-1">
-                  <p className="text-slate-400">Нужна помощь</p>
-                  <p className="font-bold text-white">{needingCare.length}</p>
-                </div>
-              </div>
+              <DataGrid columns={3}>
+                <DataCell
+                  dense
+                  label="На этих койках"
+                  value={`${roomToads.length}/${HOSPITAL_ROOM_TOAD_SLOTS}`}
+                  color="text-white"
+                />
+                <DataCell
+                  dense
+                  label="Лежит в колонии"
+                  value={`${patients.length}/${hospitalCapacity}`}
+                  color="text-white"
+                />
+                <DataCell
+                  dense
+                  label="Нужна помощь"
+                  value={needingCare.length}
+                  color="text-amber-300"
+                />
+              </DataGrid>
             }
           />
         )}

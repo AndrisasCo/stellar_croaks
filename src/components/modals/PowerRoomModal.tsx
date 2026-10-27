@@ -17,6 +17,7 @@ import {
 import { useToads } from "../ToadContext";
 import { useModal } from "../ModalContext";
 import { ClickButton } from "../shared/ClickButton";
+import { DataCell, DataGrid, HudPanel } from "../shared/DataGrid";
 import Modal from "../shared/Header";
 import ModalTabs, { ModalTabItem } from "../shared/ModalTabs";
 import { ToadListCard } from "../shared/ToadListCard";
@@ -225,25 +226,22 @@ export default function PowerRoomModal({ room }: { room: RoomConfig }) {
   };
 
   return (
-    <Modal icon={<span className="text-2xl">⚡</span>} title={room.name}>
+    <Modal title={room.name} tone="amber">
       {/* Переключение вкладок: вид один на все секторы (`shared/ModalTabs`) */}
       <ModalTabs tabs={POWER_TABS} active={tab} onChange={setTab} />
 
       {tab === "power" && (
         <div className="px-2 pb-2">
           {/* Состояние сети: есть ли ток у самого сектора */}
-          <div
-            className={`mb-2 rounded-xl border p-2 ${
-              powered
-                ? "border-emerald-500/40 bg-emerald-900/20"
-                : "border-rose-500/40 bg-rose-900/20"
-            }`}
+          <HudPanel
+            tone={powered ? "emerald" : "rose"}
+            className="mb-2 p-2"
           >
-            <div className="flex items-center justify-between text-xs">
+            <div className="flex items-center justify-between gap-2 text-xs">
               <span className="font-bold text-white">
                 {powered ? "⚡ Сектор под током" : "🔌 Сектор обесточен"}
               </span>
-              <span className="text-slate-300">
+              <span className="shrink-0 text-slate-300">
                 Ток соседям: {powerGrid.usage[room.id] ?? 0}/
                 {POWER_ROOM_TOAD_SLOTS}
               </span>
@@ -253,35 +251,49 @@ export default function PowerRoomModal({ room }: { room: RoomConfig }) {
                 ? "Каждая кормлённая жаба внутри даёт одну единицу тока соседнем секторе."
                 : "Внешнее питание секторе не нужно: посадите взрослых жаб и накормите их — каждая даст одну единицу тока соседнему гексу."}
             </p>
-          </div>
+          </HudPanel>
 
-          {/* Ёмкость сектора и кормление жаб */}
-          <div className="mb-3 rounded-xl border border-slate-600/40 bg-color-main p-2">
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-amber-200">
-                ⚡ Работающих жаб: {output} из {POWER_ROOM_TOAD_SLOTS}
-              </span>
-              <span className="text-slate-300">
-                🐸 {roomToads.length}/{POWER_ROOM_TOAD_SLOTS}
-              </span>
-            </div>
-            <div className="mt-2 flex items-center justify-between gap-2">
+          {/* Ёмкость сектора: работающие жабы и запас корма */}
+          <DataGrid columns={3} className="mb-3">
+            <DataCell
+              dense
+              label="Работают"
+              value={`${output}/${POWER_ROOM_TOAD_SLOTS}`}
+              color="text-amber-200"
+            />
+            <DataCell
+              dense
+              label="Жабы"
+              value={`${roomToads.length}/${POWER_ROOM_TOAD_SLOTS}`}
+              color="text-white"
+            />
+            <DataCell
+              dense
+              label="Корм"
+              value={`${food} 🍎`}
+              color={food >= feedCost ? "text-lime-300" : "text-rose-300"}
+            />
+          </DataGrid>
+
+          {/* Кормление жаб: сытые дают ток, голодные — нет */}
+          <HudPanel className="mb-3 p-2">
+            <div className="flex items-center justify-between gap-2">
               <span className="text-2xs leading-snug text-slate-400">
                 {idleLabel}
               </span>
               <ClickButton
                 onClick={handleFeed}
                 disabled={activeRoomToads.length === 0 || food < feedCost}
-                className={`shrink-0 rounded-lg px-3 py-1 text-xs font-bold transition-all ${
+                className={`shrink-0 border px-3 py-1 text-xs font-bold transition-colors ${
                   activeRoomToads.length === 0 || food < feedCost
-                    ? "cursor-not-allowed bg-slate-700/60 text-slate-400"
-                    : "bg-amber-600 text-white hover:bg-amber-500 active:scale-95"
+                    ? "cursor-not-allowed border-slate-700/60 text-slate-500"
+                    : "border-amber-400/50 bg-amber-600/20 text-amber-100 hover:bg-amber-500/30"
                 }`}
               >
                 Покормить ({feedCost} 🍎)
               </ClickButton>
             </div>
-          </div>
+          </HudPanel>
 
           {/* Слоты энергосектора — та же сетка, что у Медотсека и репродуктора */}
           <ToadSlotGrid
@@ -376,7 +388,7 @@ export default function PowerRoomModal({ room }: { room: RoomConfig }) {
                             ? EXPEDITION_TOAD_BUSY_REASON
                             : undefined
                         }
-                        className={`shrink-0 rounded-lg border px-2 py-1 text-2xs transition-colors ${
+                        className={`shrink-0 rounded-none border px-2 py-1 text-2xs transition-colors ${
                           onExpedition
                             ? "cursor-not-allowed border-slate-700/60 text-slate-500"
                             : "border-slate-600/60 text-slate-300 hover:border-rose-400 hover:text-rose-200"

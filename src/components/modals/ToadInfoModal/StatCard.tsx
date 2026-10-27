@@ -1,3 +1,5 @@
+import { HudPanel } from "../../shared/DataGrid";
+
 export const StatCard = ({
   icon,
   label,
@@ -7,10 +9,10 @@ export const StatCard = ({
   tooltip,
 }: any) => {
   return (
-    <div
+    <HudPanel
       onClick={onClick}
-      className={`bg-color-main rounded-xl p-2 border border-slate-600/50 relative ${
-        onClick ? "cursor-pointer hover:bg-slate-600/50" : ""
+      className={`p-2 ${
+        onClick ? "cursor-pointer transition-colors hover:border-emerald-300/70" : ""
       }`}
     >
       <div className="flex items-center gap-2 mb-1">
@@ -19,6 +21,6 @@ export const StatCard = ({
       </div>
       <p className={`text-sm font-semibold ${colorClass}`}>{value}</p>
       {tooltip}
-    </div>
+    </HudPanel>
   );
 };

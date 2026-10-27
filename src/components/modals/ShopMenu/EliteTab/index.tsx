@@ -18,6 +18,12 @@ import {
 } from "../../../../backend/shop-state";
 import { useNotifications } from "../../../../hooks/use-notification";
 import { CurrencyIcon } from "../../../shared/CurrencyIcon";
+import {
+  DataCell,
+  DataGrid,
+  HudPanel,
+  SectionTitle,
+} from "../../../shared/DataGrid";
 import { AcceptButton } from "./AcceptButton";
 import {
   EXPEDITION_TOAD_BUSY_REASON,
@@ -175,101 +181,163 @@ export const EliteTab: React.FC = () => {
   const canRefresh = Date.now() >= shopState.nextRefreshElite;
 
   return (
-    <div className="space-y-4  pb-4">
-      <div className="bg-color-main rounded-2xl py-4 px-2 border border-slate-700">
-        <div className="flex flex-col gap-3">
-          <div className="flex justify-between items-center">
-            <span className="text-slate-300">Обновление заказов:</span>
-            <span className="text-white font-mono">{timeLeft}</span>
+    <div className="space-y-3 pb-4">
+      <HudPanel tone="amber" className="p-2.5">
+        <SectionTitle aside={canRefresh ? "READY" : timeLeft}>
+          Канал заказов
+        </SectionTitle>
+
+        <DataGrid columns={2} tone="amber">
+          <DataCell
+            label="Контрактов"
+            value={availableOrders.length}
+            accent="bg-amber-300"
+          />
+          <DataCell
+            label="Баланс"
+            color="text-amber-100"
+            accent="bg-cyan-300"
+            value={
+              <span className="inline-flex items-center gap-1.5">
+                {tokens}
+                <CurrencyIcon currency="tokens" className="h-4 w-4" />
+              </span>
+            }
+          />
+        </DataGrid>
+
+        <div className="mt-2 flex items-center justify-between gap-2">
+          <div className="min-w-0">
+            <div className="ui-kicker">Следующий цикл</div>
+            <div className="font-mono text-sm tabular-nums text-amber-100">
+              {timeLeft}
+            </div>
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex shrink-0 gap-1.5">
             <button
+              type="button"
               onClick={handleRefreshShop}
               disabled={!canRefresh}
-              className="ui-button-primary flex-1"
+              className="ui-button-primary px-3 py-1.5 text-3xs"
             >
               Обновить
             </button>
 
             <button
+              type="button"
               onClick={handleInstantRefresh}
               disabled={tokens < INSTANT_REFRESH_ELITE_COST}
-              className="ui-button-secondary whitespace-nowrap"
+              className="ui-button-secondary whitespace-nowrap px-3 py-1.5 text-3xs"
             >
               {INSTANT_REFRESH_ELITE_COST}{" "}
-              <CurrencyIcon currency="tokens" className="h-4 w-4" />
+              <CurrencyIcon currency="tokens" className="h-3.5 w-3.5" />
             </button>
           </div>
         </div>
-      </div>
+      </HudPanel>
 
-      <h3 className="text-white font-semibold mb-3 px-2 text-lg">
+      <SectionTitle aside={`${availableOrders.length} CONTRACTS`}>
         Элитные заказы
-      </h3>
+      </SectionTitle>
 
       {expeditionToadCount > 0 && (
-        <p className="mx-2 rounded-xl border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-2xs leading-snug text-amber-200">
-          🧭 В походе жаб: {expeditionToadCount}. Они не участвуют в заказах до
-          возвращения и разбора добычи.
-        </p>
+        <HudPanel tone="amber" className="px-3 py-2">
+          <p className="flex items-start gap-2 text-2xs leading-snug text-amber-200">
+            <span
+              aria-hidden="true"
+              className="mt-1.5 h-1 w-1 shrink-0 bg-amber-300"
+            />
+            <span>
+              В походе жаб: {expeditionToadCount}. Они не участвуют в заказах
+              до возвращения и разбора добычи.
+            </span>
+          </p>
+        </HudPanel>
       )}
 
       {availableOrders.map((order) => (
-        <div
+        <HudPanel
           key={order.id}
-          className={`rounded-2xl py-4 px-2 border ${
-            order.canComplete
-              ? "border-cyan-400/40 bg-cyan-500/10"
-              : "bg-color-main border-slate-600/50"
-          }`}
+          tone={order.canComplete ? "emerald" : "cyan"}
+          className="p-2.5"
         >
-          <div className="flex flex-col gap-3">
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-2">
-                {order.colorSwatch && (
-                  <span
-                    className="h-3.5 w-3.5 shrink-0 rounded-full border border-white/40"
-                    style={{ backgroundColor: order.colorSwatch }}
-                  />
-                )}
-                <h4 className="text-white font-semibold text-base">
+          <div className="flex items-start gap-2.5">
+            {order.colorSwatch && (
+              <span
+                aria-hidden="true"
+                className="mt-1 h-3.5 w-3.5 shrink-0 border border-white/40 shadow-[0_0_10px_currentColor]"
+                style={{
+                  backgroundColor: order.colorSwatch,
+                  color: order.colorSwatch,
+                }}
+              />
+            )}
+            <div className="min-w-0 flex-1">
+              <div className="flex min-w-0 items-start justify-between gap-2">
+                <h4 className="min-w-0 truncate text-sm font-semibold text-white">
                   {order.title}
                 </h4>
+                <span
+                  className={`shrink-0 text-3xs font-semibold uppercase tracking-[0.14em] ${
+                    order.canComplete ? "text-emerald-300" : "text-slate-500"
+                  }`}
+                >
+                  {order.canComplete ? "READY" : "LOCKED"}
+                </span>
               </div>
-              <p className="text-slate-200 text-sm mb-3">{order.description}</p>
-
-              <div className="flex flex-col gap-2 text-sm text-slate-300 mb-3">
-                <div className="flex justify-between">
-                  <span>Подходит жаб:</span>
-                  <span>{order.suitableToads.length}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Награда:</span>
-                  <span className="text-green-400">
-                    {order.reward}{" "}
-                    <CurrencyIcon currency="astro_quax" className="h-4 w-4" />
-                  </span>
-                </div>
-              </div>
-
-              <div
-                className={`text-sm ${
-                  order.canComplete ? "text-green-400" : "text-slate-500"
-                }`}
-              >
-                {order.canComplete
-                  ? "✅ Есть подходящие жабы"
-                  : "❌ Нет подходящих жаб"}
-              </div>
+              <p className="mt-1 text-2xs leading-snug text-slate-300">
+                {order.description}
+              </p>
             </div>
+          </div>
 
+          <DataGrid columns={2} className="mt-2">
+            <DataCell
+              label="Подходит жаб"
+              value={order.suitableToads.length}
+              color={order.canComplete ? "text-emerald-200" : "text-slate-300"}
+            />
+            <DataCell
+              label="Награда"
+              color="text-violet-200"
+              value={
+                <span className="inline-flex items-center gap-1.5">
+                  {order.reward}
+                  <CurrencyIcon
+                    currency="astro_quax"
+                    className="h-3.5 w-3.5"
+                  />
+                </span>
+              }
+            />
+          </DataGrid>
+
+          <div
+            className={`mt-2 flex items-center gap-1.5 text-3xs uppercase tracking-[0.12em] ${
+              order.canComplete ? "text-emerald-300" : "text-slate-500"
+            }`}
+          >
+            <span
+              aria-hidden="true"
+              className={`h-1 w-1 ${
+                order.canComplete
+                  ? "bg-emerald-300 shadow-[0_0_6px_rgba(52,211,153,0.8)]"
+                  : "bg-slate-600"
+              }`}
+            />
+            {order.canComplete
+              ? "Есть подходящие жабы"
+              : "Нет подходящих жаб"}
+          </div>
+
+          <div className="mt-2">
             <AcceptButton
               order={order}
               handleSubmitEliteOrder={handleSubmitEliteOrder}
             />
           </div>
-        </div>
+        </HudPanel>
       ))}
     </div>
   );

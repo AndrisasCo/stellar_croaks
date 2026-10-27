@@ -22,7 +22,7 @@ export const Tooltip = ({
     <div
       className={`absolute ${revert ? "bottom-0" : "top-full"} ${
         className ? className : "left-0 right-0"
-      }  z-10 bg-color-main border border-cyan-500/40 rounded-xl p-3 mt-1 shadow-lg`}
+      }  z-10 bg-color-main border border-cyan-500/40 rounded-none p-3 mt-1 shadow-lg`}
     >
       <div className="flex justify-between items-center mb-2">
         <h4 className="text-cyan-300 font-semibold text-sm">{title}</h4>
@@ -35,7 +35,7 @@ export const Tooltip = ({
             event.stopPropagation();
             onClose();
           }}
-          className="-my-1 -mr-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-2xl leading-none text-slate-300 transition-colors hover:bg-slate-600/50 hover:text-white"
+          className="-my-1 -mr-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-none text-2xl leading-none text-slate-300 transition-colors hover:bg-slate-600/50 hover:text-white"
         >
           ×
         </button>

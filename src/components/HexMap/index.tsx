@@ -451,7 +451,7 @@ export default function HexMapScreen() {
           <div className="flex min-w-0 items-start gap-2">
             {/* Панель колонии — только сводка: у биоподов больше нет общего «текущего»,
                 поэтому про сам биопод рассказывает его гекс (тап по биоподу → список жаб) */}
-            <div className="pointer-events-auto min-w-0 rounded-2xl border border-cyan-400/25 bg-slate-950/65 px-3 py-2 text-left shadow-lg backdrop-blur-md">
+            <div className="ui-panel pointer-events-auto min-w-0 rounded-none border-cyan-400/25 bg-slate-950/65 px-3 py-2 text-left shadow-lg backdrop-blur-md">
               <span className="brand-text block text-xl leading-none">
                 Stellar Croak
               </span>
@@ -482,7 +482,7 @@ export default function HexMapScreen() {
             <ClickButton
               title="Меню колонии"
               onClick={() => openModal(() => <BurgerMenu />)}
-              className="pointer-events-auto flex items-center justify-center w-10 h-10 rounded-xl border-2 border-purple-300/70 bg-slate-950/65 p-2 text-purple-200 backdrop-blur-md duration-300 "
+              className="pointer-events-auto flex items-center justify-center w-10 h-10 rounded-none border-2 border-purple-300/70 bg-slate-950/65 p-2 text-purple-200 backdrop-blur-md duration-300 "
             >
               {MenuIcons.menu}
             </ClickButton>
@@ -492,7 +492,7 @@ export default function HexMapScreen() {
         {/* Ресурсы колонии — плавающие чипы поверх карты; кормление живёт в ядре */}
         <div className="pointer-events-none flex w-[4.5rem] flex-col gap-1.5">
           {resources.map((item) => {
-            const chipClass = `flex items-center gap-1 rounded-lg border border-white/5 bg-slate-950/55 px-2 py-1 text-2xs font-semibold backdrop-blur-md ${item.tone}`;
+            const chipClass = `ui-panel flex items-center gap-1 rounded-none border-white/5 bg-slate-950/55 px-2 py-1 text-2xs font-semibold backdrop-blur-md ${item.tone}`;
 
             // 🧪 открывает статистику фермы: из чего складывается число в шапке
             if (item.key === "biomass") {

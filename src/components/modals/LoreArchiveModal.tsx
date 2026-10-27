@@ -32,11 +32,18 @@ const LoreArchiveModal: React.FC = () => {
   );
 
   return (
-    <Modal icon={icon} title={`Архив ${KVAZ_NAME}а`}>
+    <Modal icon={icon} title={`Архив ${KVAZ_NAME}а`} tone="violet">
       <div className="flex flex-col gap-3">
-        <div className="rounded-xl border border-cyan-400/25 bg-cyan-400/10 px-3 py-3">
-          <p className="ui-kicker">
-            Станция «{STATION_NAME}» · восстановлено {LORE_ENTRIES.length} записей
+        <div className="ui-panel relative border-cyan-400/25 bg-cyan-400/10 px-3 py-3">
+          <p className="ui-kicker flex flex-wrap items-center gap-x-1.5">
+            <span aria-hidden="true" className="text-cyan-300">
+              ▸
+            </span>
+            Станция «{STATION_NAME}»
+            <span aria-hidden="true" className="text-cyan-300/50">
+              /
+            </span>
+            восстановлено {LORE_ENTRIES.length} записей
           </p>
           <p className="mt-1.5 text-sm leading-relaxed text-cyan-50">
             Фрагменты памяти бортового интеллекта. Часть данных повреждена, часть
@@ -54,23 +61,19 @@ const LoreArchiveModal: React.FC = () => {
           return (
             <article
               key={entry.id}
-              className="rounded-xl border border-white/10 bg-color-main px-3 py-3 shadow-lg"
+              className="ui-panel relative px-3 py-3"
             >
               <div className="flex items-start gap-2.5">
-                <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-cyan-400/30 bg-cyan-400/10 text-2xs font-bold text-cyan-200">
+                <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center border border-cyan-400/30 bg-cyan-400/10 font-mono text-2xs font-bold tabular-nums text-cyan-200">
                   {String(index + 1).padStart(2, "0")}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="ui-kicker">
-                    {entry.source}
-                  </p>
+                  <p className="ui-kicker truncate">{entry.source}</p>
                   <h3 className="mt-0.5 text-sm font-bold leading-tight text-white">
                     {entry.title}
                   </h3>
                 </div>
-                <span
-                  className={`shrink-0 rounded-full border px-2 py-0.5 text-2xs font-semibold ${status.className}`}
-                >
+                <span className={`ui-badge shrink-0 ${status.className}`}>
                   {status.label}
                 </span>
               </div>
@@ -80,7 +83,7 @@ const LoreArchiveModal: React.FC = () => {
               </p>
 
               {entry.quote && (
-                <blockquote className="mt-2 rounded-lg border-l-2 border-cyan-400/50 bg-slate-950/30 px-3 py-2 text-sm italic leading-snug text-cyan-100">
+                <blockquote className="mt-2 border-l-2 border-cyan-400/50 bg-slate-950/40 px-3 py-2 text-sm italic leading-snug text-cyan-100">
                   «{entry.quote}»
                 </blockquote>
               )}
@@ -88,7 +91,7 @@ const LoreArchiveModal: React.FC = () => {
           );
         })}
 
-        <p className="rounded-xl border border-amber-400/20 bg-amber-400/10 px-3 py-2 text-2xs leading-snug text-amber-100/90">
+        <p className="ui-panel relative border-amber-400/20 bg-amber-400/10 px-3 py-2 text-2xs leading-snug text-amber-100/90">
           ⚠️ Запись об «Оранжерее-0» запечатана. Координаты сектора в архиве
           отсутствуют — возможно, их удалил не {KVAZ_NAME}.
         </p>

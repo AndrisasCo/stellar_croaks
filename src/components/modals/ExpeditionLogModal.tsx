@@ -20,45 +20,59 @@ export const ExpeditionLogModal: React.FC<{ expedition: Expedition }> = ({
   const completedAt = expedition.completedAt ?? expedition.startedAt;
 
   return (
-    <Modal title="Бортовой журнал" icon={<span className="text-xl">📡</span>}>
+    <Modal title="Бортовой журнал" tone="emerald">
       <div className="flex flex-col gap-3 px-1">
         <div
-          className={`relative overflow-hidden rounded-2xl border p-3 ${
+          className={`ui-panel relative overflow-hidden p-3 ${
             survived
               ? "border-emerald-500/40 bg-emerald-950/30"
               : "border-red-500/30 bg-red-950/20"
           }`}
         >
-          <div
-            aria-hidden
-            className={`pointer-events-none absolute -right-10 -top-12 h-28 w-28 rounded-full blur-3xl ${
-              survived ? "bg-emerald-400/20" : "bg-red-400/20"
+          <span
+            aria-hidden="true"
+            className={`pointer-events-none absolute inset-x-0 top-0 h-px ${
+              survived
+                ? "bg-gradient-to-r from-transparent via-emerald-300/70 to-transparent"
+                : "bg-gradient-to-r from-transparent via-red-300/70 to-transparent"
             }`}
           />
 
           <div className="relative flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <p className="truncate text-sm font-bold text-white">
+              <span
+                className={`text-3xs font-semibold uppercase tracking-[0.16em] ${
+                  survived ? "text-emerald-300/80" : "text-red-300/80"
+                }`}
+              >
+                // отчёт похода
+              </span>
+              <p className="mt-0.5 truncate text-sm font-bold text-white">
                 {sector.icon} {sector.name}
               </p>
-              <p className="mt-0.5 text-2xs text-slate-400">
-                глубина {sector.depth} · {expedition.team.length} жаб ·
-                возвращение {formatExpeditionDate(completedAt)}
+              <p className="mt-1 flex flex-wrap gap-x-2 font-mono text-3xs text-slate-400">
+                <span>глубина {sector.depth}</span>
+                <span aria-hidden="true">·</span>
+                <span>{expedition.team.length} жаб</span>
+                <span aria-hidden="true">·</span>
+                <span>{formatExpeditionDate(completedAt)}</span>
               </p>
             </div>
             <span
-              className={`shrink-0 rounded-lg px-2 py-1 text-2xs font-bold ${
+              className={`ui-badge shrink-0 ${
                 survived
-                  ? "bg-emerald-900/60 text-emerald-200"
-                  : "bg-red-900/50 text-red-200"
+                  ? "border-emerald-400/30 bg-emerald-900/50 text-emerald-200"
+                  : "border-red-400/30 bg-red-900/40 text-red-200"
               }`}
             >
-              {survived ? "✅ поход удался" : "⚠️ провал"}
+              {survived ? "✅ успех" : "⚠️ провал"}
             </span>
           </div>
 
-          <p className="relative mt-2 text-2xs text-slate-300">
-            Добыча:{" "}
+          <p className="relative mt-2 flex flex-wrap items-center gap-1 border-t border-white/10 pt-2 text-2xs text-slate-300">
+            <span className="text-3xs uppercase tracking-[0.12em] text-slate-500">
+              добыча
+            </span>
             <CurrencyText
               text={getExpeditionLootSummary(expedition)}
               iconClassName="h-3 w-3"

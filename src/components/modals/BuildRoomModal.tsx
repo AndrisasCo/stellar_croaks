@@ -187,12 +187,9 @@ export default function BuildRoomModal({ slot }: { slot: RoomConfig }) {
   };
 
   return (
-    <Modal
-      icon={<span className="text-2xl">🏗</span>}
-      title="Застройка территории"
-    >
+    <Modal title="Застройка территории" tone="emerald">
       <div className="px-2 pb-2">
-        <div className="mb-3 rounded-xl border border-amber-500/40 bg-amber-900/20 p-2">
+        <div className="mb-3 rounded-none border border-amber-500/40 bg-amber-900/20 p-2">
           <div className="mb-1 flex items-center justify-between text-xs">
             <span className="font-bold text-amber-200">📐 Свободный гекс</span>
             <span className="text-amber-200">
@@ -231,7 +228,7 @@ export default function BuildRoomModal({ slot }: { slot: RoomConfig }) {
             return (
               <div
                 key={option.kind}
-                className="rounded-xl border border-slate-600/40 bg-color-second p-2"
+                className="rounded-none border border-slate-600/40 bg-color-second p-2"
               >
                 <div className="flex items-center gap-2">
                   <span className="text-2xl">{option.icon}</span>
@@ -239,7 +236,7 @@ export default function BuildRoomModal({ slot }: { slot: RoomConfig }) {
                     <div className="flex items-center gap-1 text-sm font-semibold text-amber-100">
                       {option.title}
                       {option.unique && (
-                        <span className="rounded bg-amber-500/20 px-1 text-2xs font-normal text-amber-200">
+                        <span className="rounded-none bg-amber-500/20 px-1 text-2xs font-normal text-amber-200">
                           единственная
                         </span>
                       )}
@@ -283,7 +280,7 @@ export default function BuildRoomModal({ slot }: { slot: RoomConfig }) {
                   <ClickButton
                     onClick={() => handleBuild(option, cost)}
                     disabled={blocked}
-                    className={`rounded-lg px-3 py-1 text-xs font-bold transition-all ${
+                    className={`rounded-none px-3 py-1 text-xs font-bold transition-all ${
                       blocked
                         ? "cursor-not-allowed bg-slate-700/60 text-slate-400"
                         : "bg-amber-600 text-white hover:bg-amber-500 active:scale-95"

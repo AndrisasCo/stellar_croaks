@@ -302,34 +302,258 @@ body {
     @apply text-2xs leading-snug text-slate-400/90;
   }
 
-  /* ----- Поверхности карточек ----- */
+  /* ----- Поверхности карточек -----
+     Уголки-узлы повторяют разметку HUD-панелей (`GridNodes`): панель читается
+     как терминальный модуль, а не как обычная карточка с радиусом. */
   .ui-panel {
-    @apply rounded-xl border border-white/10 bg-slate-950/40;
+    @apply relative rounded-none border border-white/10 bg-slate-950/40;
   }
 
   .ui-panel-raised {
-    @apply rounded-2xl border border-white/10 bg-slate-950/60 shadow-lg backdrop-blur-md;
+    @apply relative rounded-none border border-white/10 bg-slate-950/60 shadow-lg backdrop-blur-md;
   }
 
-  .ui-chip {
-    @apply inline-flex items-center gap-1 rounded-lg border border-white/10 bg-slate-950/50 px-2 py-1 text-2xs font-semibold;
+  .ui-panel::before,
+  .ui-panel-raised::before {
+    content: "";
+    position: absolute;
+    inset: 3px;
+    pointer-events: none;
+    opacity: 0.55;
+    background:
+      linear-gradient(rgba(203, 213, 225, 0.7), rgba(203, 213, 225, 0.7))
+        left top / 3px 3px no-repeat,
+      linear-gradient(rgba(203, 213, 225, 0.7), rgba(203, 213, 225, 0.7))
+        right top / 3px 3px no-repeat,
+      linear-gradient(rgba(203, 213, 225, 0.7), rgba(203, 213, 225, 0.7))
+        left bottom / 3px 3px no-repeat,
+      linear-gradient(rgba(203, 213, 225, 0.7), rgba(203, 213, 225, 0.7))
+        right bottom / 3px 3px no-repeat;
   }
 
-  /* ----- Кнопки: один радиус, один размер текста, один ритм нажатия ----- */
+  /* Чипы и бейджи: срезанный силуэт + два узла по несрезанным углам. */
+  .ui-chip,
+  .ui-badge {
+    @apply relative inline-flex items-center gap-1 border border-white/10 bg-slate-950/55 px-2 py-1 text-2xs font-semibold;
+    clip-path: polygon(
+      4px 0,
+      100% 0,
+      100% calc(100% - 4px),
+      calc(100% - 4px) 100%,
+      0 100%,
+      0 4px
+    );
+  }
+
+  .ui-badge {
+    @apply text-3xs uppercase tracking-[0.12em];
+  }
+
+  .ui-chip::after,
+  .ui-badge::after {
+    content: "";
+    position: absolute;
+    inset: 2px;
+    pointer-events: none;
+    opacity: 0.65;
+    background:
+      linear-gradient(currentColor, currentColor) right top / 2px 2px no-repeat,
+      linear-gradient(currentColor, currentColor) left bottom / 2px 2px no-repeat;
+  }
+
+  /* ----- Кнопки: острые углы, один размер текста, один ритм нажатия ----- */
   .ui-button {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-bold transition-colors duration-300 disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 rounded-none px-3 py-2 text-sm font-bold transition-colors duration-300 disabled:cursor-not-allowed disabled:opacity-50;
   }
 
   .ui-button-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-cyan-300/40 bg-gradient-to-r from-cyan-600 to-emerald-600 px-3 py-2 text-sm font-bold text-white shadow-lg transition-colors duration-300 hover:from-cyan-500 hover:to-emerald-500 disabled:cursor-not-allowed disabled:opacity-50;
+    @apply relative isolate inline-flex items-center justify-center gap-2 overflow-hidden rounded-none border border-cyan-300/40 bg-gradient-to-r from-cyan-600 to-emerald-600 px-3 py-2 text-sm font-bold uppercase tracking-[0.04em] text-white shadow-lg transition-colors duration-300 hover:from-cyan-500 hover:to-emerald-500 disabled:cursor-not-allowed disabled:opacity-50;
+    /* Срезанный левый верхний и правый нижний углы: общий «терминальный» силуэт кнопок. */
+    clip-path: polygon(
+      0.55rem 0,
+      100% 0,
+      100% calc(100% - 0.55rem),
+      calc(100% - 0.55rem) 100%,
+      0 100%,
+      0 0.55rem
+    );
   }
 
   .ui-button-secondary {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-slate-800/70 px-3 py-2 text-sm font-bold text-slate-200 transition-colors duration-300 hover:bg-slate-700/70 disabled:cursor-not-allowed disabled:opacity-50;
+    @apply relative isolate inline-flex items-center justify-center gap-2 overflow-hidden rounded-none border border-white/10 bg-slate-800/70 px-3 py-2 text-sm font-bold uppercase tracking-[0.04em] text-slate-200 transition-colors duration-300 hover:bg-slate-700/70 disabled:cursor-not-allowed disabled:opacity-50;
+    clip-path: polygon(
+      0.55rem 0,
+      100% 0,
+      100% calc(100% - 0.55rem),
+      calc(100% - 0.55rem) 100%,
+      0 100%,
+      0 0.55rem
+    );
   }
 
   .ui-button-danger {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-rose-300/40 bg-gradient-to-r from-rose-600 to-red-600 px-3 py-2 text-sm font-bold text-white shadow-lg shadow-rose-950/30 transition-colors duration-300 hover:from-rose-500 hover:to-red-500 disabled:cursor-not-allowed disabled:opacity-50;
+    @apply relative isolate inline-flex items-center justify-center gap-2 overflow-hidden rounded-none border border-rose-300/40 bg-gradient-to-r from-rose-600 to-red-600 px-3 py-2 text-sm font-bold uppercase tracking-[0.04em] text-white shadow-lg shadow-rose-950/30 transition-colors duration-300 hover:from-rose-500 hover:to-red-500 disabled:cursor-not-allowed disabled:opacity-50;
+    clip-path: polygon(
+      0.55rem 0,
+      100% 0,
+      100% calc(100% - 0.55rem),
+      calc(100% - 0.55rem) 100%,
+      0 100%,
+      0 0.55rem
+    );
+  }
+
+  /* Лёгкий скан-блик при наведении: кнопка читается как клавиша терминала,
+     но остаётся плоской и не отвлекает от текста. Псевдоэлемент живёт под
+     содержимым, поэтому иконки и подписи не теряют контраст. */
+  .ui-button-primary::before,
+  .ui-button-secondary::before,
+  .ui-button-danger::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(
+      112deg,
+      transparent 0 38%,
+      rgba(255, 255, 255, 0.2) 46%,
+      rgba(255, 255, 255, 0.05) 51%,
+      transparent 58%
+    );
+    transform: translateX(-120%);
+    transition: transform 0.55s ease;
+  }
+
+  .ui-button-primary:hover::before,
+  .ui-button-secondary:hover::before,
+  .ui-button-danger:hover::before {
+    transform: translateX(120%);
+  }
+
+  /* Четыре угловые скобы: две на прямых углах и две внутри срезанных.
+     Внутренние скобы сдвинуты на 8px, чтобы не обрезаться силуэтом кнопки. */
+  .ui-button-primary,
+  .ui-button-secondary,
+  .ui-button-danger {
+    --ui-btn-corner: rgba(255, 255, 255, 0.72);
+  }
+
+  .ui-button-secondary {
+    --ui-btn-corner: rgba(165, 243, 252, 0.62);
+  }
+
+  .ui-button-primary::after,
+  .ui-button-secondary::after,
+  .ui-button-danger::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+    background:
+      linear-gradient(var(--ui-btn-corner), var(--ui-btn-corner)) right 4px
+        top 4px / 5px 1px no-repeat,
+      linear-gradient(var(--ui-btn-corner), var(--ui-btn-corner)) right 4px
+        top 4px / 1px 5px no-repeat,
+      linear-gradient(var(--ui-btn-corner), var(--ui-btn-corner)) left 4px
+        bottom 4px / 5px 1px no-repeat,
+      linear-gradient(var(--ui-btn-corner), var(--ui-btn-corner)) left 4px
+        bottom 4px / 1px 5px no-repeat,
+      linear-gradient(var(--ui-btn-corner), var(--ui-btn-corner)) left 8px
+        top 8px / 5px 1px no-repeat,
+      linear-gradient(var(--ui-btn-corner), var(--ui-btn-corner)) left 8px
+        top 8px / 1px 5px no-repeat,
+      linear-gradient(var(--ui-btn-corner), var(--ui-btn-corner)) right 8px
+        bottom 8px / 5px 1px no-repeat,
+      linear-gradient(var(--ui-btn-corner), var(--ui-btn-corner)) right 8px
+        bottom 8px / 1px 5px no-repeat;
+  }
+
+  .ui-button-primary:hover::after,
+  .ui-button-secondary:hover::after,
+  .ui-button-danger:hover::after {
+    opacity: 0.65;
+  }
+
+  /* Кнопка закрытия модалки: без срезанных углов.
+     У общей secondary-кнопки скошены два угла, а внутренние скобы рассчитаны
+     на крупный силуэт. На низкой кнопке «Закрыть» они визуально ломались,
+     поэтому здесь прямые углы и четыре одинаковые скобы по периметру. */
+  .ui-button-close {
+    clip-path: none;
+  }
+
+  .ui-button-close::after {
+    background:
+      linear-gradient(var(--ui-btn-corner), var(--ui-btn-corner)) left 4px
+        top 4px / 6px 1px no-repeat,
+      linear-gradient(var(--ui-btn-corner), var(--ui-btn-corner)) left 4px
+        top 4px / 1px 6px no-repeat,
+      linear-gradient(var(--ui-btn-corner), var(--ui-btn-corner)) right 4px
+        top 4px / 6px 1px no-repeat,
+      linear-gradient(var(--ui-btn-corner), var(--ui-btn-corner)) right 4px
+        top 4px / 1px 6px no-repeat,
+      linear-gradient(var(--ui-btn-corner), var(--ui-btn-corner)) left 4px
+        bottom 4px / 6px 1px no-repeat,
+      linear-gradient(var(--ui-btn-corner), var(--ui-btn-corner)) left 4px
+        bottom 4px / 1px 6px no-repeat,
+      linear-gradient(var(--ui-btn-corner), var(--ui-btn-corner)) right 4px
+        bottom 4px / 6px 1px no-repeat,
+      linear-gradient(var(--ui-btn-corner), var(--ui-btn-corner)) right 4px
+        bottom 4px / 1px 6px no-repeat;
+  }
+
+  /* Ползунки торгового терминала: тонкая шкала и квадратный бегунок. */
+  .ui-range {
+    @apply h-2 w-full cursor-pointer appearance-none bg-slate-800/80 disabled:cursor-not-allowed disabled:opacity-50;
+    clip-path: polygon(4px 0, 100% 0, calc(100% - 4px) 100%, 0 100%);
+  }
+
+  .ui-range::-webkit-slider-thumb {
+    @apply h-4 w-4 appearance-none border border-white/70 bg-cyan-400;
+    box-shadow: 0 0 10px rgba(34, 211, 238, 0.65);
+  }
+
+  .ui-range::-moz-range-thumb {
+    @apply h-4 w-4 border border-white/70 bg-cyan-400;
+    border-radius: 0;
+    box-shadow: 0 0 10px rgba(34, 211, 238, 0.65);
+  }
+
+  /* ----- ClickButton: общая угловая разметка -----
+     Все кнопки игры получают по четыре короткие скобы. Для крупных
+     ui-button-* их перекрывает более выразительный вариант выше, поэтому
+     здесь только «лёгкий» контур, который не спорит с содержимым. */
+  .click-button {
+    position: relative;
+  }
+
+  .click-button:not(.ui-button-primary):not(.ui-button-secondary):not(
+      .ui-button-danger
+    )::after {
+    content: "";
+    position: absolute;
+    inset: 2px;
+    pointer-events: none;
+    opacity: 0.32;
+    transition: opacity 0.25s ease;
+    background:
+      linear-gradient(currentColor, currentColor) left top / 4px 1px no-repeat,
+      linear-gradient(currentColor, currentColor) left top / 1px 4px no-repeat,
+      linear-gradient(currentColor, currentColor) right top / 4px 1px no-repeat,
+      linear-gradient(currentColor, currentColor) right top / 1px 4px no-repeat,
+      linear-gradient(currentColor, currentColor) left bottom / 4px 1px no-repeat,
+      linear-gradient(currentColor, currentColor) left bottom / 1px 4px no-repeat,
+      linear-gradient(currentColor, currentColor) right bottom / 4px 1px
+        no-repeat,
+      linear-gradient(currentColor, currentColor) right bottom / 1px 4px
+        no-repeat;
+  }
+
+  .click-button:not(.ui-button-primary):not(.ui-button-secondary):not(
+      .ui-button-danger
+    ):hover::after {
+    opacity: 0.6;
   }
 
   /* ----- ClickButton: единое disabled-состояние -----
@@ -427,6 +651,45 @@ body {
 
 .bg-color-second {
   background: var(--surface-raised);
+}
+
+/* Техно-фон модалок: скан-линии + координатная сетка, растворяющаяся книзу.
+   Рисуется отдельным слоем под контентом, поэтому текст и HUD-панели остаются
+   контрастными; на телефоне паттерн почти не заметен, на десктопе добавляет
+   лабораторной глубины. */
+.hud-backdrop {
+  background-image:
+    repeating-linear-gradient(
+      to bottom,
+      rgba(226, 232, 240, 0.022) 0,
+      rgba(226, 232, 240, 0.022) 1px,
+      transparent 1px,
+      transparent 4px
+    ),
+    linear-gradient(rgba(148, 163, 184, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.045) 1px, transparent 1px);
+  background-size:
+    auto,
+    28px 28px,
+    28px 28px;
+  -webkit-mask-image: radial-gradient(
+    ellipse at 50% 0%,
+    #000 0%,
+    transparent 78%
+  );
+  mask-image: radial-gradient(ellipse at 50% 0%, #000 0%, transparent 78%);
+}
+
+/* Диагональная микроштриховка карточек списков: тонкий технический паттерн,
+   который не спорит с текстом и виден только на крупных строках. */
+.hud-card-scan {
+  background-image: repeating-linear-gradient(
+    135deg,
+    rgba(226, 232, 240, 0.035) 0,
+    rgba(226, 232, 240, 0.035) 1px,
+    transparent 1px,
+    transparent 11px
+  );
 }
 
 /* ===== Тач и iOS Safari: игра — одноэкранное приложение =====

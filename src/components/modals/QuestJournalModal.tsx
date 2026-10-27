@@ -15,6 +15,7 @@ import Modal from "../shared/Header";
 import ModalTabs, { ModalTabItem } from "../shared/ModalTabs";
 import { ClickButton } from "../shared/ClickButton";
 import { CurrencyIcon } from "../shared/CurrencyIcon";
+import { SectionTitle } from "../shared/DataGrid";
 
 type JournalTab = "active" | "chains" | "archive";
 
@@ -138,40 +139,43 @@ const QuestCard = ({
 
   return (
     <div
-      className={`rounded-xl border p-3 transition-colors ${
+      className={`ui-panel relative p-3 transition-colors ${
         status === "ready"
           ? "border-amber-300/40 bg-amber-500/[0.08]"
           : status === "claimed"
-            ? "border-white/10 bg-slate-950/30 opacity-80"
+            ? "border-white/10 bg-slate-950/35 opacity-80"
             : locked
-              ? "border-white/5 bg-slate-950/20 opacity-70"
-              : `bg-slate-950/40 ${sphere.panelClass}`
+              ? "border-white/5 bg-slate-950/25 opacity-70"
+              : `bg-slate-950/45 ${sphere.panelClass}`
       }`}
     >
       <div className="flex flex-wrap items-center gap-1.5">
-        <span
-          className={`inline-flex items-center gap-1 rounded-lg border px-2 py-0.5 text-3xs font-semibold uppercase tracking-wide ${sphere.badgeClass}`}
-        >
+        <span className={`ui-badge ${sphere.badgeClass}`}>
           {sphere.icon} {sphere.title}
         </span>
-        <span className="rounded-lg border border-white/10 bg-slate-950/50 px-2 py-0.5 text-3xs font-semibold text-slate-400">
+        <span className="ui-badge border-white/10 text-slate-400">
           {type.icon} {type.short}
         </span>
-        <span
-          className={`ml-auto rounded-lg border px-2 py-0.5 text-3xs font-semibold ${statusInfo.className}`}
-        >
+        <span className={`ui-badge ml-auto ${statusInfo.className}`}>
           {statusInfo.label}
         </span>
       </div>
 
-      <h3 className="mt-2 text-sm font-bold text-slate-100">{quest.title}</h3>
+      <h3 className="mt-2 flex items-center gap-1.5 text-sm font-bold text-slate-100">
+        <span
+          aria-hidden="true"
+          className="h-1.5 w-1.5 shrink-0 bg-current text-slate-600"
+        />
+        {quest.title}
+      </h3>
       <p className="mt-1 text-2xs leading-snug text-slate-400">
         {quest.description}
       </p>
 
       {locked ? (
-        <p className="mt-2 rounded-lg border border-dashed border-white/10 bg-slate-950/30 px-2 py-1.5 text-2xs text-slate-500">
-          🔒 {triggerHint(quest.trigger)}
+        <p className="mt-2 flex items-center gap-1.5 border border-amber-300/15 bg-slate-950/40 px-2 py-1.5 text-2xs text-slate-500">
+          <span aria-hidden="true">🔒</span>
+          {triggerHint(quest.trigger)}
         </p>
       ) : (
         <>
@@ -181,9 +185,9 @@ const QuestCard = ({
               {Math.min(progress, target)} / {target}
             </span>
           </div>
-          <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-800">
+          <div className="mt-1 h-2 overflow-hidden border border-white/10 bg-slate-900/80">
             <div
-              className={`h-full rounded-full transition-[width] duration-500 ${sphere.barClass}`}
+              className={`h-full transition-[width] duration-500 ${sphere.barClass}`}
               style={{ width: `${percent}%` }}
             />
           </div>
@@ -205,24 +209,6 @@ const QuestCard = ({
     </div>
   );
 };
-
-const SectionTitle = ({
-  icon,
-  title,
-  caption,
-}: {
-  icon: string;
-  title: string;
-  caption?: string;
-}) => (
-  <div className="flex items-baseline justify-between gap-2">
-    <h3 className="flex items-center gap-1.5 text-sm font-bold text-slate-100">
-      <span>{icon}</span>
-      {title}
-    </h3>
-    {caption ? <span className="text-3xs text-slate-500">{caption}</span> : null}
-  </div>
-);
 
 /**
  * ЖУРНАЛ ЗАДАНИЙ.
@@ -304,14 +290,7 @@ const QuestJournalModal = () => {
   };
 
   return (
-    <Modal
-      title="Журнал заданий"
-      icon={
-        <span className="flex h-8 w-8 items-center justify-center rounded-full border border-cyan-300/40 bg-cyan-500/10 text-lg">
-          📜
-        </span>
-      }
-    >
+    <Modal title="Журнал заданий" tone="amber">
       <div className="flex flex-col gap-3 px-1">
         <p className="text-2xs leading-snug text-slate-400">
           Короткие дела, средние цепочки и магистраль КОНТУРа. Награду нужно
@@ -320,26 +299,26 @@ const QuestJournalModal = () => {
 
         <div className="grid grid-cols-3 gap-2">
           <div className="ui-panel px-2 py-2 text-center">
-            <span className="block text-lg font-black tabular-nums text-amber-200">
+            <span className="block font-mono text-lg font-black tabular-nums text-amber-200">
               {counts.ready}
             </span>
-            <span className="block text-3xs uppercase tracking-wide text-slate-500">
+            <span className="block text-3xs uppercase tracking-[0.12em] text-slate-500">
               к получению
             </span>
           </div>
           <div className="ui-panel px-2 py-2 text-center">
-            <span className="block text-lg font-black tabular-nums text-cyan-200">
+            <span className="block font-mono text-lg font-black tabular-nums text-cyan-200">
               {counts.active}
             </span>
-            <span className="block text-3xs uppercase tracking-wide text-slate-500">
+            <span className="block text-3xs uppercase tracking-[0.12em] text-slate-500">
               в работе
             </span>
           </div>
           <div className="ui-panel px-2 py-2 text-center">
-            <span className="block text-lg font-black tabular-nums text-emerald-200">
+            <span className="block font-mono text-lg font-black tabular-nums text-emerald-200">
               {completedTotal}
             </span>
-            <span className="block text-3xs uppercase tracking-wide text-slate-500">
+            <span className="block text-3xs uppercase tracking-[0.12em] text-slate-500">
               из {counts.total} закрыто
             </span>
           </div>
@@ -348,8 +327,11 @@ const QuestJournalModal = () => {
         <ModalTabs tabs={TABS} active={tab} onChange={setTab} />
 
         {ready.length > 0 ? (
-          <div className="flex items-center justify-between gap-2 rounded-xl border border-amber-300/30 bg-amber-500/10 px-3 py-2">
-            <span className="text-2xs text-amber-100/90">
+          <div className="ui-panel flex items-center justify-between gap-2 border-amber-300/30 bg-amber-500/10 px-3 py-2">
+            <span className="flex items-center gap-1.5 text-2xs text-amber-100/90">
+              <span aria-hidden="true" className="text-amber-300">
+                ▸
+              </span>
               {ready.length}{" "}
               {pluralize(ready.length, "награда", "награды", "наград")}{" "}
               {pluralize(ready.length, "готова", "готовы", "готовы")} к
@@ -369,11 +351,9 @@ const QuestJournalModal = () => {
           <div className="flex flex-col gap-4">
             {ready.length > 0 ? (
               <section className="flex flex-col gap-2">
-                <SectionTitle
-                  icon="🎁"
-                  title="Награды ждут"
-                  caption={`${ready.length} шт.`}
-                />
+                <SectionTitle aside={`${ready.length} шт.`}>
+                  <span aria-hidden="true">🎁</span> Награды ждут
+                </SectionTitle>
                 <div className="grid gap-2 md:grid-cols-2">
                   {ready.map((entry) => (
                     <QuestCard
@@ -388,11 +368,9 @@ const QuestJournalModal = () => {
 
             {active.length > 0 ? (
               <section className="flex flex-col gap-2">
-                <SectionTitle
-                  icon="⚡"
-                  title="В работе"
-                  caption={`${active.length} шт.`}
-                />
+                <SectionTitle aside={`${active.length} шт.`}>
+                  <span aria-hidden="true">⚡</span> В работе
+                </SectionTitle>
                 <div className="grid gap-2 md:grid-cols-2">
                   {active.map((entry) => (
                     <QuestCard
@@ -443,10 +421,10 @@ const QuestJournalModal = () => {
               return (
                 <section key={chain.id} className="ui-panel p-3">
                   <SectionTitle
-                    icon={sphere.icon}
-                    title={chain.title}
-                    caption={`${finished} / ${chainEntries.length}`}
-                  />
+                    aside={`${finished} / ${chainEntries.length}`}
+                  >
+                    <span aria-hidden="true">{sphere.icon}</span> {chain.title}
+                  </SectionTitle>
                   <p className="mt-1 text-2xs leading-snug text-slate-400">
                     {chain.description}
                   </p>
@@ -465,13 +443,13 @@ const QuestJournalModal = () => {
 
             <section className="ui-panel border-sky-400/20 p-3">
               <SectionTitle
-                icon="🗺️"
-                title="Магистраль КОНТУРа"
-                caption={`${longQuestEntries.filter(
+                aside={`${longQuestEntries.filter(
                   (entry) =>
                     entry.status === "ready" || entry.status === "claimed",
                 ).length} / ${longQuestEntries.length}`}
-              />
+              >
+                <span aria-hidden="true">🗺️</span> Магистраль КОНТУРа
+              </SectionTitle>
               <p className="mt-1 text-2xs leading-snug text-slate-400">
                 Четыре долгих задания ведут через весь Периметр — от первого
                 шлюза до центра станции.

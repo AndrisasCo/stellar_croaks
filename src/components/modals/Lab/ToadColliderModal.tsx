@@ -34,6 +34,7 @@ import {
 } from "../../../utils/expedition-manager";
 import { TOAD_PICKER_REJECTED_GROUP } from "../../../utils/toad-picker";
 import { ClickButton } from "../../shared/ClickButton";
+import { DataCell, DataGrid, HudPanel } from "../../shared/DataGrid";
 import Modal from "../../shared/Header";
 import { ToadAvatar } from "../../shared/ToadAvatar";
 import { ToadGender } from "../../shared/ToadGender";
@@ -387,6 +388,7 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
     <Modal
       title={room?.name ?? "Генетический Коллайдер"}
       icon={ColliderIcons.collider}
+      tone="violet"
     >
       {/* Переключение вкладок: вид один на все секторы (`shared/ModalTabs`) */}
       {tabs.length > 1 && (
@@ -397,7 +399,7 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
         <>
           {!breedingResult ? (
             incubatorBusy ? (
-              <div className="rounded-xl border border-amber-400/40 bg-amber-500/10 p-5 text-center">
+              <HudPanel tone="amber" className="p-5 text-center">
                 <h3 className="mt-2 text-lg font-bold text-amber-200">
                   Коллайдер заблокирован
                 </h3>
@@ -412,11 +414,11 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
                 >
                   Перейти в инкубатор
                 </button>
-              </div>
+              </HudPanel>
             ) : (
               <>
-                <div className="bg-color-second  rounded-lg p-3 mb-4  border border-slate-600">
-                  <div className="text-xs sm:text-sm text-white font-medium mb-2  text-center flex items-center justify-center gap-2">
+                <HudPanel className="mb-4 p-3">
+                  <div className="mb-2 flex items-center justify-center gap-2 text-center text-xs font-medium text-white sm:text-sm">
                     <span className="text-yellow-400">⭐</span>
                     Бонусы редкости
                     <span className="text-yellow-400">⭐</span>
@@ -446,7 +448,7 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
                     ].map(({ count, colors, shadow }) => (
                       <div
                         key={count}
-                        className={`text-center p-1 sm:p-2 rounded-xl transition-all duration-500 transform ${
+                        className={`transform rounded-none border p-1 text-center transition-all duration-500 sm:p-2 ${
                           currentToads.length >= count
                             ? `bg-gradient-to-br ${colors} text-white shadow-lg ${shadow} scale-105 border-2 border-white border-opacity-30 animate-gradient-x`
                             : "bg-color-main text-slate-300 border-2 border-transparent "
@@ -465,10 +467,10 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
                       </div>
                     ))}
                   </div>
-                </div>
+                </HudPanel>
 
                 {/* Генная пыль: ползунок 0…10, каждая пылинка — +1% к качеству гибрида */}
-                <div className="mb-3 rounded-xl border border-fuchsia-400/30 bg-fuchsia-950/15 p-3">
+                <HudPanel tone="violet" className="mb-3 p-3">
                   <div className="mb-2 flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5 text-sm font-semibold text-fuchsia-200">
@@ -507,7 +509,7 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
                       disabled={isMixing || maxDust <= 0}
                       aria-label="Сколько генной пыли добавить в коллайдер"
                       title="Ползунок: сколько генной пыли добавить (0–10)"
-                      className="h-2 flex-1 rounded-lg bg-slate-600 accent-fuchsia-500 disabled:opacity-50"
+                      className="h-1.5 flex-1 cursor-pointer appearance-none rounded-none bg-slate-700 accent-fuchsia-500 disabled:opacity-50"
                     />
                     <span
                       className={`inline-flex w-16 shrink-0 items-center justify-end gap-1 text-xs font-medium ${
@@ -528,7 +530,7 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
                     <span>+0%</span>
                     <span>+{GENE_DUST_MAX_PER_MIX}% к качеству</span>
                   </div>
-                </div>
+                </HudPanel>
 
                 {/* Колбы: квадраты с «+», выбор жабы — модалкой */}
                 <ToadSlotGrid
@@ -577,7 +579,7 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
                 {/* Кнопки управления */}
 
                 <ClickButton
-                  className="w-full mt-auto bg-color-second hover:bg-slate-600 text-slate-200 py-3 rounded-xl "
+                  className="mt-auto w-full rounded-none border border-white/10 bg-color-second py-3 font-mono text-xs uppercase tracking-[0.08em] text-slate-200 transition-colors hover:bg-slate-600"
                   onClick={handleReset}
                   disabled={isMixing}
                 >
@@ -589,7 +591,7 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
             <div className="text-center">
               {/* Сообщение о результате */}
               <div
-                className={`rounded-xl p-4 mb-4 border-2 ${
+                className={`mb-4 rounded-none border p-4 ${
                   breedingResult.success
                     ? "bg-green-900/30 border-green-500/50 text-green-300"
                     : "bg-red-900/30 border-red-500/50 text-red-300"
@@ -610,14 +612,14 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
                 </div>
               </div>
 
-              <div className="bg-color-main rounded-xl p-2 border border-slate-600/50">
+              <div className="rounded-none border border-slate-600/50 bg-color-main p-2">
                 {/* Верхний блок: аватар + Качество + имя */}
                 <div className="flex items-center gap-4 mb-4">
                   {/* Поле ввода имени */}
                   <div className="flex-1">
                     <div className="flex items-center gap-2 ">
                       <button
-                        className="text-xl p-2 hover:bg-slate-600/50 rounded-xl transition-colors flex-shrink-0"
+                        className="shrink-0 rounded-none border border-transparent p-2 text-xl transition-colors hover:border-white/10 hover:bg-slate-600/50"
                         onClick={generateRandomName}
                         title="Сгенерировать имя"
                       >
@@ -628,7 +630,7 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
                         value={customName}
                         onChange={(e) => setCustomName(e.target.value)}
                         placeholder="Введите имя для жабы..."
-                        className="w-full rounded-xl border border-white/10 bg-slate-950/50 px-3 py-2 text-center text-sm text-white placeholder-slate-500 focus:border-cyan-300/50 focus:outline-none focus:ring-2 focus:ring-cyan-400/20"
+                        className="w-full rounded-none border border-white/10 bg-slate-950/50 px-3 py-2 text-center font-mono text-sm text-white placeholder-slate-500 focus:border-cyan-300/50 focus:outline-none focus:ring-1 focus:ring-cyan-400/30"
                       />
                     </div>
                   </div>
@@ -663,41 +665,39 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
                   </span>
                 </div>
 
-                {/* Таблица характеристик */}
-                <div className="grid grid-cols-2 gap-2 text-sm mb-3">
-                  <div className="text-slate-300 bg-slate-600/30 rounded-lg p-2 text-center">
-                    <div className="text-slate-500 text-xs mb-1">Вес</div>
-                    <div className="font-semibold">
-                      {breedingResult.child!.genes.weight.toFixed(1)}
-                    </div>
-                  </div>
-                  <div className="text-slate-300 bg-slate-600/30 rounded-lg p-2 text-center">
-                    <div className="text-slate-500 text-xs mb-1">Скорость</div>
-                    <div className="font-semibold">
-                      {breedingResult.child!.genes.speed.toFixed(1)}
-                    </div>
-                  </div>
-                  <div className="text-slate-300 bg-slate-600/30 rounded-lg p-2 text-center">
-                    <div className="text-slate-500 text-xs mb-1">Аппетит</div>
-                    <div className="font-semibold">
-                      {breedingResult.child!.genes.hungerRate.toFixed(1)}
-                    </div>
-                  </div>
-                  <div className="text-slate-300 bg-slate-600/30 rounded-lg p-2 text-center">
-                    <div className="text-slate-500 text-xs mb-1">
-                      Плодовитость
-                    </div>
-                    <div className="font-semibold">
-                      {breedingResult.child!.genes.fertility.toFixed(1)}
-                    </div>
-                  </div>
-                </div>
+                {/* Таблица характеристик: те же HUD-ячейки, что у остальных секторов */}
+                <DataGrid columns={4} className="mb-3">
+                  <DataCell
+                    dense
+                    label="Вес"
+                    value={breedingResult.child!.genes.weight.toFixed(1)}
+                    color="text-white"
+                  />
+                  <DataCell
+                    dense
+                    label="Скорость"
+                    value={breedingResult.child!.genes.speed.toFixed(1)}
+                    color="text-white"
+                  />
+                  <DataCell
+                    dense
+                    label="Аппетит"
+                    value={breedingResult.child!.genes.hungerRate.toFixed(1)}
+                    color="text-white"
+                  />
+                  <DataCell
+                    dense
+                    label="Плодовитость"
+                    value={breedingResult.child!.genes.fertility.toFixed(1)}
+                    color="text-white"
+                  />
+                </DataGrid>
 
                 {/* Генетическая поломка */}
                 {breedingResult.child!.state?.genetic_fault !== undefined && (
                   <div className="mb-3">
                     <div
-                      className={`rounded-xl p-3 border-2 ${
+                      className={`rounded-none border p-3 ${
                         getGeneticFaultConfig(
                           breedingResult.child!.state?.genetic_fault,
                         ).bgColor
@@ -762,7 +762,7 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 p-4 backdrop-blur-sm">
               <div className="ui-panel-raised mx-auto w-full max-w-sm border-rose-400/30 p-5">
                 <div className="mb-3 text-center">
-                  <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-rose-500/15">
+                  <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-none border border-rose-400/30 bg-rose-500/15">
                     <svg
                       className="h-8 w-8 text-rose-300"
                       fill="none"
@@ -787,7 +787,7 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
                   </p>
                 </div>
 
-                <div className="mb-4 rounded-xl bg-red-900/25 border border-red-500/40 p-2 text-left max-h-[30vh] overflow-y-auto">
+                <div className="mb-4 max-h-[30vh] overflow-y-auto rounded-none border border-red-500/40 bg-red-900/25 p-2 text-left">
                   <div className="text-1xs text-red-200/90 mb-1">
                     Исчезнут безвозвратно {currentToads.length}{" "}
                     {pluralizeToads(currentToads.length)}:

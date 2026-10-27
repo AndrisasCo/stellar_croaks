@@ -23,6 +23,12 @@ import {
 } from "../../utils/hunger";
 import { getToadSexLabel, getToadStageLabel } from "../../utils/toad-picker";
 import { DiseaseBar } from "./DiseaseBar";
+import {
+  GridNodes,
+  HUD_TONES,
+  HudTone,
+  useHudTone,
+} from "./DataGrid";
 import { ToadAvatar } from "./ToadAvatar";
 import { ToadGender } from "./ToadGender";
 import { ToadLocationBadge } from "./ToadLocationBadge";
@@ -42,6 +48,11 @@ import { ToadLocationBadge } from "./ToadLocationBadge";
  *
  * Клик по карточке открывает карточку жабы (`onOpen`), но клики по кнопкам действий,
  * названию болезни и её подсказке карточку не открывают: у них своя работа.
+ *
+ * Строка — часть HUD-языка интерфейса: узлы по углам, верхняя скан-линия и левый
+ * маркер состояния (цвет зависит от `tone`, у выбранной жабы — жёлтый). Разметка
+ * лежит под контентом и не перехватывает клики, поэтому общий вид списков совпадает
+ * в колонии, Медотсеке и торговом терминале.
  */
 
 /** Где жаба находится — плашка в правом верхнем углу (сектор, биопод, поход) */
@@ -122,15 +133,17 @@ const ToadMeter = ({
 
   return (
     <div className="flex items-center gap-2" title={title}>
-      <span className="shrink-0 text-2xs text-slate-400 w-20">{label}</span>
-      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-700/70">
+      <span className="w-20 shrink-0 font-mono text-3xs uppercase tracking-[0.08em] text-slate-400">
+        {label}
+      </span>
+      <div className="h-1.5 flex-1 overflow-hidden bg-slate-800/80">
         <div
-          className={`h-full rounded-full transition-all duration-500 ${barClassName}`}
+          className={`h-full transition-all duration-500 ${barClassName}`}
           style={{ width: `${ratio * 100}%` }}
         />
       </div>
       <span
-        className={`w-12 shrink-0 text-right text-2xs tabular-nums ${
+        className={`w-12 shrink-0 text-right font-mono text-2xs tabular-nums ${
           valueClassName ?? "text-slate-300"
         }`}
       >
@@ -145,6 +158,14 @@ const TONE_CLASS: Record<ToadListTone, string> = {
   success: "border-emerald-500/40",
   warn: "border-amber-500/40",
   danger: "border-rose-500/40",
+};
+
+/** Состояние строки задаёт и акцент HUD: узлы, верхнюю линию и левый маркер. */
+const TONE_HUD: Record<ToadListTone, HudTone> = {
+  default: "cyan",
+  success: "emerald",
+  warn: "amber",
+  danger: "rose",
 };
 
 export const ToadListCard = ({
@@ -209,6 +230,10 @@ export const ToadListCard = ({
 
   const hungerColor = getHungerBarColor(hunger);
   const hungerText = getHungerTextColor(hunger);
+  const inheritedTone = useHudTone();
+  const hud =
+    HUD_TONES[tone === "default" ? inheritedTone : TONE_HUD[tone]];
+  const accentTone = selected ? "bg-yellow-300" : hud.node;
 
   return (
     <div
@@ -217,12 +242,12 @@ export const ToadListCard = ({
       tabIndex={onOpen ? 0 : undefined}
       onClick={handleCardClick}
       onKeyDown={handleCardKeyDown}
-      className={`bg-color-main flex flex-col gap-2 rounded-2xl border p-2.5 text-left transition-colors ${
+      className={`group relative flex flex-col gap-2 overflow-hidden border p-2.5 text-left transition-colors focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-0 focus-visible:outline-cyan-300 ${
         selected
-          ? "border-yellow-400 bg-yellow-500/10 shadow-sm shadow-yellow-500/20"
+          ? "border-yellow-400/60 bg-yellow-500/10 shadow-sm shadow-yellow-500/20"
           : onOpen
-            ? `${TONE_CLASS[tone]} hover:border-cyan-300/40`
-            : TONE_CLASS[tone]
+            ? `${TONE_CLASS[tone]} bg-slate-950/50 hover:border-emerald-300/40`
+            : `${TONE_CLASS[tone]} bg-slate-950/50`
       } ${onOpen ? "cursor-pointer" : ""} ${className}`}
       style={
         familyColor
@@ -230,13 +255,28 @@ export const ToadListCard = ({
           : undefined
       }
     >
+      {/* Терминальная разметка строки: узлы по углам и верхняя скан-линия.
+          Левый маркер не дублируем: он спорил с 1px-рамкой и делал левый
+          край визуально толще правого. Слой не перехватывает клики. */}
+      <GridNodes tone={accentTone} />
+      <span
+        aria-hidden="true"
+        className={`pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r ${
+          selected ? "from-yellow-300/70" : hud.gradient
+        } to-transparent`}
+      />
+      <span
+        aria-hidden="true"
+        className="hud-card-scan pointer-events-none absolute inset-0 opacity-40"
+      />
+
       {/* Верхняя строка: кто это, где и в каком состоянии */}
       <div className="flex items-start gap-2.5">
         <div className="relative shrink-0">
           <ToadAvatar toad={toad} size={avatarSize} />
           {toad.pregnancy?.isPregnant && (
             <span
-              className="bg-color-main absolute -bottom-1 -left-1 rounded-full p-0.5 text-xs text-pink-400"
+              className="absolute -bottom-1 -left-1 rounded-none border border-pink-400/30 bg-slate-950 p-0.5 text-xs text-pink-400"
               title="Беременна"
             >
               <PregnancyIcon />
@@ -244,7 +284,7 @@ export const ToadListCard = ({
           )}
           {disease && (
             <span
-              className="bg-color-main absolute -left-1 -top-1 rounded-full p-0.5 text-xs"
+              className="absolute -left-1 -top-1 rounded-none border border-slate-600/50 bg-slate-950 p-0.5 text-xs"
               title={`${disease.name}: выработка биомассы снижена`}
             >
               {disease.icon}
@@ -293,7 +333,7 @@ export const ToadListCard = ({
 
             {disease && diseaseStyle === "chip" && (
               <span
-                className="inline-flex items-center gap-1 rounded border border-orange-400/20 bg-orange-500/10 px-1.5 py-0.5 text-orange-200"
+                className="ui-chip border-orange-400/20 bg-orange-500/10 px-1.5 py-0.5 text-orange-200"
                 title={`${disease.name}: ${disease.description}`}
               >
                 {disease.icon} {disease.name}

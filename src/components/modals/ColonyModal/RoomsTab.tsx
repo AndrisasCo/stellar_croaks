@@ -86,9 +86,9 @@ const RoomRow = ({
     <ClickButton
       type="button"
       onClick={onOpen}
-      className="flex w-full items-center gap-3 rounded-xl border border-white/10 bg-slate-800/60 p-2.5 text-left transition-colors hover:border-cyan-300/40 hover:bg-slate-800"
+      className="flex w-full items-center gap-3 rounded-none border border-white/10 bg-slate-800/60 p-2.5 text-left transition-colors hover:border-cyan-300/40 hover:bg-slate-800"
     >
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-slate-950/50 text-xl">
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-none border border-white/10 bg-slate-950/50 text-xl">
         {room.icon}
       </span>
 

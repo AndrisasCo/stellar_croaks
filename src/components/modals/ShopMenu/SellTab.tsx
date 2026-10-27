@@ -8,8 +8,9 @@ import {
   saveShopState,
   ShopState,
 } from "../../../backend/shop-state";
-import { ToadItem } from "../../shared/ToadItem";
 import { CurrencyIcon } from "../../shared/CurrencyIcon";
+import { HudPanel, SectionTitle } from "../../shared/DataGrid";
+import { ToadListCard } from "../../shared/ToadListCard";
 import {
   completeAchivement,
   completeAchivementCounter,
@@ -208,18 +209,26 @@ const SellTab: React.FC = () => {
   return (
     <div className="space-y-3 pb-3">
       {/* Ферма: обмен биомассы на Кваксы (Часть 3.7) — ползунок решает, сколько продать */}
-      <div className="bg-color-main rounded-xl p-3 border border-emerald-500/30 flex flex-col gap-2">
+      <HudPanel tone="emerald" className="flex flex-col gap-2 p-2.5">
+        <SectionTitle aside={`${formatBiomass(biomass)} UNIT`}>
+          Биомасса
+        </SectionTitle>
+
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <div className="text-emerald-300 font-semibold text-sm truncate">
-              🧪 Биомасса: {formatBiomass(biomass)}
+            <div className="flex items-center gap-1.5 text-sm font-semibold text-emerald-200">
+              <span aria-hidden="true" className="text-base leading-none">
+                🧪
+              </span>
+              <span className="truncate">{formatBiomass(biomass)} в резерве</span>
             </div>
-            <div className="text-slate-400 text-xs">
+            <div className="mt-0.5 text-2xs text-slate-400">
               Курс обмена: 2 биомассы = 1{" "}
               <CurrencyIcon currency="tokens" className="h-3 w-3" />
             </div>
           </div>
           <button
+            type="button"
             onClick={handleExchangeBiomass}
             disabled={sellTokens <= 0}
             title={
@@ -227,11 +236,9 @@ const SellTab: React.FC = () => {
                 ? `Обменять ${formatBiomass(spentBiomass)} 🧪 на ${sellTokens} Кваксов`
                 : "Нет биомассы для обмена"
             }
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all shrink-0 ${
-              sellTokens > 0
-                ? "ui-button-primary"
-                : "cursor-not-allowed border border-slate-500/30 bg-slate-600/30 text-slate-400"
-            }`}
+            className={`${
+              sellTokens > 0 ? "ui-button-primary" : "ui-button-secondary"
+            } shrink-0 px-3 py-1.5 text-3xs`}
           >
             Обменять ({sellTokens}{" "}
             <CurrencyIcon currency="tokens" className="h-3 w-3" />)
@@ -250,10 +257,10 @@ const SellTab: React.FC = () => {
             disabled={maxBiomass <= 0}
             aria-label="Сколько биомассы обменять на Кваксы"
             title="Ползунок: сколько биомассы отдать за Кваксы"
-            className="flex-1 accent-emerald-500 h-2 rounded-lg bg-slate-600 disabled:opacity-50"
+            className="ui-range flex-1 accent-emerald-500"
           />
           <span
-            className={`w-20 shrink-0 text-right text-xs font-medium ${
+            className={`w-20 shrink-0 text-right text-xs font-medium tabular-nums ${
               sellBiomass > 0 ? "text-emerald-200" : "text-slate-500"
             }`}
           >
@@ -264,7 +271,7 @@ const SellTab: React.FC = () => {
         <div className="flex items-center justify-between gap-2 text-2xs">
           <span className="text-slate-400">
             Обмен:{" "}
-            <span className="text-emerald-300 font-semibold">
+            <span className="font-semibold text-emerald-300">
               {sellTokens}{" "}
               <CurrencyIcon currency="tokens" className="h-3 w-3" />
             </span>{" "}
@@ -280,27 +287,32 @@ const SellTab: React.FC = () => {
             </button>
           )}
         </div>
-      </div>
+      </HudPanel>
 
       {/* Генная пыль: фиксированный курс 1 шт = 5 Кваксов, ползунок отдаёт часть запаса */}
-      <div className="bg-color-main rounded-xl p-3 border border-fuchsia-500/30 flex flex-col gap-2">
+      <HudPanel tone="violet" className="flex flex-col gap-2 p-2.5">
+        <SectionTitle aside={`${dustAvailable} UNIT`}>
+          Генная пыль
+        </SectionTitle>
+
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <div className="flex items-center gap-1.5 text-fuchsia-300 font-semibold text-sm">
+            <div className="flex items-center gap-1.5 text-sm font-semibold text-fuchsia-200">
               <img
                 src={GENE_DUST_ICON}
                 alt=""
                 draggable={false}
                 className="h-4 w-4 shrink-0 select-none object-contain"
               />
-              <span className="truncate">Генная пыль: {dustAvailable}</span>
+              <span className="truncate">{dustAvailable} на складе</span>
             </div>
-            <div className="text-slate-400 text-xs">
+            <div className="mt-0.5 text-2xs text-slate-400">
               Курс продажи: 1 шт = {GENE_DUST_SELL_PRICE}{" "}
               <CurrencyIcon currency="tokens" className="h-3 w-3" />
             </div>
           </div>
           <button
+            type="button"
             onClick={handleSellGeneDust}
             disabled={geneDustTokens <= 0}
             title={
@@ -308,11 +320,11 @@ const SellTab: React.FC = () => {
                 ? `Продать ${sellDust} шт. за ${geneDustTokens} Кваксов`
                 : "Нет генной пыли для продажи"
             }
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all shrink-0 ${
+            className={`${
               geneDustTokens > 0
                 ? "ui-button-primary"
-                : "cursor-not-allowed border border-slate-500/30 bg-slate-600/30 text-slate-400"
-            }`}
+                : "ui-button-secondary"
+            } shrink-0 px-3 py-1.5 text-3xs`}
           >
             Продать ({geneDustTokens}{" "}
             <CurrencyIcon currency="tokens" className="h-3 w-3" />)
@@ -331,10 +343,10 @@ const SellTab: React.FC = () => {
             disabled={dustAvailable <= 0}
             aria-label="Сколько генной пыли продать"
             title="Ползунок: сколько генной пыли отдать за Кваксы"
-            className="h-2 flex-1 rounded-lg bg-slate-600 accent-fuchsia-500 disabled:opacity-50"
+            className="ui-range flex-1 accent-fuchsia-500"
           />
           <span
-            className={`inline-flex w-20 shrink-0 items-center justify-end gap-1 text-xs font-medium ${
+            className={`inline-flex w-20 shrink-0 items-center justify-end gap-1 text-xs font-medium tabular-nums ${
               sellDust > 0 ? "text-fuchsia-200" : "text-slate-500"
             }`}
           >
@@ -380,14 +392,22 @@ const SellTab: React.FC = () => {
             повышает качество гибрида, а здесь её можно продать.
           </p>
         )}
-      </div>
+      </HudPanel>
 
       {/* Жабы в походе в списке продажи не участвуют — причина видна сразу */}
       {expeditionToadCount > 0 && (
-        <p className="rounded-xl border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-2xs leading-snug text-amber-200">
-          🧭 В походе жаб: {expeditionToadCount}. Они появятся в продаже после
-          возвращения и разбора добычи.
-        </p>
+        <HudPanel tone="amber" className="px-3 py-2">
+          <p className="flex items-start gap-2 text-2xs leading-snug text-amber-200">
+            <span
+              aria-hidden="true"
+              className="mt-1.5 h-1 w-1 shrink-0 bg-amber-300"
+            />
+            <span>
+              В походе жаб: {expeditionToadCount}. Они появятся в продаже после
+              возвращения и разбора добычи.
+            </span>
+          </p>
+        </HudPanel>
       )}
 
       {/* Панель фильтров */}
@@ -402,22 +422,34 @@ const SellTab: React.FC = () => {
         addPrice
       />
 
-      {/* Панель выбора */}
-      <div className="bg-color-main rounded-xl p-3 border border-slate-500/30">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              <span className="text-slate-200 text-sm">Сумма:</span>
-              <span className="text-yellow-200 font-bold text-sm">
+      {/* Панель выбора: сумма, количество и групповые действия */}
+      <HudPanel tone="cyan" className="p-2.5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <div>
+              <div className="ui-kicker">К оплате</div>
+              <div className="mt-1 flex items-center gap-1.5 text-sm font-bold tabular-nums text-yellow-200">
                 {totalSellPrice}{" "}
                 <CurrencyIcon currency="tokens" className="h-3.5 w-3.5" />
-              </span>
+              </div>
+            </div>
+            <span className="h-8 w-px bg-cyan-400/20" aria-hidden="true" />
+            <div>
+              <div className="ui-kicker">Выбрано</div>
+              <div className="mt-1 text-sm font-semibold tabular-nums text-slate-200">
+                {selectedFilteredToads.length}
+                <span className="text-slate-500">
+                  {" "}
+                  / {filteredToads.length}
+                </span>
+              </div>
             </div>
           </div>
 
           <div className="flex gap-2">
             {selectedFilteredToads.length > 0 && (
               <button
+                type="button"
                 onClick={handleSellToads}
                 className="ui-button-primary px-3 py-1.5"
               >
@@ -425,11 +457,13 @@ const SellTab: React.FC = () => {
               </button>
             )}
             <button
+              type="button"
               onClick={handleSelectAllFiltered}
-              className={`w-8 h-8 flex items-center justify-center rounded-lg border transition-all ${
+              aria-pressed={isAllFilteredSelected}
+              className={`flex h-9 w-9 items-center justify-center border text-sm transition-colors ${
                 isAllFilteredSelected
-                  ? "border-cyan-400/50 bg-cyan-500/20 text-cyan-200"
-                  : "border-slate-600/50 bg-slate-800/60 text-slate-300 hover:bg-slate-700/60"
+                  ? "border-cyan-300/60 bg-cyan-500/20 text-cyan-200"
+                  : "border-slate-600/50 bg-slate-800/60 text-slate-300 hover:border-cyan-400/40 hover:bg-slate-700/60"
               }`}
               title={isAllFilteredSelected ? "Снять выделение" : "Выбрать все"}
             >
@@ -437,48 +471,54 @@ const SellTab: React.FC = () => {
             </button>
           </div>
         </div>
-      </div>
+      </HudPanel>
 
       {/* Список жаб */}
       {filteredToads.length === 0 ? (
-        <div className="bg-color-main backdrop-blur-sm rounded-xl p-6 border border-slate-600/20 text-center">
-          <p className="text-slate-300 text-sm">
+        <HudPanel tone="cyan" className="p-6 text-center">
+          <p className="text-sm text-slate-300">
             {activeToads.length === 0
               ? "У вас пока нет жаб"
               : "Жабы не найдены"}
           </p>
-          <p className="text-slate-500 text-xs mt-1">
+          <p className="mt-1 text-2xs text-slate-500">
             {activeToads.length === 0
               ? "Приобретите жаб на рынке"
               : "Измените фильтры для отображения"}
           </p>
-        </div>
+        </HudPanel>
       ) : (
         <div className="space-y-2">
           {visibleToads.map((toad) => {
             const price = calculateSellPrice(toad);
             const isSelected = selectedToads.includes(toad.id);
+
             return (
-              <ToadItem
+              <ToadListCard
                 key={toad.id}
-                isSelected={isSelected}
-                onClick={() => {
+                toad={toad}
+                variant="full"
+                selected={isSelected}
+                onOpen={() => {
                   if (isSelected) {
                     setSelectedToads(
-                      selectedToads.filter((id) => id !== toad.id)
+                      selectedToads.filter((id) => id !== toad.id),
                     );
                   } else {
                     setSelectedToads([...selectedToads, toad.id]);
                   }
                 }}
-                toad={toad}
-                button={
+                actions={
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation();
+                    type="button"
+                    aria-label={`Продать жабу «${
+                      toad.name || "без имени"
+                    }» за ${price}`}
+                    onClick={(event) => {
+                      event.stopPropagation();
                       handleSellSingleToad(toad.id);
                     }}
-                    className="ui-button-primary ml-2 min-w-[64px] whitespace-nowrap px-3 py-1.5"
+                    className="ui-button-primary ml-2 min-w-[72px] whitespace-nowrap px-3 py-1.5"
                   >
                     {price}{" "}
                     <CurrencyIcon currency="tokens" className="h-3.5 w-3.5" />
@@ -491,12 +531,16 @@ const SellTab: React.FC = () => {
           {hasMore && (
             <div
               ref={loadMoreRef}
-              className="flex justify-center py-4"
+              className="flex items-center justify-center gap-2 py-4"
               key="load-more"
             >
-              <div className="animate-pulse text-slate-300 text-sm">
-                Загрузка жаб...
-              </div>
+              <span
+                aria-hidden="true"
+                className="h-1 w-8 animate-pulse bg-cyan-300"
+              />
+              <span className="text-3xs uppercase tracking-[0.16em] text-slate-400">
+                Загрузка жаб
+              </span>
             </div>
           )}
         </div>

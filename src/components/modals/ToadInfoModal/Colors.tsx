@@ -93,7 +93,7 @@ export const Colors = ({ toad }: { toad: Toad }) => {
     <div className="flex ml-auto gap-2 mt-2 relative">
       <div className="flex gap-1 mt-2 justify-center">
         <div
-          className="w-4 h-4 rounded-full border border-white/30"
+          className="w-4 h-4 rounded-none border border-white/30"
           style={{ backgroundColor: color }}
         />
       </div>
@@ -102,7 +102,7 @@ export const Colors = ({ toad }: { toad: Toad }) => {
         onClick={() => setOpenToopltip(true)}
         disabled={onExpedition}
         title={onExpedition ? EXPEDITION_TOAD_BUSY_REASON : undefined}
-        className="bg-slate-600/50 hover:bg-green-600/40 px-1 rounded-lg py-2 text-xs flex justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-slate-600/50"
+        className="bg-slate-600/50 hover:bg-green-600/40 px-1 rounded-none py-2 text-xs flex justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-slate-600/50"
       >
         <span>🎨</span> Покрасить
       </ClickButton>
@@ -121,7 +121,7 @@ export const Colors = ({ toad }: { toad: Toad }) => {
                   key={p.key}
                   onClick={handleUsePigment(p)}
                   disabled={onExpedition}
-                  className="text-left p-1 border-2 rounded-sm border-slate-400/20 w-full text-sm flex gap-2 items-center disabled:cursor-not-allowed disabled:opacity-50"
+                  className="text-left p-1 border-2 rounded-none border-slate-400/20 w-full text-sm flex gap-2 items-center disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <img width={30} src={p.icon} />
                   {p.name}

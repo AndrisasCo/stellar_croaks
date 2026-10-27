@@ -33,7 +33,7 @@ export const ToadAvatar = (props: {
         width: size * 4,
         height: size * 4,
       }}
-      className={`relative rounded-[12px] overflow-hidden`}
+      className="relative overflow-hidden rounded-none"
     >
       <div
         className="absolute inset-0"

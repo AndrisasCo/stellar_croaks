@@ -7,27 +7,35 @@ import { CurrencyText } from "../shared/CurrencyIcon";
 
 const EVENT_STYLES: Record<
   OfflineEventType,
-  { icon: string; panel: string; iconTone: string }
+  { icon: string; code: string; panel: string; iconTone: string; badge: string }
 > = {
   success: {
     icon: "✅",
+    code: "OK",
     panel: "border-emerald-400/30 bg-emerald-950/25",
     iconTone: "bg-emerald-500/15 text-emerald-200",
+    badge: "border-emerald-400/30 bg-emerald-500/10 text-emerald-200",
   },
   warn: {
     icon: "⚠️",
+    code: "WARN",
     panel: "border-amber-400/30 bg-amber-950/20",
     iconTone: "bg-amber-500/15 text-amber-200",
+    badge: "border-amber-400/30 bg-amber-500/10 text-amber-200",
   },
   danger: {
     icon: "🚨",
+    code: "ALERT",
     panel: "border-rose-400/30 bg-rose-950/20",
     iconTone: "bg-rose-500/15 text-rose-200",
+    badge: "border-rose-400/30 bg-rose-500/10 text-rose-200",
   },
   info: {
     icon: "ℹ️",
+    code: "INFO",
     panel: "border-cyan-400/25 bg-slate-950/40",
     iconTone: "bg-cyan-500/15 text-cyan-200",
+    badge: "border-cyan-400/30 bg-cyan-500/10 text-cyan-200",
   },
 };
 
@@ -69,8 +77,9 @@ export const OfflineEventsModal: React.FC = () => {
   return (
     <Modal
       title="События колонии"
+      tone="amber"
       icon={
-        <span className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-amber-300/70 bg-amber-400/15 text-lg font-black leading-none text-amber-200">
+        <span className="flex h-8 w-8 items-center justify-center border border-amber-300/70 bg-amber-400/15 font-mono text-lg font-black leading-none text-amber-200">
           !
         </span>
       }
@@ -85,7 +94,7 @@ export const OfflineEventsModal: React.FC = () => {
         </p>
 
         {ordered.length === 0 ? (
-          <div className="rounded-xl border border-white/10 bg-slate-950/40 p-4 text-center text-2xs italic text-slate-400">
+          <div className="ui-panel p-4 text-center text-2xs italic text-slate-400">
             Пока вас не было, в колонии ничего не случилось.
           </div>
         ) : (
@@ -96,11 +105,11 @@ export const OfflineEventsModal: React.FC = () => {
               return (
                 <div
                   key={event.id}
-                  className={`relative rounded-xl border p-3 ${style.panel}`}
+                  className={`ui-panel relative p-3 ${style.panel}`}
                 >
                   <div className="flex items-start gap-2.5">
                     <span
-                      className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm ${style.iconTone}`}
+                      className={`flex h-7 w-7 shrink-0 items-center justify-center border border-white/10 text-sm ${style.iconTone}`}
                     >
                       {style.icon}
                     </span>
@@ -111,8 +120,13 @@ export const OfflineEventsModal: React.FC = () => {
                           iconClassName="h-3.5 w-3.5"
                         />
                       </p>
-                      <span className="mt-1 block text-3xs text-slate-500">
-                        {formatOfflineEventTime(event.at)}
+                      <span className="mt-1.5 flex items-center gap-2">
+                        <span className="font-mono text-3xs tabular-nums text-slate-500">
+                          {formatOfflineEventTime(event.at)}
+                        </span>
+                        <span className={`ui-badge ${style.badge}`}>
+                          {style.code}
+                        </span>
                       </span>
                     </div>
                   </div>

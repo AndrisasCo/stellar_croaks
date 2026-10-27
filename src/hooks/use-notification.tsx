@@ -192,7 +192,7 @@ const NotificationStack: React.FC = () => {
           <div
             key={notification.id}
             className={`
-              w-full px-4 py-3 rounded-xl shadow-2xl 
+              w-full px-4 py-3 rounded-none shadow-2xl
               border transform transition-all duration-500 ease-out
               flex items-center gap-3 pointer-events-auto
               backdrop-blur-md bg-opacity-95
@@ -220,7 +220,7 @@ const NotificationStack: React.FC = () => {
           >
             {/* Анимированная полоска прогресса */}
             {notification.timeout !== 0 && (
-              <div className="absolute top-0 left-1 right-1 h-1 bg-white/10 rounded-t-2xl overflow-hidden">
+              <div className="absolute top-0 left-1 right-1 h-1 overflow-hidden bg-white/10">
                 <div
                   className={`
                     h-full transition-all duration-300 ease-linear
@@ -272,7 +272,7 @@ const NotificationStack: React.FC = () => {
             <button
               onClick={() => removeNotification(notification.id)}
               className={`
-                flex-shrink-0 w-6 h-6 rounded-full bg-white/10 hover:bg-white/20 
+                flex-shrink-0 w-6 h-6 rounded-none border border-white/10 bg-white/10 hover:bg-white/20
                 flex items-center justify-center transition-all duration-300
                 ${
                   notification.isExiting
