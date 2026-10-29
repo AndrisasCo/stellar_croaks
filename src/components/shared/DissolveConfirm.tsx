@@ -5,6 +5,7 @@ import {
   getDissolveYield,
 } from "../../utils/dissolve-manager";
 import { ToadGender } from "./ToadGender";
+import { IconText } from "./CurrencyIcon";
 
 interface DissolveConfirmProps {
   /** Жабы, которые уйдут в переработку */
@@ -103,7 +104,9 @@ export const DissolveConfirm = ({
             <ul className="flex flex-col gap-1 text-2xs text-rose-200">
               {warnings.map((warning) => (
                 <li key={warning.text} className="flex gap-1.5">
-                  <span aria-hidden="true">{warning.icon}</span>
+                  <span aria-hidden="true">
+                    <IconText text={warning.icon} />
+                  </span>
                   <span>{warning.text}</span>
                 </li>
               ))}

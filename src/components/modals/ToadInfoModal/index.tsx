@@ -9,6 +9,7 @@ import {
 } from "../../../models/Toad";
 import { useToads } from "../../ToadContext";
 import { InfoIcons } from "../../../assets/icons";
+import { IconText } from "../../shared/CurrencyIcon";
 import Modal from "../../shared/Header";
 import { useSoundEffects } from "../../../hooks/use-sound-effects";
 import { updateToadById, updateUserStorage } from "../../../backend";
@@ -452,37 +453,79 @@ export const ToadInfo = () => {
           </ClickButton>
         </div>
 
-        <div className="flex w-full items-center pb-1 px-10 ">
+        <div className="flex w-full items-center px-4 pb-3 sm:px-2">
           {isEditingName ? (
-            <div className="flex w-full items-center gap-2">
-              <button
-                className="text-xl"
-                onClick={() => setEditedName(nameGenerator.generate())}
-              >
-                🎲
-              </button>
-              <input
-                value={editedName}
-                onChange={(e) => setEditedName(e.target.value)}
-                className="w-full rounded-none border border-slate-600 bg-color-second px-2 py-1 font-mono text-white"
-                autoFocus
-                onKeyDown={(e) => e.key === "Enter" && handleRename()}
-              />
-              <button onClick={handleRename} className="text-green-400">
-                ✓
-              </button>
-              <button
-                onClick={() => setIsEditingName(false)}
-                className="text-red-400"
-              >
-                ✕
-              </button>
-            </div>
+            <form
+              className="w-full"
+              onSubmit={(event) => {
+                event.preventDefault();
+                handleRename();
+              }}
+            >
+              <div className="border border-emerald-400/30 bg-slate-950/60 p-2.5 shadow-[0_0_24px_-12px_rgba(52,211,153,0.9)]">
+                <label
+                  htmlFor="toad-name-input"
+                  className="mb-1.5 block text-3xs font-semibold uppercase tracking-[0.16em] text-emerald-200/80"
+                >
+                  Имя жабы
+                </label>
+
+                <div className="flex flex-wrap items-stretch gap-2">
+                  <input
+                    id="toad-name-input"
+                    value={editedName}
+                    onChange={(event) => setEditedName(event.target.value)}
+                    maxLength={24}
+                    className="h-10 min-w-[10rem] flex-1 rounded-none border border-slate-600 bg-color-second px-3 font-mono text-sm text-white transition-colors focus:border-emerald-300 focus:outline-none"
+                    autoFocus
+                    onKeyDown={(event) => {
+                      if (event.key === "Escape") {
+                        event.preventDefault();
+                        setIsEditingName(false);
+                      }
+                    }}
+                  />
+
+                  <ClickButton
+                    type="button"
+                    onClick={() => setEditedName(nameGenerator.generate())}
+                    title="Сгенерировать случайное имя"
+                    className="inline-flex h-10 items-center justify-center gap-1 border border-slate-500/50 bg-slate-800/60 px-3 text-xs font-bold uppercase tracking-[0.08em] text-slate-200 transition-colors hover:bg-slate-700/60"
+                  >
+                    🎲 Случайное
+                  </ClickButton>
+
+                  <ClickButton
+                    type="submit"
+                    disabled={!editedName.trim()}
+                    className="inline-flex h-10 items-center justify-center border border-emerald-400/40 bg-emerald-500/20 px-4 text-xs font-bold uppercase tracking-[0.08em] text-emerald-100 transition-colors hover:bg-emerald-500/30 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Сохранить
+                  </ClickButton>
+
+                  <ClickButton
+                    type="button"
+                    onClick={() => setIsEditingName(false)}
+                    title="Отменить переименование (Esc)"
+                    className="inline-flex h-10 items-center justify-center border border-slate-500/40 bg-slate-900/50 px-3 text-xs font-bold uppercase tracking-[0.08em] text-slate-300 transition-colors hover:bg-slate-800/60"
+                  >
+                    Отмена
+                  </ClickButton>
+                </div>
+
+                <p className="mt-1.5 text-3xs uppercase tracking-[0.12em] text-slate-500">
+                  Enter — сохранить, Esc — отменить · {editedName.trim().length}
+                  /24
+                </p>
+              </div>
+            </form>
           ) : (
-            <h2 className="flex gap-2 font-bold">
-              <span className="brand-text text-lg">{toad.name}</span>
-              <button
-                className="text-slate-300 disabled:cursor-not-allowed disabled:opacity-40"
+            <div className="flex min-w-0 items-center gap-2">
+              <h2 className="flex min-w-0 items-center gap-2 font-bold">
+                <span className="brand-text truncate text-lg">{toad.name}</span>
+              </h2>
+              <ClickButton
+                className="inline-flex h-8 shrink-0 items-center justify-center border border-slate-500/40 bg-slate-900/50 px-2 text-slate-300 transition-colors hover:border-emerald-300/50 hover:text-emerald-200 disabled:cursor-not-allowed disabled:opacity-40"
                 onClick={() => {
                   setEditedName(toad.name ?? "");
                   setIsEditingName(true);
@@ -495,13 +538,14 @@ export const ToadInfo = () => {
                 }
               >
                 {InfoIcons.pencil}
-              </button>
-            </h2>
+                <span className="sr-only">Переименовать жабу</span>
+              </ClickButton>
+            </div>
           )}
         </div>
 
         {/* AVATAR & BASIC INFO */}
-        <div className="flex gap-4 items-start mb-4 px-10 relative">
+        <div className="flex gap-4 items-start mb-4 px-2 relative">
           <ToadAvatar
             toad={toad}
             size={20}
@@ -552,7 +596,7 @@ export const ToadInfo = () => {
           {/* --- MAIN CONTENT COLUMN --- */}
           <div className="flex w-full flex-col px-2">
             {/* STATS GRID */}
-            <div className="mb-3 grid grid-cols-2 gap-px border border-emerald-400/25 bg-emerald-400/25 [&>div]:border-0">
+            <div className="mb-3 grid grid-cols-2 gap-px border border-emerald-400/25 bg-slate-950/50 [&>div]:border-0">
               <StatCard
                 icon={InfoIcons.rarity}
                 label="Качество"
@@ -978,7 +1022,8 @@ export const ToadInfo = () => {
                                   }`}
                                 >
                                   <span className="block truncate text-slate-100">
-                                    {destination.icon} {destination.name}
+                                    <IconText text={destination.icon} />{" "}
+                                    {destination.name}
                                   </span>
                                   <span
                                     className={`block truncate text-3xs ${

@@ -158,6 +158,49 @@ export const fillTeamFromCrew = (
   return next;
 };
 
+/**
+ * Слоты команды и жильцы «Разведки» — одно и то же: жаба стоит в контуре, пока занят
+ * её слот. Функция приводит слоты к составу сектора, чтобы модалка могла держать это
+ * правило без ручных «поставить / снять»:
+ *
+ *   1. роль жабы, которой в секторе больше нет, освобождается (жабу вернули в биопод,
+ *      она ушла в другой сектор или её забрал поход);
+ *   2. жабы сектора без роли занимают свободные роли тем же жадным подбором, что и
+ *      `fillTeamFromCrew`: сильнейшие пары «жаба — роль» первыми. Так вернувшаяся из
+ *      похода команда сама встаёт на свои места, как только добыча разобрана.
+ *
+ * Слоты не мутируются: если приводить нечего, возвращается тот же объект — React-состояние
+ * не меняется, и лишней перерисовки (а с ней и нового круга синхронизации) не будет.
+ */
+export const syncSlotsWithCrew = (
+  slots: ExpeditionSlots,
+  crew: Toad[]
+): ExpeditionSlots => {
+  const crewIds = new Set(crew.map((toad) => toad.id));
+  const inside: ExpeditionSlots = { ...slots };
+  let changed = false;
+
+  EXPEDITION_ROLE_ORDER.forEach((role) => {
+    const toadId = inside[role];
+
+    if (toadId !== "" && !crewIds.has(toadId)) {
+      inside[role] = "";
+      changed = true;
+    }
+  });
+
+  const next = fillTeamFromCrew(inside, crew);
+
+  if (
+    !changed &&
+    EXPEDITION_ROLE_ORDER.every((role) => next[role] === slots[role])
+  ) {
+    return slots;
+  }
+
+  return next;
+};
+
 /** Сколько ролей ещё свободно: 0 — команда собрана (`EXPEDITION_TEAM_SIZE` ролей). */
 export const countFreeRoles = (slots: ExpeditionSlots): number =>
   EXPEDITION_ROLE_ORDER.filter((role) => slots[role] === "").length;

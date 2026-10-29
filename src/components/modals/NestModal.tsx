@@ -35,6 +35,7 @@ import { DataCell, DataGrid, HudPanel } from "../shared/DataGrid";
 import Modal from "../shared/Header";
 import ModalTabs, { ModalTabItem } from "../shared/ModalTabs";
 import { ToadListCard } from "../shared/ToadListCard";
+import { ToadIcon } from "../shared/ToadIcon";
 import { ToadSlotGrid } from "../shared/ToadSlotGrid";
 import { RoomConfig } from "../HexMap/rooms-config";
 import { useModal } from "../ModalContext";
@@ -145,6 +146,29 @@ const slotEmptyText = (slotIndex: number): string =>
   getNestSlotSex(slotIndex) === "female"
     ? "Свободных самок нет: у остальных есть причина отказа — откройте «Не подходят»."
     : "Свободных самцов нет: у остальных есть причина отказа — откройте «Не подходят».";
+
+/**
+ * Значок слота репродуктора: ♀ розовая, ♂ голубая — те же цвета, что у пола в карточке
+ * жабы. Пустой слот подписан значком вместе с названием места, а занятый показывает его
+ * уголком над аватаром (`showIconOnOccupied`): пол пары виден, даже когда оба места заняты.
+ */
+const nestSlotIcon = (slotIndex: number) => {
+  const sex = getNestSlotSex(slotIndex);
+
+  return (
+    <span
+      className={
+        sex === "female"
+          ? "text-pink-400"
+          : sex === "male"
+            ? "text-sky-400"
+            : "text-slate-400"
+      }
+    >
+      {getToadSexIcon(sex ?? "")}
+    </span>
+  );
+};
 
 interface NestModalProps {
   /** id гекса-репродуктора, из которого открыли модалку: репродукторов в колонии может быть несколько */
@@ -436,109 +460,111 @@ export default function NestModal({
 
             {/* Слоты пары: квадраты с «+», выбор жабы — модалкой своего пола */}
             <ToadSlotGrid
-                slots={slots.map((toad, index) => ({
-                  toad,
-                  label: getNestSlotLabel(index),
-                  icon: getToadSexIcon(NEST_SLOT_SEXES[index]),
-                }))}
-                columns={2}
-                // Занятый слот: качество, силы и болезнь — сытость и HP паре не нужны
-                vitals={{ rarity: true, energy: true, disease: true }}
-                title="Слоты репродуктора"
-                headerRight={nestRoomTitle}
-                pickerFor={(index) => {
-                  const picker = getSlotPicker(index);
+              slots={slots.map((toad, index) => ({
+                toad,
+                label: getNestSlotLabel(index),
+                // ♀ / ♂ видно и на занятом слоте — уголком над аватаром
+                icon: nestSlotIcon(index),
+              }))}
+              columns={2}
+              // Занятый слот: качество, силы и болезнь — сытость и HP паре не нужны
+              vitals={{ rarity: true, energy: true, disease: true }}
+              showIconOnOccupied
+              title="Слоты репродуктора"
+              headerRight={nestRoomTitle}
+              pickerFor={(index) => {
+                const picker = getSlotPicker(index);
 
-                  return {
-                    groups: [
-                      {
-                        label: `Можно взять (${picker.available.length})`,
-                        items: picker.available,
-                      },
-                    ],
-                    rejected: {
-                      label: TOAD_PICKER_REJECTED_GROUP,
-                      items: picker.rejected,
+                return {
+                  groups: [
+                    {
+                      label: `Можно взять (${picker.available.length})`,
+                      items: picker.available,
                     },
-                    hint: slotHint(index),
-                    emptyText: slotEmptyText(index),
-                  };
-                }}
-                onPick={(toad) => handlePlace(toad)}
-                onOpen={(toad) => openToadCard(toad)}
-                onRemove={(toad) => handleRelease(toad)}
-                removeLabel="Вернуть в биопод"
-              />
+                  ],
+                  rejected: {
+                    label: TOAD_PICKER_REJECTED_GROUP,
+                    items: picker.rejected,
+                  },
+                  hint: slotHint(index),
+                  emptyText: slotEmptyText(index),
+                };
+              }}
+              onPick={(toad) => handlePlace(toad)}
+              onOpen={(toad) => openToadCard(toad)}
+              onRemove={(toad) => handleRelease(toad)}
+              removeLabel="Вернуть в биопод"
+            />
 
-              {slots.map((toad, index) =>
-                toad ? (
+            {slots.map((toad, index) =>
+              toad ? (
+                <ToadListCard
+                  key={`nest-slot-card-${index}`}
+                  toad={toad}
+                  onOpen={() => openToadCard(toad)}
+                  variant="full"
+                  showHunger={false}
+                  showHp={false}
+                  showEnergy
+                  status={{
+                    icon: toad.pregnancy?.isPregnant ? "" : "⏳",
+                    label: toadStatus(toad).trim(),
+                    className: toad.pregnancy?.isPregnant
+                      ? "text-pink-300"
+                      : "text-slate-300",
+                  }}
+                  actions={
+                    toad.pregnancy?.isPregnant ? (
+                      <span className="rounded-none border border-pink-500/50 bg-slate-950/50 px-2 py-1 text-2xs text-pink-200">
+                        Беременность
+                      </span>
+                    ) : (
+                      <ClickButton
+                        onClick={() => handleRelease(toad)}
+                        className="rounded-none border border-slate-500/50 bg-slate-950/50 px-2 py-1 text-2xs text-slate-200"
+                      >
+                        Вернуть в биопод
+                      </ClickButton>
+                    )
+                  }
+                />
+              ) : null,
+            )}
+
+            {/* Показываем их отдельно — жаба не пропадает с экрана */}
+            {extraNestAdults.length > 0 && (
+              <HudPanel tone="rose" className="flex flex-col gap-1.5 p-2">
+                <div className="text-2xs leading-snug text-red-200">
+                  Репродуктор переполнен, очистите слоты прежде чем начать
+                  ухаживание.
+                </div>
+
+                {extraNestAdults.map((toad) => (
                   <ToadListCard
-                    key={`nest-slot-card-${index}`}
+                    key={`nest-extra-${toad.id}`}
                     toad={toad}
                     onOpen={() => openToadCard(toad)}
-                    variant="full"
+                    variant="brief"
                     showHunger={false}
                     showHp={false}
                     showEnergy
                     status={{
-                      icon: toad.pregnancy?.isPregnant ? "" : "⏳",
-                      label: toadStatus(toad).trim(),
-                      className: toad.pregnancy?.isPregnant
-                        ? "text-pink-300"
-                        : "text-slate-300",
+                      icon: "⚠️",
+                      label: "лишняя в репродукторе",
+                      className: "text-red-200",
                     }}
                     actions={
-                      toad.pregnancy?.isPregnant ? (
-                        <span className="rounded-none border border-pink-500/50 bg-slate-950/50 px-2 py-1 text-2xs text-pink-200">
-                          Беременность
-                        </span>
-                      ) : (
-                        <ClickButton
-                          onClick={() => handleRelease(toad)}
-                          className="rounded-none border border-slate-500/50 bg-slate-950/50 px-2 py-1 text-2xs text-slate-200"
-                        >
-                          Вернуть в биопод
-                        </ClickButton>
-                      )
+                      <ClickButton
+                        onClick={() => handleRelease(toad)}
+                        className="shrink-0 rounded-none border border-slate-500/50 bg-slate-950/50 px-2 py-1 text-2xs text-slate-200"
+                      >
+                        Вынести в биопод
+                      </ClickButton>
                     }
                   />
-                ) : null,
-              )}
-
-              {/* Показываем их отдельно — жаба не пропадает с экрана */}
-              {extraNestAdults.length > 0 && (
-                <HudPanel tone="rose" className="flex flex-col gap-1.5 p-2">
-                  <div className="text-2xs leading-snug text-red-200">
-                    Репродуктор переполнен, очистите слоты прежде чем начать
-                    ухаживание.
-                  </div>
-
-                  {extraNestAdults.map((toad) => (
-                    <ToadListCard
-                      key={`nest-extra-${toad.id}`}
-                      toad={toad}
-                      onOpen={() => openToadCard(toad)}
-                      variant="brief"
-                      showHunger={false}
-                      showHp={false}
-                      showEnergy
-                      status={{
-                        icon: "⚠️",
-                        label: "лишняя в репродукторе",
-                        className: "text-red-200",
-                      }}
-                      actions={
-                        <ClickButton
-                          onClick={() => handleRelease(toad)}
-                          className="shrink-0 rounded-none border border-slate-500/50 bg-slate-950/50 px-2 py-1 text-2xs text-slate-200"
-                        >
-                          Вынести в биопод
-                        </ClickButton>
-                      }
-                    />
-                  ))}
-                </HudPanel>
-              )}
+                ))}
+              </HudPanel>
+            )}
 
             {nestHint && (
               <div className="text-2xs leading-snug text-amber-200">
@@ -606,7 +632,8 @@ export default function NestModal({
               <HudPanel tone="amber" className="flex flex-col gap-1 p-2">
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-amber-200 font-semibold">
-                    🐸 Головастики в репродукторе: {nestChildren.length}
+                    <ToadIcon className="mr-1 h-3 w-3" />
+                    Головастики в репродукторе: {nestChildren.length}
                   </span>
                   <span className="text-2xs text-slate-400">
                     мест: {NEST_ROOM_TOAD_SLOTS}
@@ -626,7 +653,7 @@ export default function NestModal({
                       showHp={false}
                       showEnergy
                       status={{
-                        icon: "🐸",
+                        icon: <ToadIcon className="h-3 w-3" />,
                         label: toadStatus(child).trim(),
                         className: "text-amber-200",
                       }}

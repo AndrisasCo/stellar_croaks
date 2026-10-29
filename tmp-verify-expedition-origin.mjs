@@ -8,8 +8,8 @@
  *
  * Проверяем на РЕАЛЬНОМ коде:
  *   1) `originRoomId` переживает сохранение и чтение сейва;
- *   2) жаба уходит из сектора: `scene_id` перестаёт быть гексом «Разведки»
- *      (миграция возвращает её в биопод), а `status` помечает её в походе;
+ *   2) жаба уходит в поход, но слот контура остаётся её местом: `scene_id`
+ *      сохраняет id гекса «Разведки» (на карте она появится там после возврата);
  *   3) `isExpeditionFromRoom` узнаёт контур по id гекса, id постройки и старому
  *      числовому `Scene.id`, а чужой контур и пустой origin — нет;
  *   4) после разбора добычи команда возвращается в исходный контур, даже если
@@ -17,7 +17,9 @@
  *   5) первая вкладка показывает поход только в своём контуре, а миграция привязывает
  *      старые походы без контура к первой «Разведке», оставляя вторую свободной;
  *   6) из второй «Разведки» уходит вторая команда без Диспетчерской, а повторный
- *      поход из уже занятого контура не отправляется.
+ *      поход из уже занятого контура не отправляется;
+ *   7) вернувшаяся жаба снова видна в своём слоте и прыгает встречу, хотя до разбора
+ *      добычи остаётся занятой; «Всех в биопод» честно считает устроенных и неустроенных.
  *
  * Запуск: node tmp-verify-expedition-origin.mjs
  */
@@ -136,6 +138,12 @@ globalThis.CustomEvent = class {
 const models = bundle("src/models/expedition.ts", "models-expedition");
 const manager = bundle("src/utils/expedition-manager.ts", "expedition-manager");
 const gameStorage = bundle("src/backend/localStorage.ts", "game-storage");
+const roomsConfig = bundle("src/components/HexMap/rooms-config.ts", "rooms-config");
+const expeditionStatus = bundle(
+  "src/utils/expedition-status.ts",
+  "expedition-status",
+);
+const toadRelease = bundle("src/utils/toad-release.ts", "toad-release");
 
 const failures = [];
 const check = (label, actual, expected) => {
@@ -162,7 +170,7 @@ Math.random = () => 0.99;
 
 const SECTOR = models.SECTORS[0];
 
-console.log("\n[1] Старт похода запоминает контур и уводит жабу из сектора");
+console.log("\n[1] Старт похода запоминает контур и оставляет жабе её слот");
 console.log("─".repeat(60));
 reset(makeState());
 
@@ -179,8 +187,14 @@ check(
   "scout_1",
 );
 check("жаба помечена в походе", savedToad().status, "out");
-// Числовой `scene_id` — биопод: миграция возвращает туда жабу, а не оставляет в гексе
-check("жаба больше не сидит в «Разведке»", savedToad().scene_id, 1);
+// Слот «Разведки» остаётся за жабой: после возврата она появится здесь же,
+// а до разбора добычи карта её не рисует (busy). `scene_id` — id гекса, а не постройки.
+check("слот «Разведки» сохранён", savedToad().scene_id, "slot-a");
+check(
+  "в пути жабу в секторе не рисуют",
+  roomsConfig.isToadVisibleInRoom(savedToad(), saved().expeditions),
+  false,
+);
 
 console.log("\n[2] isExpeditionFromRoom узнаёт свой контур");
 console.log("─".repeat(60));
@@ -259,6 +273,24 @@ console.log("─".repeat(60));
 const expeditionId = expedition.id;
 const extracted = manager.extractExpedition(expeditionId);
 check("поход завершён экстренным маяком", extracted.success, true);
+check(
+  "вернувшуюся жабу снова рисуют в её слоте",
+  roomsConfig.isToadVisibleInRoom(savedToad(), saved().expeditions),
+  true,
+);
+check(
+  "жаба помечена вернувшейся из похода",
+  expeditionStatus.isToadReturnedFromExpedition(
+    savedToad(),
+    saved().expeditions,
+  ),
+  true,
+);
+check(
+  "до разбора добычи жаба всё ещё занята походом",
+  expeditionStatus.isToadBusyOnExpedition(savedToad(), saved().expeditions),
+  true,
+);
 
 const finished = manager.finishExpedition(expeditionId, "biomass");
 check("добыча разобрана", finished.success, true);
@@ -294,6 +326,8 @@ const legacyStarted = manager.startExpedition(
 );
 check("старый поход отправлен", legacyStarted.success, true);
 check("числовой origin сохранён", savedExpedition().originRoomId, 42);
+// Старый числовой origin — это `Scene.id` постройки: карте нужен её гекс, а не число.
+check("жаба осталась в слоте «Разведки»", savedToad().scene_id, "slot-a");
 
 const legacyId = savedExpedition().id;
 manager.extractExpedition(legacyId);
@@ -399,6 +433,18 @@ check(
   false,
 );
 
+// Карта присылает id гекса, а старый поход помнит id постройки: это тот же контур.
+const duplicateBySlot = manager.startExpedition(
+  SECTOR.id,
+  [{ toadId: 3, role: "scout" }],
+  "slot-a",
+);
+check(
+  "карта и старый сейв находят один и тот же занятый контур",
+  duplicateBySlot.success,
+  false,
+);
+
 console.log("\n[6b] Завершённый поход тоже держит контур");
 console.log("─".repeat(60));
 const completedState = saved();
@@ -420,6 +466,35 @@ check(
   afterCompleted.success,
   false,
 );
+
+console.log("\n[7] «Всех в биопод» сообщает, сколько жаб устроено");
+console.log("─".repeat(60));
+reset(
+  makeState({
+    scenes: [{ id: 1, name: "Био Под", capacity: 1, created_at: "" }],
+    toads: [toad(1), toad(2)],
+    expeditions: [],
+  }),
+);
+
+const released = toadRelease.releaseToadsToHome([1, 2], () => {
+  const fresh = saved();
+
+  return {
+    rooms: [],
+    scenes: fresh.scenes,
+    toads: fresh.toads,
+    expeditions: fresh.expeditions,
+  };
+});
+const toadById = (id) => saved().toads.find((item) => item.id === id);
+
+check("итог пачки: одна устроена, одна нет", released, {
+  sent: 1,
+  failed: 1,
+});
+check("первая жаба в биоподе", toadById(1).scene_id, 1);
+check("вторая осталась в слоте", toadById(2).scene_id, "slot-a");
 
 Math.random = realRandom;
 

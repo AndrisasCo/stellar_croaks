@@ -5,7 +5,8 @@ import { INITIAL_CAPACITY } from "../../models/scene";
 import { CURRENCY_CONFIG } from "../../utils/constants";
 import { completeAchivement } from "../../backend/achivements-manager";
 import { useModal } from "../ModalContext";
-import { CurrencyText } from "../shared/CurrencyIcon";
+import { IconText } from "../shared/CurrencyIcon";
+import { ToadIcon } from "../shared/ToadIcon";
 
 const TutorialModal: React.FC = () => {
   const { playClick } = useSoundEffects();
@@ -223,7 +224,10 @@ const TutorialModal: React.FC = () => {
       <div className="px-4">
         {/* Вступление */}
         <div className="mb-6 text-center">
-          <div className="mb-3 text-4xl">🐸✨</div>
+          <div className="mb-3 flex items-center justify-center gap-1 text-4xl">
+            <ToadIcon className="h-10 w-10 text-emerald-300" />
+            <span aria-hidden="true">✨</span>
+          </div>
           <h3 className="mb-2 text-lg font-semibold text-white">
             Добро пожаловать в мир космических жаб!
           </h3>
@@ -248,7 +252,9 @@ const TutorialModal: React.FC = () => {
 
               {/* Заголовок секции */}
               <div className="mb-3 flex items-center gap-3">
-                <div className="text-2xl">{section.icon}</div>
+                <div className="text-2xl">
+                  <IconText text={section.icon} />
+                </div>
                 <h4 className="text-lg font-semibold text-white">
                   {section.title}
                 </h4>
@@ -256,7 +262,7 @@ const TutorialModal: React.FC = () => {
 
               {/* Описание */}
               <p className="mb-4 text-sm leading-relaxed text-slate-300">
-                <CurrencyText text={section.description} />
+                <IconText text={section.description} />
               </p>
 
               {/* Советы */}
@@ -270,7 +276,7 @@ const TutorialModal: React.FC = () => {
                       •
                     </span>
                     <span>
-                      <CurrencyText text={tip} />
+                      <IconText text={tip} />
                     </span>
                   </div>
                 ))}

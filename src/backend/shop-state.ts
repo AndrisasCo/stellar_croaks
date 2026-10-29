@@ -9,6 +9,7 @@ import {
   SCRIPTED_ELITE_KINDS,
 } from "./elite-order-generator";
 import type { EliteOrder } from "./elite-order-generator";
+import { recordQuestEvent } from "./quests-manager";
 
 // Интерфейс для состояния Торговая Капсулаа
 export interface ShopState {
@@ -418,6 +419,10 @@ export const claimEliteOrder = (orderId: string): boolean => {
     ...state,
     eliteOrders: state.eliteOrders.filter((id) => id !== orderId),
   });
+
+  // Задание «Элитный брокер» двигает именно успешно списанный заказ: повторный
+  // клик и устаревшая вкладка сюда не доходят, поэтому накрутить счётчик нельзя.
+  recordQuestEvent("elite_order_completed", 1);
 
   return true;
 };

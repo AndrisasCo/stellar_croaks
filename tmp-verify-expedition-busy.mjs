@@ -212,6 +212,23 @@ check(
 );
 check("выработки нет", production.getSceneProductionRate([returned]), 0);
 
+console.log("\n[3b] Вернувшаяся жаба стоит в своём слоте КОНТУРа");
+setState({
+  toads: [toad({ scene_id: "slot-a" })],
+  expeditions: [expedition()],
+});
+const inContour = toad({ scene_id: "slot-a" });
+check("всё ещё занята походом", manager.isToadBusyOnExpedition(inContour), true);
+check("видна в слоте контура", rooms.isToadVisibleInRoom(inContour), true);
+check(
+  "перенос всё ещё запрещён",
+  moveRules.getToadMoveIssue(inContour),
+  manager.EXPEDITION_TOAD_BUSY_REASON,
+);
+check("ток не даёт", power.isToadPowering(inContour), false);
+check("мощность", power.getToadPowerCapacity([inContour]), 0);
+check("выработки нет", production.getSceneProductionRate([inContour]), 0);
+
 console.log("\n[4] После разбора добычи поход убран из сейва");
 setState({ toads: [toad()], expeditions: [] });
 check("жаба снова свободна", manager.isToadBusyOnExpedition(returned), false);

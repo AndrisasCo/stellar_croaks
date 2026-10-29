@@ -3,6 +3,7 @@ import { ExpeditionLoot } from "../../models/expedition";
 import { Toad } from "../../models/Toad";
 import { Items, itemsFull } from "../../models/user";
 import { CurrencyIcon } from "../shared/CurrencyIcon";
+import { ToadIcon } from "../shared/ToadIcon";
 import { ToadAvatar } from "../shared/ToadAvatar";
 
 interface LootTile {
@@ -132,7 +133,7 @@ export const ExpeditionLootGrid: React.FC<{
       icon: sampleToad ? (
         <ToadAvatar toad={sampleToad as Toad} size={6} />
       ) : (
-        <span className="text-xl leading-none">🐸</span>
+        <ToadIcon className="h-6 w-6" />
       ),
       tone: "border-amber-300/60",
       hint: "Жаба из лутбокса: при разборе добычи поселится в биопод",

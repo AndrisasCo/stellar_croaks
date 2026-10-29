@@ -1,6 +1,6 @@
 import React from "react";
 import Modal from "../shared/Header";
-import { CurrencyText } from "../shared/CurrencyIcon";
+import { IconText } from "../shared/CurrencyIcon";
 import { Expedition, getSectorById } from "../../models/expedition";
 import { getExpeditionLootSummary } from "../../utils/expedition-manager";
 import { ExpeditionLogList, formatExpeditionDate } from "./ExpeditionLogList";
@@ -73,7 +73,7 @@ export const ExpeditionLogModal: React.FC<{ expedition: Expedition }> = ({
             <span className="text-3xs uppercase tracking-[0.12em] text-slate-500">
               добыча
             </span>
-            <CurrencyText
+            <IconText
               text={getExpeditionLootSummary(expedition)}
               iconClassName="h-3 w-3"
             />

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { ToadIcon } from "./ToadIcon";
 
 interface LoadingScreenProps {
   /**
@@ -131,7 +132,10 @@ const LoadingScreen = ({ progress, message }: LoadingScreenProps) => {
 
         {/* Дополнительная информация */}
         <div className="mt-8 space-y-1 text-xs text-slate-500">
-          <p>🐸 Создаем идеальную среду для ваших жаб</p>
+          <p>
+            <ToadIcon className="mr-1 h-3 w-3" />
+            Создаем идеальную среду для ваших жаб
+          </p>
           <p>⚡ Подготавливаем системы смешивания ДНК</p>
         </div>
       </div>

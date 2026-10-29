@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useSettings } from "../SettingsContext";
 import Modal from "../shared/Header";
+import { ToggleButton } from "../shared/ToggleButton";
 import {
   getDefaultGameState,
   updateGameState,
@@ -147,26 +148,12 @@ const SettingsModal: React.FC = () => {
                   Фоновая музыка
                 </span>
               </div>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={settings.musicEnabled}
-                aria-label="Фоновая музыка"
-                onClick={toggleMusic}
-                className={`relative h-6 w-12 rounded-none border border-white/10 transition-all duration-300 ${
-                  settings.musicEnabled
-                    ? "bg-cyan-500 shadow-[0_0_14px_-2px_rgba(34,211,238,0.55)]"
-                    : "bg-slate-700"
-                }`}
-              >
-                <div
-                  className={`absolute top-1 h-4 w-4 rounded-none bg-white shadow-md transition-all duration-300 ${
-                    settings.musicEnabled
-                      ? "transform translate-x-7"
-                      : "transform translate-x-1"
-                  }`}
-                />
-              </button>
+              <ToggleButton
+                checked={settings.musicEnabled}
+                onChange={toggleMusic}
+                label="Фоновая музыка"
+                tone="cyan"
+              />
             </div>
 
             <div className="flex items-center gap-3">
@@ -217,26 +204,12 @@ const SettingsModal: React.FC = () => {
                   Звуковые эффекты
                 </span>
               </div>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={settings.soundEffectsEnabled}
-                aria-label="Звуковые эффекты"
-                onClick={toggleSoundEffects}
-                className={`relative h-6 w-12 rounded-none border border-white/10 transition-all duration-300 ${
-                  settings.soundEffectsEnabled
-                    ? "bg-cyan-500 shadow-[0_0_14px_-2px_rgba(34,211,238,0.55)]"
-                    : "bg-slate-700"
-                }`}
-              >
-                <div
-                  className={`absolute top-1 h-4 w-4 rounded-none bg-white shadow-md transition-all duration-300 ${
-                    settings.soundEffectsEnabled
-                      ? "transform translate-x-7"
-                      : "transform translate-x-1"
-                  }`}
-                />
-              </button>
+              <ToggleButton
+                checked={settings.soundEffectsEnabled}
+                onChange={toggleSoundEffects}
+                label="Звуковые эффекты"
+                tone="cyan"
+              />
             </div>
 
             <div className="flex items-center gap-3">

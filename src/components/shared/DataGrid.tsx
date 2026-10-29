@@ -252,7 +252,8 @@ export const HudPanel: React.FC<{
 
 /** Ячейка сетки: подпись сверху, крупное значение снизу. */
 export const DataCell: React.FC<{
-  label: string;
+  /** Подпись ячейки. `ReactNode` — чтобы в начале стояла SVG-иконка (`ToadIcon`). */
+  label: React.ReactNode;
   value: React.ReactNode;
   suffix?: string;
   color?: string;

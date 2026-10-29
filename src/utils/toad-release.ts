@@ -80,3 +80,38 @@ export const releaseToadToHome = (
 
   return moveToadToAviary(toadId, fallback.sceneId);
 };
+
+export interface ToadReleaseBatchResult {
+  /** Сколько жаб устроено в биоподы */
+  sent: number;
+  /** Сколько не поместилось: свободных мест под током не хватило */
+  failed: number;
+}
+
+/**
+ * Отправить всех перечисленных жаб домой за один проход.
+ *
+ * Контекст запрашивается заново перед каждой жабой: `sendToadHome` и
+ * `moveToadToAviary` пишут сейв, поэтому занятость биоподов и сеть меняются
+ * между итерациями. Если брать один снимок на всю пачку, вторая жаба увидит
+ * свободным место, которое только что заняла первая.
+ */
+export const releaseToadsToHome = (
+  toadIds: number[],
+  getContext: () => ToadReleaseContext,
+): ToadReleaseBatchResult => {
+  let sent = 0;
+  let failed = 0;
+
+  toadIds.forEach((toadId) => {
+    const result = releaseToadToHome(toadId, getContext());
+
+    if (result.ok) {
+      sent += 1;
+    } else {
+      failed += 1;
+    }
+  });
+
+  return { sent, failed };
+};

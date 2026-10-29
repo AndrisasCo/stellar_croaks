@@ -1,10 +1,4 @@
-import {
-  KeyboardEvent,
-  ReactNode,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { KeyboardEvent, ReactNode, useEffect, useMemo, useState } from "react";
 import { updateScene, updateUser } from "../../backend";
 import { getRoomUpgrades, upgradeColonyRoom } from "../../backend/colony";
 import { getGameState } from "../../backend/localStorage";
@@ -42,14 +36,11 @@ import {
   RoomConfig,
 } from "../HexMap/rooms-config";
 import { getRoomToadLists } from "../HexMap/room-toad-lists";
-import {
-  DataCell,
-  DataGrid,
-  HudPanel,
-  SectionTitle,
-} from "../shared/DataGrid";
+import { DataCell, DataGrid, HudPanel, SectionTitle } from "../shared/DataGrid";
 import { ClickButton } from "../shared/ClickButton";
-import { CurrencyIcon } from "../shared/CurrencyIcon";
+import { CurrencyIcon, IconText } from "../shared/CurrencyIcon";
+import { ToadIcon } from "../shared/ToadIcon";
+import { ToggleButton } from "../shared/ToggleButton";
 import RoomDemolishModal from "./RoomDemolishModal";
 
 /**
@@ -228,7 +219,9 @@ export default function RoomDataTab({ room, stats }: RoomDataTabProps) {
       content: `Апгрейд «${option.title}» установлен в «${room.name}»${
         fed > 0 ? `: кормушка сразу покормила ${fed} жаб(ы) 🍎` : ""
       }${sent > 0 ? `: репатриатор сразу отправил домой ${sent} жаб(ы) 🛬` : ""}${
-        caught > 0 ? `: карантин-уловитель сразу забрал на койки ${caught} 🐸` : ""
+        caught > 0
+          ? `: карантин-уловитель сразу забрал на койки ${caught} 🐸`
+          : ""
       }`,
     });
   };
@@ -259,7 +252,7 @@ export default function RoomDataTab({ room, stats }: RoomDataTabProps) {
   };
 
   return (
-    <div className="flex flex-col gap-3 px-2 pb-2">
+    <div className="flex flex-col gap-3 pb-2">
       {/* Паспорт сектора: иконка, имя, тип и описание в одной карточке. Отдельная
           панель «О секторе» дублировала заголовок и оставляла пустую полосу,
           поэтому описание живёт прямо под именем — первое, что читает игрок. */}
@@ -269,7 +262,7 @@ export default function RoomDataTab({ room, stats }: RoomDataTabProps) {
             aria-hidden="true"
             className="flex h-11 w-11 shrink-0 items-center justify-center border border-slate-600/50 bg-slate-950/50 text-2xl leading-none"
           >
-            {room.icon}
+            <IconText text={room.icon} />
           </span>
 
           <div className="min-w-0 flex-1">
@@ -339,14 +332,16 @@ export default function RoomDataTab({ room, stats }: RoomDataTabProps) {
               powered ? "text-emerald-300" : "text-rose-300"
             }`}
           >
-            ● {powered ? "Онлайн" : "Нет тока"}
+            ● {powered ? "Питание есть" : "Нет тока"}
           </span>
           <span aria-hidden="true" className="h-3 w-px bg-slate-700" />
-          <span className="text-slate-500">
+          {/* Строка-декор: состояние дублирует «Питание есть / Нет тока», поэтому гаснет в фон */}
+          <span className="text-slate-500 opacity-100">
             Канал // {powered ? "стабилен" : "потерян"}
           </span>
-          <span className="ml-auto tabular-nums text-slate-400">
-            🐸 {roomToads.length}
+          <span className="ml-auto flex items-center gap-1 tabular-nums text-slate-400">
+            <ToadIcon className="h-3 w-3" />
+            {roomToads.length}
           </span>
         </div>
       </HudPanel>
@@ -436,26 +431,11 @@ export default function RoomDataTab({ room, stats }: RoomDataTabProps) {
                         ? "✓ Установлено · работает"
                         : "Установлено · выключено"}
                     </span>
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={active}
-                      aria-label={`${option.title}: ${
-                        active ? "включён" : "выключен"
-                      }`}
-                      onClick={() => handleToggle(option)}
-                      className={`relative h-6 w-12 shrink-0 rounded-none border border-white/10 transition-all duration-300 ${
-                        active
-                          ? "bg-emerald-500 shadow-lg shadow-emerald-500/30"
-                          : "bg-slate-600"
-                      }`}
-                    >
-                      <div
-                        className={`absolute top-1 h-4 w-4 rounded-none bg-white shadow-md transition-all duration-300 ${
-                          active ? "translate-x-7" : "translate-x-1"
-                        }`}
-                      />
-                    </button>
+                    <ToggleButton
+                      checked={active}
+                      onChange={() => handleToggle(option)}
+                      label={option.title}
+                    />
                   </div>
                 ) : (
                   <ClickButton
@@ -494,7 +474,12 @@ export default function RoomDataTab({ room, stats }: RoomDataTabProps) {
           подтверждается отдельным окном. Кваксы за постройку не возвращаются,
           зато гекс становится свободным — на нём можно построить заново, и
           следующий сектор того же вида подешевеет.
-          {demolishIssue ? ` ${demolishIssue}` : ""}
+          {demolishIssue && (
+            <>
+              {" "}
+              <IconText text={demolishIssue} />
+            </>
+          )}
         </p>
 
         <ClickButton

@@ -2,7 +2,7 @@
  * Проверка агрессивности походов на РЕАЛЬНОМ коде проекта.
  *
  * Фиксируем новые правила:
- *   1) весь урон событий похода умножен на 1.2 поверх опасности сектора;
+ *   1) весь урон событий похода умножен на 2 поверх опасности сектора;
  *   2) минимальный урон не срезается новым множителем;
  *   3) на возврате команда с базовым шансом 20% приносит болезнь;
  *   4) болезнь получает только живая и ещё не болеющая жаба;
@@ -151,34 +151,34 @@ const sequence = (...values) => {
   return () => values[Math.min(index++, values.length - 1)];
 };
 
-console.log("\n[1] Урон событий: +20% поверх опасности сектора");
+console.log("\n[1] Урон событий: ×2 поверх опасности сектора");
 console.log("─".repeat(64));
 const shallow = models.SECTORS[0];
 const bunker = models.SECTORS[1];
 check(
   "глобальный множитель урона",
   config.EXPEDITION_DAMAGE_MULTIPLIER,
-  1.2,
+  2,
 );
 check(
-  "стартовый сектор: 1 × 1.2",
+  "стартовый сектор: 1 × 2",
   config.getSectorDamageMultiplier(shallow),
-  1.2,
+  2,
 );
 check(
-  "затопленный бункер: 1.15 × 1.2",
-  near(config.getSectorDamageMultiplier(bunker), 1.38),
+  "затопленный бункер: 1.15 × 2",
+  near(config.getSectorDamageMultiplier(bunker), 2.3),
   true,
 );
 check(
   "scaleDamage(10) в стартовом секторе",
   events.scaleDamage({ sector: shallow }, 10),
-  12,
+  20,
 );
 check(
   "scaleDamage(10) в бункере",
   events.scaleDamage({ sector: bunker }, 10),
-  14,
+  23,
 );
 check(
   "минимальный урон не срезан",
@@ -427,6 +427,6 @@ if (failures.length > 0) {
 }
 
 console.log(
-  "✅ Походы стали агрессивнее: урон +20%, базовый риск болезни 20%, случайный попутчик работает",
+  "✅ Походы стали агрессивнее: урон ×2, базовый риск болезни 20%, случайный попутчик работает",
 );
 

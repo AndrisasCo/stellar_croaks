@@ -269,11 +269,12 @@ export const unlockSector = (sectorId: number): ExpeditionActionResult => {
 /**
  * Отправить команду в сектор.
  * Списывает биомассу на снаряжение, помечает жаб `status: "out"` и заводит запись
- * похода. Уходя, жаба освобождает место в секторе (`scene_id` снова становится
- * биоподом): она в походе, а не в ⚡-секторе или «Разведке» — двух мест сразу не бывает.
- * После разбора добычи жаба возвращается в «Разведку», откуда ушла команда
- * (`originRoomId`). Пока из этого контура уже есть поход (в пути или ждёт разбора),
- * новую команду не отправляем; поход из другой «Разведки» этому не мешает.
+ * похода. Место в секторе за жабой сохраняется: спрайт в пути скрыт, а когда команда
+ * вернётся и добыча ещё не разобрана, жаба уже стоит в своём слоте и гуляет по нему
+ * на «Разведке» как обычно.
+ * После разбора добычи она остаётся в «Разведке», откуда ушла команда (`originRoomId`).
+ * Пока из этого контура уже есть поход (в пути или ждёт разбора), новую команду не
+ * отправляем; поход из другой «Разведки» этому не мешает.
  */
 export const startExpedition = (
   sectorId: number,
@@ -305,17 +306,32 @@ export const startExpedition = (
 
   const expeditions = getExpeditions();
   /**
+   * Контур отправки в сейве колонии: по нему проверяем занятость и потом берём слот
+   * для возврата. `originRoomId` приходит с карты id гекса (`slot-a`), но старые сейвы
+   * и миграция помнят канонический id постройки (`scout_1`) или числовой `Scene.id`.
+   */
+  const originRoom = (state.colony?.rooms ?? []).find(
+    (room) =>
+      room.id === originRoomId ||
+      room.slotId === originRoomId ||
+      room.sceneId === originRoomId,
+  );
+  const numericOrigin =
+    typeof originRoomId === "number" ? originRoomId : Number(originRoomId);
+
+  /**
    * Лимит походов считается по контуру: пока из этой «Разведки» никто не ушёл,
    * команду можно отправить, даже если поход из другой «Разведки» уже в пути.
    * Завершённый поход тоже держит контур: его команда ещё не разобрана.
    */
   if (originRoomId != null && originRoomId !== "") {
-    const numericOrigin =
-      typeof originRoomId === "number" ? originRoomId : Number(originRoomId);
-    const originExpeditions = getRoomExpeditions(expeditions, {
-      id: String(originRoomId),
-      sceneId: Number.isFinite(numericOrigin) ? numericOrigin : undefined,
-    });
+    const originExpeditions = getRoomExpeditions(
+      expeditions,
+      originRoom ?? {
+        id: String(originRoomId),
+        sceneId: Number.isFinite(numericOrigin) ? numericOrigin : undefined,
+      },
+    );
 
     if (originExpeditions.length > 0) {
       const hasCompleted = originExpeditions.some(
@@ -403,18 +419,22 @@ export const startExpedition = (
     biomass: Math.round(((state.user.biomass || 0) - cost) * 100) / 100,
   });
 
-  // Уход в поход освобождает место: жаба в походе, а не в секторе, спрайт скрыт.
+  // Уход в поход сохраняет слот: жаба вернётся в него же и будет жить там как обычная,
+  // пока игрок не разберёт добычу. Спрайт на время похода скрыт (busy), поэтому
+  // «место в секторе» она не занимает; `homeId` остаётся её биоподом.
+  //
+  // `scene_id` карты — id гекса (`slotId`), а не канонический id постройки или старый
+  // числовой `Scene.id`. Постройку нашли выше по любому из этих id: возвращаем жабу
+  // именно на гекс, иначе она не попадёт в список своего сектора и не появится на карте.
+  const awaySceneId =
+    originRoom?.slotId ?? originRoom?.id ?? originRoomId ?? undefined;
+
   // Заодно списываем силы: у каждой своя цена по глубине сектора.
   toads.forEach((toad) => {
     updateToadById(
       toad.id,
       {
-        // Для контура карты (`room.id`) `scene_id` остаётся пустым: жаба в походе,
-        // а не в секторе. Старый числовой `Scene.id` сохраняем как раньше.
-        ...getAwayToadUpdate(
-          toad,
-          typeof originRoomId === "number" ? originRoomId : undefined,
-        ),
+        ...getAwayToadUpdate(toad, awaySceneId),
         energy: Math.max(0, getToadEnergy(toad) - energyCost),
       },
       true,
@@ -663,7 +683,17 @@ export const evacuateExpedition = (id: string): ExpeditionActionResult => {
   };
 };
 
-/** «Экстренный маяк»: моментально вытащить команду за Астро-кваксы */
+/**
+ * «Экстренный маяк»: моментально вытащить команду за Астро-кваксы.
+ *
+ * На обратном пути маяк работает как телепорт: команда и так шла домой сама,
+ * поэтому итог считается ровно так же, как при обычном возвращении
+ * (`completeArrival` без `instant`) — бросок удачи, множитель добычи и добор до
+ * нормы фермы. Платим только за скорость: иначе маяк молча отнимал бы удачу у
+ * похода, который и без него завершился бы так же.
+ * Разворот до прибытия в сектор удачи не даёт по другой причине — команда
+ * просто не дошла (см. `hasReachedSector`).
+ */
 export const extractExpedition = (
   id: string,
   addNotification?: (notification: any) => void,
@@ -689,18 +719,28 @@ export const extractExpedition = (
   if (astro < EXTRACTION_ASTRO_COST) {
     return {
       success: false,
-      message: `Эстренный вызор стоит ${EXTRACTION_ASTRO_COST} 💎 (сейчас ${astro})`,
+      message: `Эстренный вызов стоит ${EXTRACTION_ASTRO_COST} 💎 (сейчас ${astro})`,
     };
   }
 
   updateUser({ astro_quax: astro - EXTRACTION_ASTRO_COST });
   // Маяк забирает и выбитую команду: после этого она уже не «ждёт эвакуации».
   expedition.awaitingEvacuation = false;
-  completeArrival(expedition, { instant: true });
+
+  /**
+   * Команда уже возвращалась домой: маяк только сокращает дорогу, исход похода
+   * не трогаем. Выбитую команду (`forced`) сюда не пускаем — у неё своя
+   * эвакуация за Кваксы и потеря половины добычи.
+   */
+  const teleportHome = expedition.phase === "returning" && !expedition.forced;
+
+  completeArrival(expedition, teleportHome ? {} : { instant: true });
 
   return {
     success: true,
-    message: "Команда эвакуирована маяком — добыча ждёт разбора в «Походах»",
+    message: teleportHome
+      ? "Команда вернулась домой маяком — добыча ждёт разбора в «Походах»"
+      : "Команда эвакуирована маяком — добыча ждёт разбора в «Походах»",
   };
 };
 
@@ -1286,9 +1326,11 @@ const hasReachedSector = (expedition: Expedition): boolean => {
 
 /**
  * Считает итог похода: удачу, добычу с множителями и плату за эвакуацию.
- * `instant` (экстренный маяк) отключает множитель удачи и добор до нормы:
- * команда забирает ровно то, что уже добыла. Ничего не записывает в сохранение —
- * вызывающий сам решает, когда выдавать лут.
+ * `instant` (эвакуация выбитой команды и маяк до прибытия в сектор) отключает
+ * множитель удачи и добор до нормы: команда забирает ровно то, что уже добыла.
+ * На обратном пути маяк сюда не приходит — там итог считается как при обычном
+ * возвращении. Ничего не записывает в сохранение — вызывающий сам решает, когда
+ * выдавать лут.
  */
 const buildArrivalLoot = (
   expedition: Expedition,
@@ -1304,8 +1346,8 @@ const buildArrivalLoot = (
 
   // 0. Удачное завершение (Часть 5.4): каждая роль команды дала шанс, бросок — за нас.
   // Удача умножает добычу и добавляет шансы на образец и Астро-кваксы.
-  // Успех невозможен без прибытия в сектор; маяк же не пересчитывает добычу,
-  // поэтому даже при удачном броске множитель к ней не применяется.
+  // Успех невозможен без прибытия в сектор; ранний маяк и эвакуация выбитой
+  // команды добычу не пересчитывают, поэтому даже удачный бросок множителя не даёт.
   const successChance = expedition.successChance ?? 0;
   const success =
     !forced && reachedSector && Math.random() < Math.min(1, successChance);
@@ -1314,14 +1356,15 @@ const buildArrivalLoot = (
    * Особый образец за глубину: 10% при успешном завершении. Бросок делается
    * один раз здесь и сохраняется в рюкзаке похода, иначе при каждом открытии
    * карточки «Потенциальная добыча» могла бы появиться заново.
-   * Маяк после прибытия тоже считается успехом — как и с пропусками КОНТУРа.
+   * Маяк на обратном пути тоже считается успехом — как и с пропусками КОНТУРа.
    */
   const lootboxSamples =
     success && Math.random() < EXPEDITION_SAMPLE_TOAD_CHANCE ? 1 : 0;
 
   // 0.1 Норма «поход выгоднее фермы»: считаем, сколько те же жабы наработали бы
   // дома за время отсутствия (путь туда + обратно) и добираем добычу до нормы.
-  // При немедленном завершении добора нет: игрок забирает только добытое.
+  // При раннем маяке и эвакуации добора нет: игрок забирает только добытое.
+  // Маяк на обратном пути сюда не приходит — там добор работает как обычно.
   const awayHours =
     (Date.now() - expedition.startedAt) / HOUR_MS +
     (expedition.returnHours ?? 0);

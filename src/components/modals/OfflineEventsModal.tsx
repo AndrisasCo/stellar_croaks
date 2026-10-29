@@ -3,7 +3,7 @@ import { useOfflineEvents } from "../../hooks/use-offline-events";
 import { formatOfflineEventTime } from "../../utils/offline-events";
 import type { OfflineEventType } from "../../utils/offline-events";
 import Modal from "../shared/Header";
-import { CurrencyText } from "../shared/CurrencyIcon";
+import { IconText } from "../shared/CurrencyIcon";
 
 const EVENT_STYLES: Record<
   OfflineEventType,
@@ -115,7 +115,7 @@ export const OfflineEventsModal: React.FC = () => {
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="text-1xs leading-snug text-slate-100">
-                        <CurrencyText
+                        <IconText
                           text={event.content}
                           iconClassName="h-3.5 w-3.5"
                         />

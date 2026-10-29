@@ -173,6 +173,10 @@ export const ToadProvider: React.FC<ToadProviderProps> = ({ children }) => {
 
     createToad({ ...slot.child, scene_id: scene.id });
 
+    // Задание «10 жаб из коллайдера» считает именно забранных гибридов:
+    // смешивание без получения результата прогресс не двигает.
+    recordQuestEvent("collider_toad_collected", 1);
+
     addNotification({
       type: "success",
       content: `Гибрид ${slot.child.name} помещен в ${scene.name}`,

@@ -97,6 +97,15 @@ export interface ToadSlotItem {
   meter?: ToadSlotMeter;
   /** Почему слот нельзя заполнить — подсказка пустого слота */
   disabledHint?: string;
+  /**
+   * Почему жабу из слота нельзя использовать по назначению места (КОНТУР: мало сил на
+   * выбранный сектор, больна, выбита, уже в походе).
+   *
+   * Занятый слот без причины зелёный — «жаба на месте и готова», и с жабой без сил он
+   * выглядел бы так же. С `issue` рамка и фон краснеют, а причина встаёт красной строкой
+   * под именем: игрок видит, кого именно чинить или кормить, не открывая карточку.
+   */
+  issue?: string | null;
 }
 
 export interface ToadSlotGridProps {
@@ -119,6 +128,15 @@ export interface ToadSlotGridProps {
   onRemove?: (toad: Toad, slotIndex: number) => void;
   /** Подсказка крестика: «Вернуть в биопод», «Выписать» и т.п. */
   removeLabel?: string;
+  /**
+   * Значок слота и на занятом слоте — плашкой в левом верхнем углу.
+   *
+   * Пустой слот подписывает место значком и словом («♀ Слот самки»), а занятый — только
+   * аватаром и именем жабы: пол и роль приходилось угадывать по порядку слотов.
+   * С этим флагом значок остаётся виден и на жабе: репродуктор так показывает пол пары,
+   * КОНТУР — роль, которую жаба занимает.
+   */
+  showIconOnOccupied?: boolean;
   /** Содержимое под сеткой: описание ролей, сводка по слотам и т.п. */
   footer?: React.ReactNode;
   /** Весь блок недоступен: идёт смешивание или у сектора нет тока */
@@ -314,6 +332,7 @@ export const ToadSlotGrid: React.FC<ToadSlotGridProps> = ({
   onOpen,
   onRemove,
   removeLabel = "Убрать жабу",
+  showIconOnOccupied = false,
   footer,
   disabled = false,
   avatarSize = 10,
@@ -388,6 +407,15 @@ export const ToadSlotGrid: React.FC<ToadSlotGridProps> = ({
           const meterPercent = slot.meter
             ? Math.max(0, Math.min(100, slot.meter.value))
             : 0;
+          /**
+           * Обводка слота: без жабы — пунктир, с готовой жабой — зелёная, а с жабой,
+           * которую место не примет (`issue`), — красная: причина важнее «слот занят».
+           */
+          const slotFrame = !toad
+            ? "border-dashed border-slate-500/60 bg-slate-950/20 hover:border-slate-300/60 hover:bg-slate-800/40"
+            : slot.issue
+              ? "border-solid border-rose-500/60 bg-rose-500/10 hover:border-rose-300/70 hover:bg-rose-500/15"
+              : "border-solid border-emerald-500/40 bg-emerald-500/5 hover:border-emerald-300/60 hover:bg-emerald-500/10";
 
           // HP: та же шкала, что у `HpBar` и полоски в карточке жабы (зелёный → жёлтый → красный)
           const hpRatio = maxHp > 0 ? Math.max(0, Math.min(1, hp / maxHp)) : 0;
@@ -442,21 +470,43 @@ export const ToadSlotGrid: React.FC<ToadSlotGridProps> = ({
               }}
               title={
                 toad
-                  ? `${toad.name} · ${slot.label}`
+                  ? `${toad.name} · ${slot.label}${
+                      slot.issue ? ` · ⚠️ ${slot.issue}` : ""
+                    }`
                   : (slot.disabledHint ?? `${slot.label}: выбрать жабу`)
               }
-              className={`relative m-auto flex aspect-square w-full max-w-[250px] flex-col items-center justify-center gap-1 rounded-none border px-1.5 py-2 transition-colors duration-300 ${
-                toad
-                  ? "border-solid border-emerald-500/40 bg-emerald-500/5 hover:border-emerald-300/60 hover:bg-emerald-500/10"
-                  : "border-dashed border-slate-500/60 bg-slate-950/20 hover:border-slate-300/60 hover:bg-slate-800/40"
-              } ${disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}
+              className={`relative m-auto flex aspect-square w-full max-w-[250px] flex-col items-center justify-center gap-1 rounded-none border px-1.5 py-2 transition-colors duration-300 ${slotFrame} ${
+                disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer"
+              }`}
             >
               {toad ? (
                 <>
+                  {/* Пол или роль — плашкой в углу: подписи места у занятого слота нет */}
+                  {showIconOnOccupied && slot.icon && (
+                    <span
+                      aria-hidden
+                      title={slot.label}
+                      className="pointer-events-none absolute left-1 top-1 text-2xs leading-none opacity-90"
+                    >
+                      {slot.icon}
+                    </span>
+                  )}
+
                   <ToadAvatar size={avatarSize} toad={toad} />
                   <span className="w-full truncate text-center text-2xs font-semibold text-slate-100">
                     {toad.name}
                   </span>
+
+                  {/* Жаба не пройдёт проверку места: причина важнее остальных подписей */}
+                  {slot.issue && (
+                    <span
+                      title={slot.issue}
+                      className="flex w-full min-w-0 items-center justify-center gap-0.5 rounded-none border border-rose-400/40 bg-rose-500/15 px-1 py-0.5 text-3xs leading-none text-rose-200"
+                    >
+                      <span aria-hidden>⚠️</span>
+                      <span className="truncate">{slot.issue}</span>
+                    </span>
+                  )}
 
                   {/* Болезнь: название важнее остальных показателей — её лечат первой */}
                   {disease && (
@@ -538,9 +588,7 @@ export const ToadSlotGrid: React.FC<ToadSlotGridProps> = ({
                       </div>
                       <div className="h-1 w-full overflow-hidden bg-slate-700">
                         <div
-                          className={`h-full ${getMeterColor(
-                            meterPercent,
-                          )}`}
+                          className={`h-full ${getMeterColor(meterPercent)}`}
                           style={{ width: `${meterPercent}%` }}
                         />
                       </div>
@@ -579,7 +627,9 @@ export const ToadSlotGrid: React.FC<ToadSlotGridProps> = ({
                 </>
               ) : (
                 <>
-                  <span className={`text-2xl leading-none ${style.text} opacity-70`}>
+                  <span
+                    className={`text-2xl leading-none ${style.text} opacity-70`}
+                  >
                     +
                   </span>
                   <span className="w-full truncate text-center text-3xs text-slate-400">

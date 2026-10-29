@@ -9,7 +9,7 @@ import { CURRENCY_CONFIG } from "../../utils/constants";
 import { getActiveNarratorTask } from "../../utils/narrator";
 import { useToads } from "../ToadContext";
 import { ClickButton } from "../shared/ClickButton";
-import { CurrencyIcon } from "../shared/CurrencyIcon";
+import { CurrencyIcon, IconText } from "../shared/CurrencyIcon";
 import Modal from "../shared/Header";
 import {
   BUILD_OPTIONS,
@@ -231,7 +231,9 @@ export default function BuildRoomModal({ slot }: { slot: RoomConfig }) {
                 className="rounded-none border border-slate-600/40 bg-color-second p-2"
               >
                 <div className="flex items-center gap-2">
-                  <span className="text-2xl">{option.icon}</span>
+                  <span className="text-2xl">
+                    <IconText text={option.icon} />
+                  </span>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1 text-sm font-semibold text-amber-100">
                       {option.title}

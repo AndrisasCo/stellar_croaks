@@ -1,10 +1,12 @@
-import { useMemo } from "react";
+import { ReactNode, useMemo } from "react";
 import { Scene } from "../../../models/scene";
 import { Toad } from "../../../models/Toad";
 import { useModal } from "../../ModalContext";
 import { useNotifications } from "../../../hooks/use-notification";
 import { useToads } from "../../ToadContext";
 import { ClickButton } from "../../shared/ClickButton";
+import { IconText } from "../../shared/CurrencyIcon";
+import { ToadIcon } from "../../shared/ToadIcon";
 import {
   isRoomOpen,
   RoomConfig,
@@ -12,22 +14,35 @@ import {
 import { openRoomModal } from "../../HexMap/open-room-modal";
 import { PowerGrid, POWER_ROOM_TOAD_SLOTS } from "../../HexMap/colony-power";
 
+/**
+ * Подпись «сколько жаб в секторе» с SVG-иконкой жабы.
+ *
+ * Эмодзи 🐸 в этой строке заменён на `ToadIcon`, чтобы счётчик жильцов не
+ * зависел от системного шрифта и совпадал по цвету с текстом строки.
+ */
+const toadCountLabel = (text: string): ReactNode => (
+  <>
+    <ToadIcon className="mr-1 h-3 w-3" />
+    {text}
+  </>
+);
+
 /** Что написать про жаб в секторе: у каждого сектора свой смысл и своя вместимость. */
 const getOccupantsLabel = (
   room: RoomConfig,
   count: number,
   scene: Scene | undefined,
-): string => {
+): ReactNode => {
   if (room.kind === "power") {
-    return `🐸 ${count}/${POWER_ROOM_TOAD_SLOTS} жаб-энергетиков`;
+    return toadCountLabel(`${count}/${POWER_ROOM_TOAD_SLOTS} жаб-энергетиков`);
   }
 
   if (room.kind === "aviary") {
-    return `🐸 ${count}/${scene?.capacity ?? 0} жаб`;
+    return toadCountLabel(`${count}/${scene?.capacity ?? 0} жаб`);
   }
 
   if (room.kind === "breeding") {
-    return `🐸 ${count}/2 в репродукторе`;
+    return toadCountLabel(`${count}/2 в репродукторе`);
   }
 
   if (room.kind === "hospital") {
@@ -35,7 +50,7 @@ const getOccupantsLabel = (
   }
 
   if (room.kind === "scout") {
-    return `🐸 ${count} в секторе`;
+    return toadCountLabel(`${count} в секторе`);
   }
 
   return room.subtitle;
@@ -89,7 +104,7 @@ const RoomRow = ({
       className="flex w-full items-center gap-3 rounded-none border border-white/10 bg-slate-800/60 p-2.5 text-left transition-colors hover:border-cyan-300/40 hover:bg-slate-800"
     >
       <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-none border border-white/10 bg-slate-950/50 text-xl">
-        {room.icon}
+        <IconText text={room.icon} />
       </span>
 
       <div className="min-w-0 flex-1">

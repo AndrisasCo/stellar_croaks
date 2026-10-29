@@ -68,7 +68,10 @@ export type QuestMetric =
   | "foodBought"
   | "lootboxOpened"
   | "curedToads"
-  | "diseaseOutbreaks";
+  | "diseaseOutbreaks"
+  | "colliderToads"
+  | "perfectExpeditionToads"
+  | "eliteOrdersCompleted";
 
 /** События, которые игровой код сообщает журналу явно. */
 export type QuestEvent =
@@ -76,7 +79,9 @@ export type QuestEvent =
   | "food_bought"
   | "lootbox_opened"
   | "toad_cured"
-  | "disease_outbreak";
+  | "disease_outbreak"
+  | "collider_toad_collected"
+  | "elite_order_completed";
 
 export type QuestTrigger =
   /** Задание доступно сразу (стартовые задания и магистраль). */
@@ -207,7 +212,12 @@ export const QUEST_CHAINS: QuestChain[] = [
     title: "Экономика и снабжение",
     description: "Оборот Кваксов, запас корма и космический капитал.",
     sphere: "economy",
-    taskIds: ["m01-turnover", "m02-celestial-capital", "m03-warehouse-stock"],
+    taskIds: [
+      "m01-turnover",
+      "m02-celestial-capital",
+      "m03-warehouse-stock",
+      "m16-elite-broker",
+    ],
   },
   {
     id: "colony",
@@ -219,6 +229,7 @@ export const QUEST_CHAINS: QuestChain[] = [
       "m05-powered",
       "m06-laboratory",
       "m07-prevention",
+      "m17-breeding-line",
     ],
   },
   {
@@ -234,6 +245,8 @@ export const QUEST_CHAINS: QuestChain[] = [
       "m13c-tank",
       "m13d-medic",
       "m13e-negotiator",
+      "m14-collider-line",
+      "m15-perfect-organism",
       "m10-sample-archive",
     ],
   },
@@ -770,6 +783,70 @@ const mediumQuests: QuestDef[] = [
     },
     rewards: { lootboxes: 2 },
     priority: 46,
+  }),
+  medium({
+    id: "m14-collider-line",
+    sphere: "selection",
+    chainId: "selection",
+    title: "10 жаб из коллайдера",
+    description:
+      "Заберите из инкубатора 10 жаб, выведенных в коллайдере: эксперимент должен стать системой.",
+    trigger: { type: "metric", metric: "colliderRooms", value: 1 },
+    goal: {
+      metric: "colliderToads",
+      target: 10,
+      label: "Жаб забрано из коллайдера",
+    },
+    rewards: { tokens: 80, lootboxes: 1 },
+    priority: 47,
+  }),
+  medium({
+    id: "m15-perfect-organism",
+    sphere: "selection",
+    chainId: "selection",
+    title: "Почти идеальный организм",
+    description:
+      "Выведите жабу из селекции или коллайдера со скоростью 2+, весом 30+, плодовитостью 2+, аппетитом 2+ и качеством 20+.",
+    trigger: { type: "chain", parentId: "m14-collider-line" },
+    goal: {
+      metric: "perfectExpeditionToads",
+      target: 1,
+      label: "Совершенных жаб",
+    },
+    rewards: { astroQuax: 40, lootboxes: 3 },
+    priority: 48,
+  }),
+  medium({
+    id: "m16-elite-broker",
+    sphere: "economy",
+    chainId: "supply",
+    title: "Элитный брокер",
+    description:
+      "Выполните 3 элитных заказа в Торговой капсуле: редкие жабы должны приносить астро-кваксы.",
+    trigger: { type: "metric", metric: "astroQuax", value: 1 },
+    goal: {
+      metric: "eliteOrdersCompleted",
+      target: 3,
+      label: "Элитных заказов сдано",
+    },
+    rewards: { astroQuax: 30, lootboxes: 2 },
+    priority: 49,
+  }),
+  medium({
+    id: "m17-breeding-line",
+    sphere: "colony",
+    chainId: "colony",
+    title: "Ещё два репродуктора",
+    description:
+      "Постройте ещё два репродуктора: одной колбы мало, когда племенная линия растёт.",
+    trigger: { type: "metric", metric: "breedingRooms", value: 1 },
+    goal: {
+      metric: "breedingRooms",
+      target: 3,
+      label: "Репродукторов построено",
+    },
+    rewards: { tokens: 80, lootboxes: 2 },
+    priority: 50,
   }),
 ];
 

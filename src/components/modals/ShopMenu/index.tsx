@@ -3,7 +3,12 @@ import { useColony } from "../../../hooks/use-colony";
 import { useRoomPowerTab } from "../../../hooks/use-room-power-tab";
 import Modal from "../../shared/Header";
 import ModalTabs, { ModalTabItem } from "../../shared/ModalTabs";
-import { DataCell, DataGrid, HudPanel, SectionTitle } from "../../shared/DataGrid";
+import {
+  DataCell,
+  DataGrid,
+  HudPanel,
+  SectionTitle,
+} from "../../shared/DataGrid";
 import { CurrencyIcon } from "../../shared/CurrencyIcon";
 import RoomDataTab, { ROOM_DATA_TAB, RoomDataTabId } from "../RoomDataTab";
 import { RoomConfig } from "../../HexMap/rooms-config";
@@ -89,7 +94,7 @@ export default function ShopMenu({ room }: { room?: RoomConfig }) {
       <ModalTabs tabs={tabs} active={activeTab} onChange={setActiveTab} />
 
       {/* Валюта и состояние канала: общая шапка всех торговых вкладок */}
-      <div className="px-2 pb-4">
+      <div className=" pb-4">
         <HudPanel tone={powerIssue ? "rose" : "amber"} className="p-2.5">
           <SectionTitle aside={powerIssue ? "OFFLINE" : "ONLINE"}>
             Торговый терминал
@@ -130,7 +135,7 @@ export default function ShopMenu({ room }: { room?: RoomConfig }) {
                 }`}
               />
               <span
-                className={`truncate ${powerIssue ? "text-rose-300" : ""}`}
+                className={`truncate ${powerIssue ? "text-rose-300" : "opacity-100"}`}
                 title={powerIssue ?? undefined}
               >
                 {powerIssue ??
@@ -139,7 +144,9 @@ export default function ShopMenu({ room }: { room?: RoomConfig }) {
             </span>
             <span
               className={`shrink-0 ${
-                powerIssue ? "text-rose-300/80" : "text-amber-300/80"
+                powerIssue
+                  ? "text-rose-300/80"
+                  : "text-amber-300/80 opacity-100"
               }`}
             >
               {powerIssue ? "NO PWR" : "UPLINK"}

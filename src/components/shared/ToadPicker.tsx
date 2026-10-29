@@ -9,6 +9,7 @@ import {
   getToadSexIcon,
 } from "../../utils/toad-picker";
 import { ClickButton } from "./ClickButton";
+import { IconText } from "./CurrencyIcon";
 import { ToadAvatar } from "./ToadAvatar";
 import { ToadLocationBadge } from "./ToadLocationBadge";
 import { getToadEnergy } from "../../utils/gamification-config";
@@ -63,6 +64,12 @@ export interface ToadPickerItem {
   };
   /** Подсветка плитки: жаба в слоте или занята другим слотом */
   tone?: "default" | "selected" | "warn";
+  /**
+   * Жаба не пройдёт проверку места, хотя взять её можно (КОНТУР: мало сил на выбранный
+   * сектор). Плитка краснеет, а причина встаёт отдельной красной строкой: зелёная
+   * «выбрано» больше не обещает то, чего место не примет.
+   */
+  issue?: string | null;
   /** Почему жабу взять нельзя: плитка гаснет и не нажимается */
   reason?: string | null;
 }
@@ -123,11 +130,13 @@ const ToadPickerCard: React.FC<{
   const percent = item.meter ? Math.max(0, Math.min(100, item.meter.value)) : 0;
   const tone = blocked
     ? "border-slate-700/40 bg-slate-900/40"
-    : item.tone === "selected"
-      ? "border-emerald-500/40 bg-emerald-900/40 hover:bg-emerald-800/50"
-      : item.tone === "warn"
-        ? "border-amber-500/40 bg-amber-900/30 hover:bg-amber-800/40"
-        : "border-slate-700/40 bg-slate-900/40 hover:border-cyan-300/40 hover:bg-slate-700/60";
+    : item.issue
+      ? "border-rose-500/50 bg-rose-950/40 hover:border-rose-300/60 hover:bg-rose-900/40"
+      : item.tone === "selected"
+        ? "border-emerald-500/40 bg-emerald-900/40 hover:bg-emerald-800/50"
+        : item.tone === "warn"
+          ? "border-amber-500/40 bg-amber-900/30 hover:bg-amber-800/40"
+          : "border-slate-700/40 bg-slate-900/40 hover:border-cyan-300/40 hover:bg-slate-700/60";
 
   return (
     <ClickButton
@@ -137,7 +146,9 @@ const ToadPickerCard: React.FC<{
       title={
         blocked
           ? `${toad.name}: ${item.reason}`
-          : `Взять ${toad.name} в «${label}» · сейчас: ${location.label}`
+          : `Взять ${toad.name} в «${label}» · сейчас: ${location.label}${
+              item.issue ? ` · ⚠️ ${item.issue}` : ""
+            }`
       }
       className={`flex h-full min-w-0 flex-col gap-1 rounded-none border px-1.5 py-1.5 text-left transition-colors duration-300 ${
         blocked ? "cursor-not-allowed opacity-60" : tone
@@ -151,7 +162,11 @@ const ToadPickerCard: React.FC<{
         <span className="flex min-w-0 flex-1 flex-col gap-0.5">
           <span
             className={`truncate text-xs font-semibold ${
-              blocked ? "text-slate-400" : "text-slate-100"
+              blocked
+                ? "text-slate-400"
+                : item.issue
+                  ? "text-rose-100"
+                  : "text-slate-100"
             }`}
           >
             {getToadSexIcon(toad.sex)} {toad.name}
@@ -173,6 +188,13 @@ const ToadPickerCard: React.FC<{
           title={`Сейчас: ${location.label}`}
         />
       </div>
+
+      {/* Жаба не пройдёт проверку сектора: причина красным, заметка места остаётся ниже */}
+      {!blocked && item.issue && (
+        <div className="line-clamp-2 min-w-0 text-3xs leading-tight text-rose-300">
+          ⚠️ {item.issue}
+        </div>
+      )}
 
       {/* Причина отказа важнее заметки места: у отсеянной жабы показываем её */}
       {(blocked || item.note) && (
@@ -275,7 +297,7 @@ export const ToadPickerList: React.FC<ToadPickerListProps> = ({
   return (
     <>
       {hint && (
-        <p className="sticky top-0 z-10 bg-slate-900/95 px-2 py-1.5 text-2xs leading-snug text-slate-400">
+        <p className=" top-0 z-10 bg-slate-900/95 px-2 py-1.5 text-2xs leading-snug text-slate-400">
           {hint}
         </p>
       )}
@@ -478,7 +500,11 @@ export const ToadPicker: React.FC<ToadPickerProps> = ({
               : "border-slate-600/40 bg-slate-800/70 hover:bg-slate-700/70"
         }`}
       >
-        {icon && <span className="shrink-0 text-2xs">{icon}</span>}
+        {icon && (
+          <span className="shrink-0 text-2xs">
+            <IconText text={icon} />
+          </span>
+        )}
         {caption && (
           <span className="shrink-0 text-2xs text-slate-400">{caption}</span>
         )}

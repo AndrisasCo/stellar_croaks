@@ -31,6 +31,7 @@ import {
   isToadBusyOnExpedition,
 } from "../../../utils/expedition-manager";
 import { ToadAvatar } from "../../shared/ToadAvatar";
+import { ToadIcon } from "../../shared/ToadIcon";
 import { SceneStatsTab } from "./SceneStatsTab";
 import ModalTabs, { ModalTabItem } from "../../shared/ModalTabs";
 import { RoomConfig } from "../../HexMap/rooms-config";
@@ -61,7 +62,15 @@ const TOAD_LIST_TABS_ALWAYS_ALLOWED: readonly ToadListTab[] = ["toads"];
 
 /** Табы биопода без «Данных сектора»: список жаб и статистика биопода */
 const TOAD_LIST_TABS: ModalTabItem<ToadListTab>[] = [
-  { id: "toads", label: "🐸 Жабы" },
+  {
+    id: "toads",
+    label: (
+      <>
+        <ToadIcon className="mr-1 h-3.5 w-3.5" />
+        Жабы
+      </>
+    ),
+  },
   { id: "stats", label: "📊 Статистика" },
 ];
 
@@ -635,7 +644,9 @@ const ToadListModal: React.FC<{
           <div className="px-1">
             {filteredAndSortedToads.length === 0 ? (
               <div className="text-center py-8">
-                <div className="text-slate-300 text-4xl mb-3">🐸</div>
+                <div className="mb-3 flex justify-center text-slate-300">
+                  <ToadIcon className="h-10 w-10" />
+                </div>
                 <p className="text-slate-300 text-sm">
                   {toads.length === 0
                     ? awayToads.length > 0
@@ -819,7 +830,11 @@ const ToadListModal: React.FC<{
             <DataGrid columns={3}>
               <DataCell
                 dense
-                label="🐸 В биоподе"
+                label={
+                  <>
+                    <ToadIcon className="mr-1 h-3 w-3" />В биоподе
+                  </>
+                }
                 value={`${toads.length}/${scene?.capacity ?? 0}`}
                 color="text-white"
               />

@@ -97,3 +97,22 @@ export const isToadBusyOnExpedition = (
   expeditions: Expedition[] = getExpeditions(),
 ): boolean =>
   toad.status === "out" || isToadOnExpedition(toad.id, expeditions);
+
+/**
+ * Жаба вернулась из похода, но добыча ещё не разобрана.
+ *
+ * Такую жабу карта уже рисует в слоте её КОНТУРа (см. `isToadVisibleInRoom`),
+ * и она гуляет там как обычная жаба сектора — отдельной «анимации встречи» нет.
+ * Действия, меняющие место жабы («Домой», перенос, разбор), по-прежнему запрещены
+ * до `finishExpedition`.
+ */
+export const isToadReturnedFromExpedition = (
+  toad: Pick<Toad, "id" | "status">,
+  expeditions: Expedition[] = getExpeditions(),
+): boolean =>
+  toad.status !== "out" &&
+  expeditions.some(
+    (expedition) =>
+      expedition.phase === "completed" &&
+      expedition.team.some((member) => member.toadId === toad.id),
+  );

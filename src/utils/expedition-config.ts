@@ -172,6 +172,22 @@ export interface ExpeditionReserveRequirement {
 export const isBredOrColliderToad = (toad: Pick<Toad, "parents">): boolean =>
   Array.isArray(toad.parents) && toad.parents.length > 0;
 
+/**
+ * Пять характеристик «почти идеальной» жабы для похода.
+ *
+ * Пороги скорости, веса, плодовитости и аппетита совпадают с максимумом силы
+ * ролей, а качество поднято выше роли оператора (10): задание требует 20+.
+ * Проверка идёт по генам, а не по текущим HP/сытости, поэтому подходит и
+ * только что выведенному головастику — «сразу» после коллайдера или селекции.
+ */
+export const EXPEDITION_PERFECT_TOAD_REQUIREMENTS = {
+  rarity: 20,
+  speed: EXPEDITION_RESERVE_REQUIREMENTS.scout.speed,
+  weight: EXPEDITION_RESERVE_REQUIREMENTS.tank.weight,
+  fertility: EXPEDITION_RESERVE_REQUIREMENTS.medic.fertility,
+  hungerRate: EXPEDITION_RESERVE_REQUIREMENTS.negotiator.hungerRate,
+} satisfies ExpeditionReserveRequirement;
+
 const meetsReserveRequirement = (
   toad: Toad,
   requirement: ExpeditionReserveRequirement,
@@ -208,6 +224,15 @@ export const getExpeditionReserveRoles = (toad: Toad): ExpeditionRole[] => {
 /** Жаба подходит хотя бы на одну роль экспедиционного резерва. */
 export const isExpeditionReserveToad = (toad: Toad): boolean =>
   getExpeditionReserveRoles(toad).length > 0;
+
+/**
+ * Выведенная жаба со всеми пятью идеальными характеристиками для похода.
+ * Возраст не важен: качество линии видно сразу после рождения, а не после
+ * взросления. Дикие жабы и жабы из лутбоксов (`parents: null`) не считаются.
+ */
+export const isPerfectExpeditionToad = (toad: Toad): boolean =>
+  isBredOrColliderToad(toad) &&
+  meetsReserveRequirement(toad, EXPEDITION_PERFECT_TOAD_REQUIREMENTS);
 
 /** Какие роли экспедиционного резерва закрывает колония. */
 export const getCoveredExpeditionReserveRoles = (
@@ -340,11 +365,16 @@ export const rollExpeditionDisease = (
 export const isToadDown = (toad: Toad): boolean => getToadHp(toad) <= 0;
 
 /**
- * Жаба в походе стоит  в ⚡-секторе, ни в «Разведке»
+ * Жаба ушла в поход, но слот КОНТУРа остаётся за ней.
+ *
+ * `scene_id` сохраняет место отправления: строка — id гекса «Разведки», число —
+ * старый `Scene.id`. По нему карта рисует вернувшуюся жабу в её же слоте, где она
+ * живёт обычной жизнью сектора, пока добыча не разобрана. На время похода спрайт
+ * скрыт (`isToadBusyOnExpedition`), а действия с жабой запрещены.
  */
 export const getAwayToadUpdate = (
   toad: Toad,
-  scene_id: number | undefined,
+  scene_id: number | string | undefined,
 ): Partial<Toad> => {
   const maxHp = getToadMaxHp(toad);
 
@@ -679,7 +709,7 @@ export const getExpeditionSendCost = (
  * Силы возвращаются только в биоподе или Медотсеке и зависят от сытости и
  * аппетита (`utils/energy.ts`), поэтому поход — ещё и очередь: жабу, которая
  * копит силы на «Репродуктор», дешевле взять в ближний сектор, чем в дальний.
- * Минимальная цена похода — 70 ⚡, дальше +6 ⚡ за каждую глубину.
+ * Минимальная цена похода — 70 ⚡, дальше +10 ⚡ за каждую глубину.
  */
 export const EXPEDITION_MIN_ENERGY_COST = 70;
 export const EXPEDITION_ENERGY_BASE = EXPEDITION_MIN_ENERGY_COST;
@@ -750,7 +780,7 @@ export const getSpeedUpReturnCost = (
   );
 };
 
-/** Цена «Экстренного маяка»: моментальная эвакуация команды, Астро-кваксы */
+/** Цена «Экстренного маяка»: моментальное возвращение команды, Астро-кваксы */
 export const EXTRACTION_ASTRO_COST = 3;
 /**
  * Эвакуация выбитой команды: Кваксы за каждую глубину сектора.

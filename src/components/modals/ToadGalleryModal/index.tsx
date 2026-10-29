@@ -12,7 +12,6 @@ import { DataCell, DataGrid, HudPanel } from "../../shared/DataGrid";
 import { DetailedView, type GallerySlot } from "./DetailedView";
 import { useModal } from "../../ModalContext";
 
-
 // Хелпер для цветов редкости
 const getRarityStyles = (rarity: string, isUnlocked: boolean) => {
   if (!isUnlocked) {
@@ -369,7 +368,7 @@ export const ToadGalleryModal: React.FC = () => {
                   <div className="relative w-16 h-16 flex items-center justify-center">
                     <svg
                       viewBox="0 0 100 100"
-                      className="absolute inset-0 w-full h-full text-slate-900 opacity-30"
+                      className="absolute inset-0 w-full h-full text-slate-900 opacity-100"
                       fill="currentColor"
                     >
                       <path d="M20,70 Q10,60 10,50 Q10,30 30,20 Q50,10 70,20 Q90,30 90,50 Q90,60 80,70 L90,90 L70,90 L70,80 L30,80 L30,90 L10,90 Z" />

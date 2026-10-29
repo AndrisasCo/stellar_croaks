@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { ClickButton } from "../shared/ClickButton";
-import { CurrencyText } from "../shared/CurrencyIcon";
+import { IconText } from "../shared/CurrencyIcon";
 import { useNarrator } from "../../hooks/use-narrator";
 import {
   NARRATOR_TASKS,
@@ -67,7 +67,7 @@ const StoryCard = ({
         </div>
 
         <p className="relative mt-3 text-sm leading-relaxed text-slate-200">
-          <CurrencyText text={step.text} />
+          <IconText text={step.text} />
         </p>
 
         <div className="relative mt-4 flex items-center justify-between gap-3">
@@ -135,13 +135,15 @@ const TaskCard = ({
           </div>
 
           <p className="mt-1.5 text-xs leading-snug text-slate-300">
-            <CurrencyText text={step.text} />
+            <IconText text={step.text} />
           </p>
 
           <p className="mt-2 flex items-start gap-1.5 rounded-none border border-cyan-400/20 bg-cyan-400/10 px-2 py-1.5 text-2xs leading-snug text-cyan-50">
-            <span className="shrink-0">{step.icon}</span>
+            <span className="shrink-0">
+              <IconText text={step.icon} />
+            </span>
             <span>
-              <CurrencyText text={step.hint} />
+              <IconText text={step.hint} />
             </span>
           </p>
 

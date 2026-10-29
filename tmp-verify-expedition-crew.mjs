@@ -17,7 +17,11 @@
  *   7) полный круг модалки: собрали из комнаты → убрали жабу → поставили обратно;
  *   8) сортировка жаб под роль для выпадающих списков роли (`sortToadsByRolePower`):
  *      сверху сильнейшая для роли, список не теряет жаб, исходный массив не мутируется,
- *      равные по силе остаются в порядке колонии.
+ *      равные по силе остаются в порядке колонии;
+ *   9) слоты и жильцы «Разведки» — одно и то же (`syncSlotsWithCrew`): жаба, ушедшая из
+ *      сектора, освобождает роль, вернувшаяся — снова её занимает, чужие роли не
+ *      перетасовываются, лишняя жаба сектора полную команду не трогает, а без изменений
+ *      возвращается тот же объект слотов (React не перерисовывается зря).
  *
  * Запуск: node tmp-verify-expedition-crew.mjs
  */
@@ -147,15 +151,26 @@ check("тяжёлая жаба — щитоносец", crew.getBestRole(tankToa
 check("плодовитая жаба — ремонтник", crew.getBestRole(medicToad), "medic");
 check("редкая жаба — оператор", crew.getBestRole(hackerToad), "hacker");
 check("жаба с характером — биолог", crew.getBestRole(bioToad), "negotiator");
+// Потолок роли берём из конфига: характеристики ролей меняются вместе с балансом,
+// а проверяем мы перевод силы в проценты, а не конкретное число скорости.
+const scoutCap = config.ROLE_CONFIG.scout.statCap;
+const capScout = {
+  ...scoutToad,
+  genes: { ...scoutToad.genes, speed: scoutCap },
+};
+const halfScout = {
+  ...scoutToad,
+  genes: { ...scoutToad.genes, speed: scoutCap / 2 },
+};
 check(
   "проценты роли = сила × 100",
-  crew.getRolePowerPercent(scoutToad, "scout"),
+  crew.getRolePowerPercent(capScout, "scout"),
   100,
 );
 check(
   "половина силы роли — половина процентов",
-  crew.getRolePowerPercent(medicToad, "scout"),
-  33,
+  crew.getRolePowerPercent(halfScout, "scout"),
+  50,
 );
 check(
   "проценты совпадают с силой роли",
@@ -391,6 +406,66 @@ check(
   idsOf(crew.sortToadsByRolePower([twinB, twinA], "scout")),
   "21-20",
 );
+
+console.log("\n[9] Слоты = жильцы «Разведки» (syncSlotsWithCrew)");
+console.log("─".repeat(60));
+/** Состав сектора «Разведка»: те же пять жаб, что модалка держит в слотах */
+const teamCrew = [scoutToad, tankToad, medicToad, hackerToad, bioToad];
+const synced = crew.syncSlotsWithCrew(empty, teamCrew);
+check("пустые слоты заняли жильцы сектора", snapshot(synced), snapshot(five));
+checkTrue(
+  "без изменений возвращается тот же объект",
+  crew.syncSlotsWithCrew(synced, teamCrew) === synced,
+);
+checkTrue(
+  "синхронизация не мутирует переданные слоты",
+  snapshot(empty) ===
+    snapshot({ scout: "", tank: "", medic: "", hacker: "", negotiator: "" }),
+);
+
+/** Жабу вернули в биопод: её роль освобождается, чужие роли не перетасовываются */
+const left = crew.syncSlotsWithCrew(
+  synced,
+  teamCrew.filter((toad) => toad.id !== scoutToad.id),
+);
+check("ушедшая жаба покинула слот", left.scout, "");
+check("свободных ролей после ухода жабы", crew.countFreeRoles(left), 1);
+check(
+  "чужие роли не тронуты",
+  snapshot({ ...left, scout: synced.scout }),
+  snapshot(synced),
+);
+checkTrue("объект слотов сменился", left !== synced);
+
+/** Вернувшаяся в сектор команда снова занимает слоты — без ручной сборки */
+const returned = crew.syncSlotsWithCrew(left, teamCrew);
+check("вернувшаяся жаба снова на роли", returned.scout, scoutToad.id);
+check("состав снова полный", crew.countFreeRoles(returned), 0);
+
+/** Лишняя жаба в секторе (перенесли на карте) не вытесняет собранную команду */
+checkTrue(
+  "лишняя жаба сектора не трогает полную команду",
+  crew.syncSlotsWithCrew(synced, [...teamCrew, weakToad]) === synced,
+);
+
+/** Свободную роль занимает жилец сектора — по силе роли, а не по порядку колонии */
+const medicLeft = crew.syncSlotsWithCrew(synced, [
+  scoutToad,
+  tankToad,
+  hackerToad,
+  bioToad,
+  weakToad,
+]);
+check("свободную роль занял жилец сектора", medicLeft.medic, weakToad.id);
+check("жаб в команде по-прежнему пять", rolesOf(medicLeft).length, 5);
+
+/** Поход забрал жабу из сектора: слот освобождается, а не держит жабу «в пути» */
+const onRun = crew.syncSlotsWithCrew(
+  synced,
+  teamCrew.filter((toad) => toad.id !== hackerToad.id),
+);
+check("слот ушедшей в поход жабы свободен", onRun.hacker, "");
+check("свободных ролей, пока жаба в походе", crew.countFreeRoles(onRun), 1);
 
 console.log("\n" + "─".repeat(60));
 if (failures.length > 0) {

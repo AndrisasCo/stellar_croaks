@@ -12,7 +12,7 @@ import {
 import { createToad, updateUser } from "../../backend";
 import { useNotifications } from "../../hooks/use-notification";
 import { getGameState } from "../../backend/localStorage";
-import { CurrencyIcon } from "../shared/CurrencyIcon";
+import { CurrencyIcon, IconText } from "../shared/CurrencyIcon";
 import { pickSceneForNewToad } from "../../utils/housing";
 
 const AchievementModal: React.FC = () => {
@@ -184,10 +184,7 @@ const AchievementModal: React.FC = () => {
                   {key === "earn" ? (
                     <>
                       Заработано{" "}
-                      <CurrencyIcon
-                        currency="tokens"
-                        className="h-3.5 w-3.5"
-                      />
+                      <CurrencyIcon currency="tokens" className="h-3.5 w-3.5" />
                     </>
                   ) : key === "buyToad" ? (
                     "Куплено жаб"
@@ -285,7 +282,9 @@ const AchievementModal: React.FC = () => {
                         `}
                     >
                       <div className="flex items-center gap-3">
-                        <div className="text-xl">{achievement.icon}</div>
+                        <div className="text-xl">
+                          <IconText text={achievement.icon} />
+                        </div>
                         <div className="flex-1 min-w-0">
                           <div
                             className={`text-sm font-medium ${

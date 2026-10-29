@@ -57,6 +57,7 @@ import { ToadLocationBadge } from "./ToadLocationBadge";
 
 /** Где жаба находится — плашка в правом верхнем углу (сектор, биопод, поход) */
 export interface ToadListPlace {
+  /** Эмодзи места; жаба-счётчик рисуется SVG уже в `ToadLocationBadge` */
   icon: string;
   label: string;
   hint?: string;
@@ -65,7 +66,8 @@ export interface ToadListPlace {
 
 /** Состояние жабы в конкретном секторе: даёт ток, на койке, ухаживает */
 export interface ToadListStatus {
-  icon: string;
+  /** Эмодзи состояния либо SVG-иконка жабы (`ToadIcon`) */
+  icon: ReactNode;
   label: string;
   className?: string;
 }

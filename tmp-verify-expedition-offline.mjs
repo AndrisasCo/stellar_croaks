@@ -45,8 +45,8 @@ const HOUR_MS = 60 * 60 * 1000;
 const LS_KEY = "Game_State6";
 
 /**
- * Жаба на поход. Масса и качество дают 250 HP. Событий на пути s1 теперь 18
- * (1.5 ч / минимальный интервал 5 минут), поэтому rng фиксируется на нейтральном
+ * Жаба на поход. Масса и качество дают 250 HP. События на пути s1 считаются по
+ * минимальному интервалу из конфига, поэтому rng фиксируется на нейтральном
  * событии — проверяем тайминги, а не выживаемость.
  */
 const toad = (id = 1) => ({
@@ -173,20 +173,29 @@ const SECTOR = models.SECTORS[0];
 const OUTBOUND_MS = SECTOR.durationHours * HOUR_MS;
 const RETURN_HOURS = 0.75; // 0.5 × 1.5 ч
 
-console.log("\n[0] Каденция событий: не больше 30 и не чаще 5 минут");
+console.log(
+  "\n[0] Каденция событий: не больше 30 и не чаще минимального интервала",
+);
 console.log("─".repeat(60));
 for (const sector of models.SECTORS) {
   const expected = Math.max(
     1,
-    Math.min(30, Math.floor((sector.durationHours * 60) / 5)),
+    Math.min(
+      config.EXPEDITION_MAX_EVENTS,
+      Math.floor(
+        (sector.durationHours * 60) /
+          config.EXPEDITION_MIN_EVENT_INTERVAL_MINUTES,
+      ),
+    ),
   );
   const count = config.getExpeditionEventCount(sector);
   const intervalMs = config.getExpeditionEventIntervalMs(sector);
 
   check(`${sector.name}: событий`, count, expected);
   check(
-    `${sector.name}: интервал ≥ 5 мин`,
-    intervalMs >= 5 * 60 * 1000 - 1e-6,
+    `${sector.name}: интервал ≥ ${config.EXPEDITION_MIN_EVENT_INTERVAL_MINUTES} мин`,
+    intervalMs >=
+      config.EXPEDITION_MIN_EVENT_INTERVAL_MINUTES * 60 * 1000 - 1e-6,
     true,
   );
   check(
@@ -201,11 +210,15 @@ console.log("─".repeat(60));
 const startedAt = Date.now() - 2 * HOUR_MS;
 reset(makeState({ expeditions: [outbound(startedAt)] }));
 
-// Догон разыгрывает все 18 событий s1 за один тик: иначе после оффлайна
+// Догон разыгрывает все события пути s1 за один тик: иначе после оффлайна
 // команда висела бы «в пути» ещё несколько игровых тиков.
 manager.processExpeditions();
 const returning = savedExpedition();
-check("разыграны все события пути", returning.resolvedSteps, 18);
+check(
+  "разыграны все события пути",
+  returning.resolvedSteps,
+  config.getExpeditionEventCount(SECTOR),
+);
 check("после догона команда возвращается", returning.phase, "returning");
 check(
   "возврат начался в момент прибытия в сектор",

@@ -2,7 +2,7 @@
  * Проверка журнала заданий на РЕАЛЬНОМ коде проекта.
  *
  * Скрипт бандлит движок и каталог через esbuild и проверяет:
- *   1) каталог: 37 заданий (16 быстрых, 17 средних, 4 долгих), все цепочки
+ *   1) каталог: 41 задание (16 быстрых, 21 среднее, 4 долгих), все цепочки
  *      ссылаются на существующие задания, у каждого есть награда;
  *   2) старт: видны только задания с триггером `always` — два быстрых и
  *      первый сектор магистрали;
@@ -14,7 +14,9 @@
  *      нужные задания; «забрать всё» очищает очередь наград;
  *   6) сохранение: журнал лежит отдельным ключом, статусы не теряются после
  *      повторного чтения, а прогресс по комнатам считается из `GameState`;
- *   7) генетика ×2 и пять ролей экспедиционного резерва.
+ *   7) генетика ×2, пять ролей экспедиционного резерва и новые задания:
+ *      серия коллайдера, «Почти идеальный организм», элитные заказы и
+ *      расширение репродукторов.
  *
  * Запуск: node tmp-verify-quest-journal.mjs
  */
@@ -113,9 +115,9 @@ const journal = () =>
   };
 
 console.log("── 1. Каталог заданий ───────────────────────────────────────");
-check("всего заданий", catalog.QUESTS.length, 37);
+check("всего заданий", catalog.QUESTS.length, 41);
 check("быстрых", catalog.QUESTS.filter((q) => q.type === "quick").length, 16);
-check("средних", catalog.QUESTS.filter((q) => q.type === "medium").length, 17);
+check("средних", catalog.QUESTS.filter((q) => q.type === "medium").length, 21);
 check("долгих", catalog.QUESTS.filter((q) => q.type === "long").length, 4);
 check(
   "во всех шести сферах есть задания",
@@ -132,7 +134,7 @@ checkTrue(
 check(
   "все средние задания входят ровно в одну цепочку",
   catalog.QUEST_CHAINS.reduce((sum, chain) => sum + chain.taskIds.length, 0),
-  17,
+  21,
 );
 checkTrue(
   "у каждого задания есть хотя бы одна награда",
@@ -146,7 +148,7 @@ gameStorage.updateGameState(gameStorage.getDefaultGameState());
 const start = snapshot();
 check("журнал отдельный от сейва игры", store.has(JOURNAL_KEY), true);
 check("стартовых заданий открыто", start.counts.active, 3);
-check("заданий закрыто", start.counts.locked, 34);
+check("заданий закрыто", start.counts.locked, 38);
 check("q01 открыто", entry("q01-first-sector").status, "active");
 check("q04 открыто", entry("q04-first-feed").status, "active");
 check("магистраль l01 открыта", entry("l01-first-contour").status, "active");
@@ -558,7 +560,126 @@ checkTrue(
 );
 
 console.log(
-  "\n── 7. Синхронизация журнала между устройствами ─────────────",
+  "\n── 7. Новые задания: коллайдер, репродукторы, элитные заказы ─",
+);
+
+check("m14 ждёт постройки коллайдера", entry("m14-collider-line").status, "locked");
+check("m15 ждёт серию из коллайдера", entry("m15-perfect-organism").status, "locked");
+check("m16 ждёт астро-кваксы", entry("m16-elite-broker").status, "locked");
+
+setState((state) => ({
+  ...state,
+  colony: {
+    ...state.colony,
+    rooms: [
+      ...(state.colony?.rooms ?? []),
+      {
+        id: "collider_quest",
+        slotId: "slot-collider-quest",
+        kind: "collider",
+        builtAt: new Date().toISOString(),
+      },
+    ],
+  },
+}));
+check("m14 открылось после коллайдера", entry("m14-collider-line").status, "active");
+check("m14 прогресс пока 0", entry("m14-collider-line").progress, 0);
+
+quests.recordQuestEvent("collider_toad_collected", 10);
+check("счётчик жаб из коллайдера", snapshot().metrics.colliderToads, 10);
+check("m14 готово после 10 жаб", entry("m14-collider-line").status, "ready");
+check("m15 открылось после m14", entry("m15-perfect-organism").status, "active");
+
+const perfectToad = reserveToad(9010, {
+  rarity: 20,
+  speed: 2,
+  weight: 30,
+  fertility: 2,
+  hungerRate: 2,
+});
+checkTrue(
+  "идеальная выведенная жаба проходит проверку",
+  expedition.isPerfectExpeditionToad(perfectToad),
+);
+check(
+  "качество 10 не считается идеальным",
+  expedition.isPerfectExpeditionToad(allRoundToad),
+  false,
+);
+check(
+  "дикая идеальная жаба не считается",
+  expedition.isPerfectExpeditionToad({ ...perfectToad, parents: null }),
+  false,
+);
+check(
+  "не хватает одного стата — не идеальная",
+  expedition.isPerfectExpeditionToad({ ...perfectToad, genes: { ...perfectToad.genes, weight: 29 } }),
+  false,
+);
+checkTrue(
+  "головастик считается сразу после выведения",
+  expedition.isPerfectExpeditionToad({ ...perfectToad, stage: "toadpole" }),
+);
+
+setState((state) => ({
+  ...state,
+  toads: [...state.toads, perfectToad],
+}));
+check("метрика совершенных жаб", snapshot().metrics.perfectExpeditionToads, 1);
+check("m15 готово", entry("m15-perfect-organism").status, "ready");
+
+setState((state) => ({
+  ...state,
+  user: { ...state.user, astro_quax: 1 },
+}));
+check("m16 открылось после первого астро", entry("m16-elite-broker").status, "active");
+
+quests.recordQuestEvent("elite_order_completed", 3);
+check("счётчик элитных заказов", snapshot().metrics.eliteOrdersCompleted, 3);
+check("m16 готово после 3 заказов", entry("m16-elite-broker").status, "ready");
+check(
+  "новые события сохраняются в журнале",
+  journal().counters.collider_toad_collected === 10 &&
+    journal().counters.elite_order_completed === 3,
+  true,
+);
+
+check("m17 ждёт первый репродуктор", entry("m17-breeding-line").status, "locked");
+
+const addBreedingRoom = (index) =>
+  setState((state) => ({
+    ...state,
+    colony: {
+      ...state.colony,
+      rooms: [
+        ...(state.colony?.rooms ?? []),
+        {
+          id: `breeding_quest_${index}`,
+          slotId: `slot-breeding-quest-${index}`,
+          kind: "breeding",
+          builtAt: new Date().toISOString(),
+        },
+      ],
+    },
+  }));
+
+addBreedingRoom(1);
+check(
+  "m17 открылось после первого репродуктора",
+  entry("m17-breeding-line").status,
+  "active",
+);
+check("m17: первый из трёх", entry("m17-breeding-line").progress, 1);
+
+addBreedingRoom(2);
+check("m17: второй из трёх", entry("m17-breeding-line").progress, 2);
+
+addBreedingRoom(3);
+check("m17 готово после двух новых", entry("m17-breeding-line").status, "ready");
+check("m17: три репродуктора", entry("m17-breeding-line").progress, 3);
+
+console.log(
+  "\n── 8. Синхронизация журнала между устройствами ─────────────",
 );
 
 // Устройство A: награда уже забрана, журнал уходит в облако (game_state.quests).

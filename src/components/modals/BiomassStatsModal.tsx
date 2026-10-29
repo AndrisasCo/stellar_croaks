@@ -9,6 +9,8 @@ import {
 } from "../../utils/production-manager";
 import { UPKEEP_PER_TOAD_HOUR } from "../../utils/gamification-config";
 import { DataCell, DataGrid, HudPanel } from "../shared/DataGrid";
+import { IconText } from "../shared/CurrencyIcon";
+import { ToadIcon } from "../shared/ToadIcon";
 
 /** Знак и один знак после запятой: темп фермы в HUD показывается так же. */
 const formatRate = (value: number): string =>
@@ -50,7 +52,7 @@ const BiomassRoomRow = ({ room }: { room: BiomassFarmRoomStat }) => {
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="truncate text-2xs font-semibold text-slate-100">
-            {room.icon} {room.name}
+            <IconText text={room.icon} /> {room.name}
           </p>
           <p className="text-3xs leading-tight text-slate-400">
             {room.toads} {unit} в биоподе
@@ -99,7 +101,7 @@ const BiomassUpkeepRow = ({ room }: { room: BiomassUpkeepRoomStat }) => {
     <HudPanel className="flex items-center justify-between gap-2 px-2.5 py-1.5">
       <div className="min-w-0">
         <p className="truncate text-2xs font-semibold text-slate-100">
-          {room.icon} {room.name}
+          <IconText text={room.icon} /> {room.name}
         </p>
         <p className="text-3xs leading-tight text-slate-400">
           {room.toads} {unit} · биомассу не дают
@@ -185,7 +187,10 @@ export default function BiomassStatsModal() {
         </HudPanel>
 
         <div className="flex flex-wrap gap-x-3 gap-y-1 text-2xs text-slate-400">
-          <span>🐸 {stats.activeToads} работают на ферме</span>
+          <span>
+            <ToadIcon className="mr-1 h-3 w-3" />
+            {stats.activeToads} работают на ферме
+          </span>
           {stats.serviceToads > 0 && (
             <span className="text-sky-200/80">
               🏥 {stats.serviceToads} в других секторах

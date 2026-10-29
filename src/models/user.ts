@@ -125,7 +125,8 @@ export const itemsFull: Record<Items, InventoryItem> = {
     key: Items.geneDust,
     name: "Генная пыль",
     icon: "/assets/dust.webp",
-    description: "Улучшает качество гибрида в коллайдере. ",
+    description:
+      "Улучшает качество гибрида в коллайдере. Цена продажи — 5 Кваксов за штуку.",
     rarity: "uncommon",
   },
   [Items.contourPass]: {

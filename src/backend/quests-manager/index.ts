@@ -1,7 +1,10 @@
 import { updateUser } from "../index";
 import { getGameState, GameState } from "../localStorage";
 import { normalizeExpeditionStats, SECTORS } from "../../models/expedition";
-import { getCoveredExpeditionReserveRoles } from "../../utils/expedition-config";
+import {
+  getCoveredExpeditionReserveRoles,
+  isPerfectExpeditionToad,
+} from "../../utils/expedition-config";
 import { isToadSick } from "../../models/disease";
 import { Items } from "../../models/user";
 import { DAY_MS, MINUTE_MS } from "../../utils/date";
@@ -114,6 +117,7 @@ export const getQuestMetrics = (
     toadsWithParents: state.toads.filter(
       (toad) => Array.isArray(toad.parents) && toad.parents.length > 0,
     ).length,
+    perfectExpeditionToads: state.toads.filter(isPerfectExpeditionToad).length,
     expeditionReserveRoles: reserveRoles.size,
     reserveRoleHacker: reserveRoles.has("hacker") ? 1 : 0,
     reserveRoleScout: reserveRoles.has("scout") ? 1 : 0,
@@ -155,6 +159,8 @@ export const getQuestMetrics = (
     lootboxOpened: journal.counters.lootbox_opened ?? 0,
     curedToads: journal.counters.toad_cured ?? 0,
     diseaseOutbreaks: journal.counters.disease_outbreak ?? 0,
+    colliderToads: journal.counters.collider_toad_collected ?? 0,
+    eliteOrdersCompleted: journal.counters.elite_order_completed ?? 0,
   };
 };
 

@@ -146,8 +146,7 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
   // Больных жаб тоже не берут: сначала лечение в Медотсеке.
   // Список — вся колония: коллайдер работает с генами, а не с биоподом.
   const availableToads = allToads.filter(
-    (t) =>
-      t.stage === "adult" && !isToadBusyOnExpedition(t) && !isToadSick(t),
+    (t) => t.stage === "adult" && !isToadBusyOnExpedition(t) && !isToadSick(t),
   );
   /** Гибрид в колбе блокирует новое смешивание, пока его не заберут в биопод. */
   const incubatingChild =
@@ -450,7 +449,7 @@ export default function ToadCollider({ room }: { room?: RoomConfig }) {
                         key={count}
                         className={`transform rounded-none border p-1 text-center transition-all duration-500 sm:p-2 ${
                           currentToads.length >= count
-                            ? `bg-gradient-to-br ${colors} text-white shadow-lg ${shadow} scale-105 border-2 border-white border-opacity-30 animate-gradient-x`
+                            ? `bg-gradient-to-br ${colors} text-white shadow-lg ${shadow} scale-105 border-2 border-white border-opacity-100 animate-gradient-x`
                             : "bg-color-main text-slate-300 border-2 border-transparent "
                         }`}
                       >

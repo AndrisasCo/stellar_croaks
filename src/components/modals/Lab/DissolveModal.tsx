@@ -260,7 +260,7 @@ export default function DissolveModal({ room }: { room?: RoomConfig }) {
           </div>
 
           {/* Панель запуска разбора */}
-          <div className="sticky bottom-0 bg-color-main/95 backdrop-blur pt-2 pb-1 px-2 border-t border-slate-600/40">
+          <div className="sticky bottom-0 bg-slate-900/80 backdrop-blur-3xl pt-2 pb-1 px-2 border-t border-slate-600/40">
             <div className="flex items-center justify-between mb-2 text-xs">
               <span className="text-slate-300">
                 Выбрано {selectedToads.length} из {DISSOLVE_MAX_BATCH}

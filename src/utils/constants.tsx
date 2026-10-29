@@ -12,7 +12,7 @@ export const CURRENCY_CONFIG = {
   tokens: {
     name: "Кваксы",
     /**
-     * Эмодзи-маркер для строк, собранных в утилитах. `CurrencyText`
+     * Эмодзи-маркер для строк, собранных в утилитах. `IconText`
      * (`components/shared/CurrencyIcon.tsx`) заменяет его на SVG при рендере.
      */
     icon: "🔷",
@@ -23,7 +23,7 @@ export const CURRENCY_CONFIG = {
   },
   astro_quax: {
     name: "Астро-кваксы",
-    /** Эмодзи-маркер для текстовых строк — см. `CurrencyText` */
+    /** Эмодзи-маркер для текстовых строк — см. `IconText` */
     icon: "💎",
     /** SVG-иконка в стиле пропуска КОНТУРа — для карточек и HUD */
     asset: "/assets/astro-quax.svg",

@@ -1,13 +1,14 @@
 import React, { useEffect, useMemo, useState } from "react";
 import Modal from "../shared/Header";
 import { ClickButton } from "../shared/ClickButton";
-import { CurrencyIcon, CurrencyText } from "../shared/CurrencyIcon";
+import { CurrencyIcon, IconText } from "../shared/CurrencyIcon";
 import { HpBar } from "../shared/HpBar";
+import { ToadIcon } from "../shared/ToadIcon";
 import { ToadAvatar } from "../shared/ToadAvatar";
 import ModalTabs, { ModalTabItem } from "../shared/ModalTabs";
 import RoomDataTab, { ROOM_DATA_TAB } from "./RoomDataTab";
 import { ToadInfo } from "./ToadInfoModal";
-import { DataCell, DataGrid, HudPanel } from "../shared/DataGrid";
+import { DataCell, DataGrid, HudPanel, SectionTitle } from "../shared/DataGrid";
 import { ExpeditionLootGrid } from "./ExpeditionLootGrid";
 import { ExpeditionLogList, formatExpeditionDate } from "./ExpeditionLogList";
 import { ExpeditionLogModal } from "./ExpeditionLogModal";
@@ -16,6 +17,10 @@ import { useNotifications } from "../../hooks/use-notification";
 import { useGameState } from "../../hooks/use-game-state";
 import { useColony } from "../../hooks/use-colony";
 import { useRoomPowerTab } from "../../hooks/use-room-power-tab";
+import { getGameState } from "../../backend/localStorage";
+import { resolveColonyRooms } from "../HexMap/colony-build";
+import { EMPTY_COLONY } from "../../models/colony";
+import { releaseToadsToHome } from "../../utils/toad-release";
 import { useModal } from "../ModalContext";
 import { useToads } from "../ToadContext";
 import { Toad, getToadTypeLabel } from "../../models/Toad";
@@ -53,7 +58,6 @@ import {
   ROLE_CONFIG,
 } from "../../utils/expedition-config";
 import {
-  EXPEDITION_TOAD_BUSY_REASON,
   canSendToad,
   evacuateExpedition,
   extractExpedition,
@@ -68,7 +72,6 @@ import {
   getRoomExpeditions,
   getSectorUnlockStatus,
   isExpeditionFromRoom,
-  isToadBusyOnExpedition,
   processExpeditions,
   speedUpReturn,
   startExpedition,
@@ -76,11 +79,8 @@ import {
   withdrawExpedition,
 } from "../../utils/expedition-manager";
 import { getMaxExpeditions } from "../../utils/expedition-config";
-import {
-  getToadEnergy,
-  getToadMaxEnergy,
-} from "../../utils/gamification-config";
-import { RoomConfig } from "../HexMap/rooms-config";
+import { getToadEnergy } from "../../utils/gamification-config";
+import { RoomConfig, isToadVisibleInRoom } from "../HexMap/rooms-config";
 import { ToadSlotGrid } from "../shared/ToadSlotGrid";
 import type {
   ToadSlotMeter,
@@ -92,13 +92,11 @@ import {
   assignToadToRole,
   emptyExpeditionSlots,
   ExpeditionSlots,
-  fillTeamFromCrew,
   getAssignedRole,
-  getBestRole,
-  getCrewTapRole,
   getRolePowerPercent,
   removeToadFromTeam,
   sortToadsByRolePower,
+  syncSlotsWithCrew,
 } from "../../utils/expedition-crew";
 
 /** Часы/минуты/секунды до события похода */
@@ -136,33 +134,6 @@ const getRoleMeter = (toad: Toad, role: ExpeditionRole): ToadSlotMeter => {
     detailTitle: `${config.statLabel}: ${stat.toFixed(2)}`,
     caption: percent > 40 ? "Подходит" : "Не подходит",
   };
-};
-
-/**
- * Значки состояния жабы в списках команды: **сытость** 🍽 и **силы** ⚡.
- *
- * Поход стоит сил (`energyCost` — цена по глубине выбранного сектора), поэтому цвет
- * значка сил отвечает на главный вопрос выбора: «дотянет ли жаба до этого сектора».
- * Сытость рядом, потому что её спрашивают ровно там же: из похода жаба возвращается
- * домой, где голод режет выработку биомассы, а на пороге `PRODUCTION_MIN_HUNGER` её
- * подхватывает автокормушка сектора.
- */
-const ToadVitals: React.FC<{
-  toad: Toad;
-  /** Силы на поход в выбранный сектор */
-  energyCost: number;
-  className?: string;
-}> = ({ toad, energyCost }) => {
-  const energy = Math.round(getToadEnergy(toad));
-
-  return (
-    <span
-      className={energy >= energyCost ? "text-lime-300" : "text-red-400"}
-      title={`Силы: ${energy} / ${getToadMaxEnergy(toad)}. Поход в этот сектор стоит ${energyCost} ⚡`}
-    >
-      ⚡{energy}
-    </span>
-  );
 };
 
 const TeamStatusList: React.FC<{ expedition: Expedition }> = ({
@@ -258,7 +229,10 @@ const ExpeditionModal: React.FC<{
     processExpeditions(addNotification);
   }, []);
 
-  const expeditions = state.expeditions ?? [];
+  const expeditions = useMemo(
+    () => state.expeditions ?? [],
+    [state.expeditions],
+  );
   /** Завершённые и разобранные походы: их журналы можно перечитать из архива */
   const expeditionArchive = state.expeditionArchive ?? [];
   /**
@@ -342,8 +316,30 @@ const ExpeditionModal: React.FC<{
   const biomass = state.user.biomass || 0;
   const tokens = state.user.tokens || 0;
 
+  /**
+   * Почему жаба не готова к походу в выбранный сектор: `canSendToad` (больна, выбита,
+   * беременна, уже в походе) или нехватка сил на глубину сектора. `null` — жаба готова.
+   *
+   * Жабу при этом можно поставить в слот (силы восстанавливаются, а болезнь лечат), но
+   * место и её плитка в списке краснеют с причиной: зелёный «всё в порядке» на жабе без
+   * сил обещал бы поход, который `startExpedition` всё равно не отправит.
+   */
+  const getExpeditionIssue = (toad: Toad): string | null => {
+    const check = canSendToad(toad, expeditions);
+
+    if (!check.ok) {
+      return check.reason ?? "не готова к походу";
+    }
+
+    if (!canToadAffordExpedition(toad, selectedSector)) {
+      return `мало сил: ⚡${Math.round(getToadEnergy(toad))} из ${energyCostPerToad}`;
+    }
+
+    return null;
+  };
+
   // Сектора и жаб по секторам берём из колонии теми же вычислениями, что и карта.
-  const { rooms, toadsByRoom, powerGrid, releaseToad } = useColony();
+  const { rooms, toadsByRoom, powerGrid, placeToad, releaseToad } = useColony();
   const room = rooms.find((r) => r.id === roomId);
 
   /**
@@ -445,18 +441,43 @@ const ExpeditionModal: React.FC<{
     ...(crewRoom ? [{ ...ROOM_DATA_TAB }] : []),
   ];
 
-  /** Экипаж сектора: те же жабы, что рисует карта (ушедшие в поход сектор покинули) */
+  /**
+   * Экипаж сектора: те же жабы, что рисует карта. Жаба в пути скрыта (её слот
+   * сохранён только ради возврата), а вернувшаяся из похода уже стоит в «Разведке»
+   * и снова видна — до разбора добычи карточка остаётся заблокированной.
+   */
   const crew = useMemo(
-    () => (crewRoom ? toadsByRoom[crewRoom.id] : undefined) ?? [],
-    [crewRoom, toadsByRoom],
+    () =>
+      (crewRoom ? toadsByRoom[crewRoom.id] : undefined)?.filter((toad) =>
+        isToadVisibleInRoom(toad, expeditions),
+      ) ?? [],
+    [crewRoom, expeditions, toadsByRoom],
   );
 
   /** Кого из экипажа можно взять в поход — правило то же, что и у команды (`canSendToad`) */
-  const crewSendable = crew.filter((toad) => canSendToad(toad, expeditions).ok);
+  const crewSendable = useMemo(
+    () => crew.filter((toad) => canSendToad(toad, expeditions).ok),
+    [crew, expeditions],
+  );
 
   /**
-   * Жабы сектора — отдельной группой вверху списков ролей: команду собирают из экипажа,
-   * а жабы всей колонии остаются ниже. Команда из одних экипажных жаб собирается в один тап.
+   * Слот команды и место в контуре — одно и то же: жаба стоит в «Разведке», пока занят её
+   * слот. Поэтому слоты держим равными жильцам сектора: кого вернули в биопод или забрал
+   * поход — роль освобождает, а вернувшаяся из похода команда сама встаёт на свои места
+   * (`syncSlotsWithCrew`). Функция чистая, поэтому лишний вызов ничего не ломает: без
+   * изменений она возвращает тот же объект, и React не перерисовывает модалку.
+   */
+  useEffect(() => {
+    if (!crewRoom) {
+      return;
+    }
+
+    setSlots((prev) => syncSlotsWithCrew(prev, crewSendable));
+  }, [crewRoom, crewSendable]);
+
+  /**
+   * Жабы сектора — отдельной группой вверху списков ролей: они уже стоят в контуре,
+   * а жабы всей колонии остаются ниже — выбранная жаба переезжает в сектор.
    */
   const { crewAvailable, otherAvailable } = useMemo(() => {
     const crewIds = new Set(crew.map((toad) => toad.id));
@@ -514,6 +535,8 @@ const ExpeditionModal: React.FC<{
             toad,
             rank: stat,
             tone: own ? "selected" : other ? "warn" : "default",
+            // Жаба не пройдёт проверку сектора (силы, болезнь) — плитка краснеет с причиной
+            issue: getExpeditionIssue(toad),
             note: (
               <>
                 ❤️ {Math.round(getToadHp(toad))}
@@ -610,162 +633,96 @@ const ExpeditionModal: React.FC<{
     notify(extractExpedition(id, addNotification));
 
   /**
-   * Вернуть жабу из «Разведки» в её биопод — та же кнопка, что в других секторах.
-   * Место проверяет сам биопод: пока жаба была в походе или в секторе, его могли занять.
-   * Тогда `releaseToad` найдёт любой свободный биопод под током.
+   * «Отправить всех в биопод»: убирает вернувшихся жаб из «Разведки» одним действием.
+   *
+   * У каждой жабы сначала проверяется её дом (`homeId`), а если он занят или обесточен —
+   * любой свободный биопод под током. Контекст читаем из сейва заново перед каждой
+   * жабой: предыдущая уже заняла место, и старый снимок показал бы его свободным.
+   * Кнопка доступна только когда поход этого контура разобран (или его не было):
+   * перемещать жаб, пока они числятся в команде, нельзя.
    */
-  const handleSendHome = (toad: Toad) => {
-    if (isToadBusyOnExpedition(toad, expeditions)) {
-      addNotification({ type: "warn", content: EXPEDITION_TOAD_BUSY_REASON });
+  const handleSendAllHome = () => {
+    if (!crewRoom || crew.length === 0) {
       return;
     }
 
-    const result = releaseToad(toad.id);
-
-    if (!result.ok) {
+    if (ownActiveExpeditions.length > 0) {
       addNotification({
         type: "warn",
-        content: "Свободных мест в биоподах нет",
+        content: "Сначала завершите поход и разберите добычу.",
+      });
+      return;
+    }
+
+    const { sent, failed } = releaseToadsToHome(
+      crew.map((toad) => toad.id),
+      () => {
+        const fresh = getGameState();
+        const freshScenes = fresh.scenes ?? [];
+
+        return {
+          rooms: resolveColonyRooms(fresh.colony ?? EMPTY_COLONY, freshScenes),
+          scenes: freshScenes,
+          toads: fresh.toads ?? [],
+          expeditions: fresh.expeditions ?? [],
+        };
+      },
+    );
+
+    if (failed > 0) {
+      addNotification({
+        type: "warn",
+        content: sent
+          ? `В биоподы ушли ${sent} жаб, ${failed} не поместились: нет свободных мест под током.`
+          : "В биоподах нет свободных мест под током.",
         timeout: 9000,
       });
       return;
     }
-  };
 
-  /** Клик по карточке открывает карточку жабы, но не мешает кнопкам действий */
-  const handleCrewCardClick = (
-    event: React.MouseEvent<HTMLDivElement>,
-    toad: Toad,
-  ) => {
-    if (
-      (event.target as HTMLElement).closest(
-        "button, a, input, select, textarea, [data-toad-card-stop]",
-      )
-    ) {
-      return;
-    }
-
-    openToadCard(toad);
-  };
-
-  const handleCrewCardKeyDown = (
-    event: React.KeyboardEvent<HTMLDivElement>,
-    toad: Toad,
-  ) => {
-    if (event.target !== event.currentTarget) {
-      return;
-    }
-
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      openToadCard(toad);
-    }
+    addNotification({
+      type: "success",
+      content:
+        sent === 1
+          ? "Жаба вернулась в биопод."
+          : `В биоподы вернулись: ${sent}.`,
+    });
   };
 
   /**
-   * Строка экипажа сектора: кто живёт в «Разведке» и что с ним можно сделать.
-   * Свободная жаба показывает свою сильную роль, жаба в команде — занятую ею роль;
-   * тап по кнопке ставит жабу в команду или выводит её оттуда.
+   * Крестик слота: жаба уходит из контура домой — в свой биопод, а если место там занято,
+   * в любой свободный под током. Слот освобождаем только после переезда, иначе жаба
+   * осталась бы в секторе без роли; если биоподы полны — она остаётся в команде.
    */
-  const renderCrewCard = (toad: Toad, readOnly = false) => {
-    const assigned = getAssignedRole(slots, toad.id);
-    const check = canSendToad(toad, expeditions);
-    const busy = isToadBusyOnExpedition(toad, expeditions);
-    // Подсказка — та же роль, куда жабу поставит тап, чтобы кнопка не обещала другого
-    const role = assigned ?? getCrewTapRole(slots, toad);
-    const config = ROLE_CONFIG[role];
-    /**
-     * Жаба уже в команде, но не на своей сильнейшей роли — карточка янтарная:
-     * видно, кого стоит переставить (тап уберёт жабу из команды, дальше — новый тап).
-     */
-    const best = getBestRole(toad);
-    const offRole = Boolean(assigned) && assigned !== best;
+  const handleReleaseFromSlot = (toad: Toad) => {
+    if (crewRoom) {
+      const result = releaseToad(toad.id);
 
-    if (assigned) {
-      return null;
+      if (!result.ok) {
+        addNotification({
+          type: "warn",
+          content: `${toad.name}: в биоподах нет свободных мест под током — жаба остаётся в команде.`,
+          timeout: 9000,
+        });
+        return;
+      }
     }
 
-    return (
-      <div
-        key={toad.id}
-        role="button"
-        tabIndex={0}
-        onClick={(event) => handleCrewCardClick(event, toad)}
-        onKeyDown={(event) => handleCrewCardKeyDown(event, toad)}
-        title={`Открыть карточку: ${toad.name}`}
-        className={`flex cursor-pointer items-center gap-2 rounded-none border px-2 py-1.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60 ${
-          !assigned
-            ? "bg-slate-800/40 border-slate-600/30 hover:border-emerald-400/50"
-            : offRole
-              ? "bg-amber-950/30 border-amber-500/40 hover:border-emerald-400/50"
-              : "bg-emerald-950/30 border-emerald-500/40 hover:border-emerald-400/50"
-        }`}
-      >
-        <div className="min-w-0 flex-1">
-          <p className="text-xs font-semibold text-slate-100 truncate">
-            {toad.name}
-          </p>
-
-          <ToadVitals
-            toad={toad}
-            energyCost={energyCostPerToad}
-            className="mt-0.5"
-          />
-        </div>
-
-        <div
-          className="flex shrink-0 flex-col items-stretch gap-1"
-          data-toad-card-stop
-        >
-          {!readOnly && (
-            <ClickButton
-              onClick={() => handleCrewTap(toad)}
-              disabled={!assigned && !check.ok}
-              title={
-                assigned
-                  ? `Убрать из команды (${config.label})`
-                  : check.ok
-                    ? `В команду: ${config.label}`
-                    : check.reason
-              }
-              className={`rounded-none border px-2 py-1.5 font-mono text-2xs font-bold uppercase tracking-[0.06em] transition-colors duration-300 ${
-                assigned
-                  ? "bg-emerald-900/50 border-emerald-400/60 text-emerald-100 hover:bg-emerald-800/60"
-                  : check.ok
-                    ? "bg-slate-800/60 border-slate-500/50 text-slate-200 hover:bg-slate-700/70"
-                    : "bg-slate-800/40 border-slate-700/40 text-slate-500"
-              }`}
-            >
-              {assigned ? "✓ В команде" : "→ В команду"}
-            </ClickButton>
-          )}
-
-          <ClickButton
-            onClick={() => handleSendHome(toad)}
-            disabled={busy}
-            title={
-              busy ? EXPEDITION_TOAD_BUSY_REASON : "Вернуть жабу в её биопод"
-            }
-            className={`rounded-none border px-2 py-1 font-mono text-3xs uppercase tracking-[0.06em] transition-colors ${
-              busy
-                ? "cursor-not-allowed border-slate-700/60 text-slate-500"
-                : "border-slate-600/60 text-slate-300 hover:border-rose-400 hover:text-rose-200"
-            }`}
-          >
-            В биопод
-          </ClickButton>
-        </div>
-      </div>
-    );
+    setSlots((prev) => removeToadFromTeam(prev, toad.id));
   };
 
-  /** Тап по жабе сектора: в команде — вывести, свободна — поставить на сильную роль */
-  const handleCrewTap = (toad: Toad) => {
-    if (getAssignedRole(slots, toad.id)) {
-      setSlots((prev) => removeToadFromTeam(prev, toad.id));
-      return;
-    }
-
+  /**
+   * Выбор жабы в слоте роли: жаба сразу переезжает в контур «Разведки» — карта рисует её
+   * спрайтом в секторе, и с этого момента она и есть команда. Место в биоподе при этом
+   * освобождается (`placeToadInRoom` помнит дом в `homeId`), поэтому жаба из любого сектора
+   * колонии может встать в слот.
+   *
+   * Если роль уже занята другой жабой, прежнюю сначала возвращаем в биопод: иначе в секторе
+   * оказалось бы шесть жаб на пять мест. Не поместилась — команда остаётся как была,
+   * и игрок видит причину. По той же причине жабу не пускаем в сектор, где уже пять
+   * жильцов, — карта такую жабу тоже не приняла бы.
+   */
+  const handleRolePick = (role: ExpeditionRole, toad: Toad) => {
     const check = canSendToad(toad, expeditions);
 
     if (!check.ok) {
@@ -776,39 +733,49 @@ const ExpeditionModal: React.FC<{
       return;
     }
 
-    setSlots((prev) =>
-      assignToadToRole(prev, toad.id, getCrewTapRole(prev, toad)),
-    );
-  };
-
-  /** «Собрать команду»: свободные роли занимают самые сильные жабы сектора */
-  const handleFillFromRoom = () => {
-    const next = fillTeamFromCrew(slots, crewSendable);
-    const filled = EXPEDITION_ROLE_ORDER.filter(
-      (role) => slots[role] === "" && next[role] !== "",
-    ).length;
-
-    if (filled === 0) {
+    // Без контура слот никого никуда не переселяет: команда живёт только в «Разведке»
+    if (!crewRoom) {
+      addNotification({
+        type: "warn",
+        content:
+          "Сектор «Разведка» не найден: откройте поход через гекс сектора.",
+      });
       return;
     }
 
-    setSlots(next);
-  };
+    // Сектор вмещает ровно одну команду: шестую жабу карта в него не пустит
+    const inRoom = crew.some((item) => item.id === toad.id);
 
-  /**
-   * Выбор жабы в списке роли: пусто — снять жабу с роли, иначе поставить её туда
-   * (одна жаба — одна роль, поэтому из прежней роли она уходит).
-   */
-  const handleRolePick = (role: ExpeditionRole, value: string) => {
-    setSlots((prev) => {
-      if (value === "") {
-        const current = prev[role];
+    if (!inRoom && crew.length >= EXPEDITION_TEAM_SIZE) {
+      addNotification({
+        type: "warn",
+        content: `В «Разведке» заняты все ${EXPEDITION_TEAM_SIZE} мест: сначала верните кого-то в биопод.`,
+        timeout: 9000,
+      });
+      return;
+    }
 
-        return current === "" ? prev : removeToadFromTeam(prev, current);
+    const previousId = slots[role];
+    const previous =
+      previousId === ""
+        ? null
+        : (crew.find((item) => item.id === previousId) ?? null);
+
+    if (previous && previous.id !== toad.id) {
+      const released = releaseToad(previous.id);
+
+      if (!released.ok) {
+        addNotification({
+          type: "warn",
+          content: `${previous.name}: в биоподах нет свободных мест под током — жаба остаётся в команде.`,
+          timeout: 9000,
+        });
+        return;
       }
+    }
 
-      return assignToadToRole(prev, Number(value), role);
-    });
+    placeToad(toad.id, crewRoom.id);
+    setSlots((prev) => assignToadToRole(prev, toad.id, role));
   };
 
   /** Контур, из которого ушёл поход: id гекса, id постройки или старый `Scene.id` */
@@ -995,29 +962,6 @@ const ExpeditionModal: React.FC<{
           />
         </DataGrid>
 
-        {/* Итог отправки */}
-        {((members.length > 0 && biomass < sendCost) ||
-          tiredMembers.length > 0) && (
-          <div className="ui-panel flex flex-col gap-2 rounded-none border-slate-600/30 bg-color-main px-3 py-2">
-            {members.length > 0 && biomass < sendCost && (
-              <p className="text-2xs text-red-300">
-                Не хватает биомассы на снаряжение.
-              </p>
-            )}
-            {tiredMembers.length > 0 && (
-              <p className="text-2xs text-red-300">
-                Не хватает сил на поход ({energyCostPerToad} ⚡ на жабу):{" "}
-                {tiredMembers
-                  .map(
-                    (toad) =>
-                      `${toad.name} — ${Math.round(getToadEnergy(toad))} ⚡`,
-                  )
-                  .join(", ")}
-              </p>
-            )}
-          </div>
-        )}
-
         {!sectorUnlocked && (
           <div className="ui-panel flex flex-col gap-2 rounded-none border-amber-500/40 bg-amber-950/30 px-3 py-2">
             <div className="flex items-center justify-between gap-2">
@@ -1052,51 +996,75 @@ const ExpeditionModal: React.FC<{
             </ClickButton>
           </div>
         )}
-        {sectorUnlocked && (
-          <ClickButton
-            onClick={handleSend}
-            disabled={!canSend}
-            className={`w-full mt-auto ${
-              canSend ? "ui-button-primary" : "ui-button-secondary"
-            }`}
-          >
-            Отправить в «{selectedSector.name}»
-          </ClickButton>
-        )}
       </div>
     );
   });
 
   return (
-    <Modal
-      title={room?.name ?? crewRoom?.name ?? "Разведка"}
-      tone="emerald"
-    >
+    <Modal title={room?.name ?? crewRoom?.name ?? "Разведка"} tone="emerald">
       {/* Переключатель сразу под названием: дальше — сводка и выбранный таб */}
       <ModalTabs tabs={expeditionTabs} active={tab} onChange={setTab} />
 
       <div className="flex flex-col gap-3 px-1">
-        {/* Сводка по разведке: HUD-ячейки в акценте Контура */}
-        <DataGrid columns={3}>
-          <DataCell
-            dense
-            label="Пропуска Контура"
-            value={contourPasses}
-            color="text-emerald-200"
-          />
-          <DataCell
-            dense
-            label="Завершено"
-            value={stats.completed}
-            color="text-white"
-          />
-          <DataCell
-            dense
-            label="Активных"
-            value={`${shownActiveExpeditions.length}/${teamLimit}`}
-            color="text-emerald-300"
-          />
-        </DataGrid>
+        {/* Сводка по разведке: та же «капсула», что у торгового терминала —
+            HUD-панель с верхним свечением, статусом канала и живым маркером. */}
+        <HudPanel
+          tone={powerIssue ? "rose" : "emerald"}
+          className="p-2.5 shadow-[0_0_26px_-12px_rgba(52,211,153,0.95)]"
+        >
+          <SectionTitle aside={powerIssue ? "OFFLINE" : "ONLINE"}>
+            Контур связи
+          </SectionTitle>
+
+          <DataGrid columns={3} tone={powerIssue ? "rose" : "emerald"}>
+            <DataCell
+              dense
+              label="Пропуска Контура"
+              value={contourPasses}
+              color="text-emerald-200"
+            />
+            <DataCell
+              dense
+              label="Завершено"
+              value={stats.completed}
+              color="text-white"
+            />
+            <DataCell
+              dense
+              label="Активных"
+              value={`${shownActiveExpeditions.length}/${teamLimit}`}
+              color="text-emerald-300"
+            />
+          </DataGrid>
+
+          <div className="mt-2 flex items-center justify-between gap-2 text-3xs uppercase tracking-[0.14em] text-slate-500">
+            <span className="inline-flex min-w-0 items-center gap-1.5">
+              <span
+                aria-hidden="true"
+                className={`h-1 w-1 shrink-0 animate-pulse ${
+                  powerIssue
+                    ? "bg-rose-300 shadow-[0_0_6px_rgba(251,113,133,0.8)]"
+                    : "bg-emerald-300 shadow-[0_0_6px_rgba(52,211,153,0.8)]"
+                }`}
+              />
+              <span
+                className={`truncate ${powerIssue ? "text-rose-300" : "opacity-100"}`}
+                title={powerIssue ?? undefined}
+              >
+                {powerIssue ?? `Канал защищён · ${crewRoom?.name ?? "контур"}`}
+              </span>
+            </span>
+            <span
+              className={`shrink-0 ${
+                powerIssue
+                  ? "text-rose-300/80"
+                  : "text-emerald-300/80 opacity-100"
+              }`}
+            >
+              {powerIssue ? "NO PWR" : "UPLINK"}
+            </span>
+          </div>
+        </HudPanel>
 
         {/* ВКЛАДКА: поход этого контура или сборы новой команды */}
         {tab === "main" && (
@@ -1280,7 +1248,7 @@ const ExpeditionModal: React.FC<{
                   {expedition.companions &&
                     expedition.companions.length > 0 && (
                       <p className="text-2xs text-emerald-200">
-                        🐸 С командой идёт:{" "}
+                        <ToadIcon className="mr-1 h-3 w-3" />С командой идёт:{" "}
                         {expedition.companions
                           .map(
                             (toad) =>
@@ -1295,7 +1263,7 @@ const ExpeditionModal: React.FC<{
 
                   <p className="text-2xs text-slate-300">
                     Добыча:{" "}
-                    <CurrencyText
+                    <IconText
                       text={getExpeditionLootSummary(expedition)}
                       iconClassName="h-3 w-3"
                     />
@@ -1346,7 +1314,7 @@ const ExpeditionModal: React.FC<{
                       disabled={stranded}
                       title={
                         returning
-                          ? "Забрать команду домой сразу: добыча останется той, что уже лежит в рюкзаке"
+                          ? "Забрать команду домой сразу: итог посчитается как при обычном возврате, без ожидания таймера"
                           : "Забрать команду с середины пути: поход не будет успешным, добыча — только уже найденная"
                       }
                       className="flex-1 rounded-none border border-emerald-500/40 bg-emerald-900/50 py-2 font-mono text-2xs font-bold uppercase tracking-[0.06em] text-emerald-100 hover:bg-emerald-800/60"
@@ -1379,7 +1347,9 @@ const ExpeditionModal: React.FC<{
               slides={sectorSlides}
             />
 
-            {/* Слоты ролей команды: та же сетка с «+», что у репродуктора, коллайдера и Медотсека */}
+            {/* Слоты ролей команды: та же сетка с «+», что у репродуктора, коллайдера и Медотсека.
+                Жаба в слоте и есть команда в контуре: выбор переносит её в «Разведку»,
+                крестик — возвращает в биопод, а «Отправить всех в биопод» очищает сектор. */}
             <ToadSlotGrid
               slots={EXPEDITION_ROLE_ORDER.map((role) => {
                 const config = ROLE_CONFIG[role];
@@ -1387,7 +1357,7 @@ const ExpeditionModal: React.FC<{
                 const picked =
                   pickedId === ""
                     ? null
-                    : (availableToads.find((toad) => toad.id === pickedId) ??
+                    : (state.toads.find((toad) => toad.id === pickedId) ??
                       null);
 
                 return {
@@ -1396,55 +1366,78 @@ const ExpeditionModal: React.FC<{
                   icon: config.icon,
                   // Сила роли и её характеристика — той же полоской, что в модалке выбора
                   meter: picked ? getRoleMeter(picked, role) : undefined,
+                  // Жаба без сил на этот сектор: слот краснеет с причиной, а не зеленеет
+                  issue: picked ? getExpeditionIssue(picked) : null,
                   disabledHint: `${config.label}: ${config.description}`,
                 };
               })}
               columns={5}
-              title="Собрать команду"
+              // Значок роли остаётся на занятом слоте: так видно, кто какую роль занимает
+              showIconOnOccupied
+              title="Команда в контуре"
               headerRight={`собрано ${members.length} из ${EXPEDITION_TEAM_SIZE}`}
               pickerFor={(index) => getRolePicker(EXPEDITION_ROLE_ORDER[index])}
               onPick={(toad, index) =>
-                handleRolePick(EXPEDITION_ROLE_ORDER[index], String(toad.id))
+                handleRolePick(EXPEDITION_ROLE_ORDER[index], toad)
               }
               onOpen={openToadCard}
-              onRemove={(_toad, index) =>
-                handleRolePick(EXPEDITION_ROLE_ORDER[index], "")
+              onRemove={handleReleaseFromSlot}
+              removeLabel="Вернуть в биопод"
+              footer={
+                crewRoom ? (
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-2xs leading-snug text-slate-400">
+                      {crew.length > 0
+                        ? `В «Разведке»: ${crew.length}/${EXPEDITION_TEAM_SIZE} `
+                        : "Сектор пуст: соберите команду."}
+                    </p>
+                    {crew.length > 0 && (
+                      <ClickButton
+                        onClick={handleSendAllHome}
+                        title="Вернуть всех жаб из «Разведки» в биоподы: домой, а если места нет — в любой свободный биопод под током"
+                        className="ui-chip shrink-0 border-slate-400/30 bg-slate-500/10 text-slate-200 transition-colors hover:bg-slate-500/20"
+                      >
+                        х Расформировать команду
+                      </ClickButton>
+                    )}
+                  </div>
+                ) : undefined
               }
-              removeLabel="Снять жабу с роли"
             />
-          </div>
-        )}
 
-        {/* Экипаж «Разведки» — внизу вкладки: и при сборах, и когда команда уже в походе */}
-        {tab === "main" && crewRoom && (
-          <div className="ui-panel flex flex-col gap-2 rounded-none border-slate-600/30 bg-color-main px-3 py-2">
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-xs font-bold text-white">
-                🧭 В «Разведке»: {crew.length}/{EXPEDITION_TEAM_SIZE}
-              </p>
-              {ownActiveExpeditions.length === 0 &&
-                crewSendable.length > 0 &&
-                members.length < EXPEDITION_TEAM_SIZE && (
-                  <ClickButton
-                    onClick={handleFillFromRoom}
-                    title="Занять свободные роли сильнейшими жабами сектора"
-                    className="ui-chip border-emerald-400/30 bg-emerald-500/10 text-emerald-200 transition-colors hover:bg-emerald-500/20"
-                  >
-                    Собрать команду
-                  </ClickButton>
+            {/* Итог отправки */}
+            {((members.length > 0 && biomass < sendCost) ||
+              tiredMembers.length > 0) && (
+              <div className="ui-panel flex flex-col gap-2 rounded-none border-slate-600/30 bg-color-main px-3 py-2">
+                {members.length > 0 && biomass < sendCost && (
+                  <p className="text-2xs text-red-300">
+                    Не хватает биомассы на снаряжение.
+                  </p>
                 )}
-            </div>
-
-            {crew.length === 0 && (
-              <p className="text-2xs leading-snug text-slate-400">
-                {ownActiveExpeditions.length > 0
-                  ? "Экипаж в походе: после возврата и разбора добычи жабы снова появятся в «Разведке»."
-                  : `Сектор пуст: перенесите сюда на карте до ${EXPEDITION_TEAM_SIZE} взрослых жаб — команда соберётся из них, а из похода жаба возвращается в биопод (место в «Разведке» она освобождает).`}
-              </p>
+                {tiredMembers.length > 0 && (
+                  <p className="text-2xs text-red-300">
+                    Не хватает сил на поход ({energyCostPerToad} ⚡ на жабу):{" "}
+                    {tiredMembers
+                      .map(
+                        (toad) =>
+                          `${toad.name} — ${Math.round(getToadEnergy(toad))} ⚡`,
+                      )
+                      .join(", ")}
+                  </p>
+                )}
+              </div>
             )}
 
-            {crew.map((toad) =>
-              renderCrewCard(toad, ownActiveExpeditions.length > 0),
+            {sectorUnlocked && (
+              <ClickButton
+                onClick={handleSend}
+                disabled={!canSend}
+                className={`w-full mt-auto ${
+                  canSend ? "ui-button-primary" : "ui-button-secondary"
+                }`}
+              >
+                Отправить в «{selectedSector.name}»
+              </ClickButton>
             )}
           </div>
         )}
@@ -1602,7 +1595,7 @@ const ExpeditionModal: React.FC<{
                         {expedition.team.length} жаб
                       </p>
                       <p className="mt-1 text-2xs text-slate-300">
-                        <CurrencyText
+                        <IconText
                           text={getExpeditionLootSummary(expedition)}
                           iconClassName="h-3 w-3"
                         />
@@ -1653,7 +1646,7 @@ const ExpeditionModal: React.FC<{
                         {expedition.team.length} жаб · глубина {sectorDef.depth}
                       </p>
                       <p className="mt-1 text-2xs text-slate-300">
-                        <CurrencyText
+                        <IconText
                           text={getExpeditionLootSummary(expedition)}
                           iconClassName="h-3 w-3"
                         />

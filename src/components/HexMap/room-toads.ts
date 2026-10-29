@@ -26,6 +26,11 @@ import {
  * Само движение переписано: жабы не разбредаются по экрану, а держатся внутри зоны жаб —
  * приплюснутого гекса во всю ширину сектора, прижатого к её низу и обрезанного по стенам
  * (см. `room-toads-layout.ts`).
+ *
+ * Вернувшаяся из похода команда живёт здесь же как обычные жабы: пока игрок не
+ * разобрал добычу, жаба просто гуляет по зоне своего слота. Отдельной «анимации
+ * встречи» нет — прыжок остался только реакцией на тап (`react`), иначе весь слот
+ * подпрыгивал бы без остановки и читался как ошибка анимации, а не как событие.
  */
 
 /** Амплитуда прыжка (в «условных» единицах bounce, как в update-toad). */
@@ -70,6 +75,10 @@ export interface RoomToadFlock {
 interface ToadState {
   toad: Toad;
   animationProgress: number;
+  /**
+   * `idle` — сидит, `walking` — гуляет по зоне (кадры анимации движения),
+   * `jumping` — одиночный прыжок после тапа, `dragging`/`flying` — в руке или в перелёте.
+   */
   state: "idle" | "walking" | "jumping" | "dragging" | "flying";
   stateTimer: number;
   hopPhase: number;
@@ -85,7 +94,11 @@ interface ToadState {
 /** updateToadAppearance читает прогресс анимации из userData, которого нет в типах Pixi v8. */
 type ToadContainer = Container & { userData: ToadState };
 
-const createState = (toad: Toad, spawn: Point, hexSize: number): ToadState => ({
+const createState = (
+  toad: Toad,
+  spawn: Point,
+  hexSize: number,
+): ToadState => ({
   toad,
   animationProgress: 0,
   state: "idle",
@@ -203,7 +216,9 @@ export const createRoomToads = (
   };
 
   const sync = (nextToads: Toad[], spawns?: Record<number, Point>) => {
-    // Ушедшие в поход жабы в секторе не сидят (место они освобождают): спрайт не рисуем.
+    // Жаба в пути в секторе не сидит: спрайт не рисуем, хотя слот за ней сохранён.
+    // Вернувшаяся команда остаётся в своём слоте до разбора добычи — её видно, но
+    // статус «занята походом» сохраняется.
     // Список походов читаем один раз на синхронизацию, а не на каждую жабу.
     const expeditions = getExpeditions();
     nextToads = nextToads.filter((toad) =>
@@ -241,7 +256,9 @@ export const createRoomToads = (
         return;
       }
 
-      // Жаба уже живёт в секторе — обновляем данные и внешний вид при смене стадии
+      // Жаба уже живёт в секторе — обновляем данные и внешний вид при смене стадии.
+      // Поход, завершившийся при открытой карточке, ничего не переключает: жаба
+      // просто продолжает гулять, её позиция и поведение остаются прежними.
       const state = states.get(toad.id)!;
       const changed =
         state.toad.stage !== toad.stage ||
@@ -416,6 +433,7 @@ export const createRoomToads = (
 
         if (state.hopPhase >= Math.PI) {
           state.state = "idle";
+          // Одиночный прыжок: после него жаба снова сидит, а не пружинит без конца
           state.stateTimer = 40 + Math.random() * 90;
           state.hopPhase = 0;
         }

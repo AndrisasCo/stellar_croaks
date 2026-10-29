@@ -1,5 +1,5 @@
 import React from "react";
-import { CurrencyText } from "../shared/CurrencyIcon";
+import { IconText } from "../shared/CurrencyIcon";
 import { ExpeditionLogEntry } from "../../models/expedition";
 import { ROLE_CONFIG } from "../../utils/expedition-config";
 
@@ -104,7 +104,7 @@ export const ExpeditionLogList: React.FC<{
                     : "📡 Связь"}
                   :{" "}
                 </span>
-                <CurrencyText text={entry.text} iconClassName="h-3 w-3" />
+                <IconText text={entry.text} iconClassName="h-3 w-3" />
                 {typeof entry.hpDelta === "number" && entry.hpDelta !== 0 && (
                   <span
                     className={

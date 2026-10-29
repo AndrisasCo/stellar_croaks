@@ -16,7 +16,7 @@ import { useToads } from "../ToadContext";
 import { ToadAvatar } from "../shared/ToadAvatar";
 import { ToadTypes } from "../../models/Toad/toad-species";
 import { HorizontalScroll } from "../shared/HorizontalScroll";
-import { CurrencyIcon, CurrencyText } from "../shared/CurrencyIcon";
+import { CurrencyIcon, IconText } from "../shared/CurrencyIcon";
 
 const LeaderboardModal: React.FC = () => {
   const { account } = useToads();
@@ -353,7 +353,7 @@ const LeaderboardModal: React.FC = () => {
             {getTabTitle()}
           </h3>
           <p className="text-slate-300 text-xs">
-            <CurrencyText text={getTabDescription()} />
+            <IconText text={getTabDescription()} />
           </p>
         </div>
 

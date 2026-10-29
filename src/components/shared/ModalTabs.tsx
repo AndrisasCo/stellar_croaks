@@ -1,3 +1,4 @@
+import { ReactNode } from "react";
 import { useSoundEffects } from "../../hooks/use-sound-effects";
 import { HUD_TONES, useHudTone } from "./DataGrid";
 
@@ -20,7 +21,11 @@ import { HUD_TONES, useHudTone } from "./DataGrid";
  */
 export interface ModalTabItem<T extends string> {
   id: T;
-  label: string;
+  /**
+   * Подпись таба. Не только текст: у жаб в начале стоит SVG-иконка
+   * (`ToadIcon`), иначе рядом с эмодзи-глифами в остальных табах она выбивалась.
+   */
+  label: ReactNode;
   /** Таб недоступен: у обесточенного сектора так закрыты все рабочие вкладки. */
   disabled?: boolean;
   /** Почему таб недоступен — показывается в `title` и подсказывает игроку причину. */

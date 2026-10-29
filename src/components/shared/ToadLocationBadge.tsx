@@ -7,8 +7,10 @@
  * фон, отступы и обрезка длинного имени сектора живут здесь, а вызывающий код задаёт только
  * цвет и размер текста под свою плотность.
  */
+import { IconText } from "./CurrencyIcon";
+
 export interface ToadLocationBadgeProps {
-  /** Иконка места: эмодзи сектора, биопода или похода */
+  /** Иконка места: эмодзи сектора, биопода или похода (SVG жабы — через `IconText`) */
   icon: string;
   /** Название места; длинное имя обрезается, чтобы не вытеснять остальные данные */
   label: string;
@@ -33,7 +35,7 @@ export const ToadLocationBadge = ({
     title={title}
   >
     <span aria-hidden className="shrink-0">
-      {icon}
+      <IconText text={icon} />
     </span>
     <span className={`truncate ${textClassName}`}>{label}</span>
   </span>

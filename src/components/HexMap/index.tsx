@@ -24,6 +24,7 @@ import { ClickButton } from "../shared/ClickButton";
 import { CurrencyIcon } from "../shared/CurrencyIcon";
 import { OfflineEventsButton } from "../shared/OfflineEventsButton";
 import { QuestJournalButton } from "../shared/QuestJournalButton";
+import { ToadIcon } from "../shared/ToadIcon";
 import { canBuildOnSlot } from "./colony-build";
 import HexMapCanvas from "./HexMapCanvas";
 import { openRoomModal } from "./open-room-modal";
@@ -197,7 +198,7 @@ export default function HexMapScreen() {
 
       {
         key: "toads",
-        icon: "🐸",
+        icon: <ToadIcon className="h-3.5 w-3.5" />,
         value: allToads.length,
         tone: "text-cyan-200",
       },

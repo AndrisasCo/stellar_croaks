@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { ReactNode, useMemo, useState } from "react";
 import Modal from "../../shared/Header";
 import ModalTabs, { ModalTabItem } from "../../shared/ModalTabs";
 import { ClickButton } from "../../shared/ClickButton";
@@ -11,13 +11,22 @@ import { getFeedCost } from "../../../utils/feeding";
 import { isToadBusyOnExpedition } from "../../../utils/expedition-manager";
 import { isRoomOpen } from "../../HexMap/rooms-config";
 import { DataCell, DataGrid } from "../../shared/DataGrid";
+import { ToadIcon } from "../../shared/ToadIcon";
 import ToadsTab from "./ToadsTab";
 import RoomsTab from "./RoomsTab";
 
 type ColonyTab = "toads" | "rooms";
 
 const COLONY_TABS: ModalTabItem<ColonyTab>[] = [
-  { id: "toads", label: "🐸 Жабы" },
+  {
+    id: "toads",
+    label: (
+      <>
+        <ToadIcon className="mr-1 h-3.5 w-3.5" />
+        Жабы
+      </>
+    ),
+  },
   { id: "rooms", label: "🏗 Секторы" },
 ];
 
@@ -28,7 +37,8 @@ const ColonyStat = ({
   label,
   tone = "text-white",
 }: {
-  icon: string;
+  /** Иконка перед числом: SVG (`ToadIcon`) или эмодзи-глиф. */
+  icon: ReactNode;
   value: string | number;
   label: string;
   tone?: string;
@@ -107,7 +117,11 @@ const ColonyModal = () => {
 
       <div className="flex flex-col gap-3">
         <DataGrid columns={4}>
-          <ColonyStat icon="🐸" value={allToads.length} label="жаб" />
+          <ColonyStat
+            icon={<ToadIcon className="h-3 w-3" />}
+            value={allToads.length}
+            label="жаб"
+          />
           <ColonyStat
             icon="🏗"
             value={builtRoomCount}

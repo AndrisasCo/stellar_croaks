@@ -8,17 +8,15 @@ import { CURRENCY_CONFIG, DEMOLISH_ROOM_COST } from "../../utils/constants";
 import { useModal } from "../ModalContext";
 import { useToads } from "../ToadContext";
 import { ClickButton } from "../shared/ClickButton";
-import { CurrencyIcon } from "../shared/CurrencyIcon";
+import { CurrencyIcon, IconText } from "../shared/CurrencyIcon";
+import { ToadIcon } from "../shared/ToadIcon";
 import Modal from "../shared/Header";
 import {
   getRoomCost,
   getRoomCostAfterDemolish,
   getRoomDemolishIssue,
 } from "../HexMap/colony-build";
-import {
-  getBuiltRoomKind,
-  RoomConfig,
-} from "../HexMap/rooms-config";
+import { getBuiltRoomKind, RoomConfig } from "../HexMap/rooms-config";
 
 /**
  * Подтверждение сноса сектора — модалка-развилка перед необратимым шагом.
@@ -120,14 +118,17 @@ export default function RoomDemolishModal({ room }: { room: RoomConfig }) {
             </span>
           </div>
           <p className="text-2xs leading-snug text-rose-100">
-            Сектор уходит с карты навсегда: Кваксы за постройку не возвращаются, улучшения
-            сгорают. Взамен гекс остаётся свободным слотом — его можно застроить заново.
+            Сектор уходит с карты навсегда: Кваксы за постройку не возвращаются,
+            улучшения сгорают. Взамен гекс остаётся свободным слотом — его можно
+            застроить заново.
           </p>
         </div>
 
         <div className="mb-2 rounded-none border border-slate-600/40 bg-color-second p-2">
           <div className="flex items-center gap-2">
-            <span className="text-2xl">{room.icon}</span>
+            <span className="text-2xl">
+              <IconText text={room.icon} />
+            </span>
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-1 text-sm font-semibold text-amber-100">
                 {room.name || room.title}
@@ -146,18 +147,20 @@ export default function RoomDemolishModal({ room }: { room: RoomConfig }) {
 
         <div className="mb-2 space-y-1 rounded-none border border-slate-600/40 bg-color-second p-2 text-2xs leading-snug text-slate-300">
           <div>
-            🗺 Гекс останется на карте свободным слотом: территорию снос не отбирает, гексы
-            вокруг него тоже остаются открытыми.
+            🗺 Гекс останется на карте свободным слотом: территорию снос не
+            отбирает, гексы вокруг него тоже остаются открытыми.
           </div>
           <div>
-            🐸 Жабы:{" "}
+            <ToadIcon className="mr-1 h-3 w-3" />
+            Жабы:{" "}
             {roomToads.length > 0
               ? `${roomToads.length} — сначала переселите их в биопод.`
               : "в секторе пусто"}
           </div>
           {upgraded && (
             <div className="text-rose-300">
-              🍎 Улучшения сектора сгорят: автокормушка и репатриатор уйдут вместе с ним.
+              🍎 Улучшения сектора сгорят: автокормушка и репатриатор уйдут
+              вместе с ним.
             </div>
           )}
           {price.saving > 0 ? (
@@ -169,15 +172,15 @@ export default function RoomDemolishModal({ room }: { room: RoomConfig }) {
             </div>
           ) : (
             <div>
-              💰 Цена сектора того же вида после сноса не изменится (шаг роста у неё
-              единичный).
+              💰 Цена сектора того же вида после сноса не изменится (шаг роста у
+              неё единичный).
             </div>
           )}
         </div>
 
         {issue && (
           <p className="mb-2 rounded-none border border-rose-500/40 bg-rose-900/20 p-2 text-2xs leading-snug text-rose-100">
-            {issue}
+            <IconText text={issue} />
           </p>
         )}
 

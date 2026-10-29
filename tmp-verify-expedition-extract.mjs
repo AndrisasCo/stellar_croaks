@@ -2,11 +2,14 @@
  * Проверка кнопки «Закончить немедленно» (Экстренный маяк) на РЕАЛЬНОМ коде.
  *
  * Правила:
- *   1) команда возвращается с той добычей, которая уже лежит в рюкзаке и логах:
- *      маяк не начисляет множитель удачи и не добирает добычу до нормы фермы;
+ *   1) маяк до прибытия в сектор забирает только то, что уже лежит в рюкзаке:
+ *      множителя удачи и добора до нормы фермы нет;
  *   2) если команда не дошла до сектора, поход не может быть успешным — даже
  *      при шансе удачи 100%;
- *   3) при отзыве с середины пути обычный (не маяковый) возврат тоже не успешен.
+ *   3) маяк на обратном пути — только телепорт: исход и добыча считаются ровно
+ *      так же, как при обычном возвращении (удача, множитель добычи, добор до
+ *      нормы), просто без ожидания таймера;
+ *   4) при отзыве с середины пути обычный (не маяковый) возврат тоже не успешен.
  *
  * Запуск: node tmp-verify-expedition-extract.mjs
  */
@@ -164,6 +167,8 @@ Math.random = () => 0.99;
 
 const SECTOR = models.SECTORS[0];
 const OUTBOUND_MS = SECTOR.durationHours * HOUR_MS;
+/** `EXPEDITION_GOOD_FINISH_LOOT` из `expedition-config.ts` */
+const GOOD_FINISH_LOOT = 1.7;
 
 console.log("\n[1] Маяк на середине пути: только добытое, поход не успешен");
 console.log("─".repeat(60));
@@ -188,39 +193,115 @@ check(
   false,
 );
 
-console.log("\n[2] Маяк на обратном пути: успех есть, добыча не пересчитана");
+console.log("\n[2] Маяк на обратном пути: итог как при обычном возвращении");
 console.log("─".repeat(60));
+/** Обратный путь: команда уже была в секторе и сама везёт добычу домой */
+const returnPatch = {
+  startedAt: Date.now() - 2 * HOUR_MS,
+  phase: "returning",
+  progress: 1,
+  resolvedSteps: 9,
+  reachedSector: true,
+  returnHours: 5,
+};
+
+// Эталон: команда доходит до дома сама — возврат уже истёк по времени.
+reset(
+  makeState({
+    expeditions: [
+      expedition({ ...returnPatch, returnStartedAt: Date.now() - 6 * HOUR_MS }),
+    ],
+  }),
+);
+manager.processExpeditions();
+const naturalReturn = savedExpedition();
+
+// Тот же поход, но игрок жмёт маяк в начале обратного пути.
+reset(
+  makeState({
+    expeditions: [expedition({ ...returnPatch, returnStartedAt: Date.now() })],
+  }),
+);
+manager.extractExpedition("e1");
+const teleported = savedExpedition();
+
+check("маяк вернул команду домой", teleported.phase, "completed");
+check(
+  "исход как при обычном возврате",
+  teleported.success,
+  naturalReturn.success,
+);
+check("добыча как при обычном возврате", teleported.loot, naturalReturn.loot);
+check(
+  "удача умножила добычу",
+  teleported.loot.biomass,
+  Math.round(rawLoot.biomass * GOOD_FINISH_LOOT),
+);
+check(
+  "в журнале есть множитель удачи",
+  teleported.log.some((entry) => entry.text.includes("×1.7")),
+  true,
+);
+check(
+  "в отчёте удачный поход, а не эвакуация",
+  teleported.log.some(
+    (entry) =>
+      entry.text.includes("Удачный поход") &&
+      !entry.text.includes("эвакуирована"),
+  ),
+  true,
+);
+
+console.log("\n[2b] Маяк на обратном пути добирает норму фермы");
+console.log("─".repeat(60));
+/** Пустой рюкзак: добыча целиком зависит от нормы «поход выгоднее фермы» */
+const emptyLoot = {
+  biomass: 0,
+  tokens: 0,
+  astro_quax: 0,
+  items: {},
+  samples: 0,
+};
+
 reset(
   makeState({
     expeditions: [
       expedition({
-        startedAt: Date.now() - 2 * HOUR_MS,
-        phase: "returning",
-        progress: 1,
-        resolvedSteps: 9,
-        reachedSector: true,
-        returnStartedAt: Date.now(),
-        returnHours: 5,
+        ...returnPatch,
+        returnStartedAt: Date.now() - 6 * HOUR_MS,
+        loot: { ...emptyLoot },
       }),
     ],
   }),
 );
+manager.processExpeditions();
+const naturalFloor = savedExpedition();
 
+reset(
+  makeState({
+    expeditions: [
+      expedition({
+        ...returnPatch,
+        returnStartedAt: Date.now(),
+        loot: { ...emptyLoot },
+      }),
+    ],
+  }),
+);
 manager.extractExpedition("e1");
-const returning = savedExpedition();
+const teleportedFloor = savedExpedition();
 
-check("поход завершён", returning.phase, "completed");
-check("после прибытия поход успешен", returning.success, true);
-check("добыча ровно из рюкзака", returning.loot, rawLoot);
+// В текущем балансе норма фермы для этого похода — 72 🔷.
+check("норма фермы добрана", naturalFloor.loot.tokens, 72);
 check(
-  "множитель удачи не начислен",
-  returning.log.some((entry) => entry.text.includes("×1.7")),
-  false,
+  "маяк добрал столько же",
+  teleportedFloor.loot.tokens,
+  naturalFloor.loot.tokens,
 );
 check(
-  "добора до нормы фермы нет",
-  returning.log.some((entry) => entry.text.includes("добрала норму")),
-  false,
+  "в журнале есть добор до нормы",
+  teleportedFloor.log.some((entry) => entry.text.includes("добрала норму")),
+  true,
 );
 
 console.log("\n[3] Отзыв с середины пути: обычный возврат тоже не успешен");
@@ -277,7 +358,11 @@ manager.extractExpedition("e1");
 const legacyReturn = savedExpedition();
 
 check("возврат после прибытия успешен без флага", legacyReturn.success, true);
-check("добыча ровно из рюкзака", legacyReturn.loot, rawLoot);
+check(
+  "добыча пересчитана как при обычном возврате",
+  legacyReturn.loot.biomass,
+  Math.round(rawLoot.biomass * GOOD_FINISH_LOOT),
+);
 
 Math.random = realRandom;
 
@@ -287,5 +372,7 @@ if (failures.length > 0) {
   failures.forEach((failure) => console.error(`   • ${failure}`));
   process.exit(1);
 }
-console.log("✅ Маяк возвращает только добытое, успех — только после прибытия");
+console.log(
+  "✅ Маяк на обратном пути не меняет исход, до прибытия — только рюкзак",
+);
 

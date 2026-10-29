@@ -1,5 +1,5 @@
 import React, { useState, createContext, useContext } from "react";
-import { CurrencyText } from "../components/shared/CurrencyIcon";
+import { IconText } from "../components/shared/CurrencyIcon";
 
 export type NotificationType = "warn" | "success" | "danger" | "info";
 
@@ -263,7 +263,7 @@ const NotificationStack: React.FC = () => {
                 transitionDelay: notification.isExiting ? "50ms" : "150ms",
               }}
             >
-              <CurrencyText
+              <IconText
                 text={notification.content}
                 iconClassName="h-4 w-4"
               />

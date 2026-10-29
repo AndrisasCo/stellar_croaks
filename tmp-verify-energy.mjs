@@ -177,6 +177,14 @@ check(
 );
 
 console.log("\n── 2. Где и как быстро идут силы ────────────────────────");
+const regenAtMin = energy.ENERGY_REGEN_BASE_PER_HOUR;
+const regenAtFullHunger =
+  regenAtMin * energy.ENERGY_REGEN_MAX_HUNGER_MULTIPLIER;
+const hungerMidpoint =
+  regenAtMin *
+  (1 +
+    (49 / (100 - energy.ENERGY_REGEN_MIN_HUNGER)) *
+      (energy.ENERGY_REGEN_MAX_HUNGER_MULTIPLIER - 1));
 const hospitalRooms = [
   {
     id: "hospital_1",
@@ -199,12 +207,12 @@ const aviaryColony = colony({ rooms: aviaryRooms });
 check(
   "биопод, сытость 100, аппетит 1",
   energy.getEnergyRegenPerHour(toad(), colony()),
-  30,
+  regenAtFullHunger,
 );
 check(
-  "биопод, сытость 1 — минимум 3 ⚡/ч",
+  "биопод, сытость 1 — минимум ⚡/ч",
   energy.getEnergyRegenPerHour(toad({ state: { hunger: 1 } }), colony()),
-  3,
+  regenAtMin,
 );
 check(
   "сытость 0 — силы не идут",
@@ -214,7 +222,7 @@ check(
 check(
   "сытость 50 — между минимумом и максимумом",
   round(energy.getEnergyRegenPerHour(toad({ state: { hunger: 50 } }), colony())),
-  16.36,
+  round(hungerMidpoint),
 );
 check(
   "аппетит 2 ускоряет вдвое",
@@ -222,7 +230,7 @@ check(
     toad({ genes: { ...toad().genes, hungerRate: 2 } }),
     colony(),
   ),
-  60,
+  regenAtFullHunger * 2,
 );
 check(
   "аппетит 0.5 замедляет вдвое",
@@ -230,7 +238,7 @@ check(
     toad({ genes: { ...toad().genes, hungerRate: 0.5 } }),
     colony(),
   ),
-  15,
+  regenAtFullHunger * 0.5,
 );
 check(
   "Медотсек тоже восстанавливает",
@@ -238,7 +246,7 @@ check(
     toad({ scene_id: "hosp-slot" }),
     hospitalColony,
   ),
-  30,
+  regenAtFullHunger,
 );
 check(
   "репродуктор силы не восстанавливает",
@@ -258,7 +266,7 @@ check(
 check(
   "старый биопод-сектор (строковый id) считается биоподом",
   energy.getEnergyRegenPerHour(toad({ scene_id: "avi-slot" }), aviaryColony),
-  30,
+  regenAtFullHunger,
 );
 check(
   "место восстановления: биопод",
@@ -280,14 +288,15 @@ check(
 );
 
 console.log("\n── 3. Начисление за час и упор в максимум ───────────────");
+const hoursToFull = Math.ceil(105 / regenAtFullHunger);
 check(
-  "0 → 30 за час в биоподе",
+  "0 → полный прирост за час в биоподе",
   energy.getToadEnergyAfterRegen(toad(), colony(), 1),
-  30,
+  regenAtFullHunger,
 );
 check(
-  "0 → 105 за 10 часов (упор в максимум)",
-  energy.getToadEnergyAfterRegen(toad(), colony(), 10),
+  `0 → 105 за ${hoursToFull} часов (упор в максимум)`,
+  energy.getToadEnergyAfterRegen(toad(), colony(), hoursToFull),
   105,
 );
 check(
@@ -305,7 +314,7 @@ check(
   null,
 );
 const regenerated = energy.regenToadEnergy(toad(), colony(), 1);
-check("regenToadEnergy пишет новый запас", regenerated.energy, 30);
+check("regenToadEnergy пишет новый запас", regenerated.energy, regenAtFullHunger);
 check(
   "regenToadEnergy не трогает жабу вне зоны отдыха",
   energy.regenToadEnergy(toad({ scene_id: "power-slot" }), colony(), 1).energy,
@@ -314,9 +323,20 @@ check(
 
 console.log("\n── 4. Поход стоит минимум 70 ⚡ ──────────────────────────");
 const sector = (depth) => ({ depth });
+const energyCost = (depth) =>
+  expedition.EXPEDITION_ENERGY_BASE +
+  expedition.EXPEDITION_ENERGY_PER_DEPTH * (Math.max(1, depth) - 1);
 check("глубина 1", expedition.getExpeditionToadEnergyCost(sector(1)), 70);
-check("глубина 2", expedition.getExpeditionToadEnergyCost(sector(2)), 76);
-check("глубина 8", expedition.getExpeditionToadEnergyCost(sector(8)), 112);
+check(
+  "глубина 2",
+  expedition.getExpeditionToadEnergyCost(sector(2)),
+  energyCost(2),
+);
+check(
+  "глубина 8",
+  expedition.getExpeditionToadEnergyCost(sector(8)),
+  energyCost(8),
+);
 check(
   "глубина 0 читается как 1",
   expedition.getExpeditionToadEnergyCost(sector(0)),
@@ -342,9 +362,9 @@ state(
   hospitalRooms,
 );
 backend.updateToadsBulkEnergy(1, true);
-check("биопод: 0 → 30", toadNow(1).energy, 30);
+check("биопод: полный прирост за час", toadNow(1).energy, regenAtFullHunger);
 check("энергосектор: без изменений", toadNow(2).energy, 0);
-check("Медотсек: 0 → 30", toadNow(3).energy, 30);
+check("Медотсек: полный прирост за час", toadNow(3).energy, regenAtFullHunger);
 check("голодная: без изменений", toadNow(4).energy, 0);
 check("в походе: без изменений", toadNow(5).energy, 0);
 check("упор в максимум качества: 149 → 150", toadNow(6).energy, 150);
