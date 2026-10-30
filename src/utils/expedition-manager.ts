@@ -20,10 +20,6 @@ import { getDiseaseIndex, isToadSick } from "../models/disease";
 import { Items } from "../models/user";
 import { createToads, updateToadById, updateUser } from "../backend";
 import { getGameState, updateGameState } from "../backend/localStorage";
-import {
-  completeAchivement,
-  completeAchivementCounter,
-} from "../backend/achivements-manager";
 import { HOUR_MS } from "./date";
 import { getIncubatingToadIds } from "./dissolve-manager";
 import { getToadDisease, infectToad } from "./disease-manager";
@@ -36,7 +32,7 @@ import {
   isToadOnExpedition,
 } from "./expedition-status";
 import { generateRandomHexColor } from "./randomize-toad-characteristics";
-import { assignToadsToScenes } from "./housing";
+import { assignToadsToScenes, getHousingInfo } from "./housing";
 import {
   canFitInStorage,
   fitItemsInStorage,
@@ -467,7 +463,6 @@ export const startExpedition = (
   });
 
   updateGameState({ expeditions: [...expeditions, expedition] }, true);
-  completeAchivement("first-expedition");
 
   return {
     success: true,
@@ -1197,8 +1192,15 @@ export const processExpeditions = (
 
 // === Возврат домой ===
 
-/** Образцы из сектора превращаются в живых жаб (не больше трёх за поход) */
-const createSampleToads = (count: number, sector: SectorDef): Toad[] => {
+/**
+ * Данные обычных образцов из сектора: живых жаб из них собирает `finishExpedition`
+ * (не больше трёх за поход). Функция только бросает гены и не трогает сохранение —
+ * так поход можно проверить на свободные биоподы ДО того, как он будет списан.
+ */
+const buildSampleToads = (
+  count: number,
+  sector: SectorDef,
+): Partial<Toad>[] => {
   const total = Math.min(Math.max(0, Math.floor(count)), 3);
   if (total === 0) {
     return [];
@@ -1241,54 +1243,30 @@ const createSampleToads = (count: number, sector: SectorDef): Toad[] => {
     },
   }));
 
-  // Склада жаб больше нет: образец живёт только в биоподе. Сколько мест — столько жаб,
-  // остальные образцы остаются в секторе (о них скажет отчёт похода).
-  const { assigned, rejected } = assignToadsToScenes(data);
-
-  if (rejected > 0) {
-    console.info(
-      `Образцы из «${sector.name}»: ${rejected} остались в секторе — нет мест`,
-    );
-  }
-
-  if (assigned.length === 0) {
-    return [];
-  }
-
-  return createToads(assigned, true);
+  return data;
 };
 
 /**
  * Особый образец сектора: именная жаба из лутбокса, закреплённая за глубиной.
  *
- * Создаётся отдельно от обычных образцов (`createSampleToads`), чтобы у игрока
+ * Собирается отдельно от обычных образцов (`buildSampleToads`), чтобы у игрока
  * выросла именно та жаба, которую обещала карточка «Потенциальная добыча».
- * Сначала занимаем биопод под неё: она ценнее случайных образцов.
+ * Данные готовит `finishExpedition`: он же ставит особый образец в биопод первым.
  */
-const createExpeditionSampleToads = (
+const buildExpeditionSampleToads = (
   count: number,
   sector: SectorDef,
-): Toad[] => {
+): Partial<Toad>[] => {
   const total = Math.max(0, Math.floor(count));
   if (total === 0) {
     return [];
   }
 
   const reward = getExpeditionSampleReward(sector);
-  const data = Array.from({ length: total }, () =>
+
+  return Array.from({ length: total }, () =>
     buildLootboxToadFromTemplate(reward.template, reward.rarity),
   );
-
-  // Склада жаб больше нет: образец живёт только в биоподе.
-  const { assigned, rejected } = assignToadsToScenes(data);
-
-  if (rejected > 0) {
-    console.info(
-      `Особый образец из «${sector.name}»: ${rejected} остался в секторе — нет мест`,
-    );
-  }
-
-  return assigned.length > 0 ? createToads(assigned, true) : [];
 };
 
 /**
@@ -1467,13 +1445,11 @@ const completeArrival = (
    */
   const contourPasses = arrival.success ? getContourPassReward(sector) : 0;
   /**
-   * Попутчики, присоединившиеся в пути. Дома их ждёт биопод: если места нет,
-   * жаба не создаётся (склада жаб нет), а отчёт честно скажет об этом.
+   * Попутчики остаются в завершённом походе до кнопки «Завершить»: только там
+   * `finishExpedition` проверит свободные биоподы и поселит их. Если места нет,
+   * разбор добычи не пройдёт, и жаба не «застрянет» в контуре.
    */
   const pendingCompanions = expedition.companions ?? [];
-  const companionPlacement = assignToadsToScenes(pendingCompanions);
-  const companions = companionPlacement.assigned;
-  expedition.companions = [];
 
   expedition.loot = arrival.loot;
   /**
@@ -1545,21 +1521,13 @@ const completeArrival = (
     return { ...toad, hp, maxHp, status };
   });
 
-  // Статистика и ачивки считаются при возврате — поход уже завершён, даже если
+  // Статистика разведки считается при возврате — поход уже завершён, даже если
   // игрок ещё не нажал «Завершить». Сам поход остаётся в сохранении, чтобы
   // карточка с добычей дождалась решения игрока.
   const stats = getExpeditionStats();
   const expeditions = getExpeditions().map((item) =>
     item.id === expedition.id ? expedition : item,
   );
-
-  completeAchivementCounter("expedition", 1);
-  if (sector.depth >= 3) {
-    completeAchivement("sector-depth-3");
-  }
-  if (sector.depth >= 6) {
-    completeAchivement("sector-depth-6");
-  }
 
   // 7. Отчёт для уведомления и чата похода
   const lootText = describeLoot({
@@ -1634,14 +1602,9 @@ const completeArrival = (
     summary += `. 🐸 Особый образец: «${lootboxSampleReward.template.name}» — при разборе добычи поселится в биопод`;
   }
   if (pendingCompanions.length > 0) {
-    if (companions.length > 0) {
-      summary += `. 🐸 Попутчик(и) уже в биоподе: ${companions
-        .map((toad) => `«${toad.name}»`)
-        .join(", ")}`;
-    }
-    if (companionPlacement.rejected > 0) {
-      summary += `. 🐸 ${companionPlacement.rejected} попутчик(ов) не поместилось в биопод — постройте новый`;
-    }
+    summary += `. 🐸 Попутчик(и) ждут разбора добычи: ${pendingCompanions
+      .map((toad) => `«${toad.name}»`)
+      .join(", ")} — при завершении поселятся в биопод`;
   }
   summary += arrival.success
     ? `. Пропуск(ов) КОНТУРа на складе: +${contourPasses} 🎫`
@@ -1689,12 +1652,6 @@ const completeArrival = (
     true,
   );
 
-  // Попутчиков создаём после записи статусов команды: `createToads` сам
-  // разложит их по биоподам и запишет в сохранение, не затирая команду.
-  if (companions.length > 0) {
-    createToads(companions, true);
-  }
-
   return summary;
 };
 
@@ -1719,9 +1676,78 @@ export const getExpeditionStorageCheck = (
   };
 };
 
-/** Сколько биомассы даст переработка всей добычи похода */
+export type ExpeditionFinishMode = "storage" | "biomass";
+
+export interface ExpeditionFoundToadsCheck {
+  ok: boolean;
+  /** Сколько жаб из похода просит биопод */
+  needed: number;
+  /** Сколько мест в биоподах свободно сейчас */
+  free: number;
+  /** Из них попутчиков, которым нужен биопод (в `biomass` — 0) */
+  companions: number;
+  /** Из них образцов (при переработке в биомассу они не селятся) */
+  samples: number;
+}
+
+/**
+ * Хватит ли биоподов жабам, найденным в походе.
+ *
+ * `storage` селит всех: сначала попутчиков, затем образцы (особый — первым
+ * среди образцов, он ценнее обычных). `biomass` перерабатывает и образцы, и
+ * попутчиков, поэтому биоподы для него не нужны — `needed` равен нулю.
+ *
+ * Проверка ничего не меняет и стоит ДО списания похода: иначе при нехватке
+ * места завершение съело бы поход, а жабу пришлось бы бросать в секторе.
+ */
+export const getExpeditionFoundToadsCheck = (
+  expedition: Expedition,
+  mode: ExpeditionFinishMode = "storage",
+): ExpeditionFoundToadsCheck => {
+  const foundCompanions = Math.max(0, expedition.companions?.length ?? 0);
+  const companions = mode === "storage" ? foundCompanions : 0;
+  const samples =
+    mode === "storage"
+      ? Math.min(Math.max(0, Math.floor(expedition.loot.samples || 0)), 3) +
+        Math.min(
+          Math.max(0, Math.floor(expedition.loot.lootboxSamples ?? 0)),
+          1,
+        )
+      : 0;
+  const needed = companions + samples;
+  const { free } = getHousingInfo();
+
+  return {
+    ok: needed <= free,
+    needed,
+    free,
+    companions,
+    samples,
+  };
+};
+
+/**
+ * Сколько биомассы даст переработка всей добычи похода.
+ *
+ * Попутчики — такие же найденные жабы, поэтому «В биомассу» перерабатывает и их.
+ * Оцениваем их как обычный образец (`EXPEDITION_SAMPLE_VALUE`): это честная
+ * альтернатива живому поселению, а не отдельный курс Диссоциатора.
+ */
 export const getExpeditionBiomassValue = (expedition: Expedition): number =>
-  getLootBiomassValue(expedition.loot);
+  getLootBiomassValue({
+    ...expedition.loot,
+    samples:
+      Math.max(0, expedition.loot.samples || 0) +
+      Math.max(0, expedition.companions?.length ?? 0),
+  });
+
+/** Вклад попутчиков в переработку — для отчёта и проверок */
+export const getExpeditionCompanionsBiomassValue = (
+  expedition: Expedition,
+): number =>
+  getLootBiomassValue({
+    samples: Math.max(0, expedition.companions?.length ?? 0),
+  });
 
 /**
  * Возвращает команду в «Разведку», из которой она ушла (`originRoomId`).
@@ -1797,8 +1823,6 @@ const returnTeamToScout = (
   return { rejoined, home };
 };
 
-export type ExpeditionFinishMode = "storage" | "biomass";
-
 export interface ExpeditionFinishResult extends ExpeditionActionResult {
   /** Сколько биомассы начислено при переработке лута */
   biomassGained?: number;
@@ -1810,12 +1834,16 @@ export interface ExpeditionFinishResult extends ExpeditionActionResult {
  * Разобрать добычу завершённого похода:
  *
  * - `storage` — предметы на склад, биомасса/Кваксы/Астро-кваксы в кошелёк,
- *   образцы вырастают в жаб в биоподах. Если на складе нет места на все
- *   предметы, действие не проходит (кнопка «Завершить» заблокирована);
- * - `biomass` — весь лут, включая предметы и образцы, перерабатывается в
- *   биомассу по курсу рынка (см. `getLootBiomassValue`).
+ *   попутчики и образцы вырастают в жаб в биоподах. Если на складе нет места
+ *   на все предметы или в биоподах не хватает мест для найденных жаб, действие
+ *   не проходит (кнопка «Завершить» заблокирована);
+ * - `biomass` — весь лут, включая предметы, образцы и попутчиков, перерабатывается
+ *   в биомассу по курсу рынка (см. `getLootBiomassValue`). Живых жаб после разбора
+ *   не остаётся, поэтому свободные биоподы для этого пути не нужны.
  *
- * После любого варианта команда возвращается в «Разведку», а карточка
+ * В режиме `storage` биоподы проверяются до списания похода: нехватка места
+ * возвращает ошибку, не теряя ни поход, ни находки.
+ * После успешного разбора команда возвращается в «Разведку», а карточка
  * завершённого похода исчезает с вкладки «Походы».
  */
 export const finishExpedition = (
@@ -1844,9 +1872,12 @@ export const finishExpedition = (
    * оставят завершённый поход на месте — и добычу можно забрать ещё раз.
    * Обратный порядок при сбое теряет лут, но не создаёт бесконечный источник.
    *
+   * В архив можно передать копию похода без «ждущих» попутчиков — сам объект
+   * похода при этом не меняется, чтобы неудачное списание не стёрло очередь.
+   *
    * @returns `false`, если поход уже разобран другой вкладкой/кликом.
    */
-  const claimExpedition = (): boolean => {
+  const claimExpedition = (archiveEntry: Expedition = expedition): boolean => {
     const current = getGameState();
     const currentExpeditions = current.expeditions ?? [];
     const remaining = currentExpeditions.filter(
@@ -1861,7 +1892,7 @@ export const finishExpedition = (
       {
         expeditions: remaining,
         expeditionArchive: [
-          expedition,
+          archiveEntry,
           ...(current.expeditionArchive ?? []),
         ].slice(0, EXPEDITION_ARCHIVE_LIMIT),
       },
@@ -1884,7 +1915,50 @@ export const finishExpedition = (
       };
     }
 
-    if (!claimExpedition()) {
+    /**
+     * Найденные жабы селятся только при завершении. Проверяем биоподы до
+     * `claimExpedition`: иначе нехватка места съела бы поход, а жабу пришлось
+     * бы оставить в секторе/контуре — теперь это честная ошибка без потери.
+     */
+    const foundCheck = getExpeditionFoundToadsCheck(expedition, "storage");
+    if (!foundCheck.ok) {
+      return {
+        success: false,
+        message: `В биоподах нет места для найденных жаб: нужно ${foundCheck.needed}, свободно ${foundCheck.free} — постройте «Биопод», иначе завершить поход нельзя`,
+      };
+    }
+
+    /**
+     * Сначала селим попутчиков — они ждут разбора дольше всех. Среди образцов
+     * особым идёт именная жаба из лутбокса: она ценнее обычных находок.
+     * Данные готовим до списания похода, а `assignToadsToScenes` раскладывает
+     * всех одной пачкой — без частичного заселения.
+     */
+    const companionData = expedition.companions ?? [];
+    const requestedLootboxSamples = Math.min(
+      Math.max(0, Math.floor(expedition.loot.lootboxSamples ?? 0)),
+      1,
+    );
+    const requestedSamples = Math.min(
+      Math.max(0, Math.floor(expedition.loot.samples || 0)),
+      3,
+    );
+    const foundData: Partial<Toad>[] = [
+      ...companionData,
+      ...buildExpeditionSampleToads(requestedLootboxSamples, sector),
+      ...buildSampleToads(requestedSamples, sector),
+    ];
+    const foundPlacement = assignToadsToScenes(foundData);
+
+    if (foundPlacement.rejected > 0) {
+      return {
+        success: false,
+        message: `В биоподах нет места для найденных жаб: нужно ${foundData.length}, свободно ${foundCheck.free} — постройте «Биопод», иначе завершить поход нельзя`,
+      };
+    }
+
+    // В архив поход уходит уже без «ждущих» попутчиков: они поселены ниже.
+    if (!claimExpedition({ ...expedition, companions: [] })) {
       return { success: false, message: "Поход уже разобран" };
     }
 
@@ -1898,22 +1972,6 @@ export const finishExpedition = (
       acceptedCount += amount || 0;
     });
 
-    /**
-     * Особый образец селим первым: он ценнее обычных находок, и последний
-     * свободный биопод должен достаться именно именной жабе из лутбокса.
-     */
-    const requestedLootboxSamples = Math.min(
-      Math.max(0, Math.floor(expedition.loot.lootboxSamples ?? 0)),
-      1,
-    );
-    const lootboxSamples =
-      requestedLootboxSamples > 0
-        ? createExpeditionSampleToads(requestedLootboxSamples, sector)
-        : [];
-    const requestedSamples = Math.min(expedition.loot.samples, 3);
-    const samples =
-      requestedSamples > 0 ? createSampleToads(requestedSamples, sector) : [];
-
     updateUser({
       biomass:
         Math.round(
@@ -1924,39 +1982,60 @@ export const finishExpedition = (
       storage,
     });
 
+    const foundToads =
+      foundPlacement.assigned.length > 0
+        ? createToads(foundPlacement.assigned, true)
+        : [];
+    const settledCompanions = foundToads.slice(0, companionData.length);
+    const settledSamples = foundToads.slice(companionData.length);
+
     const lootText = describeLoot({
       biomass: expedition.loot.biomass,
       tokens: expedition.loot.tokens,
       astro_quax: expedition.loot.astro_quax,
       items: accepted,
-      sample: samples.length + lootboxSamples.length,
+      sample: settledSamples.length,
     });
     message = `Добыча со склада: ${lootText || "пусто, зато живые"}`;
 
     if (acceptedCount < check.needed) {
       message += `. ${check.needed - acceptedCount} предмет(ов) не влезли на склад`;
     }
-    if (lootboxSamples.length > 0) {
-      message += `. 🐸 В биопод поселилась «${lootboxSamples[0].name}»`;
-    } else if (requestedLootboxSamples > 0) {
-      message += `. Особый образец «${
-        getExpeditionSampleReward(sector).template.name
-      }» остался в секторе — нет мест в биоподах`;
+    if (settledCompanions.length > 0) {
+      message += `. 🐸 Попутчик(и) поселились в биопод: ${settledCompanions
+        .map((toad) => `«${toad.name}»`)
+        .join(", ")}`;
     }
-    if (samples.length < requestedSamples) {
-      message += `. ${requestedSamples - samples.length} образц(ов) осталось в секторе — нет мест в биоподах`;
+    if (requestedLootboxSamples > 0 && settledSamples.length > 0) {
+      message += `. 🐸 В биопод поселилась «${settledSamples[0].name}»`;
+    }
+    const settledRegularSamples = settledSamples.slice(
+      requestedLootboxSamples,
+    );
+    if (settledRegularSamples.length > 0) {
+      message += `. В биоподах поселилось образцов: ${settledRegularSamples.length}`;
     }
   } else if (mode === "biomass") {
-    if (!claimExpedition()) {
+    /**
+     * Переработка забирает всех: предметы, образцы и попутчиков. Живых жаб после
+     * неё не остаётся, поэтому биоподы не нужны и проверять нечего. Попутчики
+     * оцениваются как обычные образцы (`getExpeditionBiomassValue`).
+     */
+    if (!claimExpedition({ ...expedition, companions: [] })) {
       return { success: false, message: "Поход уже разобран" };
     }
 
-    biomassGained = getLootBiomassValue(expedition.loot);
+    const companionsBiomass = getExpeditionCompanionsBiomassValue(expedition);
+    biomassGained = getExpeditionBiomassValue(expedition);
     updateUser({
       biomass:
         Math.round(((state.user.biomass || 0) + biomassGained) * 100) / 100,
     });
     message = `Лут с «${sector.name}» переработан в ${biomassGained} 🧪`;
+
+    if (companionsBiomass > 0) {
+      message += `. 🐸 Попутчик(и) тоже переработаны в биомассу: +${companionsBiomass} 🧪`;
+    }
   } else {
     return { success: false, message: "Неизвестный способ разбора добычи" };
   }

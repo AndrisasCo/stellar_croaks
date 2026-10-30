@@ -1,5 +1,6 @@
 import { DEFAULT_SCENE, Scene } from "../models/scene";
 import { DEFAULT_TOADS, Toad } from "../models/Toad";
+import { ToadTypes } from "../models/Toad/toad-species";
 import { Items, User } from "../models/user";
 import {
   Expedition,
@@ -26,6 +27,12 @@ export interface GameState {
    */
   expeditionArchive?: Expedition[];
   expeditionStats?: ExpeditionStats;
+  /**
+   * Виды жаб, которые когда-либо жили в колонии. Нужны Жабопедии и лидерборду:
+   * проданная или разобранная жаба исчезает из `toads`, но открытый вид остаётся
+   * в коллекции. Раньше это поле жило в сейве достижений.
+   */
+  toadsCollection?: ToadTypes[];
   lastSaved: string;
   createdAt: string;
 }
@@ -79,6 +86,7 @@ export const getDefaultGameState = (): GameState => {
       completedSectors: [],
       unlockedSectors: [],
     },
+    toadsCollection: [ToadTypes.hybrid],
     lastSaved: new Date().toISOString(),
     createdAt: new Date().toISOString(),
   };
@@ -447,13 +455,103 @@ function migrateToadPlaces(state: GameState): GameState {
   return changed ? { ...state, toads } : state;
 }
 
+/** Старый ключ достижений: из него забираем только коллекцию видов жаб. */
+const LEGACY_ACHIEVEMENTS_KEY = "achivements";
+
+const isToadType = (value: unknown): value is ToadTypes =>
+  typeof value === "string" &&
+  (Object.values(ToadTypes) as string[]).includes(value);
+
+const normalizeToadCollection = (value: unknown): ToadTypes[] =>
+  Array.isArray(value)
+    ? Array.from(new Set(value.filter(isToadType)))
+    : [];
+
+const collectToadTypes = (toads: readonly Toad[]): ToadTypes[] =>
+  Array.from(
+    new Set(
+      toads
+        .map((toad) => toad.type)
+        .filter((type): type is ToadTypes => isToadType(type)),
+    ),
+  );
+
+/**
+ * Переносит коллекцию видов из старого сейва достижений в `GameState`.
+ *
+ * Достижений в игре больше нет, но Жабопедия и лидерборд по-прежнему должны
+ * помнить виды, которые игрок когда-то открыл. Заодно добавляем виды текущих
+ * жаб: на сейвах, где старого ключа уже нет, коллекция не останется пустой.
+ */
+function migrateToadCollection(state: GameState): GameState {
+  const collection = new Set<ToadTypes>(state.toadsCollection ?? []);
+  collectToadTypes(state.toads ?? []).forEach((type) => collection.add(type));
+
+  try {
+    const legacy = storage.get(LEGACY_ACHIEVEMENTS_KEY);
+
+    if (legacy) {
+      const parsed = JSON.parse(legacy) as { toads_collection?: unknown };
+
+      // Ключ удаляем только если это действительно старый сейв достижений:
+      // тестовые и сторонние хранилища могут игнорировать имя ключа и отдавать
+      // чужой JSON, который нельзя стирать.
+      if (Array.isArray(parsed?.toads_collection)) {
+        normalizeToadCollection(parsed.toads_collection).forEach((type) =>
+          collection.add(type),
+        );
+        // Ключ больше не нужен: иначе при смене аккаунта он «протёк» бы следующему игроку.
+        storage.remove(LEGACY_ACHIEVEMENTS_KEY);
+      }
+    }
+  } catch (error) {
+    console.warn("[localStorage] не удалось перенести коллекцию жаб:", error);
+  }
+
+  const next = Array.from(collection);
+  const current = state.toadsCollection ?? [];
+  const unchanged =
+    next.length === current.length && current.every((type) => collection.has(type));
+
+  return unchanged ? state : { ...state, toadsCollection: next };
+}
+
+const nextCollectionIsSame = (
+  collection: Set<ToadTypes>,
+  current: readonly ToadTypes[],
+): boolean =>
+  collection.size === current.length &&
+  current.every((type) => collection.has(type));
+
+/**
+ * Объединяет виды жаб с коллекцией устройства.
+ *
+ * Нужен облачной миграции: старые аккаунты хранили коллекцию в
+ * `game_state.achievements`, а новый сейв может прийти без неё.
+ */
+export const mergeToadCollection = (types: unknown): GameState => {
+  const state = getGameState();
+  const collection = new Set<ToadTypes>([
+    ...(state.toadsCollection ?? []),
+    ...normalizeToadCollection(types),
+    ...collectToadTypes(state.toads ?? []),
+  ]);
+  const current = state.toadsCollection ?? [];
+
+  if (nextCollectionIsSame(collection, current)) {
+    return state;
+  }
+
+  return updateGameState({ toadsCollection: Array.from(collection) }, true);
+};
+
 /**
  * Все миграции сейва при загрузке: сначала поля жабы (устаревшие механики),
- * затем места (дом, сектор, склад). Порядок важен — расселение в
+ * затем места (дом, сектор, склад) и коллекция видов. Порядок важен — расселение в
  * `migrateToadPlaces` опирается на актуальные `scene_id`/`homeId`.
  */
 function migrateGameState(state: GameState): GameState {
-  return migrateToadPlaces(migrateToadFields(state));
+  return migrateToadCollection(migrateToadPlaces(migrateToadFields(state)));
 }
 
 // Сохранение всего состояния

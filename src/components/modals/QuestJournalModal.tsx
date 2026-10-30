@@ -116,6 +116,18 @@ const RewardLine = ({
     {rewards.lootboxes ? (
       <span className="ui-chip text-fuchsia-200">📦 {rewards.lootboxes}</span>
     ) : null}
+    {rewards.geneDust ? (
+      <span className="ui-chip text-cyan-200">✨ {rewards.geneDust}</span>
+    ) : null}
+    {rewards.toads?.map(({ toad, role }) => (
+      <span
+        key={toad.name ?? "crew-toad"}
+        className="ui-chip border-emerald-300/30 text-emerald-200"
+        title={role}
+      >
+        🐸 {toad.name ?? "Новый специалист"}
+      </span>
+    ))}
     {claimed ? (
       <span className="text-3xs font-semibold uppercase tracking-wide text-emerald-300/80">
         получено
@@ -171,6 +183,11 @@ const QuestCard = ({
       <p className="mt-1 text-2xs leading-snug text-slate-400">
         {quest.description}
       </p>
+      {quest.lore ? (
+        <p className="mt-1.5 border-l-2 border-cyan-400/30 pl-2 text-2xs italic leading-snug text-slate-500">
+          {quest.lore}
+        </p>
+      ) : null}
 
       {locked ? (
         <p className="mt-2 flex items-center gap-1.5 border border-amber-300/15 bg-slate-950/40 px-2 py-1.5 text-2xs text-slate-500">
@@ -293,8 +310,9 @@ const QuestJournalModal = () => {
     <Modal title="Журнал заданий" tone="amber">
       <div className="flex flex-col gap-3 px-1">
         <p className="text-2xs leading-snug text-slate-400">
-          Короткие дела, средние цепочки и магистраль КОНТУРа. Награду нужно
-          забрать вручную — выполненное задание ждёт вас в журнале.
+          Короткие дела, средние цепочки и магистраль КОНТУРа. Мы не просто
+          выводим жаб — мы собираем команду для глубоких секторов. Награду нужно
+          забрать вручную: выполненное задание ждёт вас в журнале.
         </p>
 
         <div className="grid grid-cols-3 gap-2">
@@ -451,8 +469,8 @@ const QuestJournalModal = () => {
                 <span aria-hidden="true">🗺️</span> Магистраль КОНТУРа
               </SectionTitle>
               <p className="mt-1 text-2xs leading-snug text-slate-400">
-                Четыре долгих задания ведут через весь Периметр — от первого
-                шлюза до центра станции.
+                Пять долгих заданий ведут через весь Периметр — от первого шлюза
+                до центра станции и звания хозяина Периметра.
               </p>
               <div className="mt-2 grid gap-2 md:grid-cols-2">
                 {longQuestEntries.map((entry) => (

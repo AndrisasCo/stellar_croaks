@@ -1,5 +1,4 @@
 import { updateUser } from "../backend";
-import { completeAchivementCounter } from "../backend/achivements-manager";
 import { getGameState } from "../backend/localStorage";
 import { Items } from "../models/user";
 
@@ -101,10 +100,6 @@ export const sellGeneDust = (amount: number): GeneDustSellResult => {
       [Items.geneDust]: available - sold,
     },
   });
-
-  // Продажа пыли — такой же заработок, как продажа жаб и обмен биомассы:
-  // счётчик «earn» должен учитывать и её, иначе достижения торговли не сходятся.
-  completeAchivementCounter("earn", tokensGained);
 
   return { success: true, sold, tokensGained };
 };

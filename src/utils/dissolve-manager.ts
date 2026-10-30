@@ -1,8 +1,5 @@
 import { deleteToadsByIds, updateUser } from "../backend";
-import {
-  completeAchivement,
-  completeAchivementCounter,
-} from "../backend/achivements-manager";
+import { recordQuestEvent } from "../backend/quests-manager";
 import {
   ExtendedColliderState,
   loadColliderState,
@@ -135,16 +132,15 @@ export interface DissolveResult {
  * Разбор жабы, которой ещё нет в колонии (лутбокс).
  *
  * Лутбокс создаёт жабу только после выбора биопода, поэтому «распылить» надо уметь
- * до `createToad`. Биомасса и достижения начисляются по тем же правилам, что и в
- * `dissolveToads`, но удалять из сохранения нечего.
+ * до `createToad`. Биомасса и прогресс журнала заданий начисляются по тем же
+ * правилам, что и в `dissolveToads`, но удалять из сохранения нечего.
  */
 export const dissolveNewToad = (toad: Toad): number => {
   const state = getGameState();
   const biomassGained = getDissolveYield(toad);
 
   updateUser({ biomass: round2((state.user.biomass || 0) + biomassGained) });
-  completeAchivement("first-dissolve");
-  completeAchivementCounter("dissolve", 1);
+  recordQuestEvent("toad_dissolved", 1);
 
   return biomassGained;
 };
@@ -191,8 +187,7 @@ export const dissolveToads = (toadIds: number[]): DissolveResult => {
   updateUser({ biomass });
   deleteToadsByIds(toads.map((toad) => toad.id));
 
-  completeAchivement("first-dissolve");
-  completeAchivementCounter("dissolve", toads.length);
+  recordQuestEvent("toad_dissolved", toads.length);
 
   return {
     success: true,

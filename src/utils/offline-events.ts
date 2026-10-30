@@ -35,6 +35,16 @@ export const OFFLINE_EVENTS_STORAGE_KEY = "Stellar_Croak_Offline_Events_v1";
 /** Больше пятидесяти записей журнал не держит: старые события вытесняются новыми. */
 export const MAX_OFFLINE_EVENTS = 50;
 
+/**
+ * Сколько записей показывает журнал.
+ *
+ * В хранилище история длиннее (до `MAX_OFFLINE_EVENTS`), но в модалке список не
+ * должен растягиваться на сотни строк: показываем последние двадцать событий.
+ * Исключение — непрочитанные: их не срезаем никогда, иначе игрок не увидит, что
+ * случилось, пока его не было.
+ */
+export const OFFLINE_EVENTS_VISIBLE_LIMIT = 20;
+
 const OFFLINE_EVENT_TYPES: OfflineEventType[] = [
   "warn",
   "success",
@@ -109,6 +119,27 @@ export const createOfflineEvent = ({
 
 export const countUnreadOfflineEvents = (events: OfflineEvent[]): number =>
   events.reduce((count, event) => (event.readAt ? count : count + 1), 0);
+
+/**
+ * Что показывать в модалке журнала.
+ *
+ * Последние `limit` событий видны всегда, более старые записи прячем, чтобы список
+ * не разрастался. Непрочитанные не срезаем ни при каком раскладе — ни живые
+ * (`readAt` ещё не стоит), ни те, что были непрочитанными в момент открытия
+ * модалки (`pinnedIds`). Второе важно: модалка отмечает журнал прочитанным сразу,
+ * и по одному `readAt` лимит уже не отличил бы новое от старого.
+ */
+export const selectVisibleOfflineEvents = (
+  events: OfflineEvent[],
+  pinnedIds: ReadonlySet<string> = new Set<string>(),
+  limit: number = OFFLINE_EVENTS_VISIBLE_LIMIT,
+): OfflineEvent[] => {
+  const ordered = [...events].sort((a, b) => b.at - a.at);
+
+  return ordered.filter(
+    (event, index) => index < limit || !event.readAt || pinnedIds.has(event.id),
+  );
+};
 
 /** Пометить весь журнал прочитанным: кнопка (!) перестаёт быть акцентной. */
 export const markOfflineEventsRead = (

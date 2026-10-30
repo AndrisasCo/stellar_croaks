@@ -7,6 +7,8 @@ import { useColony } from "../../hooks/use-colony";
 import { useNotifications } from "../../hooks/use-notification";
 import { useSoundEffects } from "../../hooks/use-sound-effects";
 import { processAutoFeeders } from "../../utils/auto-feeder";
+import { processAutoBreeders } from "../../utils/breeding-manager";
+import { processNestDistributors } from "../../utils/nest-distributor";
 import { processQuarantineCatchers } from "../../utils/quarantine-catcher";
 import { processRepatriators } from "../../utils/repatriator";
 import { CURRENCY_CONFIG, DEMOLISH_ROOM_COST } from "../../utils/constants";
@@ -212,6 +214,17 @@ export default function RoomDataTab({ room, stats }: RoomDataTabProps) {
         : { sent: 0 };
     // Применяем отлов сразу: покупка не должна ждать следующего тика Медотсека.
     const { caught } = catchSickToads();
+    // «Инициатор» применяется сразу: если пара уже в слотах и готова — ухаживание
+    // начнётся в момент покупки, а общее уведомление ниже это отметит.
+    const autoBred =
+      option.key === "autoBreeder"
+        ? processAutoBreeders()
+        : { started: 0 };
+    // «Распределитель» сразу разгружает репродуктор: покупка не ждёт тика.
+    const distributed =
+      option.key === "distributor"
+        ? processNestDistributors()
+        : { sent: 0, failed: 0 };
 
     playSuccess();
     addNotification({
@@ -221,6 +234,10 @@ export default function RoomDataTab({ room, stats }: RoomDataTabProps) {
       }${sent > 0 ? `: репатриатор сразу отправил домой ${sent} жаб(ы) 🛬` : ""}${
         caught > 0
           ? `: карантин-уловитель сразу забрал на койки ${caught} 🐸`
+          : ""
+      }${autoBred.started > 0 ? ": инициатор сразу начал ухаживание 💞" : ""}${
+        distributed.sent > 0
+          ? `: распределитель сразу перенёс ${distributed.sent} головастиков 📦`
           : ""
       }`,
     });
@@ -236,6 +253,24 @@ export default function RoomDataTab({ room, stats }: RoomDataTabProps) {
 
     upgradeColonyRoom(room.id, getUpgradeTogglePatch(option.key, enabled));
     playSuccess();
+
+    // Включённый «Инициатор» не ждёт следующего тика: если пара уже готова,
+    // ухаживание начнётся сразу (менеджер сам скажет об этом уведомлением).
+    if (enabled && option.key === "autoBreeder") {
+      processAutoBreeders(addNotification);
+    }
+
+    // Включённый «Распределитель» сразу разгружает репродуктор.
+    if (enabled && option.key === "distributor") {
+      const { sent } = processNestDistributors();
+
+      if (sent > 0) {
+        addNotification({
+          type: "success",
+          content: `«Распределитель» «${room.name}» сразу перенёс ${sent} головастиков в биоподы 📦`,
+        });
+      }
+    }
 
     // Включённый уловитель не должен ждать следующего тика: сразу забираем тех, кому
     // уже нужна койка. При выключении, наоборот, никого не трогаем.

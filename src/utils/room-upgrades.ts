@@ -1,9 +1,8 @@
+import { ColonyRoomKind, RoomUpgradeKey, RoomUpgrades } from "../models/colony";
 import {
-  ColonyRoomKind,
-  RoomUpgradeKey,
-  RoomUpgrades,
-} from "../models/colony";
-import { PRODUCTION_MIN_HUNGER } from "./gamification-config";
+  NEST_TADPOLE_CAPACITY,
+  PRODUCTION_MIN_HUNGER,
+} from "./gamification-config";
 
 /**
  * Каталог апгрейдов сектора: их ставит вкладка «О секторе» любой модалки сектора
@@ -11,6 +10,10 @@ import { PRODUCTION_MIN_HUNGER } from "./gamification-config";
  *
  * Апгрейды избавляют от ручной работы, а не удешевляют её:
  *  - автокормушка кормит жаб сектора со склада (`utils/auto-feeder.ts`);
+ *  - «Инициатор» сам запускает ухаживание в репродукторе, когда пара готова
+ *    (`utils/breeding-manager.ts`);
+ *  - «Распределитель» переносит головастиков из репродуктора в свободные биоподы
+ *    (`utils/nest-distributor.ts`);
  *  - репатриатор в Медотсеке отправляет выздоровевших жаб домой (`utils/repatriator.ts`);
  *  - карантин-уловитель забирает заболевших жаб на свободные койки
  *    (`utils/quarantine-catcher.ts`).
@@ -44,6 +47,8 @@ export const ROOM_UPGRADE_ENABLED_KEYS: Record<
   keyof RoomUpgrades
 > = {
   autoFeeder: "autoFeederEnabled",
+  autoBreeder: "autoBreederEnabled",
+  distributor: "distributorEnabled",
   repatriator: "repatriatorEnabled",
   quarantineCatcher: "quarantineCatcherEnabled",
 };
@@ -52,16 +57,35 @@ export const ROOM_UPGRADES: RoomUpgradeOption[] = [
   {
     key: "autoFeeder",
     title: "Автокормушка",
-    icon: "🍎",
+    icon: "",
     description: `Пока на складе есть корм, кормушка распределяет корм на жаб сектора автоматически: как только голод падает до ${PRODUCTION_MIN_HUNGER} %.`,
     cost: 100,
     roomKinds: ["aviary", "breeding", "power", "scout", "hospital"],
     upgrade: { autoFeeder: true },
   },
   {
+    key: "autoBreeder",
+    title: "Инициатор",
+    icon: "",
+    description:
+      "Репродуктор сам запускает ухаживание, когда в нём есть самец и самка, а условия соблюдены: хватает биомассы и сил, жабы здоровы и отдохнули. После родов пара продолжит автоматически — апгрейд работает, пока вы его не выключите.",
+    cost: 250,
+    roomKinds: ["breeding"],
+    upgrade: { autoBreeder: true },
+  },
+  {
+    key: "distributor",
+    title: "Распределитель",
+    icon: "",
+    description: `Репродуктор сам переносит головастиков в свободные биоподы. Без него головастики остаются в секторе (до ${NEST_TADPOLE_CAPACITY}), и жаба не может родить.`,
+    cost: 300,
+    roomKinds: ["breeding"],
+    upgrade: { distributor: true },
+  },
+  {
     key: "repatriator",
     title: "Репатриатор",
-    icon: "🛬",
+    icon: "",
     description:
       "Медотсек сам отправляет выздоровевших жаб домой: без болезней и с полным HP они больше не занимают койку, а койка достаётся следующему пациенту.",
     cost: 150,
@@ -71,7 +95,7 @@ export const ROOM_UPGRADES: RoomUpgradeOption[] = [
   {
     key: "quarantineCatcher",
     title: "Карантин-уловитель",
-    icon: "🪤",
+    icon: "",
     description:
       "Медотсек сам забирает заболевших жаб колонии на свободные койки. HP не важен: уловитель реагирует только на болезнь и не трогает раненых без болезни.",
     cost: 200,

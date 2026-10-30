@@ -1,6 +1,7 @@
-import { updateUser } from "../index";
+import { createToad, updateUser } from "../index";
 import { getGameState, GameState } from "../localStorage";
 import { normalizeExpeditionStats, SECTORS } from "../../models/expedition";
+import { getHousingInfo, pickSceneForNewToad } from "../../utils/housing";
 import {
   getCoveredExpeditionReserveRoles,
   isPerfectExpeditionToad,
@@ -108,6 +109,8 @@ export const getQuestMetrics = (
   const journal = getQuestJournalState();
   const createdAt = Date.parse(state.createdAt);
   const reserveRoles = getCoveredExpeditionReserveRoles(state.toads);
+  const geneticFault = (toad: GameState["toads"][number]): number =>
+    Number(toad.state?.genetic_fault ?? 0);
 
   return {
     toads: state.toads.length,
@@ -118,6 +121,19 @@ export const getQuestMetrics = (
       (toad) => Array.isArray(toad.parents) && toad.parents.length > 0,
     ).length,
     perfectExpeditionToads: state.toads.filter(isPerfectExpeditionToad).length,
+    legendaryToads: state.toads.filter(
+      (toad) => Number(toad.genes?.rarity ?? 0) >= 25,
+    ).length,
+    tinyToads: state.toads.filter(
+      (toad) => Number(toad.genes?.weight ?? Infinity) <= 8,
+    ).length,
+    slowToads: state.toads.filter(
+      (toad) => Number(toad.genes?.speed ?? Infinity) <= 0.2,
+    ).length,
+    mutantToads: state.toads.filter((toad) => geneticFault(toad) >= 80).length,
+    perfectGenomeToads: state.toads.filter(
+      (toad) => toad.generation >= 10 && geneticFault(toad) <= 0.9,
+    ).length,
     expeditionReserveRoles: reserveRoles.size,
     reserveRoleHacker: reserveRoles.has("hacker") ? 1 : 0,
     reserveRoleScout: reserveRoles.has("scout") ? 1 : 0,
@@ -135,6 +151,7 @@ export const getQuestMetrics = (
     storageRooms: countRooms(state, "storage"),
     tokens: Number(state.user.tokens ?? 0),
     astroQuax: Number(state.user.astro_quax ?? 0),
+    biomass: Number(state.user.biomass ?? 0),
     food: storageAmount(state, Items.food),
     lootboxes: storageAmount(state, Items.lootbox),
     geneDust: storageAmount(state, Items.geneDust),
@@ -161,6 +178,9 @@ export const getQuestMetrics = (
     diseaseOutbreaks: journal.counters.disease_outbreak ?? 0,
     colliderToads: journal.counters.collider_toad_collected ?? 0,
     eliteOrdersCompleted: journal.counters.elite_order_completed ?? 0,
+    boughtToads: journal.counters.toad_bought ?? 0,
+    soldToads: journal.counters.toad_sold ?? 0,
+    dissolvedToads: journal.counters.toad_dissolved ?? 0,
   };
 };
 
@@ -405,6 +425,12 @@ const rewardText = (rewards: QuestReward): string => {
   if (rewards.lootboxes) {
     parts.push(`${rewards.lootboxes} 📦`);
   }
+  if (rewards.geneDust) {
+    parts.push(`${rewards.geneDust} ✨`);
+  }
+  rewards.toads?.forEach(({ toad }) => {
+    parts.push(`🐸 ${toad.name ?? "Новый специалист"}`);
+  });
 
   return parts.length > 0 ? parts.join(", ") : "без награды";
 };
@@ -413,9 +439,12 @@ const rewardText = (rewards: QuestReward): string => {
  * Ручное получение награды. Награда не начисляется сама: даже выполненное
  * задание ждёт игрока в журнале, а `claimed` фиксируется отдельно от `completed`.
  *
- * Сначала начисляем ресурсы и только потом помечаем задание забранным: если
- * запись журнала не сохранится, игрок увидит задание снова, но не потеряет
+ * Сначала начисляем ресурсы и жаб, и только потом помечаем задание забранным:
+ * если запись журнала не сохранится, игрок увидит задание снова, но не потеряет
  * награду. Двойной клик безопасен — второй вызов увидит `claimed`.
+ *
+ * Жабы-награды требуют свободного места в биоподах. Проверка идёт до начисления:
+ * иначе игрок получил бы ресурсы, а специалист «потерялся» без места.
  */
 export const claimQuestReward = (questId: string): ClaimQuestResult => {
   const quest = getQuestById(questId);
@@ -438,17 +467,39 @@ export const claimQuestReward = (questId: string): ClaimQuestResult => {
 
   const state = getGameState();
   const rewards = quest.rewards ?? {};
+  const rewardToads = rewards.toads ?? [];
+
+  if (rewardToads.length > 0 && getHousingInfo().free < rewardToads.length) {
+    return {
+      success: false,
+      message: "Нет свободного места в биоподах: постройте новый биопод",
+      quest,
+    };
+  }
+
   const storage = { ...state.user.storage };
 
   if (rewards.lootboxes) {
     storage[Items.lootbox] =
       Number(storage[Items.lootbox] ?? 0) + rewards.lootboxes;
   }
+  if (rewards.geneDust) {
+    storage[Items.geneDust] =
+      Number(storage[Items.geneDust] ?? 0) + rewards.geneDust;
+  }
 
   updateUser({
     tokens: Number(state.user.tokens ?? 0) + (rewards.tokens ?? 0),
     astro_quax: Number(state.user.astro_quax ?? 0) + (rewards.astroQuax ?? 0),
     storage,
+  });
+
+  rewardToads.forEach(({ toad }) => {
+    const scene = pickSceneForNewToad();
+
+    if (scene) {
+      createToad({ ...toad, scene_id: scene.id });
+    }
   });
 
   updateQuestJournalState({

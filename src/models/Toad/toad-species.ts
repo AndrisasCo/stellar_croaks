@@ -2,7 +2,7 @@ export enum ToadTypes {
   hybrid = "hybrid", // базовая жаба
   camouflage = "camouflage", // покупка | лутбокс 39.9
   mutant = "mutant", // 10% шанс получить в коллайдере
-  turtle = "turtle", // ачивка простая - туториал
+  turtle = "turtle", // задание: первый гибрид
   tiger = "tiger", // покупка | лутбокс 39.9
   stone = "stone", // лутбокс 10
   crystall = "crystall", // лутбокс 10
@@ -10,9 +10,9 @@ export enum ToadTypes {
   forest = "forest", // лутбокс 10
   leopard = "leopard", // лутбокс 10
 
-  topaz = "topaz", // ачивка средняя - зарабатывание
-  mutantNeonBlue = "mutant_neon_blue", // ачивка сложная (за генную инж)
-  mutantNeon = "mutant_neon", // ачивка сложная (за генную инж)
+  topaz = "topaz", // задание: 12 покупок жаб
+  mutantNeonBlue = "mutant_neon_blue", // задание: качество 25+
+  mutantNeon = "mutant_neon", // задание: совершенный геном
 
   dragon = "dragon", // лутбокс 1
   fire = "fire", // лутбокс 1
@@ -21,7 +21,7 @@ export enum ToadTypes {
   cosmos = "cosmos", // лутбокс 0.1
   phoenix = "phoenix", // лутбокс 0.1
   chaos = "chaos", // лутбокс 0.1
-  diamond = "diamond", // ачивка за 100 лутбоксов
+  diamond = "diamond", // задание: 100 лутбоксов
 
   money = "money",
 }
@@ -69,10 +69,9 @@ export const isColorableToadType = (
 // Тип для способа получения
 export type ToadObtainedBy =
   | "start" // Начальная жаба
-  | "tutorial" // Туториал/первая ачивка
+  | "quest" // Награда за задание журнала
   | "shop" // Торговая Капсула
   | "lootbox" // Лутбокс (общий)
-  | "achievement" // Ачивка
   | "collider" // Случайно из коллайдера
   | "recipe" // По рецепту в коллайдере
   | "unknown"; // Полностью неизвестный вид
@@ -96,7 +95,7 @@ export interface ToadSpeciesConfig {
   // Опциональные поля для конкретики
   lootboxChanceLevel?: LootboxChanceLevel; // Уровень редкости в лутбоксе
   recipeHint?: string; // Подсказка к рецепту
-  achievementId?: string; // ID ачивки
+  questId?: string; // ID задания, за которое даётся жаба
 
   // Для отображения в журнале
   hidden?: boolean; // true = совсем не показывать до получения
@@ -138,15 +137,15 @@ export const TOAD_SPECIES_CONFIG: ToadSpeciesConfig[] = [
     obtainedBy: "shop",
   },
 
-  // --- RARE (Торговая Капсула / Лутбоксы / Средние ачивки) ---
+  // --- RARE (Торговая Капсула / Лутбоксы / Награды за задания) ---
   {
     id: "toad_turtle",
     type: ToadTypes.turtle,
     name: toadTypeMap[ToadTypes.turtle],
     rarity: "rare",
     desc: "Медленная, мудрая и очень любит клубнику.",
-    obtainedBy: "achievement",
-    achievementId: "tutorial_complete",
+    obtainedBy: "quest",
+    questId: "q19-first-hybrid",
   },
 
   {
@@ -195,15 +194,15 @@ export const TOAD_SPECIES_CONFIG: ToadSpeciesConfig[] = [
     lootboxChanceLevel: "rare",
   },
 
-  // --- EPIC (Сложные ачивки) ---
+  // --- EPIC (Награды за сложные задания) ---
   {
     id: "toad_topaz",
     type: ToadTypes.topaz,
     name: toadTypeMap[ToadTypes.topaz],
     rarity: "epic",
     desc: "Драгоценность, рожденная в тяжелом труде.",
-    obtainedBy: "achievement",
-    achievementId: "earn_1000",
+    obtainedBy: "quest",
+    questId: "m19-toad-trader",
   },
   {
     id: "toad_mutant_neon",
@@ -211,8 +210,8 @@ export const TOAD_SPECIES_CONFIG: ToadSpeciesConfig[] = [
     name: toadTypeMap[ToadTypes.mutantNeon],
     rarity: "epic",
     desc: "Сияет радиацией и успехом.",
-    obtainedBy: "achievement",
-    achievementId: "gene_engineering",
+    obtainedBy: "quest",
+    questId: "m24-perfect-genome",
   },
   {
     id: "toad_mutant_neon_blue",
@@ -220,8 +219,8 @@ export const TOAD_SPECIES_CONFIG: ToadSpeciesConfig[] = [
     name: toadTypeMap[ToadTypes.mutantNeonBlue],
     rarity: "epic",
     desc: "Холодное свечение генетического гения.",
-    obtainedBy: "achievement",
-    achievementId: "gene_engineering",
+    obtainedBy: "quest",
+    questId: "m20-legendary-25",
   },
 
   {
@@ -287,7 +286,8 @@ export const TOAD_SPECIES_CONFIG: ToadSpeciesConfig[] = [
     name: toadTypeMap[ToadTypes.diamond],
     rarity: "legendary",
     desc: "Самая редкая и ценная из всех жаб.",
-    obtainedBy: "achievement",
+    obtainedBy: "quest",
+    questId: "m27-lootbox-100",
   },
   // {
   //   id: "toad_money",

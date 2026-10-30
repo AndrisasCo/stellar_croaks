@@ -9,7 +9,9 @@
  *   5) завершённый поход действительно записывает болезнь в состояние жабы;
  *   6) событие-попутчик даёт случайную жабу из лутбокса, не тратя pity;
  *   7) второй попутчик за поход не выпадает;
- *   8) на возврате попутчик поселяется в биопод, а без места — не создаётся.
+ *   8) на возврате попутчик ждёт разбора: «Завершить» селит его в биопод,
+ *      а «В биомассу» перерабатывает вместе с лутом (биопод не нужен).
+ *      Без свободного места падает только «Завершить», не теряя поход.
  *
  * Запуск: node tmp-verify-expedition-aggression.mjs
  */
@@ -333,7 +335,7 @@ check(
   false,
 );
 
-console.log("\n[5] Попутчик поселяется в биопод на возврате");
+console.log("\n[5] Попутчик ждёт «Завершить» и селится в биопод");
 console.log("─".repeat(64));
 const companion = {
   name: "Вентиляционная Ванда",
@@ -373,19 +375,38 @@ try {
   Math.random = randomBeforeCompanion;
 }
 
+const afterArrival = saved();
+check("на возврате попутчик ещё не создан", afterArrival.toads.length, 1);
+check(
+  "попутчик ждёт в завершённом походе",
+  afterArrival.expeditions[0].companions?.length,
+  1,
+);
+check(
+  "отчёт обещает биопод при завершении",
+  afterArrival.expeditions[0].log.some((entry) =>
+    entry.text.includes("ждут разбора добычи"),
+  ),
+  true,
+);
+
+const companionFinish = manager.finishExpedition("e2", "storage");
 const afterCompanion = saved();
 const settledCompanion = afterCompanion.toads.find(
   (item) => item.name === companion.name,
 );
+check("завершение с попутчиком прошло", companionFinish.success, true);
 check("попутчик создан в колонии", Boolean(settledCompanion), true);
 check("попутчик живёт в биоподе", settledCompanion?.scene_id, 1);
 check("попутчик помнит дом", settledCompanion?.homeId, 1);
-check("очередь попутчиков очищена", afterCompanion.expeditions[0].companions, []);
 check(
-  "отчёт похода упоминает попутчика",
-  afterCompanion.expeditions[0].log.some((entry) =>
-    entry.text.includes("Попутчик"),
-  ),
+  "архив похода без очереди попутчиков",
+  afterCompanion.expeditionArchive[0].companions,
+  [],
+);
+check(
+  "сообщение завершения упоминает попутчика",
+  companionFinish.message.includes("Попутчик"),
   true,
 );
 
@@ -409,14 +430,160 @@ try {
 } finally {
   Math.random = randomBeforeCompanion;
 }
+
+const noSpaceState = saved();
+const noSpaceCheck = manager.getExpeditionFoundToadsCheck(
+  noSpaceState.expeditions[0],
+  "storage",
+);
+check("без места проверка биоподов не проходит", noSpaceCheck.ok, false);
+check("попутчику нужно одно место", noSpaceCheck.needed, 1);
+check("свободных мест нет", noSpaceCheck.free, 0);
+const noSpaceBiomassCheck = manager.getExpeditionFoundToadsCheck(
+  noSpaceState.expeditions[0],
+  "biomass",
+);
+check(
+  "для биомассы биоподы не нужны",
+  noSpaceBiomassCheck.ok,
+  true,
+);
+check("для биомассы мест не требуется", noSpaceBiomassCheck.needed, 0);
+
+const noSpaceFinish = manager.finishExpedition("e3", "storage");
 const afterNoSpace = saved();
+check("без места завершение падает", noSpaceFinish.success, false);
+check(
+  "ошибка говорит про биопод",
+  noSpaceFinish.message.includes("биопод"),
+  true,
+);
 check("без места попутчик не создан", afterNoSpace.toads.length, 1);
 check(
-  "отчёт честно говорит об отсутствии места",
-  afterNoSpace.expeditions[0].log.some((entry) =>
-    entry.text.includes("не поместилось в биопод"),
-  ),
+  "поход не потерян и всё ещё ждёт разбора",
+  afterNoSpace.expeditions[0]?.id,
+  "e3",
+);
+check(
+  "попутчик всё ещё в очереди похода",
+  afterNoSpace.expeditions[0].companions?.length,
+  1,
+);
+const noSpaceBeforeBiomass = saved();
+const biomassProbeState = {
+  ...noSpaceBeforeBiomass,
+  expeditions: [
+    { ...noSpaceBeforeBiomass.expeditions[0], id: "e3-biomass" },
+  ],
+};
+const biomassProbeBefore = biomassProbeState.user.biomass;
+const biomassProbeExpected = manager.getExpeditionBiomassValue(
+  biomassProbeState.expeditions[0],
+);
+reset(biomassProbeState);
+const noSpaceBiomassFinish = manager.finishExpedition(
+  "e3-biomass",
+  "biomass",
+);
+const afterNoSpaceBiomass = saved();
+check(
+  "в биомассу без свободных биоподов завершение проходит",
+  noSpaceBiomassFinish.success,
   true,
+);
+check(
+  "попутчик в биомассе не создан",
+  afterNoSpaceBiomass.toads.length,
+  1,
+);
+check(
+  "попутчик переработан в биомассу",
+  afterNoSpaceBiomass.user.biomass > biomassProbeBefore,
+  true,
+);
+check(
+  "биомасса начислена по оценке лута и попутчика",
+  Math.round(
+    (afterNoSpaceBiomass.user.biomass - biomassProbeBefore) * 100,
+  ) / 100,
+  biomassProbeExpected,
+);
+check(
+  "сообщение говорит о переработке попутчика",
+  noSpaceBiomassFinish.message.includes("Попутчик"),
+  true,
+);
+check(
+  "в архиве нет очереди попутчиков",
+  afterNoSpaceBiomass.expeditionArchive[0].companions,
+  [],
+);
+
+// Возвращаем нетронутый e3: дальше проверим, что после постройки биопода
+// «Завершить» всё ещё селит попутчика.
+reset(noSpaceBeforeBiomass);
+
+const freedState = saved();
+freedState.scenes[0].capacity = 2;
+reset(freedState);
+const retryFinish = manager.finishExpedition("e3", "storage");
+const afterRetry = saved();
+const retriedCompanion = afterRetry.toads.find(
+  (item) => item.name === companion.name,
+);
+check("после постройки биопода завершение прошло", retryFinish.success, true);
+check("попутчик поселился во второй слот", retriedCompanion?.scene_id, 1);
+check(
+  "после завершения похода в архиве нет очереди",
+  afterRetry.expeditionArchive[0].companions,
+  [],
+);
+
+const nowBiomassCompanion = Date.now();
+reset(
+  makeState({
+    expeditions: [
+      {
+        ...returningWithCompanion,
+        id: "e4",
+        startedAt: nowBiomassCompanion - 4 * HOUR_MS,
+        returnStartedAt: nowBiomassCompanion - 2 * HOUR_MS,
+      },
+    ],
+  }),
+);
+Math.random = () => 0.9;
+try {
+  manager.processExpeditions();
+} finally {
+  Math.random = randomBeforeCompanion;
+}
+const biomassCompanionFinish = manager.finishExpedition("e4", "biomass");
+const afterBiomassCompanion = saved();
+check(
+  "в биомассу попутчик тоже перерабатывается",
+  biomassCompanionFinish.success,
+  true,
+);
+check(
+  "попутчик из биомассы не попал в биопод",
+  afterBiomassCompanion.toads.find((item) => item.name === companion.name),
+  undefined,
+);
+check(
+  "биомасса начислена за лут и попутчика",
+  afterBiomassCompanion.user.biomass > 100,
+  true,
+);
+check(
+  "сообщение биомассы упоминает переработку попутчика",
+  biomassCompanionFinish.message.includes("Попутчик"),
+  true,
+);
+check(
+  "в архиве биомассы нет очереди попутчиков",
+  afterBiomassCompanion.expeditionArchive[0].companions,
+  [],
 );
 
 console.log("\n" + "─".repeat(64));
@@ -427,6 +594,6 @@ if (failures.length > 0) {
 }
 
 console.log(
-  "✅ Походы стали агрессивнее: урон ×2, базовый риск болезни 20%, случайный попутчик работает",
+  "✅ Походы стали агрессивнее: урон ×2, риск болезни 20%, попутчик ждёт «Завершить» и селится в биопод",
 );
 

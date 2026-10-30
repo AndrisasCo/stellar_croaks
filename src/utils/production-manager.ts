@@ -1,10 +1,6 @@
 import { updateToadsBulkEnergy, updateUser } from "../backend";
 import { getGameState } from "../backend/localStorage";
 import {
-  completeAchivement,
-  completeAchivementCounter,
-} from "../backend/achivements-manager";
-import {
   getPowerGrid,
   getUnpoweredAviarySceneIds,
   resolveColonyRooms,
@@ -345,11 +341,6 @@ export const processProduction = (
 
   updateUser({ biomass: Math.round(newBiomass * 100) / 100 });
 
-  // Ачивка «Биофабрика»: сработает один раз, повторные вызовы недорогие
-  if (newBiomass >= 100) {
-    completeAchivement("biomass-100");
-  }
-
   return { gross, upkeep, net };
 };
 
@@ -401,10 +392,6 @@ export const exchangeBiomassForTokens = (
     biomass: Math.round((biomass - biomassSpent) * 100) / 100,
     tokens: state.user.tokens + tokensGained,
   });
-
-  // Обмен биомассы — такой же заработок, как продажа жаб: без этого счётчик «earn»
-  // обходил целый экономический цикл и достижения торговой группы копились неравномерно.
-  completeAchivementCounter("earn", tokensGained);
 
   return { success: true, tokensGained, biomassSpent };
 };

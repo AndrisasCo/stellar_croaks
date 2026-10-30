@@ -1,9 +1,5 @@
 import { useState, useEffect } from "react";
 import { createToad, updateUser } from "../../../../backend";
-import {
-  completeAchivement,
-  completeAchivementCounter,
-} from "../../../../backend/achivements-manager";
 import { getGameState } from "../../../../backend/localStorage";
 import { recordQuestEvent } from "../../../../backend/quests-manager";
 import {
@@ -237,7 +233,6 @@ export const useShop = () => {
       });
 
       if (itemName === Items.food) {
-        completeAchivement("buy-food");
         // Считаем именно купленные упаковки корма: покупка x10 закрывает
         // задание «купите 10 корма» одним нажатием.
         recordQuestEvent("food_bought", item[itemName] ?? 1);
@@ -359,8 +354,7 @@ export const useShop = () => {
 
     setShopState(getShopState());
     playBuy();
-    completeAchivement("buy-toad");
-    completeAchivementCounter("buyToad", 1);
+    recordQuestEvent("toad_bought", 1);
 
     createToad({ ...toad, scene_id: scene.id });
     updateUser({ tokens: currentTokens - price });

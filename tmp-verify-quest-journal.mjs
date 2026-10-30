@@ -2,7 +2,7 @@
  * Проверка журнала заданий на РЕАЛЬНОМ коде проекта.
  *
  * Скрипт бандлит движок и каталог через esbuild и проверяет:
- *   1) каталог: 41 задание (16 быстрых, 21 среднее, 4 долгих), все цепочки
+ *   1) каталог: 57 заданий (20 быстрых, 32 средних, 5 долгих), все цепочки
  *      ссылаются на существующие задания, у каждого есть награда;
  *   2) старт: видны только задания с триггером `always` — два быстрых и
  *      первый сектор магистрали;
@@ -14,9 +14,13 @@
  *      нужные задания; «забрать всё» очищает очередь наград;
  *   6) сохранение: журнал лежит отдельным ключом, статусы не теряются после
  *      повторного чтения, а прогресс по комнатам считается из `GameState`;
- *   7) генетика ×2, пять ролей экспедиционного резерва и новые задания:
+ *   7) генетика ×2, пять ролей экспедиционного резерва, новые задания:
  *      серия коллайдера, «Почти идеальный организм», элитные заказы и
- *      расширение репродукторов.
+ *      расширение репродукторов;
+ *   8) задания из достижений: покупка/продажа/разбор, редкие и странные особи,
+ *      биомасса, 100 лутбоксов и 10/50 походов;
+ *   9) награды-жабы: уникальный специалист создаётся ровно один раз, получает
+ *      биопод и попадает в коллекцию видов; генная пыль начисляется на склад.
  *
  * Запуск: node tmp-verify-quest-journal.mjs
  */
@@ -115,10 +119,10 @@ const journal = () =>
   };
 
 console.log("── 1. Каталог заданий ───────────────────────────────────────");
-check("всего заданий", catalog.QUESTS.length, 41);
-check("быстрых", catalog.QUESTS.filter((q) => q.type === "quick").length, 16);
-check("средних", catalog.QUESTS.filter((q) => q.type === "medium").length, 21);
-check("долгих", catalog.QUESTS.filter((q) => q.type === "long").length, 4);
+check("всего заданий", catalog.QUESTS.length, 57);
+check("быстрых", catalog.QUESTS.filter((q) => q.type === "quick").length, 20);
+check("средних", catalog.QUESTS.filter((q) => q.type === "medium").length, 32);
+check("долгих", catalog.QUESTS.filter((q) => q.type === "long").length, 5);
 check(
   "во всех шести сферах есть задания",
   new Set(catalog.QUESTS.map((q) => q.sphere)).size,
@@ -126,6 +130,7 @@ check(
 );
 
 const ids = new Set(catalog.QUESTS.map((q) => q.id));
+check("id заданий уникальны", ids.size, catalog.QUESTS.length);
 const chainParents = catalog.QUESTS.filter((q) => q.trigger.type === "chain");
 checkTrue(
   "все родители цепочек существуют",
@@ -134,12 +139,31 @@ checkTrue(
 check(
   "все средние задания входят ровно в одну цепочку",
   catalog.QUEST_CHAINS.reduce((sum, chain) => sum + chain.taskIds.length, 0),
-  21,
+  32,
 );
 checkTrue(
   "у каждого задания есть хотя бы одна награда",
   catalog.QUESTS.every((q) => Object.keys(q.rewards).length > 0),
 );
+const rewardTotals = catalog.QUESTS.reduce(
+  (sum, quest) => {
+    const rewards = quest.rewards;
+
+    sum.tokens += rewards.tokens ?? 0;
+    sum.astroQuax += rewards.astroQuax ?? 0;
+    sum.lootboxes += rewards.lootboxes ?? 0;
+    sum.geneDust += rewards.geneDust ?? 0;
+    sum.toads += (rewards.toads ?? []).length;
+
+    return sum;
+  },
+  { tokens: 0, astroQuax: 0, lootboxes: 0, geneDust: 0, toads: 0 },
+);
+check("суммарные Кваксы", rewardTotals.tokens, 1170);
+check("суммарные астро-кваксы", rewardTotals.astroQuax, 685);
+check("суммарные лутбоксы", rewardTotals.lootboxes, 85);
+check("суммарная генная пыль", rewardTotals.geneDust, 135);
+check("суммарные жабы-награды", rewardTotals.toads, 8);
 
 console.log("\n── 2. Чистый старт ──────────────────────────────────────────");
 store.clear();
@@ -148,7 +172,7 @@ gameStorage.updateGameState(gameStorage.getDefaultGameState());
 const start = snapshot();
 check("журнал отдельный от сейва игры", store.has(JOURNAL_KEY), true);
 check("стартовых заданий открыто", start.counts.active, 3);
-check("заданий закрыто", start.counts.locked, 38);
+check("заданий закрыто", start.counts.locked, 54);
 check("q01 открыто", entry("q01-first-sector").status, "active");
 check("q04 открыто", entry("q04-first-feed").status, "active");
 check("магистраль l01 открыта", entry("l01-first-contour").status, "active");
@@ -157,6 +181,32 @@ check(
   "прогресс q01 считается из GameState",
   entry("q01-first-sector").progress,
   0,
+);
+
+// Коллекция видов переехала из достижений в GameState: старый ключ должен
+// переноситься при первом чтении сейва и не оставаться на устройстве.
+store.set(
+  GAME_KEY,
+  JSON.stringify({ ...gameStorage.getDefaultGameState(), toadsCollection: undefined }),
+);
+store.set(
+  "achivements",
+  JSON.stringify({ toads_collection: ["tiger", "not-a-toad"] }),
+);
+const migratedState = gameStorage.getGameState();
+checkTrue(
+  "коллекция видов перенесена из достижений",
+  migratedState.toadsCollection.includes("tiger"),
+);
+check("незнакомый вид отброшен", migratedState.toadsCollection.includes("not-a-toad"), false);
+check("старый ключ достижений удалён", store.has("achivements"), false);
+
+gameStorage.mergeToadCollection(["stone", "tiger"]);
+checkTrue(
+  "облачная коллекция сливается без дублей",
+  gameStorage.getGameState().toadsCollection.filter((type) => type === "tiger")
+    .length === 1 &&
+    gameStorage.getGameState().toadsCollection.includes("stone"),
 );
 
 console.log("\n── 3. Цепочка и первая награда ──────────────────────────────");
@@ -679,8 +729,206 @@ check("m17 готово после двух новых", entry("m17-breeding-lin
 check("m17: три репродуктора", entry("m17-breeding-line").progress, 3);
 
 console.log(
-  "\n── 8. Синхронизация журнала между устройствами ─────────────",
+  "\n── 8. Задания из достижений и награды-жабы ───────────────────",
 );
+
+// Родителей цепочек отмечаем выполненными напрямую: этот блок проверяет новые
+// задания, а не повторно проходит экономику и лабораторию.
+const markQuestCompleted = (...ids) => {
+  const current = journal();
+  store.set(
+    JOURNAL_KEY,
+    JSON.stringify({
+      ...current,
+      activated: Array.from(new Set([...current.activated, ...ids])),
+      completed: Array.from(new Set([...current.completed, ...ids])),
+    }),
+  );
+};
+
+markQuestCompleted(
+  "m01-turnover",
+  "m06-laboratory",
+  "m09-genetic-diversity",
+  "m10-sample-archive",
+  "q10-first-expedition",
+);
+
+check("q17 ждёт первую покупку", entry("q17-first-purchase").status, "active");
+check("q18 ждёт первую продажу", entry("q18-first-sale").status, "active");
+
+quests.recordQuestEvent("toad_bought", 12);
+quests.recordQuestEvent("toad_sold", 1);
+quests.recordQuestEvent("toad_dissolved", 10);
+
+check("счётчик покупок жаб", snapshot().metrics.boughtToads, 12);
+check("счётчик продаж жаб", snapshot().metrics.soldToads, 1);
+check("счётчик разбора жаб", snapshot().metrics.dissolvedToads, 10);
+check("q17 закрыто покупкой", entry("q17-first-purchase").status, "ready");
+check("q18 закрыто продажей", entry("q18-first-sale").status, "ready");
+check("q20 закрыто разбором", entry("q20-first-dissolve").status, "ready");
+check("m19 закрыто 12 покупками", entry("m19-toad-trader").status, "ready");
+check("m26 открылось после q20", entry("m26-dissolve-10").status, "ready");
+
+const legendaryToad = reserveToad(9201, { rarity: 25 });
+const tinyToad = reserveToad(9202, { weight: 8 });
+const slowToad = reserveToad(9203, { speed: 0.2 });
+const mutantToad = reserveToad(9204, {}, {
+  state: { hunger: 50, genetic_fault: 85 },
+});
+const cleanGenomeToad = reserveToad(9205, {}, {
+  generation: 10,
+  state: { hunger: 50, genetic_fault: 0.5 },
+});
+
+setState((state) => ({
+  ...state,
+  toads: [
+    ...state.toads,
+    legendaryToad,
+    tinyToad,
+    slowToad,
+    mutantToad,
+    cleanGenomeToad,
+  ],
+}));
+
+check("метрика легендарных жаб", snapshot().metrics.legendaryToads, 1);
+check("метрика мини-жаб", snapshot().metrics.tinyToads, 1);
+check("метрика медлительных жаб", snapshot().metrics.slowToads, 1);
+check("метрика хаоса ДНК", snapshot().metrics.mutantToads, 1);
+check("метрика чистого генома", snapshot().metrics.perfectGenomeToads, 1);
+check("m20 закрыто качеством 25+", entry("m20-legendary-25").status, "ready");
+check("m21 закрыто скоростью 0.2", entry("m21-slow-gourmet").status, "ready");
+check("m22 закрыто весом 8", entry("m22-mini-quack").status, "ready");
+check("m23 закрыто поломкой 85", entry("m23-chaos-dna").status, "ready");
+check(
+  "m24 открылось и закрылось чистым геномом",
+  entry("m24-perfect-genome").status,
+  "ready",
+);
+
+setState((state) => ({
+  ...state,
+  user: { ...state.user, biomass: 100 },
+}));
+check("метрика биомассы", snapshot().metrics.biomass, 100);
+check("m25 закрыто 100 биомассы", entry("m25-biomass-100").status, "ready");
+
+quests.recordQuestEvent("lootbox_opened", 99);
+check("m27 закрыто 100 лутбоксами", entry("m27-lootbox-100").status, "ready");
+
+setState((state) => ({
+  ...state,
+  expeditionStats: { ...state.expeditionStats, completed: 10 },
+}));
+check("m28 закрыто 10 походами", entry("m28-expedition-10").status, "ready");
+check("l05 открылось после m28", entry("l05-perimeter-master").status, "active");
+
+setState((state) => ({
+  ...state,
+  expeditionStats: { ...state.expeditionStats, completed: 50 },
+}));
+check("l05 закрыто 50 походами", entry("l05-perimeter-master").status, "ready");
+
+const crewRewards = catalog.QUESTS.flatMap((quest) => quest.rewards.toads ?? []);
+check("жаб-наград в каталоге", crewRewards.length, 8);
+check(
+  "все жабы-награды уникальны",
+  new Set(crewRewards.map((reward) => reward.toad.name)).size,
+  8,
+);
+checkTrue(
+  "у каждой жабы-награды есть роль в команде",
+  crewRewards.every((reward) => Boolean(reward.role)),
+);
+checkTrue(
+  "у новых заданий есть лор",
+  catalog.QUESTS
+    .filter((quest) =>
+      [
+        "q17-first-purchase",
+        "q18-first-sale",
+        "q19-first-hybrid",
+        "q20-first-dissolve",
+        "m18-thousand",
+        "m19-toad-trader",
+        "m20-legendary-25",
+        "m21-slow-gourmet",
+        "m22-mini-quack",
+        "m23-chaos-dna",
+        "m24-perfect-genome",
+        "m25-biomass-100",
+        "m26-dissolve-10",
+        "m27-lootbox-100",
+        "m28-expedition-10",
+        "l05-perimeter-master",
+      ].includes(quest.id),
+    )
+    .every((quest) => (quest.lore ?? "").length > 40),
+);
+
+// В биоподах уже нет мест: добавляем новый, иначе награда-жаба не выдаётся.
+setState((state) => ({
+  ...state,
+  scenes: [
+    ...state.scenes,
+    {
+      ...state.scenes[0],
+      id: 777,
+      name: "Биопод экспедиционного корпуса",
+      capacity: 10,
+    },
+  ],
+}));
+
+const beforeCrew = readState();
+const beforeDust = Number(beforeCrew.user.storage.craftDust ?? 0);
+const claimProfessor = quests.claimQuestReward("q19-first-hybrid");
+checkTrue("q19: награда с жабой получена", claimProfessor.success);
+const professor = readState().toads.find(
+  (toad) => toad.name === "Профессор Пузырь",
+);
+check(
+  "q19: специалист появился в колонии",
+  readState().toads.filter((toad) => toad.name === "Профессор Пузырь").length,
+  1,
+);
+checkTrue(
+  "q19: жаба получила биопод",
+  typeof professor?.scene_id === "number" &&
+    readState().scenes.some((scene) => scene.id === professor.scene_id),
+);
+checkTrue(
+  "q19: вид попал в коллекцию",
+  readState().toadsCollection.includes("turtle"),
+);
+check(
+  "q19: генная пыль начислена",
+  Number(readState().user.storage.craftDust ?? 0) - beforeDust,
+  5,
+);
+
+const crewCount = readState().toads.length;
+const repeatProfessor = quests.claimQuestReward("q19-first-hybrid");
+check("q19: повторная награда запрещена", repeatProfessor.success, false);
+check("q19: второй специалист не создан", readState().toads.length, crewCount);
+
+const beforeDustQuest = Number(readState().user.storage.craftDust ?? 0);
+const beforeDustToads = readState().toads.length;
+const claimDust = quests.claimQuestReward("m22-mini-quack");
+checkTrue("m22: награда получена", claimDust.success);
+check(
+  "m22: генная пыль начислена на склад",
+  Number(readState().user.storage.craftDust ?? 0) - beforeDustQuest,
+  10,
+);
+check("m22: жаба не создаётся", readState().toads.length, beforeDustToads);
+
+console.log(
+  "\n── 9. Синхронизация журнала между устройствами ─────────────",
+);
+
 
 // Устройство A: награда уже забрана, журнал уходит в облако (game_state.quests).
 const cloudJournal = JSON.parse(store.get(JOURNAL_KEY));

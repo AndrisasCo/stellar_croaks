@@ -665,8 +665,7 @@ delete globalThis.navigator;
 // Ключ тот же, что пишет `backend/localStorage.ts` (LS_KEY).
 const LS_KEY = "Game_State6";
 const ACCOUNT_LOCAL_KEYS = [
-  // Достижения, витрина, коллайдер и гарантии лутбоксов принадлежат аккаунту.
-  "achivements",
+  // Витрина, коллайдер и гарантии лутбоксов принадлежат аккаунту.
   "toad_shop_state9",
   "toad_elite_claims",
   "toadColliderState",
@@ -681,11 +680,6 @@ await auth.signOutAccount();
 check("выход ушёл в Supabase", calls.some(([name]) => name === "signOut"), true);
 check("аккаунт сброшен", auth.getAccount(), null);
 check("сейв прошлого игрока убран", browser.store.has(LS_KEY), false);
-check(
-  "достижения прошлого игрока убраны",
-  browser.store.has("achivements"),
-  false
-);
 check(
   "витрина прошлого игрока убрана",
   browser.store.has("toad_shop_state9"),
@@ -723,16 +717,10 @@ check("игра перезапущена", browser.reloads.length, 1);
 //    но уже без локального прогресса (supabase-js при ошибке сессию не удаляет).
 signOutResponse = { error: { message: "network down" } };
 browser.store.set(LS_KEY, "{}");
-browser.store.set("achivements", "{}");
 
 const failedSignOut = await auth.signOutAccount();
 check("неудачный выход не выдаётся за успех", failedSignOut.ok, false);
 check("неудачный выход: сейв на месте", browser.store.has(LS_KEY), true);
-check(
-  "неудачный выход: достижения на месте",
-  browser.store.has("achivements"),
-  true
-);
 check("неудачный выход: без перезагрузки", browser.reloads.length, 1);
 check(
   "неудачный выход: игроку предложено повторить",

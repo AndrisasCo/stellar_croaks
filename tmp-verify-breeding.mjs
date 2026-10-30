@@ -21,7 +21,10 @@
  *      сейвов), после чего сразу идут роды;
  *   9) роды: в гнезде головастики остаются у матери, в вольере — расходятся по вольерам,
  *      а жаба без дома всё равно рожает (тик идёт по всем, а не по домам);
- *  10) в обучении пара тоже беременеет сразу — отдельной ветки ожидания больше нет.
+ *  10) в обучении пара тоже беременеет сразу — отдельной ветки ожидания больше нет;
+ *  11) лимит комнаты — 5 головастиков: роды ждут, пока весь приплод не поместится;
+ *  12) «Распределитель» переносит головастиков в биоподы, а оффлайн-догон проходит
+ *      несколько циклов и пишет события в журнал.
  *
  * Запуск: node tmp-verify-breeding.mjs
  */
@@ -216,11 +219,50 @@ const addToads = (...items) => {
   raw = JSON.stringify(state);
 };
 
+/** Включить/выключить «Инициатор» у репродуктора, как это делает «О секторе» */
+const setAutoBreeder = (enabled = true) => {
+  const state = gameState();
+  raw = JSON.stringify({
+    ...state,
+    colony: {
+      ...state.colony,
+      upgrades: {
+        ...(state.colony?.upgrades ?? {}),
+        breeding: {
+          ...(state.colony?.upgrades?.breeding ?? {}),
+          autoBreeder: true,
+          autoBreederEnabled: enabled,
+        },
+      },
+    },
+  });
+};
+
+/** Включить/выключить «Распределитель» у репродуктора */
+const setDistributor = (enabled = true) => {
+  const state = gameState();
+  raw = JSON.stringify({
+    ...state,
+    colony: {
+      ...state.colony,
+      upgrades: {
+        ...(state.colony?.upgrades ?? {}),
+        breeding: {
+          ...(state.colony?.upgrades?.breeding ?? {}),
+          distributor: true,
+          distributorEnabled: enabled,
+        },
+      },
+    },
+  });
+};
+
 /** ISO-момент, сдвинутый от «сейчас» на `hours` часов назад */
 const isoAgo = (hours) => new Date(Date.now() - hours * 3600000).toISOString();
 
 const cfg = bundle("src/utils/gamification-config.ts", "gamification-config");
 const breeding = bundle("src/utils/breeding-manager.ts", "breeding-manager");
+const distributor = bundle("src/utils/nest-distributor.ts", "nest-distributor");
 const storage = bundle("src/backend/localStorage.ts", "local-storage");
 const growth = bundle("src/utils/toad-growth.ts", "toad-growth");
 const pregnancyLib = bundle("src/utils/pregnancy.ts", "pregnancy");
@@ -229,6 +271,7 @@ const astro = bundle("src/utils/astro-shop.ts", "astro-shop");
 const housing = bundle("src/utils/housing.ts", "housing");
 const constants = bundle("src/utils/constants.tsx", "constants");
 const rooms = bundle("src/components/HexMap/rooms-config.ts", "rooms-config");
+const upgradesLib = bundle("src/utils/room-upgrades.ts", "room-upgrades");
 const colonyBuild = bundle("src/components/HexMap/colony-build.ts", "colony-build");
 const moveRules = bundle("src/components/HexMap/toad-move-rules.ts", "move-rules");
 const toadLists = bundle("src/components/HexMap/room-toad-lists.ts", "room-toad-lists");
@@ -892,6 +935,308 @@ check("уведомлений об успехе нет", notes.length, 0);
 reset();
 pairInNest();
 check("вне обучения беременность тоже сразу", findToad(2).pregnancy?.isPregnant, true);
+
+console.log("\n[9] «Инициатор»: автоухаживание после родов и по готовности пары");
+console.log("─".repeat(60));
+const autoOption = upgradesLib
+  .getRoomUpgradeOptions("breeding")
+  .find((option) => option.key === "autoBreeder");
+check("«Инициатор» есть в каталоге репродуктора", Boolean(autoOption), true);
+check("название апгрейда", autoOption?.title, "Инициатор");
+const autoPurchase = upgradesLib.getUpgradePurchasePatch(autoOption);
+check("покупка пишет автоухаживание", autoPurchase.autoBreeder, true);
+check("покупка сразу включает апгрейд", autoPurchase.autoBreederEnabled, true);
+check(
+  "выключенный апгрейд остаётся купленным",
+  upgradesLib.hasUpgrade(
+    { autoBreeder: true, autoBreederEnabled: false },
+    "autoBreeder",
+  ),
+  true,
+);
+check(
+  "выключенный апгрейд не работает",
+  upgradesLib.isUpgradeActive(
+    { autoBreeder: true, autoBreederEnabled: false },
+    "autoBreeder",
+  ),
+  false,
+);
+
+// Апгрейд включён, пара уже в слотах и готова — тик заводит ухаживание сам.
+reset();
+setAutoBreeder();
+intoNest(1);
+intoNest(2);
+notes.length = 0;
+const autoStarted = breeding.processAutoBreeders(collect);
+check("инициатор завёл готовую пару", autoStarted.started, 1);
+check("самка сразу беременна", findToad(2).pregnancy?.isPregnant, true);
+check("энергия пары списана", findToad(2).energy < 100, true);
+check("биомасса списана", gameState().user.biomass < 500, true);
+checkText("уведомление об автоматическом старте", notes.at(-1)?.content, /Инициатор/);
+check(
+  "повторный тик не заводит беременную самку",
+  breeding.processAutoBreeders(collect).started,
+  0,
+);
+
+// Выключенный «Инициатор» не запускает пару, хотя кнопка была бы активна.
+reset();
+setAutoBreeder(false);
+intoNest(1);
+intoNest(2);
+check(
+  "выключенный инициатор молчит",
+  breeding.processAutoBreeders(collect).started,
+  0,
+);
+check("беременности нет", Boolean(findToad(2).pregnancy), false);
+
+// Без сил пара не запускается: следующая попытка будет, когда силы восстановятся.
+reset();
+setAutoBreeder();
+intoNest(1);
+intoNest(2);
+patchToad(1, { energy: 0 });
+patchToad(2, { energy: 0 });
+check(
+  "без сил инициатор не тратит биомассу",
+  breeding.processAutoBreeders(collect).started,
+  0,
+);
+check("беременности нет", Boolean(findToad(2).pregnancy), false);
+
+// Без биомассы инициатор тоже ждёт: проверка та же, что у кнопки.
+reset();
+setAutoBreeder();
+intoNest(1);
+intoNest(2);
+const brokeState = gameState();
+brokeState.user.biomass = 0;
+raw = JSON.stringify(brokeState);
+check(
+  "без биомассы инициатор не запускает пару",
+  breeding.processAutoBreeders(collect).started,
+  0,
+);
+check("беременности нет", Boolean(findToad(2).pregnancy), false);
+
+// После родов пара снова начинает ухаживание, если самец в слоте и условия соблюдены.
+reset();
+pairInNest();
+setAutoBreeder();
+patchToad(1, { breedCooldownUntil: 0 });
+patchToad(2, { breedCooldownUntil: 0 });
+const startedPregnancy = findToad(2).pregnancy;
+patchToad(2, {
+  pregnancy: {
+    ...startedPregnancy,
+    pregnancyStart: Date.now() - 3600000 * 99,
+  },
+});
+notes.length = 0;
+breeding.processBreeding(collect);
+await new Promise((resolve) => setTimeout(resolve, 30));
+check(
+  "после родов самка снова беременна",
+  findToad(2).pregnancy?.isPregnant,
+  true,
+);
+check(
+  "это новая беременность, а не старая",
+  findToad(2).pregnancy?.pregnancyStart >= startedPregnancy.pregnancyStart,
+  true,
+);
+check(
+  "инициатор сообщил о новом ухаживании",
+  notes.some((item) => /Инициатор/.test(item.content ?? "")),
+  true,
+);
+check(
+  "головастики от родов остались в репродукторе",
+  gameState().toads.some(
+    (item) =>
+      item.stage === "toadpole" && item.scene_id === constants.NEST_ROOM_ID,
+  ),
+  true,
+);
+
+console.log("\n[10] Лимит головастиков и отложенные роды");
+console.log("─".repeat(60));
+check("лимит комнаты — пять головастиков", cfg.NEST_TADPOLE_CAPACITY, 5);
+reset();
+pairInNest();
+const basePregnancy = findToad(2).pregnancy;
+const nestTadpole = (id) =>
+  toad({
+    id,
+    stage: "toadpole",
+    scene_id: constants.NEST_ROOM_ID,
+    homeId: 1,
+    state: { hunger: 100 },
+  });
+addToads(...[101, 102, 103, 104].map((id) => nestTadpole(id)));
+patchToad(2, {
+  pregnancy: {
+    ...basePregnancy,
+    pregnancyStart: Date.now() - 99 * 3600000,
+    offspringCount: 2,
+  },
+});
+notes.length = 0;
+const blockedBirth = breeding.endPregnancy(findToad(2), collect);
+check("роды отложены: 4 + 2 не влезают в лимит 5", blockedBirth.blocked, true);
+check("беременность сохранилась", findToad(2).pregnancy?.isPregnant, true);
+check(
+  "головастиков по-прежнему четверо",
+  breeding.getNestTadpoleCount(constants.NEST_ROOM_ID),
+  4,
+);
+checkText("игрок получил причину", notes.at(-1)?.content, /Роды отложены/);
+
+// Освобождаем одно место: 3 + 2 = 5 — весь приплод помещается, роды проходят.
+patchToad(101, { scene_id: 1 });
+const allowedBirth = breeding.endPregnancy(findToad(2), collect);
+check("после освобождения места роды прошли", allowedBirth.blocked, false);
+check("родились оба головастика", allowedBirth.born, 2);
+check("беременность снята", Boolean(findToad(2).pregnancy), false);
+check(
+  "в репродукторе ровно лимит",
+  breeding.getNestTadpoleCount(constants.NEST_ROOM_ID),
+  cfg.NEST_TADPOLE_CAPACITY,
+);
+check(
+  "следующие роды снова отложены лимитом",
+  (() => {
+    patchToad(2, {
+      pregnancy: {
+        ...basePregnancy,
+        pregnancyStart: Date.now() - 99 * 3600000,
+        offspringCount: 1,
+      },
+    });
+    return breeding.endPregnancy(findToad(2), collect).blocked;
+  })(),
+  true,
+);
+
+console.log("\n[11] «Распределитель»: головастики уезжают в биоподы");
+console.log("─".repeat(60));
+const distributorOption = upgradesLib
+  .getRoomUpgradeOptions("breeding")
+  .find((option) => option.key === "distributor");
+check("«Распределитель» есть в каталоге", Boolean(distributorOption), true);
+check("название апгрейда", distributorOption?.title, "Распределитель");
+const distributorPurchase = upgradesLib.getUpgradePurchasePatch(
+  distributorOption,
+);
+check("покупка пишет распределитель", distributorPurchase.distributor, true);
+check(
+  "покупка сразу включает распределитель",
+  distributorPurchase.distributorEnabled,
+  true,
+);
+check(
+  "выключенный распределитель не работает",
+  upgradesLib.isUpgradeActive(
+    { distributor: true, distributorEnabled: false },
+    "distributor",
+  ),
+  false,
+);
+
+reset();
+setDistributor();
+addToads(...[201, 202, 203].map((id) => nestTadpole(id)));
+const distributed = distributor.processNestDistributors();
+check("распределитель перенёс всех троих", distributed.sent, 3);
+check("никто не остался без места", distributed.failed, 0);
+check(
+  "репродуктор освободился",
+  breeding.getNestTadpoleCount(constants.NEST_ROOM_ID),
+  0,
+);
+check(
+  "все головастики теперь в биоподе",
+  gameState()
+    .toads.filter((item) => [201, 202, 203].includes(item.id))
+    .every((item) => item.scene_id === 1),
+  true,
+);
+
+reset();
+setDistributor(false);
+addToads(nestTadpole(204));
+check(
+  "выключенный распределитель ничего не трогает",
+  distributor.processNestDistributors().sent,
+  0,
+);
+check(
+  "головастик остался в репродукторе",
+  breeding.getNestTadpoleCount(constants.NEST_ROOM_ID),
+  1,
+);
+
+console.log("\n[12] Оффлайн-догон: несколько циклов и события в журнале");
+console.log("─".repeat(60));
+const offlineFrom = Date.now() - 24 * 3600000;
+reset({ lastSaved: new Date(offlineFrom).toISOString() });
+setAutoBreeder();
+setDistributor();
+intoNest(1);
+intoNest(2);
+// Третья жаба остаётся в биоподе: после догона у неё тоже должны восстановиться силы,
+// хотя она не участвует в размножении.
+patchToad(3, { energy: 0, state: { hunger: 100 } });
+notes.length = 0;
+const offlineBreeding = breeding.processOfflineBreeding(collect, {
+  since: offlineFrom,
+  notify: true,
+});
+check("за сутки прошло больше одних родов", offlineBreeding.births > 1, true);
+check(
+  "силы жабы вне репродуктора тоже восстановились",
+  findToad(3).energy > 0,
+  true,
+);
+check(
+  "распределитель работал и в оффлайне",
+  offlineBreeding.distributed > 0,
+  true,
+);
+check(
+  "инициатор запускал пару после родов",
+  offlineBreeding.autoStarted > 1,
+  true,
+);
+checkText(
+  "в журнал попало событие о родах",
+  notes.find((item) => /🐣/.test(item.content ?? ""))?.content,
+  /🐣/,
+);
+checkText(
+  "в журнал попало событие «Инициатора»",
+  notes.find((item) => /Инициатор/.test(item.content ?? ""))?.content,
+  /пока вас не было/,
+);
+checkText(
+  "в журнал попало событие «Распределителя»",
+  notes.find((item) =>
+    /«Распределитель»: пока вас не было/.test(item.content ?? ""),
+  )?.content,
+  /переехали в биоподы/,
+);
+check(
+  "дети оффлайн-родов получили реальное время рождения",
+  gameState().toads.some(
+    (item) =>
+      item.stage === "toadpole" &&
+      new Date(item.created_at).getTime() < Date.now() - 1000,
+  ),
+  true,
+);
 
 console.log("\n" + "─".repeat(60));
 if (failures.length > 0) {

@@ -7,7 +7,7 @@
  *   1) enum и метаданные: `Items.geneDust` = "craftDust", название «Генная пыль»;
  *   2) бонус коллайдера: 0…10 пылинок = +0…10% к качеству, с округлением;
  *   3) списание: уходит только имеющееся, остаток не уходит в минус;
- *   4) продажа: 1 шт = 5 Кваксов, счётчик «earn» растёт на выручку;
+ *   4) продажа: 1 шт = 5 Кваксов, выручка не теряется;
  *   5) UI: в коллайдере ползунок и списание после старта, в продаже — свой ползунок;
  *   6) в коде не осталось обращений к старому `Items.craftDust`.
  *
@@ -112,8 +112,6 @@ const reset = (user) => {
 };
 
 const account = () => JSON.parse(raw).user;
-const achievementCounter = () =>
-  JSON.parse(achievementsRaw || "{}").counter ?? {};
 
 const model = bundle("src/models/user.ts", "user-model");
 const gene = bundle("src/utils/gene-dust.ts", "gene-dust");
@@ -194,7 +192,7 @@ check("списали только 4 ✨", spendOver.spent, 4);
 check("склад пуст, не минус", account().storage.craftDust, 0);
 check("списание нуля не проходит", gene.spendGeneDust(0).success, false);
 
-console.log("\n[6] Продажа пыли: Кваксы на счету, счётчик «earn» растёт");
+console.log("\n[6] Продажа пыли: Кваксы на счету");
 console.log("─".repeat(60));
 reset({ tokens: 500, storage: { food: 10, craftDust: 7 } });
 const soldPart = gene.sellGeneDust(3);
@@ -203,7 +201,6 @@ check("продали 3 ✨", soldPart.sold, 3);
 check("выручка 15 🔷", soldPart.tokensGained, 15);
 check("Кваксы на счету", account().tokens, 515);
 check("осталось 4 ✨", account().storage.craftDust, 4);
-check("счётчик earn учёл продажу", achievementCounter().earn, 15);
 
 reset({ tokens: 500, storage: { food: 10, craftDust: 4 } });
 const soldAll = gene.sellGeneDust(9);
@@ -211,7 +208,6 @@ check("запрос больше запаса: продали 4 ✨", soldAll.so
 check("выручка 20 🔷", soldAll.tokensGained, 20);
 check("Кваксы на счету", account().tokens, 520);
 check("склад пуст", account().storage.craftDust, 0);
-check("счётчик earn", achievementCounter().earn, 20);
 check("продажа нуля не проходит", gene.sellGeneDust(0).success, false);
 
 console.log("\n[7] UI: ползунки в коллайдере и на вкладке «Продать»");

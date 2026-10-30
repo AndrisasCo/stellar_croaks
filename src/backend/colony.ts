@@ -16,7 +16,6 @@ import {
 } from "../utils/constants";
 import { getEnclosureToads } from "../utils/housing";
 import { getToadHomeId } from "../utils/toad-location";
-import { completeAchivement } from "./achivements-manager";
 import { getGameState, updateGameState } from "./localStorage";
 import { getToadById, updateToadById } from "./index";
 
@@ -129,7 +128,6 @@ export const buildColonyRoom = (
   const scenes = [...state.scenes];
 
   let sceneId = previous?.sceneId;
-  let createdEnclosure = false;
 
   if (kind === "aviary" && !scenes.some((scene) => scene.id === sceneId)) {
     if (scenes.length >= MAX_OWNED_SCENES) {
@@ -139,7 +137,6 @@ export const buildColonyRoom = (
     const scene = createEnclosureScene(scenes);
     sceneId = scene.id;
     scenes.push(scene);
-    createdEnclosure = true;
   }
 
   /**
@@ -182,12 +179,6 @@ export const buildColonyRoom = (
     },
     scenes,
   });
-
-  // «Недвижимость»: достижение закрывается именно новым биоподом, а не постройкой
-  // любого сектора и не повторной застройкой того же гекса.
-  if (createdEnclosure) {
-    completeAchivement("buy-enclosure");
-  }
 
   return room;
 };
@@ -284,12 +275,6 @@ export const syncColonyScenes = (): number => {
   const colony = state.colony ?? EMPTY_COLONY;
   const scenes = [...state.scenes];
   let created = 0;
-
-  // Игрок мог построить дополнительный биопод до появления триггера: награда
-  // «Недвижимость» не должна потеряться в старом сейве. Вызов идемпотентен.
-  if (colony.rooms.some((room) => room.kind === "aviary")) {
-    completeAchivement("buy-enclosure");
-  }
 
   const rooms = colony.rooms.map((room) => {
     if (

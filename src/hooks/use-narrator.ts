@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { completeAchivement } from "../backend/achivements-manager";
 import { GameState } from "../backend/localStorage";
 import { Items } from "../models/user";
 import {
@@ -184,14 +183,13 @@ export const useNarrator = () => {
 
     if (narrator.step === "finale") {
       setNarrator({ status: "done", step: "finale" });
-      completeAchivement("read-tutorial");
       return;
     }
 
     goToStep(NARRATOR_STEPS[narrator.step].next);
   }, [goToStep, narrator.status, narrator.step]);
 
-  /** Пропуск без достижения: игрок всегда может вернуться в «Обучение» из меню. */
+  /** Пропуск без завершения: игрок всегда может вернуться в «Обучение» из меню. */
   const skip = useCallback(() => {
     setNarrator({ status: "done", step: "finale" });
   }, []);

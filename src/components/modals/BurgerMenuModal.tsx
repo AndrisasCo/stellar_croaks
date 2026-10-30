@@ -7,7 +7,6 @@ import { isRoomKindBuilt } from "../HexMap/colony-build";
 import { useModal } from "../ModalContext";
 import { GridNodes } from "../shared/DataGrid";
 import Modal from "../shared/Header";
-import AchivementsModal from "./AchivementsModal";
 import AuthModal from "./AuthModal";
 import LeaderboardModal from "./LeaderboardModal";
 import LoreArchiveModal from "./LoreArchiveModal";
@@ -22,7 +21,6 @@ type MenuId =
   | "storage"
   | "expedition"
   | "gallery"
-  | "stats"
   | "leaderboard"
   | "tutorial"
   | "lore"
@@ -110,14 +108,6 @@ const MENU_ITEMS: {
     desc: "Коллекция всех видов жаб",
     color: "text-purple-300",
     target: <ToadGalleryModal />,
-  },
-  {
-    id: "stats",
-    icon: MenuIcons.stats,
-    label: "Достижения",
-    desc: "Ваши достижения и прогресс",
-    color: "text-yellow-300",
-    target: <AchivementsModal />,
   },
   {
     id: "leaderboard",

@@ -5,8 +5,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 /**
- * Проверка энергии: максимум по качеству, отдых в биоподе/Медотсеке, голод,
- * аппетит, цена похода и общий тик восстановления.
+ * Проверка энергии: максимум по качеству, отдых в биоподе/репродукторе/Медотсеке,
+ * голод, аппетит, цена похода и общий тик восстановления.
  *
  * Запуск: npm run verify:energy
  */
@@ -201,8 +201,17 @@ const aviaryRooms = [
     builtAt: new Date().toISOString(),
   },
 ];
+const breedingRooms = [
+  {
+    id: "breeding_100000001",
+    slotId: "breeding",
+    kind: "breeding",
+    builtAt: new Date().toISOString(),
+  },
+];
 const hospitalColony = colony({ rooms: hospitalRooms });
 const aviaryColony = colony({ rooms: aviaryRooms });
+const breedingColony = colony({ rooms: breedingRooms });
 
 check(
   "биопод, сытость 100, аппетит 1",
@@ -249,9 +258,17 @@ check(
   regenAtFullHunger,
 );
 check(
-  "репродуктор силы не восстанавливает",
-  energy.getEnergyRegenPerHour(toad({ scene_id: "breeding" }), colony()),
-  0,
+  "репродуктор восстанавливает силы как биопод",
+  energy.getEnergyRegenPerHour(
+    toad({ scene_id: "breeding_100000001" }),
+    breedingColony,
+  ),
+  regenAtFullHunger,
+);
+check(
+  "репродуктор по id гекса тоже восстанавливает",
+  energy.getEnergyRegenPerHour(toad({ scene_id: "breeding" }), breedingColony),
+  regenAtFullHunger,
 );
 check(
   "энергосектор силы не восстанавливает",
@@ -280,6 +297,14 @@ check(
     hospitalColony,
   ),
   "hospital",
+);
+check(
+  "место восстановления: репродуктор",
+  energy.getToadEnergyRegenPlace(
+    toad({ scene_id: "breeding_100000001" }),
+    breedingColony,
+  ),
+  "breeding",
 );
 check(
   "место восстановления: нигде",
@@ -358,8 +383,9 @@ state(
       energy: 149,
       genes: { ...toad().genes, rarity: 10 },
     }),
+    toad({ id: 7, scene_id: "breeding_100000001" }),
   ],
-  hospitalRooms,
+  [...hospitalRooms, ...breedingRooms],
 );
 backend.updateToadsBulkEnergy(1, true);
 check("биопод: полный прирост за час", toadNow(1).energy, regenAtFullHunger);
@@ -368,6 +394,7 @@ check("Медотсек: полный прирост за час", toadNow(3).en
 check("голодная: без изменений", toadNow(4).energy, 0);
 check("в походе: без изменений", toadNow(5).energy, 0);
 check("упор в максимум качества: 149 → 150", toadNow(6).energy, 150);
+check("репродуктор: полный прирост за час", toadNow(7).energy, regenAtFullHunger);
 
 console.log(
   failures.length === 0

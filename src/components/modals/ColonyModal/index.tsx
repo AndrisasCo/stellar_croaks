@@ -3,7 +3,6 @@ import Modal from "../../shared/Header";
 import ModalTabs, { ModalTabItem } from "../../shared/ModalTabs";
 import { ClickButton } from "../../shared/ClickButton";
 import { useToads } from "../../ToadContext";
-import { completeAchivement } from "../../../backend/achivements-manager";
 import { useColony } from "../../../hooks/use-colony";
 import { useNotifications } from "../../../hooks/use-notification";
 import { useSoundEffects } from "../../../hooks/use-sound-effects";
@@ -101,7 +100,6 @@ const ColonyModal = () => {
     }
 
     playCrunchShort();
-    completeAchivement("feed-one");
     handleFeedToads(feedableToads.map((toad) => toad.id));
     addNotification({
       type: "success",

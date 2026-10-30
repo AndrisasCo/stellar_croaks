@@ -11,10 +11,7 @@ import {
 import { CurrencyIcon } from "../../shared/CurrencyIcon";
 import { HudPanel, SectionTitle } from "../../shared/DataGrid";
 import { ToadListCard } from "../../shared/ToadListCard";
-import {
-  completeAchivement,
-  completeAchivementCounter,
-} from "../../../backend/achivements-manager";
+import { recordQuestEvent } from "../../../backend/quests-manager";
 import { useFilters } from "../../../hooks/use-filters";
 import { Filters } from "../../shared/Filters";
 import { usePagination } from "../../../hooks/use-pagination";
@@ -141,8 +138,7 @@ const SellTab: React.FC = () => {
     if (selectedFilteredToads.length === 0) {
       return;
     }
-    completeAchivement("sell-toad");
-    completeAchivementCounter("earn", totalSellPrice);
+    recordQuestEvent("toad_sold", selectedFilteredToads.length);
 
     playCell();
     deleteToadsByIds(selectedFilteredToads);
@@ -168,11 +164,10 @@ const SellTab: React.FC = () => {
     if (!toad || isToadBusyOnExpedition(toad)) {
       return;
     }
-    completeAchivement("sell-toad");
+    recordQuestEvent("toad_sold", 1);
 
     playCell();
     const price = calculateSellPrice(toad);
-    completeAchivementCounter("earn", price);
 
     deleteToadsByIds([toadId]);
     updateUser({ tokens: tokens + price });

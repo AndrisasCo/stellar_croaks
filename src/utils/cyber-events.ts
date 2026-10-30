@@ -24,8 +24,16 @@ export interface CyberEventDef {
   effect: CyberEventEffect;
 }
 
-/** Шанс события за час игры */
-export const CYBER_EVENT_CHANCE_PER_HOUR = 0.35;
+/**
+ * Шанс события за час игры.
+ *
+ * Раньше 0.35 давало в среднем ~8 событий в сутки — слишком много для «редкого»
+ * техногенного фона. 0.06 — примерно 1.4 события в сутки; жёсткий предел
+ * (`MAX_CYBER_EVENTS_PER_DAY`) не даёт выйти за два.
+ */
+export const CYBER_EVENT_CHANCE_PER_HOUR = 0.06;
+/** Больше двух кибер-событий за любые 24 часа не бывает */
+export const MAX_CYBER_EVENTS_PER_DAY = 2;
 
 export const CYBER_EVENTS: CyberEventDef[] = [
   {

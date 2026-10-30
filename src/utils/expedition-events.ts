@@ -63,8 +63,9 @@ export interface ExpeditionEventContext {
   infect: (member: ExpeditionEventMember) => string | null;
   /**
    * Присоединить случайную жабу к походу. Жаба ещё не в команде ролей: она идёт
-   * следом, а дома Manager поселит её в свободный биопод. `false` — попутчик
-   * уже есть (лимит `EXPEDITION_MAX_COMPANIONS`).
+   * следом, а дома её либо селят в свободный биопод («Завершить»), либо
+   * перерабатывают в биомассу («В биомассу»). `false` — попутчик уже есть
+   * (лимит `EXPEDITION_MAX_COMPANIONS`).
    */
   join: (toad: Partial<Toad>) => boolean;
   /** Строка в чат похода */

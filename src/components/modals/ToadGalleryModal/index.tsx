@@ -6,7 +6,8 @@ import {
   TOAD_SPECIES_CONFIG,
   getLootboxHint,
 } from "../../../models/Toad/toad-species";
-import { getAchievementState } from "../../../backend/achivements-manager";
+import { getGameState } from "../../../backend/localStorage";
+import { getQuestById } from "../../../backend/quests-manager/quests-list";
 import { GlowWrapper } from "../../shared/GlowWrapper";
 import { DataCell, DataGrid, HudPanel } from "../../shared/DataGrid";
 import { DetailedView, type GallerySlot } from "./DetailedView";
@@ -91,8 +92,10 @@ const getHintText = (item: GallerySlot): string => {
         : "Лутбокс";
     case "shop":
       return "Продается в Торговая Капсулае";
-    case "achievement":
-      return "Награда за достижение";
+    case "quest":
+      return item.questId
+        ? `Награда за задание «${getQuestById(item.questId)?.title ?? "журнала"}»`
+        : "Награда за задание";
     case "collider":
       return "Случайный шанс получить в коллайдере";
     case "recipe":
@@ -155,7 +158,7 @@ export const ToadGalleryModal: React.FC = () => {
   const { playClick } = useSoundEffects();
   const { openModal } = useModal();
 
-  const openedToadsTypes = getAchievementState().toads_collection || [];
+  const openedToadsTypes = getGameState().toadsCollection || [];
 
   const [sortBy, setSortBy] = useState<"rarity" | "unlocked" | "name">(
     "rarity",
@@ -174,7 +177,7 @@ export const ToadGalleryModal: React.FC = () => {
         obtainedBy: config.obtainedBy,
         lootboxChanceLevel: config.lootboxChanceLevel,
         recipeHint: config.recipeHint,
-        achievementId: config.achievementId,
+        questId: config.questId,
         hidden: config.hidden,
       };
     }).filter((item) => !item.hidden || item.isUnlocked); // Скрываем скрытых, если не открыты
@@ -231,8 +234,8 @@ export const ToadGalleryModal: React.FC = () => {
       lootbox: galleryItems.filter(
         (i) => i.isUnlocked && i.obtainedBy === "lootbox",
       ).length,
-      achievement: galleryItems.filter(
-        (i) => i.isUnlocked && i.obtainedBy === "achievement",
+      quest: galleryItems.filter(
+        (i) => i.isUnlocked && i.obtainedBy === "quest",
       ).length,
       collider: galleryItems.filter(
         (i) => i.isUnlocked && i.obtainedBy === "collider",

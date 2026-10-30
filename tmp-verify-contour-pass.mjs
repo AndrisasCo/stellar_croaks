@@ -740,6 +740,7 @@ check(
   saved().expeditions[0].loot.lootboxSamples,
   1,
 );
+check("до завершения особый образец ещё не создан", saved().toads.length, 1);
 
 const sampleFinish = manager.finishExpedition("e-sample", "storage");
 const sampleToad = saved().toads.find(
@@ -765,6 +766,103 @@ check(
   "отчёт называет жабу из образца",
   sampleFinish.message.includes("Лесной странник"),
   true,
+);
+
+console.log("\n[6b] Без свободных биоподов образцы не селятся");
+console.log("─".repeat(60));
+reset(
+  makeState({
+    scenes: [{ id: 1, name: "Био Под", capacity: 1, created_at: "" }],
+    expeditions: [
+      {
+        id: "e-sample-space",
+        sectorId: 1,
+        team: [{ toadId: 1, role: "scout" }],
+        startedAt: Date.now() - HOUR_MS,
+        phase: "completed",
+        progress: 1,
+        reachedSector: true,
+        resolvedSteps: 9,
+        completedAt: Date.now(),
+        successChance: 1,
+        success: true,
+        loot: {
+          biomass: 0,
+          tokens: 0,
+          astro_quax: 0,
+          items: {},
+          samples: 2,
+          lootboxSamples: 1,
+        },
+        log: [],
+      },
+    ],
+  }),
+);
+
+const sampleSpaceCheck = manager.getExpeditionFoundToadsCheck(
+  saved().expeditions[0],
+  "storage",
+);
+const blockedSampleFinish = manager.finishExpedition(
+  "e-sample-space",
+  "storage",
+);
+const afterBlockedSample = saved();
+check(
+  "проверка говорит, что мест не хватает",
+  {
+    ok: sampleSpaceCheck.ok,
+    needed: sampleSpaceCheck.needed,
+    free: sampleSpaceCheck.free,
+  },
+  { ok: false, needed: 3, free: 0 },
+);
+check("без мест завершение падает", blockedSampleFinish.success, false);
+check("без мест образцы не созданы", afterBlockedSample.toads.length, 1);
+check(
+  "поход с образцами не потерян",
+  afterBlockedSample.expeditions[0]?.id,
+  "e-sample-space",
+);
+check(
+  "в биомассу образцы не требуют биоподов",
+  manager.getExpeditionFoundToadsCheck(
+    afterBlockedSample.expeditions[0],
+    "biomass",
+  ).ok,
+  true,
+);
+
+const sampleSpaceFreed = saved();
+sampleSpaceFreed.scenes[0].capacity = 4;
+reset(sampleSpaceFreed);
+const freedSampleFinish = manager.finishExpedition(
+  "e-sample-space",
+  "storage",
+);
+const afterFreedSample = saved();
+const foundNames = afterFreedSample.toads.map((item) => item.name);
+check(
+  "после постройки биопода завершение прошло",
+  freedSampleFinish.success,
+  true,
+);
+check(
+  "особый образец селится раньше обычных",
+  foundNames[foundNames.length - 3],
+  "Лесной странник",
+);
+check(
+  "обычные образцы тоже селятся",
+  afterFreedSample.toads.filter((item) => item.name.startsWith("Образец «"))
+    .length,
+  2,
+);
+check(
+  "архив с образцами ушёл без очереди попутчиков",
+  afterFreedSample.expeditionArchive[0].companions,
+  [],
 );
 
 console.log("\n" + "─".repeat(60));

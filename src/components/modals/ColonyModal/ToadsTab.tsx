@@ -9,7 +9,6 @@ import {
 } from "../../../utils/expedition-manager";
 import { useModal } from "../../ModalContext";
 import { useToads } from "../../ToadContext";
-import { completeAchivement } from "../../../backend/achivements-manager";
 import { useSoundEffects } from "../../../hooks/use-sound-effects";
 import {
   HospitalAdmission,
@@ -198,7 +197,6 @@ const ToadsTab = ({
   const feedToad = (toad: Toad) => {
     playCrunchShort();
     handleFeedToads([toad.id]);
-    completeAchivement("feed-one");
   };
 
   /**

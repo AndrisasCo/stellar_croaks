@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useOfflineEvents } from "../../hooks/use-offline-events";
-import { formatOfflineEventTime } from "../../utils/offline-events";
+import {
+  OFFLINE_EVENTS_VISIBLE_LIMIT,
+  formatOfflineEventTime,
+  selectVisibleOfflineEvents,
+} from "../../utils/offline-events";
 import type { OfflineEventType } from "../../utils/offline-events";
 import Modal from "../shared/Header";
 import { IconText } from "../shared/CurrencyIcon";
@@ -64,15 +68,26 @@ const pluralizeEvents = (count: number): string => {
 export const OfflineEventsModal: React.FC = () => {
   const { events, unreadCount, markAllRead } = useOfflineEvents();
   const [unreadAtOpen] = useState(unreadCount);
+  // Кого нельзя прятать за лимитом, запоминаем ДО `markAllRead`: ниже журнал
+  // отмечается прочитанным, и живой `readAt` уже не отличит новые события от старых.
+  const [pinnedAtOpen] = useState(
+    () =>
+      new Set(events.filter((event) => !event.readAt).map((event) => event.id)),
+  );
 
   useEffect(() => {
     markAllRead();
   }, [markAllRead]);
 
-  const ordered = useMemo(
-    () => [...events].sort((a, b) => b.at - a.at),
-    [events],
+  /**
+   * В списке — последние `OFFLINE_EVENTS_VISIBLE_LIMIT` записей, но непрочитанные
+   * видны всегда: даже если их больше лимита или они старше него.
+   */
+  const visible = useMemo(
+    () => selectVisibleOfflineEvents(events, pinnedAtOpen),
+    [events, pinnedAtOpen],
   );
+  const hiddenCount = events.length - visible.length;
 
   return (
     <Modal
@@ -93,13 +108,13 @@ export const OfflineEventsModal: React.FC = () => {
             : "Здесь хранятся события, которые произошли во время вашего отсутствия."}
         </p>
 
-        {ordered.length === 0 ? (
+        {visible.length === 0 ? (
           <div className="ui-panel p-4 text-center text-2xs italic text-slate-400">
             Пока вас не было, в колонии ничего не случилось.
           </div>
         ) : (
           <div className="flex  flex-col gap-2 overflow-y-auto pr-1">
-            {ordered.map((event) => {
+            {visible.map((event) => {
               const style = EVENT_STYLES[event.type];
 
               return (
@@ -134,6 +149,14 @@ export const OfflineEventsModal: React.FC = () => {
               );
             })}
           </div>
+        )}
+
+        {hiddenCount > 0 && (
+          <p className="text-3xs leading-snug text-slate-500">
+            {`Показано ${visible.length} ${pluralizeEvents(
+              visible.length,
+            )}; ещё ${hiddenCount} старых скрыто — журнал показывает последние ${OFFLINE_EVENTS_VISIBLE_LIMIT}, а непрочитанные всегда.`}
+          </p>
         )}
       </div>
     </Modal>

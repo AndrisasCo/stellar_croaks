@@ -51,6 +51,9 @@ const EVENT_NAMES: QuestEvent[] = [
   "disease_outbreak",
   "collider_toad_collected",
   "elite_order_completed",
+  "toad_bought",
+  "toad_sold",
+  "toad_dissolved",
 ];
 
 const uniqueStrings = (value: unknown): string[] =>

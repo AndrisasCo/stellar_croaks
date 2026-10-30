@@ -7,6 +7,7 @@ import {
   LootboxChanceLevel,
 } from "../../../models/Toad/toad-species";
 import { GlowWrapper } from "../../shared/GlowWrapper";
+import { getQuestById } from "../../../backend/quests-manager/quests-list";
 
 // Интерфейс для элемента галереи
 export interface GallerySlot {
@@ -20,7 +21,7 @@ export interface GallerySlot {
   obtainedBy?: ToadObtainedBy;
   lootboxChanceLevel?: LootboxChanceLevel;
   recipeHint?: string;
-  achievementId?: string;
+  questId?: string;
   price?: number;
   hidden?: boolean;
 }
@@ -34,8 +35,8 @@ const getObtainedByIcon = (obtainedBy?: ToadObtainedBy) => {
       return { icon: "🛒", label: "Торговая капсула" };
     case "lootbox":
       return { icon: "🎁", label: "Лутбокс" };
-    case "achievement":
-      return { icon: "🏆", label: "Достижение" };
+    case "quest":
+      return { icon: "🏆", label: "Задание" };
     case "collider":
       return { icon: "⚗️", label: "Коллайдер" };
     case "recipe":
@@ -126,8 +127,10 @@ const getHintText = (item: GallerySlot): string => {
         : "Лутбокс";
     case "shop":
       return "Продается в Торговая Капсулае";
-    case "achievement":
-      return "Награда за достижение";
+    case "quest":
+      return item.questId
+        ? `Награда за задание «${getQuestById(item.questId)?.title ?? "журнала"}»`
+        : "Награда за задание";
     case "collider":
       return "Случайный шанс получить в коллайдере";
     case "recipe":

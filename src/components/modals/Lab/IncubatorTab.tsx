@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { ColliderIcons } from "../../../assets/icons";
-import { completeAchivement } from "../../../backend/achivements-manager";
 import { Toad } from "../../../models/Toad";
 import { ToadTypes } from "../../../models/Toad/toad-species";
 import { useModal } from "../../ModalContext";
@@ -33,7 +32,6 @@ export default function IncubatorTab() {
     if (!activeSlot?.id) {
       return;
     }
-    completeAchivement("collider-hybrid");
     // id колбы в старом сейве мог сохраниться строкой: контекст ищет её по тому же id
     collectChild(activeSlot.id as number);
     setSlotProgress(0);

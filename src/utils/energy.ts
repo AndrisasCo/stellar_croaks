@@ -8,8 +8,10 @@ import { isToadInEnclosure } from "./toad-location";
  * Силы жаб: где и как быстро они восстанавливаются.
  *
  * Правила:
- *  - силы идут только в биоподе или Медотсеке (лазарете). В репродукторе,
- *    ⚡-секторе, «Разведке» и других секторах колонии восстановления нет;
+ *  - силы идут в биоподе, репродукторе и Медотсеке (лазарете). В ⚡-секторе,
+ *    «Разведке» и других секторах колонии восстановления нет;
+ *  - репродуктор восстанавливает силы с той же скоростью, что биопод: пара
+ *    отдыхает между ухаживаниями, не выходя из сектора;
  *  - в походе силы не восстанавливаются;
  *  - при сытости 0 (`Toad.state.hunger`) восстановление останавливается;
  *  - минимум — `ENERGY_REGEN_BASE_PER_HOUR` в час при сытости 1. Дальше скорость
@@ -28,24 +30,28 @@ export const ENERGY_REGEN_MIN_HUNGER = 1;
 /** Во сколько раз быстрее силы идут при сытости 100 относительно сытости 1 */
 export const ENERGY_REGEN_MAX_HUNGER_MULTIPLIER = 2;
 
-/** Где жаба восстанавливает силы: биопод, Медотсек или нигде */
-export type EnergyRegenPlace = "biopod" | "hospital" | null;
+/** Где жаба восстанавливает силы: биопод, репродуктор, Медотсек или нигде */
+export type EnergyRegenPlace = "biopod" | "breeding" | "hospital" | null;
 
 /** id секторов колонии указанного вида (по id гекса, как в `Toad.scene_id`) */
 const getRoomIds = (
   colony: ColonyState | null | undefined,
-  kind: "aviary" | "hospital",
+  kind: "aviary" | "breeding" | "hospital",
 ): string[] =>
   (colony?.rooms ?? [])
     .filter((room) => room.kind === kind)
-    .map((room) => room.slotId ?? room.id);
+    .flatMap((room) =>
+      [room.id, room.slotId].filter(
+        (id): id is string => typeof id === "string",
+      ),
+    );
 
 /**
  * Место восстановления сил.
  *
- * Числовой `scene_id` — биопод. Строковый — сектор колонии: из них силы даёт
- * только Медотсек. Строковый id биопода оставлен для старых сейвов, где гекс-биопод
- * мог записаться как сектор.
+ * Числовой `scene_id` — биопод. Строковый — сектор колонии: силы дают Медотсек
+ * и репродуктор (с той же скоростью, что биопод). Строковый id биопода оставлен
+ * для старых сейвов, где гекс-биопод мог записаться как сектор.
  */
 export const getToadEnergyRegenPlace = (
   toad: Toad,
@@ -61,6 +67,13 @@ export const getToadEnergyRegenPlace = (
 
   if (isToadInHospital(toad, getHospitalRoomIds(colony))) {
     return "hospital";
+  }
+
+  if (
+    typeof toad.scene_id === "string" &&
+    getRoomIds(colony, "breeding").includes(toad.scene_id)
+  ) {
+    return "breeding";
   }
 
   if (
@@ -92,7 +105,7 @@ export const getEnergyHungerMultiplier = (hunger: number): number => {
 /**
  * Сколько сил в час получает жаба прямо сейчас.
  *
- * Возвращает 0, если жаба не в биоподе/Медотсеке, в походе или голодна.
+ * Возвращает 0, если жаба не в биоподе/репродукторе/Медотсеке, в походе или голодна.
  */
 export const getEnergyRegenPerHour = (
   toad: Toad,

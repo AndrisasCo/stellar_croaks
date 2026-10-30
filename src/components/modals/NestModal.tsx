@@ -8,6 +8,7 @@ import { useRoomPowerTab } from "../../hooks/use-room-power-tab";
 import { useSoundEffects } from "../../hooks/use-sound-effects";
 import {
   NEST_ROOM_TOAD_SLOTS,
+  NEST_TADPOLE_CAPACITY,
   getBreedPairBiomassCost,
   getEnergyCost,
   getToadEnergy,
@@ -22,12 +23,13 @@ import {
   getNestSlotSex,
   startNestCourtship,
 } from "../../utils/breeding-manager";
-import { placeToadInRoom } from "../../backend/colony";
+import { placeToadInRoom, getRoomUpgrades } from "../../backend/colony";
 import {
   EXPEDITION_TOAD_BUSY_REASON,
   isToadBusyOnExpedition,
 } from "../../utils/expedition-manager";
 import { CURRENCY_CONFIG, NEST_ROOM_ID } from "../../utils/constants";
+import { isUpgradeActive } from "../../utils/room-upgrades";
 import { getAstroBalance } from "../../utils/astro-shop";
 import { resolveColonyRooms } from "../HexMap/colony-build";
 import { ClickButton } from "../shared/ClickButton";
@@ -61,11 +63,17 @@ import { ProgressBar } from "./ToadInfoModal/ProgressBar";
  * (переключатель «Не подходят») — чтобы не искать ответ, почему жабы нет в списке.
  *
  * Ухаживание заводит игрок: посадил самку в первый слот, самца во второй — и нажал
- * «Начать ухаживание». Кнопка активна не всегда: пока пара отдыхает или не хватает
- * биомассы, под кнопкой висит причина (`checkNestCourtship`). Ухаживание мгновенное:
- * самка сразу беременеет и остаётся в репродукторе до родов (её нельзя отселить,
- * но можно ускорить беременность Сияющей мушкой ✨), а самца игрок может забрать
- * в биопод — он больше не занят парой.
+ * «Начать ухаживание». С апгрейдом «Инициатор» ту же проверку повторяет тик и
+ * запускает пару сам (`breeding-manager.ts` → `processAutoBreeders`). Кнопка активна
+ * не всегда: пока пара отдыхает или не хватает биомассы, под кнопкой висит причина
+ * (`checkNestCourtship`). Ухаживание мгновенное: самка сразу беременеет и остаётся
+ * в репродукторе до родов (её нельзя отселить, но можно ускорить беременность
+ * Сияющей мушкой ✨), а самца игрок может забрать в биопод — он больше не занят парой.
+ *
+ * Роды ждут места: в репродукторе помещается `NEST_TADPOLE_CAPACITY` головастиков,
+ * и весь приплод должен влезть целиком. Апгрейд «Распределитель» сам переносит
+ * головастиков в свободные биоподы (`utils/nest-distributor.ts`), поэтому пара может
+ * рожать дальше без ручной разгрузки.
  *
  * Табы — общие для всех секторов (`shared/ModalTabs`): пары репродуктора первыми, «Данные
  * сектора» (`modals/RoomDataTab.tsx`) — последним. Репродуктор открывают и из лаборатории
@@ -229,14 +237,28 @@ export default function NestModal({
     [gameState.colony, gameState.scenes],
   );
 
-  /** Жабы, которые физически стоят в этом репродукторе: их и показывают слоты */
+  /**
+   * Жабы, которые физически стоят в этом репродукторе: их и показывают слоты.
+   * Принимаем все id комнаты — постройку могли адресовать и id гекса, и её
+   * каноническим id (как это делает `getNestRoomIds` в менеджере).
+   */
+  const nestRoomIds = new Set(
+    [roomId, room?.id, room?.slotId].filter(
+      (id): id is string => typeof id === "string",
+    ),
+  );
   const nestToads = allToads.filter(
-    (toad) => toad.scene_id === roomId && !isToadBusyOnExpedition(toad),
+    (toad) =>
+      typeof toad.scene_id === "string" &&
+      nestRoomIds.has(toad.scene_id) &&
+      !isToadBusyOnExpedition(toad),
   );
   /** Взрослые занимают места репродуктора… */
   const nestAdults = nestToads.filter((toad) => toad.stage === "adult");
-  /** …а головастики, рождённые в репродукторе, живут поверх мест, пока их не вынесут */
+  /** …а головастики живут отдельно от слотов пары и ограничены лимитом комнаты */
   const nestChildren = nestToads.filter((toad) => toad.stage !== "adult");
+  /** В репродукторе больше нет места под весь следующий приплод. */
+  const nestChildrenFull = nestChildren.length >= NEST_TADPOLE_CAPACITY;
 
   /**
    * Два места репродуктора: первый слот — самка, второй — самец (Часть 3.2). Слота два,
@@ -311,6 +333,14 @@ export default function NestModal({
   const nestFemale = nestAdults.find((toad) => toad.sex === "female") ?? null;
   const pregnantInNest =
     nestAdults.find((toad) => toad.pregnancy?.isPregnant) ?? null;
+  const pendingOffspring = Math.max(
+    0,
+    Math.floor(pregnantInNest?.pregnancy?.offspringCount ?? 0),
+  );
+  /** Хватит ли места под текущий приплод (или уже занят весь лимит комнаты). */
+  const nestBirthBlocked =
+    nestChildrenFull ||
+    nestChildren.length + pendingOffspring > NEST_TADPOLE_CAPACITY;
   /** Сияющие мушки ✨ — цена ускорения беременности в репродукторе */
   const sparkleFlys = account?.storage?.sparkleFlys || 0;
   const pairEnergyCost =
@@ -321,6 +351,18 @@ export default function NestModal({
 
   /** Пара репродуктора для кнопки ухаживания: активна ли кнопка и чего не хватает */
   const courtship = checkNestCourtship(roomId);
+  /**
+   * Гекс репродуктора: модалку могли открыть из лаборатории без `room`, тогда
+   * находим его в карте колонии — иначе апгрейды не были бы видны.
+   */
+  const nestRoomConfig =
+    room ??
+    mapRooms.find((item) => item.id === roomId || item.slotId === roomId);
+  const nestUpgrades = nestRoomConfig ? getRoomUpgrades(nestRoomConfig) : {};
+  /** «Инициатор»: репродуктор сам заводит пару, когда условия соблюдены */
+  const autoBreeding = isUpgradeActive(nestUpgrades, "autoBreeder");
+  /** «Распределитель»: головастиков переносят в биоподы автоматически */
+  const distributorActive = isUpgradeActive(nestUpgrades, "distributor");
 
   /** Что сейчас происходит в репродукторе — подсказка рядом с кнопкой ухаживания */
   const nestHint = ((): string | null => {
@@ -535,8 +577,8 @@ export default function NestModal({
             {extraNestAdults.length > 0 && (
               <HudPanel tone="rose" className="flex flex-col gap-1.5 p-2">
                 <div className="text-2xs leading-snug text-red-200">
-                  Репродуктор переполнен, очистите слоты прежде чем начать
-                  ухаживание.
+                  В репродукторе больше двух взрослых жаб — освободите слоты
+                  пары, прежде чем начинать ухаживание.
                 </div>
 
                 {extraNestAdults.map((toad) => (
@@ -619,6 +661,13 @@ export default function NestModal({
               </ClickButton>
             )}
 
+            {autoBreeding && (
+              <p className="text-2xs leading-snug text-fuchsia-200">
+                «Инициатор» включён: когда пара отдохнёт и условий хватит,
+                ухаживание начнётся автоматически.
+              </p>
+            )}
+
             <div
               className={`text-2xs leading-snug ${
                 courtship.ready ? "text-emerald-200" : "text-amber-200"
@@ -627,21 +676,33 @@ export default function NestModal({
               {courtship.message}
             </div>
 
-            {/* Головастики, рождённые в репродукторе: переполнение разрешено, их выносит игрок */}
+            {/* Головастики, рождённые в репродукторе: места ограничены лимитом комнаты */}
             {nestChildren.length > 0 && (
-              <HudPanel tone="amber" className="flex flex-col gap-1 p-2">
+              <HudPanel
+                tone={nestBirthBlocked ? "rose" : "amber"}
+                className="flex flex-col gap-1 p-2"
+              >
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-amber-200 font-semibold">
                     <ToadIcon className="mr-1 h-3 w-3" />
-                    Головастики в репродукторе: {nestChildren.length}
+                    Головастики в репродукторе: {nestChildren.length}/
+                    {NEST_TADPOLE_CAPACITY}
                   </span>
                   <span className="text-2xs text-slate-400">
-                    мест: {NEST_ROOM_TOAD_SLOTS}
+                    {distributorActive ? "📦 авто" : "лимит комнаты"}
                   </span>
                 </div>
                 <div className="text-2xs text-slate-400 leading-snug">
-                  Перенесите их в биопод на карте колонии
+                  {distributorActive
+                    ? "«Распределитель» переносит их в свободные биоподы автоматически."
+                    : "Перенесите их в биопод на карте колонии."}
                 </div>
+                {nestBirthBlocked && (
+                  <div className="text-2xs leading-snug text-rose-200">
+                    🚫 Роды отложены: для всего приплода не хватает места.
+                    Перенесите головастиков или включите «Распределитель».
+                  </div>
+                )}
                 <div className="space-y-1.5">
                   {nestChildren.map((child) => (
                     <ToadListCard

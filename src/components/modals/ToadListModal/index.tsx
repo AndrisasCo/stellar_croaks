@@ -4,7 +4,6 @@ import Modal from "../../shared/Header";
 import { updateToadsByIds } from "../../../backend";
 import { useSoundEffects } from "../../../hooks/use-sound-effects";
 import { useToads } from "../../ToadContext";
-import { completeAchivement } from "../../../backend/achivements-manager";
 import { ToadListCard } from "../../shared/ToadListCard";
 import { Filters } from "../../shared/Filters";
 import { useFilters } from "../../../hooks/use-filters";
@@ -328,7 +327,6 @@ const ToadListModal: React.FC<{
 
     playCrunchShort();
     handleFeedToads(feedIds);
-    completeAchivement("feed-one");
     setSelectedToads(new Set());
   };
 
@@ -686,7 +684,6 @@ const ToadListModal: React.FC<{
                             e.stopPropagation();
                             playCrunchShort();
                             handleFeedToads([toad.id]);
-                            completeAchivement("feed-one");
                           }}
                           className="rounded-none border border-green-500/30 bg-green-500/20 px-2 py-1 font-mono text-2xs font-medium leading-none text-green-300 transition-all hover:bg-green-500/30"
                           title="Покормить"

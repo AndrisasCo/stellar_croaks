@@ -1,10 +1,13 @@
 import { updateToadById, updateUser } from "../backend";
 import { getGameState } from "../backend/localStorage";
+import { platform } from "../platform";
 import {
   CyberEventDef,
   CYBER_EVENT_CHANCE_PER_HOUR,
+  MAX_CYBER_EVENTS_PER_DAY,
   pickCyberEvent,
 } from "./cyber-events";
+import { DAY_MS } from "./date";
 import { infectToad } from "./disease-manager";
 
 // === ЧАСТЬ 3.6. Кибер-события (техногенные риски и удачи) ===
@@ -16,6 +19,51 @@ import { infectToad } from "./disease-manager";
 const pickColonyToad = () => {
   const toads = getGameState().toads;
   return toads[Math.floor(Math.random() * toads.length)];
+};
+
+/**
+ * Когда случались последние кибер-события (мс).
+ *
+ * Храним на устройстве, а не в памяти модуля: иначе перезагрузка обнуляла бы
+ * суточный лимит, и игрок снова получал бы пачку событий подряд. Ключ привязан
+ * к аккаунту, чтобы события одного игрока не блокировали другого на том же устройстве.
+ */
+const getCyberHistoryKey = (): string =>
+  `Stellar_Croak_Cyber_Event_Times_v1:${getGameState().user.id ?? "local"}`;
+
+const readRecentCyberEventTimes = (now = Date.now()): number[] => {
+  try {
+    const raw = platform.storage.get(getCyberHistoryKey());
+
+    if (!raw) {
+      return [];
+    }
+
+    const parsed: unknown = JSON.parse(raw);
+
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    return parsed.filter(
+      (at): at is number =>
+        typeof at === "number" && Number.isFinite(at) && now - at < DAY_MS,
+    );
+  } catch (error) {
+    console.warn("[events-manager] не удалось прочитать историю событий", error);
+    return [];
+  }
+};
+
+const rememberCyberEvent = (at: number, previous: number[]): void => {
+  try {
+    platform.storage.set(
+      getCyberHistoryKey(),
+      JSON.stringify([...previous, at].slice(-MAX_CYBER_EVENTS_PER_DAY)),
+    );
+  } catch (error) {
+    console.warn("[events-manager] не удалось сохранить историю событий", error);
+  }
 };
 
 /**
@@ -68,13 +116,22 @@ export const applyCyberEvent = (event: CyberEventDef): string => {
 
 /**
  * Прокрутка кибер-событий за прошедшие часы.
- * Не более одного события за тик (оффлайн-абузы не страшны).
+ *
+ * Не более одного события за вызов (оффлайн-абузы не страшны) и не более
+ * `MAX_CYBER_EVENTS_PER_DAY` за любые 24 часа — лимит хранится на устройстве.
  */
 export const processCyberEvents = (
   hoursPassed: number,
   addNotification?: (notification: any) => void
 ): CyberEventDef[] => {
   if (hoursPassed <= 0) {
+    return [];
+  }
+
+  const now = Date.now();
+  const recent = readRecentCyberEventTimes(now);
+
+  if (recent.length >= MAX_CYBER_EVENTS_PER_DAY) {
     return [];
   }
 
@@ -92,6 +149,7 @@ export const processCyberEvents = (
     const event = pickCyberEvent();
     const description = applyCyberEvent(event);
     applied.push(event);
+    rememberCyberEvent(now, recent);
 
     addNotification?.({
       type: event.kind === "positive" ? "success" : "warn",

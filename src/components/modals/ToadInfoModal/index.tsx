@@ -15,12 +15,14 @@ import { useSoundEffects } from "../../../hooks/use-sound-effects";
 import { updateToadById, updateUserStorage } from "../../../backend";
 import { moveToadToAviary } from "../../../backend/colony";
 import { getToadHomeId } from "../../../utils/toad-location";
-import { completeAchivement } from "../../../backend/achivements-manager";
 import { nameGenerator } from "../../../utils/name-generator";
 import { Tooltip } from "../../shared/Tooltip";
 import { getGameState } from "../../../backend/localStorage";
 import { useNotifications } from "../../../hooks/use-notification";
-import { endPregnancy } from "../../../utils/breeding-manager";
+import {
+  endPregnancy,
+  processAutoBreeders,
+} from "../../../utils/breeding-manager";
 import {
   BIOMASS_PER_TOAD_HOUR,
   PRODUCTION_HUNGRY_FACTOR,
@@ -274,6 +276,8 @@ export const ToadInfo = () => {
       } else {
         // Мать уже взрослая: беременность не меняет стадию — только рожает
         endPregnancy(toad, addNotification);
+        // Роды — повод для «Инициатора» сразу попробовать следующую пару
+        processAutoBreeders(addNotification);
       }
     } else {
       addNotification({
@@ -679,8 +683,8 @@ export const ToadInfo = () => {
                         {EXPEDITION_ENERGY_BASE} ⚡ за ближний сектор и на{" "}
                         {EXPEDITION_ENERGY_PER_DEPTH} ⚡ дороже за каждый
                         следующий (силы тратит каждая жаба команды). Силы
-                        восстанавливаются только в биоподе или Медотсеке, при
-                        сытости выше 0; чем выше аппетит, тем быстрее.
+                        восстанавливаются в биоподе, репродукторе и Медотсеке,
+                        при сытости выше 0; чем выше аппетит, тем быстрее.
                       </p>
                     </Tooltip>
                   )
@@ -970,7 +974,6 @@ export const ToadInfo = () => {
 
                   playCrunchShort();
                   handleFeedToads([toad.id]);
-                  completeAchivement("feed-one");
                 }}
                 disabled={onExpedition}
                 title={onExpedition ? EXPEDITION_TOAD_BUSY_REASON : undefined}

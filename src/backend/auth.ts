@@ -1,6 +1,5 @@
 import { platform } from "../platform";
 import { isAutomatedBrowser } from "./automation";
-import { clearAchievementState } from "./achivements-manager";
 import { clearColliderState } from "./collider-manager";
 import { clearGameState } from "./localStorage";
 import { clearQuestJournalState } from "./quests-manager/storage";
@@ -645,11 +644,10 @@ export const signOutAccount = async (): Promise<SignOutResult> => {
   // Журнал заданий тоже принадлежит аккаунту: иначе следующий игрок на этом
   // устройстве унаследует чужой архив наград и счётчики событий.
   clearQuestJournalState();
-  // Достижения, витрина, коллайдер и гарантии лутбоксов — часть прогресса
-  // аккаунта. Без очистки следующий игрок получил бы чужие забранные награды
+  // Витрина, коллайдер и гарантии лутбоксов — часть прогресса аккаунта.
+  // Без очистки следующий игрок получил бы чужие забранные награды
   // (и они бы уехали в его облако), а его собственные награды выглядели бы
   // уже полученными.
-  clearAchievementState();
   clearShopState();
   clearColliderState();
   resetLootboxPity();

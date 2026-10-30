@@ -5,6 +5,7 @@ import HexMapScreen from "../HexMap";
 import Narrator from "../Narrator";
 import {
   processBreeding,
+  processOfflineBreeding,
   processToadpoleGrowth,
 } from "../../utils/breeding-manager";
 import {
@@ -19,6 +20,7 @@ import { EMPTY_COLONY } from "../../models/colony";
 import { resolveColonyRooms } from "../HexMap/colony-build";
 import { getRoomToadLists } from "../HexMap/room-toad-lists";
 import { processAutoFeeders } from "../../utils/auto-feeder";
+import { processNestDistributors } from "../../utils/nest-distributor";
 import { processQuarantineCatchers } from "../../utils/quarantine-catcher";
 import { processRepatriators } from "../../utils/repatriator";
 import {
@@ -41,6 +43,7 @@ import { useTelegram } from "../../hooks/use-tg";
 import { useNotifications } from "../../hooks/use-notification";
 import { useOfflineEvents } from "../../hooks/use-offline-events";
 import { getGameState, saveGameState } from "../../backend/localStorage";
+import { QUEST_JOURNAL_UPDATED_EVENT } from "../../backend/quests-manager";
 import type { OfflineEventType } from "../../utils/offline-events";
 import { preloadImages } from "../../utils/ui";
 
@@ -61,10 +64,6 @@ const UPDATES_LOG = [
   {
     time: 1764864100220,
     msg: "В Торговая Капсула добавлены новые предметы!",
-  },
-  {
-    time: 1764691777865,
-    msg: "Добавлены ЕЩЕ достижения! 🥇",
   },
 ];
 
@@ -87,11 +86,13 @@ const BOOT_STEPS: Record<
 };
 
 /**
- * Тик голода вместе с автокормушками.
+ * Тик голода вместе с автокормушками и «Распределителем».
  *
  * Автокормушка кормит жаб сектора со склада, едва их голод доходит до 20 % (`utils/auto-feeder.ts`),
  * поэтому она идёт сразу за тиком голода — и при оффлайн-догоне, и в игровом цикле. Жильцов
  * секторов считает карта, а состояние берём из сейва, а не из React: таймеры живут вне рендера.
+ * После кормления распределитель переносит головастиков из репродукторов в биоподы — так
+ * порядок «покормить → распределить» соблюдается и без отдельного тика репродуктора.
  *
  * `newbornSince` — момент закрытия игры: по нему кормушка понимает, что головастик родился
  * в оффлайне, и ставит таймер роста на время рождения, а не на вход в игру.
@@ -105,6 +106,10 @@ const runHungerTick = (hoursPassed: number, newbornSince?: number | null) => {
   processAutoFeeders(rooms, getRoomToadLists(rooms, state.toads), {
     newbornSince,
   });
+  // После кормления — распределение: «Распределитель» отправляет головастиков в
+  // свободные биоподы. Тик репродуктора (`processBreeding`) тоже его вызывает, но
+  // здесь порядок «покормить → распределить» соблюдается сразу после автокормушки.
+  processNestDistributors();
 };
 
 /**
@@ -197,17 +202,26 @@ export default function ToadGame() {
         ]);
       };
 
-      // Роды без проверки роста: оффлайн-догон сначала кормит новорождённых
-      // автокормушкой, и только потом растит их (`processToadpoleGrowth` ниже).
-      processBreeding(collectOfflineEvent, { skipGrowth: true });
+      // Репродуктор догоняет отсутствие по своему таймлайну: роды в фактический срок,
+      // «Распределитель» освобождает место, «Инициатор» запускает следующую пару.
+      // Силы восстанавливаются между этими событиями у ВСЕХ жаб в местах отдыха
+      // (биопод/репродуктор/Медотсек), а не только у пары: `processEnergyRegen`
+      // внутри догона глобальный. Отдельный общий вызов ниже больше не нужен,
+      // иначе силы восстанавливались бы дважды.
+      processOfflineBreeding(collectOfflineEvent, {
+        since: lastPlayTime,
+        notify: true,
+        regenEnergy: offlineHours >= GAME_TICK_HOURS,
+      });
 
       if (offlineHours >= GAME_TICK_HOURS) {
         // `lastPlayTime` — момент закрытия игры: головастики, родившиеся позже него,
         // родились в оффлайне, и их таймер роста идёт с рождения, а не с входа в игру.
+        // Кормление идёт после догона: автокормушка кормит и новорождённых, а рост
+        // стартует от фактического времени родов.
         runHungerTick(offlineHours, lastPlayTime);
-        // Оффлайн-доход фермы и восстановление сил жаб (Часть 3.3)
+        // Оффлайн-доход фермы (Часть 3.3). Силы уже восстановлены в догоне репродуктора.
         processProduction(offlineHours);
-        processEnergyRegen(offlineHours);
         // Кибер-риски оффлайна (Часть 3.6)
         processDiseases(offlineHours);
         processCyberEvents(offlineHours, collectOfflineEvent);
@@ -258,7 +272,8 @@ export default function ToadGame() {
         }, 60 * 60 * 1000),
       );
 
-      // Роды и рост головастиков. Новые беременности запускаются вручную («Репродуктор»)
+      // Роды и рост головастиков. Новые беременности запускаются вручную
+      // («Репродуктор») или апгрейдом «Инициатор» (`processBreeding`).
       intervals.push(
         window.setInterval(
           () => processBreeding(addNotification),
@@ -395,23 +410,28 @@ export default function ToadGame() {
     };
   }, []);
 
-  // Слушатель достижений: тост показываем в любой момент игры.
+  // Слушатель заданий: тост показываем в любой момент игры.
   useEffect(() => {
-    const handleAchievement = (event: Event) => {
-      const { name } = (event as CustomEvent<{ name?: string }>).detail ?? {};
+    const handleQuest = (event: Event) => {
+      const { completed } = (event as CustomEvent<{ completed?: string[] }>)
+        .detail ?? {};
+
+      if (!completed?.length) {
+        return;
+      }
 
       addNotification({
         type: "success",
-        content: `Новое достижение! ${name ?? ""}`,
+        content: `Задание выполнено! Загляните в журнал 📜`,
       });
     };
 
-    window.addEventListener("AchivementCompleted", handleAchievement);
+    window.addEventListener(QUEST_JOURNAL_UPDATED_EVENT, handleQuest);
 
     return () => {
-      window.removeEventListener("AchivementCompleted", handleAchievement);
+      window.removeEventListener(QUEST_JOURNAL_UPDATED_EVENT, handleQuest);
     };
-  }, []);
+  }, [addNotification]);
 
   return (
     <div className="min-h-[100dvh] flex flex-col bg-[#070c14]">

@@ -5,14 +5,10 @@ import { ColliderState } from "../models/types";
 import {
   attachIdentity,
   getGameState,
+  mergeToadCollection,
   updateGameState,
   type GameState,
 } from "./localStorage";
-import {
-  getAchievementState,
-  mergeCloudAchievements,
-  type AchivementsState,
-} from "./achivements-manager";
 import { loadColliderState, saveColliderState } from "./collider-manager";
 import {
   getShopState,
@@ -275,7 +271,7 @@ export const updateLeaderbord = async (accountId?: string) => {
     return;
   }
 
-  const { user, toads } = getGameState();
+  const { user, toads, toadsCollection } = getGameState();
   const ldData = await getLeaderboardByUser(id);
 
   if (!ldData?.data) {
@@ -291,7 +287,8 @@ export const updateLeaderbord = async (accountId?: string) => {
     // Визитку Telegram обновляем вместе со строкой: по ней бот находит игрока,
     // чтобы прислать уведомление.
     tg_id: user.tg_id,
-    total_species: getAchievementState().toads_collection?.length || 0,
+    total_species:
+      toadsCollection?.length || new Set(toads.map((toad) => toad.type)).size,
     toads_collection: buildToadsCollection(toads),
   };
 
@@ -656,7 +653,6 @@ export const createGameStateDB = async (accountId?: string) => {
     user_id: id,
     tg_id: user.tg_id,
     content: getGameState(),
-    achievements: getAchievementState(),
     collider: loadColliderState(),
     shop: getShopState(),
     quests: getQuestJournalState(),
@@ -698,7 +694,6 @@ export const updateGameStateDB = async (accountId?: string) => {
       content: allState,
       // Визитку Telegram держим свежей: по ней бот находит игрока для уведомлений.
       tg_id: user.tg_id,
-      achievements: getAchievementState(),
       collider: loadColliderState(),
       shop: getShopState(),
       quests: getQuestJournalState(),
@@ -751,7 +746,11 @@ export type GameSyncOutcome = {
 type StoredGameState = {
   created_at: string;
   content: GameState;
-  achievements: AchivementsState;
+  /**
+   * Устаревшая колонка достижений. Новые сохранения её не пишут, но старые
+   * аккаунты хранят там коллекцию открытых видов жаб.
+   */
+  achievements?: { toads_collection?: unknown } | null;
   collider: ColliderState;
   shop?: ShopState | null;
   /** Журнал заданий: архив наград и счётчики событий (см. quests-manager/storage). */
@@ -777,10 +776,11 @@ const MERGE_OK: MergeOutcome = { ok: true, retryable: false };
 const MERGE_RETRY: MergeOutcome = { ok: false, retryable: true };
 
 /**
- * Переносит облачный сейв в localStorage: игру, достижения, коллайдер, магазин.
+ * Переносит облачный сейв в localStorage: игру, коллекцию видов, коллайдер, магазин.
  *
- * Достижения не перезаписываются «как есть»: `mergeCloudAchievements` сохраняет
- * уже забранные награды и счётчики, которых в облаке может не быть.
+ * Коллекция видов из старой колонки `achievements` сливается с новой
+ * `GameState.toadsCollection`: иначе на новом устройстве Жабопедия выглядела бы
+ * пустой, хотя игрок уже открывал эти виды.
  */
 const applyCloudGameState = (
   stored: StoredGameState,
@@ -792,8 +792,8 @@ const applyCloudGameState = (
       : { ...stored.content },
   );
 
-  if (stored.achievements && Object.keys(stored.achievements).length) {
-    mergeCloudAchievements(stored.achievements);
+  if (stored.achievements?.toads_collection) {
+    mergeToadCollection(stored.achievements.toads_collection);
   }
   if (stored.collider && Object.keys(stored.collider).length) {
     saveColliderState(stored.collider);
@@ -883,10 +883,12 @@ const mergeGameState = async (accountId: string): Promise<MergeOutcome> => {
   // Иначе новое устройство начинает журнал с нуля и закрывает те же задания снова.
   mergeCloudQuestJournal(stored.quests);
 
-  // Достижения — такой же журнал наград (групповые награды выдают жаб и лутбоксы).
-  // Слияние идёт до сравнения `lastSaved`, иначе офлайн-устройство с более новым
-  // сейвом могло бы стереть из облака уже забранные награды и открыть их повторно.
-  mergeCloudAchievements(stored.achievements);
+  // Старая колонка достижений: забираем из неё только коллекцию видов жаб.
+  // Слияние идёт до сравнения `lastSaved`, чтобы новый сейв без коллекции не
+  // обнулил открытые виды на этом устройстве.
+  if (stored.achievements?.toads_collection) {
+    mergeToadCollection(stored.achievements.toads_collection);
+  }
 
   // Сдачи элитных заказов тоже журнал наград. Витрину целиком не применяем —
   // локальный ассортимент может быть новее, — но сведения об оплаченных заказах

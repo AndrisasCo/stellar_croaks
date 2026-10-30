@@ -64,6 +64,7 @@ import {
   finishExpedition,
   getExpeditionBiomassValue,
   getExpeditionEtaMs,
+  getExpeditionFoundToadsCheck,
   getExpeditionLootSummary,
   getExpeditionProgress,
   getExpeditionStorageCheck,
@@ -313,6 +314,25 @@ const ExpeditionModal: React.FC<{
 
     return acc;
   }, []);
+  /**
+   * Жабы команды, которых не пропустит `startExpedition`: больна, выбита,
+   * беременна или уже в другом походе. Больная жаба остаётся в слоте (она
+   * физически в «Разведке»), слот краснеет, а отправка ждёт лечения — иначе
+   * игрок видел бы пустую роль и не понимал, почему команда неполная.
+   */
+  const unfitMembers = members.reduce<Array<{ toad: Toad; reason: string }>>(
+    (acc, member) => {
+      const toad = state.toads.find((item) => item.id === member.toadId);
+      const check = toad ? canSendToad(toad, expeditions) : null;
+
+      if (toad && check && !check.ok) {
+        acc.push({ toad, reason: check.reason ?? "не готова к походу" });
+      }
+
+      return acc;
+    },
+    [],
+  );
   const biomass = state.user.biomass || 0;
   const tokens = state.user.tokens || 0;
 
@@ -402,6 +422,7 @@ const ExpeditionModal: React.FC<{
     members.length > 0 &&
     biomass >= sendCost &&
     tiredMembers.length === 0 &&
+    unfitMembers.length === 0 &&
     !hasOwnExpedition &&
     sectorUnlocked;
 
@@ -462,18 +483,20 @@ const ExpeditionModal: React.FC<{
 
   /**
    * Слот команды и место в контуре — одно и то же: жаба стоит в «Разведке», пока занят её
-   * слот. Поэтому слоты держим равными жильцам сектора: кого вернули в биопод или забрал
-   * поход — роль освобождает, а вернувшаяся из похода команда сама встаёт на свои места
-   * (`syncSlotsWithCrew`). Функция чистая, поэтому лишний вызов ничего не ломает: без
-   * изменений она возвращает тот же объект, и React не перерисовывает модалку.
+   * слот. Поэтому слоты держим равными ВСЕМ жильцам сектора, а не только готовым к
+   * отправке: вернувшаяся из похода больная жаба должна остаться в своём слоте и
+   * краснеть причиной, а не исчезать из команды, пока её лечат. Кого вернули в биопод
+   * или забрал поход — роль освобождает (`syncSlotsWithCrew`). Функция чистая, поэтому
+   * лишний вызов ничего не ломает: без изменений она возвращает тот же объект, и React
+   * не перерисовывает модалку.
    */
   useEffect(() => {
     if (!crewRoom) {
       return;
     }
 
-    setSlots((prev) => syncSlotsWithCrew(prev, crewSendable));
-  }, [crewRoom, crewSendable]);
+    setSlots((prev) => syncSlotsWithCrew(prev, crew));
+  }, [crewRoom, crew]);
 
   /**
    * Жабы сектора — отдельной группой вверху списков ролей: они уже стоят в контуре,
@@ -1072,6 +1095,11 @@ const ExpeditionModal: React.FC<{
             {shownCompletedExpeditions.map((expedition) => {
               const sectorDef = getSectorById(expedition.sectorId);
               const storage = getExpeditionStorageCheck(expedition);
+              const foundToads = getExpeditionFoundToadsCheck(
+                expedition,
+                "storage",
+              );
+              const canFinishStorage = storage.ok && foundToads.ok;
               const biomassValue = getExpeditionBiomassValue(expedition);
               const survived = expedition.success !== false;
 
@@ -1109,6 +1137,23 @@ const ExpeditionModal: React.FC<{
                     sampleToad={getExpeditionSampleReward(sectorDef).template}
                   />
 
+                  {(expedition.companions?.length ?? 0) > 0 && (
+                    <p className="text-2xs leading-snug text-cyan-200">
+                      🐸 С командой{" "}
+                      {expedition.companions!.map((toad) => `«${toad.name}»`).join(", ")}
+                      {" "}— «Завершить» поселит в биопод, «В биомассу»
+                      переработает вместе с лутом.
+                    </p>
+                  )}
+                  {!foundToads.ok && (
+                    <p className="text-2xs leading-snug text-red-300">
+                      В биоподах нет места для найденных жаб: нужно{" "}
+                      {foundToads.needed}, свободно {foundToads.free} — постройте
+                      «Биопод», иначе «Завершить» недоступно. Лут можно
+                      переработать в биомассу.
+                    </p>
+                  )}
+
                   <ClickButton
                     onClick={() => openExpeditionLog(expedition)}
                     title="Прочитать полный бортовой журнал завершённого похода"
@@ -1122,14 +1167,16 @@ const ExpeditionModal: React.FC<{
                   <div className="flex flex-wrap gap-1.5">
                     <ClickButton
                       onClick={() => handleFinish(expedition.id, "storage")}
-                      disabled={!storage.ok}
+                      disabled={!canFinishStorage}
                       title={
-                        storage.ok
-                          ? "Забрать предметы на склад, а биомассу, Кваксы и образцы — в колонию"
-                          : "На складе не хватает места: постройте «Склад» или переработайте лут в биомассу"
+                        !storage.ok
+                          ? "На складе не хватает места: постройте «Склад» или переработайте лут в биомассу"
+                          : !foundToads.ok
+                            ? `В биоподах нет места для найденных жаб: нужно ${foundToads.needed}, свободно ${foundToads.free}. Постройте «Биопод»`
+                            : "Забрать предметы на склад, а биомассу, Кваксы и образцы — в колонию"
                       }
                       className={`flex-1 rounded-none border py-2 font-mono text-2xs font-bold uppercase tracking-[0.06em] ${
-                        storage.ok
+                        canFinishStorage
                           ? "border-emerald-500/40 bg-emerald-900/50 text-emerald-100 hover:bg-emerald-800/60"
                           : "cursor-not-allowed border-slate-600/30 bg-slate-800/40 text-slate-500"
                       }`}
@@ -1138,7 +1185,7 @@ const ExpeditionModal: React.FC<{
                     </ClickButton>
                     <ClickButton
                       onClick={() => handleFinish(expedition.id, "biomass")}
-                      title="Переработать всю добычу похода, включая предметы и образцы, в биомассу"
+                      title="Переработать всю добычу похода — включая предметы, образцы и попутчиков — в биомассу"
                       className="flex-1 rounded-none border border-lime-500/40 bg-lime-900/50 py-2 font-mono text-2xs font-bold uppercase tracking-[0.06em] text-lime-100 hover:bg-lime-800/60"
                     >
                       🧪 Превратить лут в биомассу (+{biomassValue} 🧪)
@@ -1257,7 +1304,7 @@ const ExpeditionModal: React.FC<{
                               ).toLowerCase()} «${toad.name}»`,
                           )
                           .join(", ")}{" "}
-                        — дома поселится в биопод
+                        — при завершении похода поселится в биопод
                       </p>
                     )}
 
@@ -1407,7 +1454,8 @@ const ExpeditionModal: React.FC<{
 
             {/* Итог отправки */}
             {((members.length > 0 && biomass < sendCost) ||
-              tiredMembers.length > 0) && (
+              tiredMembers.length > 0 ||
+              unfitMembers.length > 0) && (
               <div className="ui-panel flex flex-col gap-2 rounded-none border-slate-600/30 bg-color-main px-3 py-2">
                 {members.length > 0 && biomass < sendCost && (
                   <p className="text-2xs text-red-300">
@@ -1422,6 +1470,14 @@ const ExpeditionModal: React.FC<{
                         (toad) =>
                           `${toad.name} — ${Math.round(getToadEnergy(toad))} ⚡`,
                       )
+                      .join(", ")}
+                  </p>
+                )}
+                {unfitMembers.length > 0 && (
+                  <p className="text-2xs text-red-300">
+                    Жабы не готовы к походу:{" "}
+                    {unfitMembers
+                      .map(({ toad, reason }) => `${toad.name} — ${reason}`)
                       .join(", ")}
                   </p>
                 )}

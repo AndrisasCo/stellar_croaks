@@ -18,7 +18,6 @@ import {
   LootboxRarity,
 } from "../../../models/Toad/lootbox";
 import { itemsFull, Items } from "../../../models/user";
-import { completeAchivementCounter } from "../../../backend/achivements-manager";
 import { recordQuestEvent } from "../../../backend/quests-manager";
 import {
   getStorageCapacityInfo,
@@ -120,7 +119,6 @@ const StorageModal: React.FC<{ room?: RoomConfig }> = ({ room }) => {
       return;
     }
 
-    completeAchivementCounter("lootbox", 1);
     const { baseToad, rarity } = generateLootboxToad();
     const randomToad = randomizeToadCharacteristics(baseToad) as Toad;
 

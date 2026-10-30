@@ -1,13 +1,10 @@
 import { Scene } from "../models/scene";
 import { Toad } from "../models/Toad";
+import { ToadTypes } from "../models/Toad/toad-species";
 import { User } from "../models/user";
 import { getHunger } from "../utils/hunger";
 import { getSceneWithFreeSlot } from "../utils/housing";
 import { regenToadEnergy } from "../utils/energy";
-import {
-  addToadToCollection,
-  checkGeneticAchievements,
-} from "./achivements-manager";
 import { getGameState, updateGameState } from "./localStorage";
 
 export const createScene = (sceneData: Partial<Scene>): Scene[] => {
@@ -76,6 +73,18 @@ const resolveToadPlacement = (
   };
 };
 
+/** Добавляет вид жабы в коллекцию, не создавая дублей. */
+const collectToadType = (
+  collection: ToadTypes[] | undefined,
+  type: ToadTypes | null,
+): ToadTypes[] | undefined => {
+  if (!type || collection?.includes(type)) {
+    return collection;
+  }
+
+  return [...(collection ?? []), type];
+};
+
 export const createToad = (toadData: Partial<Toad>): Toad[] => {
   const state = getGameState();
   const newToad: Toad = {
@@ -86,13 +95,10 @@ export const createToad = (toadData: Partial<Toad>): Toad[] => {
   } as Toad;
 
   const newToads = [...state.toads, newToad];
-  updateGameState({ toads: newToads });
-
-  checkGeneticAchievements(newToad);
-
-  if (newToad.type) {
-    addToadToCollection(newToad.type);
-  }
+  updateGameState({
+    toads: newToads,
+    toadsCollection: collectToadType(state.toadsCollection, newToad.type),
+  });
 
   return [newToad];
 };
@@ -102,12 +108,9 @@ export const createToads = (
   keepLastSaved?: boolean,
 ): Toad[] => {
   const state = getGameState();
+  let collection = state.toadsCollection;
   const newToads: Toad[] = toadsData.map((toadData) => {
-    checkGeneticAchievements(toadData as Toad);
-
-    if (toadData.type) {
-      addToadToCollection(toadData.type);
-    }
+    collection = collectToadType(collection, toadData.type ?? null);
 
     return {
       id: Math.round(Math.random() * Date.now()),
@@ -118,7 +121,7 @@ export const createToads = (
   });
 
   const allToads = [...state.toads, ...newToads];
-  updateGameState({ toads: allToads }, keepLastSaved);
+  updateGameState({ toads: allToads, toadsCollection: collection }, keepLastSaved);
 
   return newToads;
 };
@@ -233,9 +236,9 @@ export const updateToadsBulkHunger = (
 /**
  * Пассивное восстановление «сил» (energy) у жаб.
  *
- * Силы возвращаются только в биоподе или Медотсеке, при сытости выше нуля и тем
- * быстрее, чем выше аппетит (`utils/energy.ts`). Остальные места и поход силы
- * не восстанавливают.
+ * Силы возвращаются в биоподе, репродукторе или Медотсеке, при сытости выше нуля
+ * и тем быстрее, чем выше аппетит (`utils/energy.ts`). Остальные места и поход
+ * силы не восстанавливают.
  */
 export const updateToadsBulkEnergy = (
   hoursPassed: number,
